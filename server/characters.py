@@ -73,6 +73,12 @@ class CharacterStore:
     def characters(self, account):
         return self.data['accounts'].get(account, [])
 
+    def get(self, account, char_id):
+        for c in self.characters(account):
+            if c['id'] == char_id:
+                return c
+        return None
+
     def create(self, account, request):
         with self.lock:
             chars = self.data['accounts'].setdefault(account, [])
