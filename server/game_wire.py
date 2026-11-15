@@ -2,6 +2,8 @@
 import datetime
 import struct
 
+from models import ChannelSquare, Character, GameServer, SelectCharacterAck, varuint, wide_string
+
 
 def varuint(value):
     if not 0 <= value <= 0xffffffff:
@@ -38,9 +40,7 @@ def welcome():
 
 
 def db_entry(name, u16=0, u64=0, flag_a=False, flag_b=False, flag_c=True):
-    # Reader 0xA496B0: wstring +0, u16 +1C, u64 +1E, bool +26, +27, +28.
-    # Defaults follow constructor 0x74DF70; field meanings are not recovered.
-    return wide_string(name) + struct.pack('<HQ???', u16, u64, flag_a, flag_b, flag_c)
+    return GameServer(name=name, u16=u16, u64=u64, flag_a=flag_a, flag_b=flag_b, flag_c=flag_c).encode()
 
 
 # Experimental local server list (map key -> entry).
@@ -48,8 +48,7 @@ SERVERS = [(1, dict(name='Offline'))]
 
 
 def square_entry(square_id, name, a=0, b=100, c=0):
-    # Field meanings beyond id/name are not recovered yet.
-    return struct.pack('<Q', square_id) + wide_string(name) + struct.pack('<III', a, b, c)
+    return ChannelSquare(square_id=square_id, name=name, a=a, load=b, c=c).encode()
 
 
 CHAR_SLOTS = 4  # first u8 of 2009: shown as "4 SLOT" on character select (observed)
@@ -58,108 +57,15 @@ SQUARES = [dict(square_id=1, name='Channel 1')]
 
 
 def build_char_details(char):
-    # struct 0xa52630
-    b = bytearray()
-    body_sliders = char.get('body', [100] * 5)[:5]
-    b += varuint(len(body_sliders)) + bytes(body_sliders)  # 0xa48dd0
-    b += varuint(0)  # 0xa48d50 (u32 array max 2)
-    b += wide_string(char.get('name', 'Tester'))
-    b += struct.pack('<QQQ', 0, 0, char.get('id', 1))
-    b += struct.pack('<B', char.get('char_class', 1))
-    b += struct.pack('<III', 0, 0, 0)
-    b += struct.pack('<B', 0)
-    b += struct.pack('<IQI', 0, 0, 0)
-    b += struct.pack('<HHHH', 0, 0, 0, 0)
-    # tag 0x1E + raw 24
-    b += b'\x1e' + (b'\x00' * 24)
-    b += struct.pack('<Q?HHHHII', 0, False, 0, 0, 0, 0, 0, 0)
-    b += struct.pack('<f', 0.0)
-    b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    # 2 x 0xa49bb0 (tag 0x1E + u16, u32, u32)
-    b += b'\x1e' + struct.pack('<HII', 0, 0, 0)
-    b += b'\x1e' + struct.pack('<HII', 0, 0, 0)
-    # bool + 0xa48b40 (tag 0x1E + raw 74)
-    b += struct.pack('<?', False)
-    b += b'\x1e' + (b'\x00' * 74)
-    b += struct.pack('<I', 0)
-    # 5 x tag 0x10 vectors
-    for _ in range(5):
-        b += b'\x10' + varuint(0)
-    # tag 0x1E + raw 4
-    b += b'\x1e' + (b'\x00' * 4)
-    b += struct.pack('<H?HH', 0, False, 0, 0)
-    # 2 x tag 0x17 maps
-    b += b'\x17' + varuint(0)
-    b += b'\x17' + varuint(0)
-    b += struct.pack('<HQQQQI', 0, 0, 0, 0, 0, 0)
-    # tag 0x10 vector
-    b += b'\x10' + varuint(0)
-    b += struct.pack('<?HH', False, 0, 0)
-    b += struct.pack('<f', 0.0)
-    b += struct.pack('<?H??', False, 0, False, False)
-    b += wide_string('')
-    return bytes(b)
+    """Serialize player details for struct 0x00A52630 using Character model."""
+    c = char if isinstance(char, Character) else Character.from_dict(char)
+    return c.encode_world_details()
 
 
 def build_select_char_ack(char):
-    # Handler 0x7AA4B0: u32 result (0), tag 0x1E + struct 0xA40760, tag 0x10 vector
-    p = bytearray(struct.pack('<I', 0))
-    p += b'\x1e'
-    p += struct.pack('<I', 0)  # u32 field 0
-    p += varuint(0)  # 0xa3ed30 max 3
-    p += varuint(0)  # 0xa1e840 max 10
-    # 0x4c7990: tag 0x1E + 0xa52630
-    p += b'\x1e' + build_char_details(char)
-    # fields after 0x4c7990 in 0xa40760:
-    p += struct.pack('<QQQQBB', 0, 0, 0, 0, 0, 0)
-    p += b'\x17' + varuint(0)  # 0xa40720
-    p += b'\x10' + varuint(0)  # 0x558010
-    p += b'\x10' + varuint(0)  # 0x4b9830
-    p += b'\x10' + varuint(0)  # 0x4b2c30
-    p += b'\x10' + varuint(0)  # 0xa3eec0
-    p += b'\x17' + varuint(0)  # 0x4b1240
-    p += b'\x17' + varuint(0)  # 0x76e560
-    p += b'\x13' + varuint(0)  # 0x76a8c0
-    p += b'\x17' + varuint(0)  # 0xa3e410
-    p += struct.pack('<QII', 0, 0, 0)
-    p += b'\x17' + varuint(0)  # 0xa3e450
-    p += b'\x13' + varuint(0)  # 0x5ee0f0
-    p += b'\x1e' + (b'\x00' * 18)  # 0x641e00 (tag 0x1E + raw 18)
-    p += b'\x13' + varuint(0)  # 0x5ee0f0
-    p += struct.pack('<QQQIQ', 0, 0, 0, 0, 0)
-    p += struct.pack('<Q', 0)
-    p += b'\x10' + varuint(0)  # 0x4b1a60
-    p += struct.pack('<Q??', 0, False, False)
-    p += struct.pack('<f', 0.0)
-    p += struct.pack('<Q', 0)
-    p += struct.pack('<Q', 0)
-    p += b'\x17' + varuint(0)  # 0x485220
-    p += b'\x17' + varuint(0)  # 0x485220
-    p += wide_string('')  # 0xb35ab0
-    # 0x74c1d0: tag 0x1E + 2 maps + bool
-    p += b'\x1e' + b'\x17' + varuint(0) + b'\x17' + varuint(0) + struct.pack('<?', False)
-    p += b'\x17' + varuint(0)  # 0xa3ea00
-    p += struct.pack('<QQI', 0, 0, 0)
-    p += b'\x10' + varuint(0)  # 0x4da660
-    p += b'\x10' + varuint(0)  # 0x4da660
-    p += struct.pack('<HQQ', 0, 0, 0)
-    p += b'\x17' + varuint(0)  # 0x5f9190
-    p += b'\x17' + varuint(0)  # 0x76aba0
-    # 0xa1e8c0: tag 0x1E + map + u64 + bool + u64
-    p += b'\x1e' + b'\x17' + varuint(0) + struct.pack('<Q?Q', 0, False, 0)
-    p += b'\x10' + varuint(0)  # 0xa3edd0
-    # 0xa1eea0: tag 0x1E + u32 + u64 + u64 + u64
-    p += b'\x1e' + struct.pack('<IQQQ', 0, 0, 0, 0)
-    # 0xa1e900: tag 0x1E + map + vector
-    p += b'\x1e' + b'\x17' + varuint(0) + b'\x10' + varuint(0)
-    p += struct.pack('<H', 0)
-    p += b'\x10' + varuint(0)  # 0x4da660
-    p += b'\x17' + varuint(0)  # 0x5f9150
-    p += struct.pack('<H', 0)
-    p += b'\x17' + varuint(0)  # 0x485220
-    # in 0x007AA4B0: tag 0x10 + vector 0x004B9210
-    p += b'\x10' + varuint(0)
-    return bytes(p)
+    """Serialize eEGS_SELECT_CHAR_ACK (2007) using SelectCharacterAck model."""
+    c = char if isinstance(char, Character) else Character.from_dict(char)
+    return SelectCharacterAck(result=0, character=c).encode()
 
 
 class WireError(ValueError):
