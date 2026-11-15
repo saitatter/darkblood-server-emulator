@@ -1,0 +1,67 @@
+# Dark Blood client reverse engineering
+
+Documentation handoff: 2026-11-16, covering the 2026-11-15 investigation. See [STATUS.md](STATUS.md) for artifact identities and [PROTOCOL.md](PROTOCOL.md) for the recovered wire formats.
+
+## Target
+
+- Supplied game: Dark Blood Online / Project Hound, with build paths referring to JCR Soft's Hound client.
+- Steam AppID observed in a client call: `267790`.
+- Executable: `DarkBlood.exe`, PE32 x86, image base `0x00400000`.
+- Working version label from earlier notes: `1.6.5#0`; not independently revalidated.
+- Original SHA-256: `a82ae3d71b596418c1f3593cb63d3f9746318d452143c2e88f6ebbaaff339c931`.
+- Embedded PDB path includes `D:\Depot\Hound\Development\B_STEAM_QA\Library\SkClient\Release_Public_Service\DarkBlood Service.pdb`.
+
+## Packing and execution
+
+The disk executable contains packed code and an Oreans protection layer. Runtime strings include Oreans references. Earlier notes identify an aPLib stage; that algorithm identification still needs independent verification and should not be treated as complete unpacker reconstruction.
+
+Original entry VA is `0x0119E000`, with an initial transfer eventually reaching the stub at `0x0119D000`. Original section RVAs include `0x00CE3000` (`snlesxay`), `0x00D9D000`, and `0x00D9E000`. Distinguish RVAs from VAs: add the image base to obtain the corresponding virtual address.
+
+Launching under Windows Debug API from process creation triggered many first-chance privileged/illegal-instruction exceptions and a protection-error dialog. Those exceptions can be part of the packer; blindly skipping them is not a valid unpacking strategy.
+
+Normal execution with `__COMPAT_LAYER=RunAsInvoker` reached unpacked game code. `tools/debug_client.c`, in `DB_NO_DEBUG` mode, was used to read the mapped image and inspect threads. The helper terminates only the child it created after its bounded observation window.
+
+The derived `research/unpacked.analysis.exe` is not playable. It wraps a captured memory image into a simplified PE for static analysis, with loader directories removed and an artificial disassembly seed. Addresses in this fixture correspond to memory VAs; original disk offsets do not.
+
+## Steam shim findings
+
+The supplied folder already contained a replacement `steam_api.dll` and an original `steam_api.dll.bak`. The earlier replacement exported only a subset of the original API. Completing the export surface allowed the packer/import setup to reach normal game initialization.
+
+The original backup has 57 exports. Matching names is not full API compatibility: several mock signatures, callback behaviors, and interfaces remain incomplete.
+
+A crash at `0x0092C322` showed that returning pointer `1` from SteamUser was invalid. Minimal vtables now provide:
+
+- SteamUser slot 0: user handle.
+- SteamUser slot 1: BLoggedOn.
+- SteamUser slot 2: SteamID, using an x86 hidden output pointer for the struct return.
+- SteamFriends slot 0: persona name `OfflinePlayer`.
+
+Other interfaces still contain invalid pointer placeholders. Later authentication, achievements, inventory, or networking calls may require additional methods. Startup success does not validate those APIs.
+
+## Hooking changes
+
+The earlier hook copied arbitrary five-byte API prologues and blocked ExitProcess/NtTerminateProcess using `Sleep(INFINITE)`. It could split instructions and conceal actual failures. Those termination hooks are no longer installed; their dead definitions remain in the WIP source for later cleanup.
+
+The current redirect is installed during `SteamAPI_Init`, after unpacking. Its trampoline helper accepts only the inspected x86 hotpatch prologue `8B FF 55 8B EC`, flushes instruction caches, and refuses other layouts. The redirect copies the sockaddr and preserves the requested port.
+
+Observed original connection: `54.173.235.121:9400`. Experimental destination: `127.0.0.1:9400`.
+
+Coverage is limited to IPv4 `connect`. WSAConnect, ConnectEx, IPv6, and UDP have not been comprehensively redirected. Do not claim complete network isolation.
+
+Build-specific diagnostic patches trace:
+
+- Connection callback via slot `0x00D4FA90`, expected function `0x00A5D880`.
+- User messages via slot `0x00D4FA8C`, expected function `0x00A5EFA0`.
+- Welcome deserialization at callsite `0x0096B091`, expected target `0x00A519A0`.
+
+Each checks its expected target before mutation. These are observation hooks; they do not force parser or login success.
+
+## Analysis tools and limits
+
+REA's connected server initially reported Ghidra unavailable because its process environment lacked the paths. The installed CLI worked with shell-local `GHIDRA_INSTALL_DIR`, `JAVA_HOME`, and absolute `REA_JAVA_COMMAND`; no global MCP configuration change was needed.
+
+Full Ghidra analysis through REA produced retained Evidence. The initial artificial seed `0x92C2E0` lies inside the Steam-related function whose actual start is `0x92C2C0`; do not interpret the synthetic `entry` as a recovered original entry point.
+
+`tools/FocusedDecompile.java` provides faster targeted analysis using `-noanalysis`, requested function seeds, limited callee discovery, and return-based stack-purge metadata. Its output may contain incorrect signatures, merged function bodies, and inaccurate stack variables. Check important details against assembly and live observations.
+
+The client contains ProudNet networking and its own JSerBuffer/JEvent serialization. The initial Auth/Lobby prototype did not implement those real formats. The actual accepted sequence and the remaining `2403` initialization wait are documented in [PROTOCOL.md](PROTOCOL.md) and [ROADMAP.md](../ROADMAP.md).
