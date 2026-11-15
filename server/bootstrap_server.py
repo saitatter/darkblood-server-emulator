@@ -134,8 +134,23 @@ class Session:
             await self.handle_encrypted(payload)
         elif kind in (0x02, 0x03):
             await self.app.on_user_message(payload[1:])
+        elif kind == 0x01:
+            await self.handle_rmi(payload)
         else:
             self.record('unhandled', payload)
+
+    async def handle_rmi(self, payload):
+        if len(payload) >= 3:
+            rmi_id = struct.unpack_from('<H', payload, 1)[0]
+            if rmi_id == 0xfa01:
+                # ProudNet Rmi_ReliablePing -> reply with Rmi_ReliablePong (0xfa02)
+                pong = b'\x01' + struct.pack('<H', 0xfa02) + payload[3:]
+                await self.send_payload(pong, note='RMI pong 0xfa02')
+                return
+            elif rmi_id == 0xfa13:
+                self.record('rmi-fa13', payload)
+                return
+        self.record('unhandled-rmi', payload)
 
     async def handle_encrypted(self, payload):
         # Writer 0xB762C0: type, encryption mode (u8), scalar length, ciphertext.

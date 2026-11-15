@@ -42,14 +42,11 @@ class GameError(RuntimeError):
 
 
 def _attach_desktop():
-    """Ensure process and calling thread are attached to the interactive desktop."""
+    """Ensure process is attached to WinSta0."""
     try:
         hwinsta = user32.OpenWindowStationW('WinSta0', False, 0x0000037F)
         if hwinsta:
             user32.SetProcessWindowStation(hwinsta)
-        hdesk = user32.OpenDesktopW('Default', 0, False, 0x000001FF)
-        if hdesk:
-            user32.SetThreadDesktop(hdesk)
     except Exception:
         pass
 
@@ -104,12 +101,20 @@ def start(server_only=False, client_only=False):
     """Start the emulator server and the test client."""
     state = _load_state()
     current = status()
-    if current['client_alive'] or current['server_alive']:
-        raise GameError('A session is already running; stop it first: %r' % current)
+    if client_only:
+        if current['client_alive']:
+            raise GameError('Client is already running: %r' % current)
+    elif server_only:
+        if current['server_alive']:
+            raise GameError('Server is already running: %r' % current)
+    else:
+        if current['client_alive'] or current['server_alive']:
+            raise GameError('A session is already running; stop it first: %r' % current)
     if client_hash() != CLIENT_SHA256:
         raise GameError('Unexpected client hash; addresses in the shim are build specific')
     LOGS.mkdir(parents=True, exist_ok=True)
-    state = dict(started=time.time(), wire_offset=WIRE.stat().st_size if WIRE.exists() else 0)
+    state = dict(started=time.time(), wire_offset=WIRE.stat().st_size if WIRE.exists() else 0,
+                 server_pid=current.get('server_pid'))
     if not client_only:
         if not _port_free():
             raise GameError('127.0.0.1:%d is already in use by another process' % PORT)
@@ -126,31 +131,44 @@ def start(server_only=False, client_only=False):
             raise GameError('Server did not start listening; see logs/server.log')
     if not server_only:
         env = dict(os.environ, __COMPAT_LAYER='RunAsInvoker')
+        DETACHED_PROCESS = 0x00000008
         si = subprocess.STARTUPINFO()
         si.lpDesktop = 'WinSta0\\Default'
-        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env, startupinfo=si)
+        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env,
+                                  creationflags=DETACHED_PROCESS, startupinfo=si)
         state['client_pid'] = client.pid
     _save_state(state)
     return status()
 
 
-def stop():
+def stop(client_only=False, server_only=False):
     state = _load_state()
     stopped = []
-    for key, image in (('client_pid', 'DarkBlood.exe'), ('server_pid', 'python')):
+    targets = []
+    if not server_only:
+        targets.append(('client_pid', 'DarkBlood.exe'))
+    if not client_only:
+        targets.append(('server_pid', 'python'))
+    for key, image in targets:
         pid = state.get(key)
         if _alive(pid, image):
             subprocess.run(['taskkill', '/PID', str(pid), '/F'], capture_output=True)
             stopped.append(pid)
-    state.pop('client_pid', None)
-    state.pop('server_pid', None)
+        state.pop(key, None)
     _save_state(state)
     return dict(stopped=stopped)
 
 
 # -------------------------------------------------------------------- windows
 WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+DESKTOPENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.LPWSTR, wintypes.LPARAM)
 user32.EnumWindows.argtypes = [WNDENUMPROC, wintypes.LPARAM]
+user32.EnumDesktopsW.argtypes = [wintypes.HANDLE, DESKTOPENUMPROC, wintypes.LPARAM]
+user32.EnumDesktopWindows.argtypes = [wintypes.HANDLE, WNDENUMPROC, wintypes.LPARAM]
+user32.OpenDesktopW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+user32.OpenDesktopW.restype = wintypes.HANDLE
+user32.SetThreadDesktop.argtypes = [wintypes.HANDLE]
+user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 user32.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
 user32.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
@@ -177,23 +195,61 @@ gdi32.DeleteDC.argtypes = [wintypes.HDC]
 def find_window(pid=None):
     _attach_desktop()
     pid = pid or _load_state().get('client_pid')
-    found = []
 
-    def callback(hwnd, _):
-        owner = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
-        if owner.value == pid and user32.IsWindowVisible(hwnd):
+    hwinsta = user32.OpenWindowStationW('WinSta0', False, 0x0000037F)
+    desktops = []
+    if hwinsta:
+        def desk_cb(desk_name, _):
+            desktops.append(desk_name)
+            return True
+        user32.EnumDesktopsW(hwinsta, DESKTOPENUMPROC(desk_cb), 0)
+    if 'Default' not in desktops:
+        desktops.append('Default')
+
+    found = []
+    for dname in desktops:
+        hdesk = user32.OpenDesktopW(dname, 0, False, 0x000001FF)
+        if not hdesk:
+            continue
+
+        def callback(hwnd, _):
+            owner = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+            if pid and owner.value != pid:
+                return True
             title = ctypes.create_unicode_buffer(256)
             user32.GetWindowTextW(hwnd, title, 256)
             cls = ctypes.create_unicode_buffer(256)
             user32.GetClassNameW(hwnd, cls, 256)
             if 'DarkBlood' in title.value or 'DarkBlood' in cls.value:
-                found.append(hwnd)
+                found.append((hwnd, hdesk))
+                return False
+            return True
+
+        user32.EnumDesktopWindows(hdesk, WNDENUMPROC(callback), 0)
+        if found:
+            user32.SetThreadDesktop(found[0][1])
+            return found[0][0]
+
+    # Fallback to EnumWindows on current desktop
+    fallback_found = []
+
+    def fb_callback(hwnd, _):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if pid and owner.value != pid:
+            return True
+        title = ctypes.create_unicode_buffer(256)
+        user32.GetWindowTextW(hwnd, title, 256)
+        cls = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, cls, 256)
+        if 'DarkBlood' in title.value or 'DarkBlood' in cls.value:
+            fallback_found.append(hwnd)
+            return False
         return True
 
-    if pid:
-        user32.EnumWindows(WNDENUMPROC(callback), 0)
-    return found[0] if found else None
+    user32.EnumWindows(WNDENUMPROC(fb_callback), 0)
+    return fallback_found[0] if fallback_found else None
 
 
 def _window():
@@ -278,19 +334,21 @@ def _vk(name):
 
 def keys(chord, hold=0.05):
     """Press a chord such as 'enter', 'alt+enter' or 'esc'."""
-    focus()
+    hwnd = focus()
     codes = [_vk(part) for part in chord.split('+')]
     for code in codes:
         user32.keybd_event(code, user32.MapVirtualKeyW(code, 0), 0, None)
+        user32.PostMessageW(hwnd, 0x0100, code, 0)
         time.sleep(hold)
     for code in reversed(codes):
         user32.keybd_event(code, user32.MapVirtualKeyW(code, 0), 2, None)
+        user32.PostMessageW(hwnd, 0x0101, code, 0)
         time.sleep(hold)
     return 'sent ' + chord
 
 
 def type_text(text):
-    focus()
+    hwnd = focus()
     for char in text:
         code = user32.VkKeyScanW(ord(char))
         if code == -1:
@@ -299,6 +357,7 @@ def type_text(text):
         if shift:
             user32.keybd_event(0x10, 0, 0, None)
         user32.keybd_event(code & 0xff, 0, 0, None)
+        user32.PostMessageW(hwnd, 0x0102, ord(char), 0)
         user32.keybd_event(code & 0xff, 0, 2, None)
         if shift:
             user32.keybd_event(0x10, 0, 2, None)
@@ -310,21 +369,28 @@ def click(x, y, button='left', double=False):
     """Click at client coordinates; values <= 1 are fractions of the client area."""
     hwnd = focus()
     left, top, w, h = client_rect(hwnd)
-    px = left + (int(x * w) if x <= 1 else int(x))
-    py = top + (int(y * h) if y <= 1 else int(y))
+    cx = int(x * w) if x <= 1 else int(x)
+    cy = int(y * h) if y <= 1 else int(y)
+    px = left + cx
+    py = top + cy
     user32.SetCursorPos(px, py)
     time.sleep(0.08)
     down, up = (2, 4) if button == 'left' else (8, 16)
+    lparam = (cy << 16) | (cx & 0xFFFF)
+    wm_down = 0x0201 if button == 'left' else 0x0204
+    wm_up = 0x0202 if button == 'left' else 0x0205
     for _ in range(2 if double else 1):
         user32.mouse_event(down, 0, 0, 0, None)
+        user32.PostMessageW(hwnd, wm_down, 1 if button == 'left' else 2, lparam)
         time.sleep(0.06)
         user32.mouse_event(up, 0, 0, 0, None)
+        user32.PostMessageW(hwnd, wm_up, 0, lparam)
         time.sleep(0.08)
     return 'clicked %s at screen %d,%d' % (button, px, py)
 
 
 def skip_intro(timeout=60):
-    """Click through the start-up cinematics until the Server List opens.
+    """Click and key through the start-up cinematics until the Server List opens.
 
     The list opening is detected from the wire log: the title scene sends a
     second eEGS_DB_LIST_GET_REQ (2402) when the dialog is shown.
@@ -335,7 +401,12 @@ def skip_intro(timeout=60):
             return 'server list open'
         if find_window():
             click(0.5, 0.5)
-        time.sleep(1.5)
+            for k in ('space', 'enter', 'esc'):
+                try:
+                    keys(k)
+                except Exception:
+                    pass
+        time.sleep(1.0)
     raise GameError('Server list did not open within %ds' % timeout)
 
 
