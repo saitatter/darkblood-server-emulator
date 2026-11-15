@@ -116,7 +116,8 @@ Type checks vary. `0x00A48AF0` is a no-op returning true in this build. However,
 | Date reader | `0x00A49110` | Six u16 fields |
 | Startup sequence | `0x00749EE0` | Waits for 5020, then 2403 |
 | Event wait | `0x0094E1F0` | Polling with approximately 30-second timeout |
-| Next request constructor | `0x0079A970` | Opcode 2402 / 0x0962 |
+| Next request constructor | `0x0079A970` | Opcode 2402 / 0x0962: `JUserClient::DBListREQ` |
+| Request sender | `0x007874A0` | `JUserClient::SendREQ(jEvt)` |
 
 Structural welcome schema, after its result u32:
 
@@ -133,11 +134,19 @@ u16 year, month, day, hour, minute, second
 u64, u64, u16
 ```
 
-The current test uses result 0, u64 value 1, text `OfflinePlayer`, an empty map, local date/time, and other fields zero. Its body is 100 bytes and its complete JEvent is 114 bytes. Client instrumentation confirmed complete deserialization. Field meanings, validity in later flows, and session semantics remain unverified.
+The current test uses result 0, u64 value 1, text `OfflinePlayer`, an empty map, local date/time, and other fields zero. Its body is 100 bytes and its complete JEvent is 114 bytes. Client instrumentation confirmed complete deserialization.
 
-`0x139C` is also associated with multiple operations in dispatch tables. Do not assume every message with that opcode uses the startup welcome schema.
+### Recovered DBListREQ / DBListACK Flow:
+* `0x0079A970` is statically identified via embedded developer log strings as `JUserClient::DBListREQ` (`L"Request DB list"`).
+* It constructs JEvent opcode `0x0962` (2402) and invokes `0x007874A0` (`JUserClient::SendREQ`).
+* `JUserClient::SendREQ` invokes `m_pjClient->SendUserMessage(Proud::HostID_Server)` via vtable slot `+0xC8` (`0x00B55A30`).
+* If `SendUserMessage` fails, `0x007874A0` logs `L"Invalidation in m_pjClient->SendUserMessage( Proud::HostID_Server )"` (string VA `0x00CF7B30`) and `0x0079A970` logs `L"Invalidation in SendREQ( jEvt )"` (string VA `0x00CF8458`).
+* Immediately after dispatching `DBListREQ`, the client calls `0x0094E1F0` waiting for event `0x0963` (2403, `DBListACK`).
+* Opcode map `0x00F49CE8` registers pairs: `0x951` (LoginREQ), `0x95E`/`0x95F` (ServerList/SelectChannel), `0x962`/`0x963` (DBListREQ/DBListACK), `0x965`/`0x967` (CharCreateREQ/ACK).
 
-After welcome, the main thread waits for `0x0963`. Trace request `0x0962` through sending before implementing a guessed response. The exact meaning of 2403 is not yet demonstrated; it is an initialization step, not a confirmed character-list packet.
+### Internal Send Checks Identified:
+1. `0x00B3FEC0`: Checks `[CNetClient + 0x550]`. If `NULL` or `*[+0x550] == 0`, immediately aborts and returns `0` (FALSE).
+2. `0x00B53310`: Routing check. Checks `[CNetClient + 0x1570]` (remote host collection) and `[CNetClient + 0x1500]` (assigned client HostID). If empty, jumps to error cleanup at `0x00B53DB3` and returns `0` (FALSE).
 
 ## 6. Instrumentation and continuation addresses
 
@@ -152,8 +161,15 @@ After welcome, the main thread waits for `0x0963`. Trace request `0x0962` throug
 | `0x00F29AE8` | Connected flag observed after callback |
 | `0x00A5CF30` | Connected-flag getter |
 | `0x00787310` | Application-event dispatcher |
+| `0x007874A0` | `JUserClient::SendREQ` |
+| `0x0079A970` | `JUserClient::DBListREQ` (Opcode 0x0962) |
+| `0x0074A0B6` | Wait site for `DBListACK` (Opcode 0x0963) |
+| `0x00B55A30` | ProudNet `SendUserMessage` thunk (`sub ecx, 0xAC`) |
+| `0x00B75710` | ProudNet user message preparer |
+| `0x00B3FEC0` | ProudNet send guard (`[ecx + 0x550]`) |
+| `0x00B53310` | ProudNet send transport routing (`[edi + 0x1570]`, `[edi + 0x1500]`) |
 | `0x00D6EF8C` | ProudNet client-interface vtable; +0xC8 sends user messages |
 | `0x00B57910` | Core constructor initializing multiple vtables |
-| `0x00F2C410` | RmiContext used by game sending; runtime values differ from the dump taken before global initialization |
+| `0x00F2C410` | RmiContext used by game sending |
 
 Send route and next probes are in [STATUS.md](STATUS.md) and [ROADMAP.md](../ROADMAP.md). All diagnostic patches are specific to the analyzed hash. Interpret boolean returns in AL; decompilers declaring them as int can expose undefined upper bits.
