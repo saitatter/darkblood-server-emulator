@@ -202,6 +202,22 @@ class GameSession:
             ack = struct.pack('<I', 0) + encode_character(char) + struct.pack('<B', 0)
         await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
 
+    async def on_5030(self, correlation, body):
+        # eERC_JOIN_LAYER_REQ (i32, u64 layer id) -> eERC_JOIN_LAYER_ACK (5031), handler 0x787B40
+        layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
+        await self.transport.send_event(event(5031, struct.pack('<IQ', 0, layer_id), correlation),
+                                        note='join layer ack (%d)' % layer_id)
+
+    async def on_2016(self, correlation, body):
+        # eEGS_ENTER_MAPTOOL_REQ -> eEGS_ENTER_MAPTOOL_ACK (2017), handler 0x757D60
+        await self.transport.send_event(event(2017, struct.pack('<I', 0), correlation),
+                                        note='enter maptool ack')
+
+    async def on_5013(self, correlation, body):
+        # eERC_START_GAME_REQ -> eERC_START_GAME_ACK (5014), handler 0x788120
+        await self.transport.send_event(event(5014, struct.pack('<I', 0), correlation),
+                                        note='start game ack')
+
     _store = None
 
     @classmethod

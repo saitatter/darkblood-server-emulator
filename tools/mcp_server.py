@@ -46,6 +46,7 @@ TOOLS = {
                         {'timeout': _num('Seconds (default 60)')}, []),
     'game_enter_lobby': ('From a fresh launch: skip the intro, pick the local server and channel, '
                          'and wait for character select.', {}, []),
+    'game_select_character': ('Confirm the currently selected character on Character Select screen (sends opcode 2006).', {}, []),
     'game_events': ('Decoded protocol log for this session: client requests (opcode + enum name), '
                     'server responses, handshake steps.',
                     {'include_transport': {'type': 'boolean'}, 'limit': _num('Max rows (default 60)')}, []),
@@ -78,6 +79,8 @@ def call_tool(name, args):
         return gamectl.skip_intro(int(args.get('timeout', 60)))
     if name == 'game_enter_lobby':
         return gamectl.enter_lobby()
+    if name == 'game_select_character':
+        return gamectl.select_character()
     if name == 'game_events':
         return '\n'.join(gamectl.events(include_transport=bool(args.get('include_transport')),
                                         limit=int(args.get('limit', 60)))) or '(no events)'

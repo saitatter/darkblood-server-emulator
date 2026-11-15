@@ -41,6 +41,19 @@ class GameError(RuntimeError):
     pass
 
 
+def _attach_desktop():
+    """Ensure process and calling thread are attached to the interactive desktop."""
+    try:
+        hwinsta = user32.OpenWindowStationW('WinSta0', False, 0x0000037F)
+        if hwinsta:
+            user32.SetProcessWindowStation(hwinsta)
+        hdesk = user32.OpenDesktopW('Default', 0, False, 0x000001FF)
+        if hdesk:
+            user32.SetThreadDesktop(hdesk)
+    except Exception:
+        pass
+
+
 # ------------------------------------------------------------------ processes
 def _alive(pid, image=None):
     if not pid:
@@ -113,7 +126,9 @@ def start(server_only=False, client_only=False):
             raise GameError('Server did not start listening; see logs/server.log')
     if not server_only:
         env = dict(os.environ, __COMPAT_LAYER='RunAsInvoker')
-        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env)
+        si = subprocess.STARTUPINFO()
+        si.lpDesktop = 'WinSta0\\Default'
+        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env, startupinfo=si)
         state['client_pid'] = client.pid
     _save_state(state)
     return status()
@@ -160,6 +175,7 @@ gdi32.DeleteDC.argtypes = [wintypes.HDC]
 
 
 def find_window(pid=None):
+    _attach_desktop()
     pid = pid or _load_state().get('client_pid')
     found = []
 
@@ -169,7 +185,9 @@ def find_window(pid=None):
         if owner.value == pid and user32.IsWindowVisible(hwnd):
             title = ctypes.create_unicode_buffer(256)
             user32.GetWindowTextW(hwnd, title, 256)
-            if 'DarkBlood' in title.value:
+            cls = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, cls, 256)
+            if 'DarkBlood' in title.value or 'DarkBlood' in cls.value:
                 found.append(hwnd)
         return True
 
@@ -350,6 +368,14 @@ def enter_lobby(timeout=90):
         raise GameError('Character list was not requested')
     time.sleep(3)
     return 'character select reached'
+
+
+def select_character():
+    """From character select screen: press Enter to confirm and send opcode 2006."""
+    focus()
+    keys('enter')
+    time.sleep(1)
+    return 'character select confirmed'
 
 
 # ---------------------------------------------------------------------- events
