@@ -19,6 +19,8 @@ from proudnet import (ProtocolError, connection_success, frame, pop_frame,
 from proudnet_crypto import AES, CryptoError, RSAKey, envelope_decrypt, envelope_encrypt
 import game_wire
 
+ROOT = Path(__file__).resolve().parent.parent
+
 logger = logging.getLogger('ProudNet')
 
 AES_KEY_BITS = 128
@@ -150,14 +152,15 @@ class Session:
 
 
 class BootstrapServer:
-    def __init__(self, host='127.0.0.1', port=9400, log_path=Path('logs/wire.jsonl'),
-                 key_path=Path('logs/server_rsa.key')):
+    def __init__(self, host='127.0.0.1', port=9400, log_path=None,
+                 key_path=None):
         if host != '127.0.0.1':
             raise ValueError('The research server must bind to IPv4 loopback')
         self.host, self.port = host, port
-        self.log_path = Path(log_path)
+        self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
         self.guid = uuid.UUID('a1d7e8c2-5a20-44af-94e1-52424c4f4f44').bytes_le
-        self.rsa = RSAKey.load_or_create(str(key_path))
+        key_file = str(key_path) if key_path else str(ROOT / 'logs' / 'server_rsa.key')
+        self.rsa = RSAKey.load_or_create(key_file)
         self.server = None
         self.next_host_id = 2
 

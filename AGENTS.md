@@ -60,6 +60,13 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 - Diagnostic vtable/callsite hooks check expected targets before patching and should only trace behavior.
 - Bound test duration and stop only owned processes. The new bootstrap was stopped for the pause. The pre-existing `server/server.py` process was left alone (PID 44712 then; never reuse a recorded PID without verification).
 
+## Mandatory Agent Collaboration & Synchronization Rule
+
+Until the server emulator implementation is complete:
+- **10-Minute Git Sync Cycle**: Every AI agent operating on this repository must check for remote changes every **10 minutes** (`git pull --rebase origin main`), integrate upstream changes, and immediately push its own verified discoveries and code changes to `origin main` (`git push origin main`).
+- **Direct Push Access**: Direct push access on `main` is granted to repository collaborators, including `CristianVita` (`cri999sti@gmail.com`).
+- **Never Overwrite or Lose Progress**: Always rebase cleanly, verify tests with `gamectl`, and never perform destructive resets. Keep documentation in English and keep all evidence updated.
+
 ## Known gaps
 
 - SteamUser implements only three initial slots; SteamFriends only the first slot. Other interfaces still return invalid placeholder `1`, and many export signatures/callbacks are incomplete.
