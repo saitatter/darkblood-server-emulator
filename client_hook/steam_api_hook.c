@@ -6,6 +6,7 @@
 #pragma comment(lib, "user32.lib")
 
 static HANDLE g_hLog = INVALID_HANDLE_VALUE;
+static int SafeRead(DWORD address, void* out, DWORD size);
 
 static void RawLog(const char* str) {
     if (g_hLog != INVALID_HANDLE_VALUE && str) {
@@ -113,7 +114,35 @@ static void __declspec(naked) TraceUserMessage(void) {
         jmp dword ptr [orig_user_message]
     }
 }
+
+/* Dump the application handler std::map (0xF45250: opcode -> member fn,
+ * looked up by 0x75FD30). MSVC8 _Tree node: left, parent, right, value...
+ * Raw node words are logged so field meanings can be checked. */
+static void DumpNode(HANDLE out, DWORD node, DWORD head, int depth, int* count) {
+    DWORD words[10]; char line[200]; DWORD written;
+    if (depth > 64 || *count > 4000 || node == head || node == 0) return;
+    if (!SafeRead(node, words, sizeof(words))) return;
+    if (((BYTE*)words)[0x21] != 0) return; /* _Isnil */
+    DumpNode(out, words[0], head, depth + 1, count);
+    wsprintfA(line, "%u %08X %08X %08X %08X %08X\r\n", words[3], words[4], words[5], words[6], words[7], words[8]);
+    WriteFile(out, line, lstrlenA(line), &written, NULL);
+    (*count)++;
+    DumpNode(out, words[2], head, depth + 1, count);
+}
+static void DumpHandlerMap(void) {
+    DWORD head, root, words[10]; int count = 0;
+    HANDLE out;
+    if (!SafeRead(0x00F45254, &head, 4) || !SafeRead(head, words, sizeof(words))) return;
+    root = words[1];
+    out = CreateFileA("handler_map.txt", GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+    if (out == INVALID_HANDLE_VALUE) return;
+    DumpNode(out, root, head, 0, &count);
+    CloseHandle(out);
+    RawLogFmt("[MAP] dumped %d handler entries (head=%08X isnil=%02X)", count, head, ((BYTE*)words)[0x21]);
+}
+
 static void __cdecl TraceJoinEnter(void* self,int* info) {
+    DumpHandlerMap();
     RawLogFmt("[PROUD] OnJoinServerComplete result=%d self=%p",info?*info:-1,self);
 }
 static void __declspec(naked) TraceJoin(void) {
@@ -146,12 +175,156 @@ static int WSAAPI Hook_connect(SOCKET s, const struct sockaddr* name, int namele
     return orig_connect ? orig_connect(s, name, namelen) : -1;
 }
 
+/* ---- Diagnostic INT3 tracer ------------------------------------------
+ * Reads bp.txt from the working directory (absent file = no breakpoints).
+ * Line format: <hex VA> [max=N] [expr ...]
+ *   expr  reg+hexoff        dword at (reg+off)
+ *         reg+hexoff.N      N bytes at (reg+off), N<=64 (hex)
+ *         @reg+hexoff+hex2  dword at ([reg+off]+hex2)
+ * Logging only: original byte is restored, one single step is taken,
+ * then the breakpoint is re-armed until max hits are reached. */
+#define MAX_BP 64
+typedef struct { BYTE* addr; BYTE orig; int hits, max; char exprs[200]; } Breakpoint;
+static Breakpoint g_bp[MAX_BP];
+static int g_bpCount;
+static DWORD g_rearmTls = TLS_OUT_OF_INDEXES;
+
+static int WriteCode(BYTE* at, BYTE value) {
+    DWORD protect;
+    if (!VirtualProtect(at, 1, PAGE_EXECUTE_READWRITE, &protect)) return 0;
+    *at = value;
+    VirtualProtect(at, 1, protect, &protect);
+    FlushInstructionCache(GetCurrentProcess(), at, 1);
+    return 1;
+}
+
+static DWORD RegValue(CONTEXT* c, const char* r) {
+    if (!memcmp(r,"eax",3)) return c->Eax; if (!memcmp(r,"ebx",3)) return c->Ebx;
+    if (!memcmp(r,"ecx",3)) return c->Ecx; if (!memcmp(r,"edx",3)) return c->Edx;
+    if (!memcmp(r,"esi",3)) return c->Esi; if (!memcmp(r,"edi",3)) return c->Edi;
+    if (!memcmp(r,"esp",3)) return c->Esp; if (!memcmp(r,"ebp",3)) return c->Ebp;
+    return 0;
+}
+
+static DWORD HexParse(const char** p) {
+    DWORD v = 0; const char* s = *p;
+    for (;;) {
+        char ch = *s; int d;
+        if (ch >= '0' && ch <= '9') d = ch - '0';
+        else if (ch >= 'a' && ch <= 'f') d = ch - 'a' + 10;
+        else if (ch >= 'A' && ch <= 'F') d = ch - 'A' + 10;
+        else break;
+        v = v * 16 + d; s++;
+    }
+    *p = s; return v;
+}
+
+static volatile LONG g_inSafeRead;
+static int SafeRead(DWORD address, void* out, DWORD size) {
+    int ok = 1;
+    InterlockedIncrement(&g_inSafeRead);
+    __try { memcpy(out, (void*)address, size); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { ok = 0; }
+    InterlockedDecrement(&g_inSafeRead);
+    return ok;
+}
+
+static int AppendLabel(char* out, const char* start, const char* end) {
+    int n = 0;
+    out[n++] = ' '; out[n++] = '|'; out[n++] = ' ';
+    while (start < end && n < 60) out[n++] = *start++;
+    out[n++] = '='; out[n] = 0;
+    return n;
+}
+
+static void LogBreakpoint(Breakpoint* bp, CONTEXT* c) {
+    char line[1400]; int len;
+    const char* p = bp->exprs;
+    len = wsprintfA(line, "[BP %08X #%d tid=%u] eax=%08X ebx=%08X ecx=%08X edx=%08X esi=%08X edi=%08X esp=%08X ebp=%08X",
+        (DWORD)bp->addr, bp->hits, GetCurrentThreadId(), c->Eax, c->Ebx, c->Ecx, c->Edx, c->Esi, c->Edi, c->Esp, c->Ebp);
+    while (*p && len < 1200) {
+        const char* start; int indirect = 0; DWORD address, value, count = 0, extra = 0;
+        while (*p == ' ') p++;
+        if (!*p) break;
+        start = p;
+        if (*p == '@') { indirect = 1; p++; }
+        address = RegValue(c, p); p += 3;
+        if (*p == '+') { p++; address += HexParse(&p); }
+        if (indirect) { if (*p == '+') { p++; extra = HexParse(&p); } }
+        if (*p == '.') { p++; count = HexParse(&p); if (count > 64) count = 64; }
+        if (indirect) {
+            if (!SafeRead(address, &value, 4)) { len += AppendLabel(line+len, start, p); len += wsprintfA(line+len, "??"); goto next; }
+            address = value + extra;
+        }
+        if (count) {
+            BYTE bytes[64]; DWORD i;
+            len += AppendLabel(line+len, start, p);
+            if (!SafeRead(address, bytes, count)) { len += wsprintfA(line+len, "??"); goto next; }
+            for (i = 0; i < count; i++) len += wsprintfA(line+len, "%02X", bytes[i]);
+        } else if (SafeRead(address, &value, 4)) {
+            { len += AppendLabel(line+len, start, p); len += wsprintfA(line+len, "%08X", value); }
+        } else { len += AppendLabel(line+len, start, p); len += wsprintfA(line+len, "??"); }
+next:
+        while (*p && *p != ' ') p++;
+    }
+    RawLog(line);
+}
+
+static void LoadBreakpoints(void) {
+    char text[8192]; DWORD read = 0; char* line; char* end;
+    HANDLE file = CreateFileA("bp.txt", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (file == INVALID_HANDLE_VALUE) return;
+    ReadFile(file, text, sizeof(text) - 1, &read, NULL);
+    CloseHandle(file);
+    text[read] = 0;
+    g_rearmTls = TlsAlloc();
+    for (line = text; *line && g_bpCount < MAX_BP; line = end) {
+        const char* p = line; Breakpoint* bp; BYTE first;
+        end = line; while (*end && *end != '\n') end++;
+        if (*end) *end++ = 0;
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == '#' || *p == '\r' || !*p) continue;
+        bp = &g_bp[g_bpCount];
+        bp->addr = (BYTE*)HexParse(&p); bp->max = 16; bp->hits = 0;
+        while (*p == ' ') p++;
+        if (!memcmp(p, "max=", 4)) { p += 4; bp->max = (int)HexParse(&p); while (*p == ' ') p++; }
+        lstrcpynA(bp->exprs, p, sizeof(bp->exprs));
+        { char* q = bp->exprs; while (*q) { if (*q == '\r') *q = 0; else q++; } }
+        if (!SafeRead((DWORD)bp->addr, &first, 1)) { RawLogFmt("[BP] %08X unreadable", (DWORD)bp->addr); continue; }
+        bp->orig = first;
+        if (WriteCode(bp->addr, 0xCC)) { g_bpCount++; RawLogFmt("[BP] armed %08X orig=%02X %s", (DWORD)bp->addr, first, bp->exprs); }
+    }
+}
+
+static int HandleBreakpoint(PEXCEPTION_POINTERS info) {
+    DWORD code = info->ExceptionRecord->ExceptionCode;
+    CONTEXT* c = info->ContextRecord;
+    int i;
+    if (code == EXCEPTION_BREAKPOINT) {
+        for (i = 0; i < g_bpCount; i++) {
+            Breakpoint* bp = &g_bp[i];
+            if ((BYTE*)info->ExceptionRecord->ExceptionAddress != bp->addr) continue;
+            bp->hits++;
+            LogBreakpoint(bp, c);
+            WriteCode(bp->addr, bp->orig);
+            c->Eip = (DWORD)bp->addr;
+            if (bp->hits < bp->max) { TlsSetValue(g_rearmTls, bp); c->EFlags |= 0x100; }
+            return 1;
+        }
+    } else if (code == EXCEPTION_SINGLE_STEP && g_rearmTls != TLS_OUT_OF_INDEXES) {
+        Breakpoint* bp = (Breakpoint*)TlsGetValue(g_rearmTls);
+        if (bp) { TlsSetValue(g_rearmTls, NULL); WriteCode(bp->addr, 0xCC); return 1; }
+    }
+    return 0;
+}
+
 // Vectored Exception Handler
 LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
     DWORD code = pExceptionInfo->ExceptionRecord->ExceptionCode;
     BYTE* addr = (BYTE*)pExceptionInfo->ExceptionRecord->ExceptionAddress;
+    if (HandleBreakpoint(pExceptionInfo)) return EXCEPTION_CONTINUE_EXECUTION;
 
-    if(code==EXCEPTION_ACCESS_VIOLATION || code==EXCEPTION_ILLEGAL_INSTRUCTION) {
+    if((code==EXCEPTION_ACCESS_VIOLATION || code==EXCEPTION_ILLEGAL_INSTRUCTION) && !g_inSafeRead) {
         CONTEXT* c=pExceptionInfo->ContextRecord;
         RawLogFmt("[EXCEPTION] code=%X eip=%p eax=%p ecx=%p edx=%p esp=%p ebp=%p",code,c->Eip,c->Eax,c->Ecx,c->Edx,c->Esp,c->Ebp);
         DWORD* stack=(DWORD*)c->Esp;
@@ -214,10 +387,37 @@ static void InstallHooks() {
         orig_connect = (connect_t)InstallInlineHook((void*)GetProcAddress(hWs2, "connect"), (void*)Hook_connect);
     }
     RawLog("[INIT] Network hook setup complete");
+    LoadBreakpoints();
+}
+
+
+/* Periodic main-thread sampler (diagnostic): logs EIP and code-range return
+ * addresses from the stack every 5 s. Enabled when sample.txt exists. */
+static DWORD g_mainThreadId;
+static DWORD WINAPI SamplerThread(LPVOID unused) {
+    HANDLE thread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT, FALSE, g_mainThreadId);
+    int round;
+    if (!thread) return 0;
+    for (round = 0; round < 120; round++) {
+        CONTEXT c; DWORD stack[256]; char line[1400]; int len, i, found = 0;
+        Sleep(5000);
+        c.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+        if (SuspendThread(thread) == (DWORD)-1) break;
+        if (!GetThreadContext(thread, &c)) { ResumeThread(thread); break; }
+        if (!SafeRead(c.Esp, stack, sizeof(stack))) memset(stack, 0, sizeof(stack));
+        ResumeThread(thread);
+        len = wsprintfA(line, "[SAMPLE %d] eip=%08X esp=%08X:", round, c.Eip, c.Esp);
+        for (i = 0; i < 256 && found < 40; i++)
+            if (stack[i] >= 0x00401000 && stack[i] < 0x00C40000) { len += wsprintfA(line + len, " %X", stack[i]); found++; }
+        RawLog(line);
+    }
+    CloseHandle(thread);
+    return 0;
 }
 
 // Steam API mocks
-__declspec(dllexport) int __cdecl SteamAPI_Init() { InstallHooks(); RawLog("[STEAM] SteamAPI_Init -> OK"); return 1; }
+__declspec(dllexport) int __cdecl SteamAPI_Init() { InstallHooks();
+    if (!g_mainThreadId && GetFileAttributesA("sample.txt") != INVALID_FILE_ATTRIBUTES) { g_mainThreadId = GetCurrentThreadId(); CloseHandle(CreateThread(NULL, 0, SamplerThread, NULL, 0, NULL)); } RawLog("[STEAM] SteamAPI_Init -> OK"); return 1; }
 __declspec(dllexport) int __cdecl SteamAPI_InitSafe() { return SteamAPI_Init(); }
 __declspec(dllexport) int __cdecl SteamAPI_RestartAppIfNecessary(unsigned int unOwnAppID) {
     RawLogFmt("[STEAM] SteamAPI_RestartAppIfNecessary(%u) -> Bypass (0)", unOwnAppID);

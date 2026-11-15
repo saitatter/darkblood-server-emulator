@@ -1,6 +1,6 @@
 # Roadmap — Dark Blood offline
 
-Documentation handoff: **November 16, 2026**, covering the November 15 investigation. Experimental work is paused at the user's request.
+Updated **November 16, 2026** (second session).
 
 Final objective: launch without the original services, establish a local session, persist a character, enter a map, and verify offline gameplay.
 
@@ -8,28 +8,26 @@ Final objective: launch without the original services, establish a local session
 
 | Milestone | Status |
 | --- | --- |
-| Client startup / minimal Steam support | Verified through the current initialization stage |
-| Unpacked code for analysis | Captured locally |
+| Client startup / minimal Steam support | Verified |
 | IPv4 TCP redirect to localhost:9400 | Verified |
-| Local plaintext ProudNet handshake | Accepted by the client |
-| Connection callback | `result=0`, observed |
-| Application message 5020 | Deserialized; body cursor reaches 100 bytes |
-| Next message 2403 | Awaited; response not implemented |
-| Login / server list / characters / map | Not implemented or not verified |
-| Gameplay and persistence | Not implemented |
+| ProudNet handshake with real key exchange (5/6/7) | Verified; client messages decrypt with valid CRC |
+| Welcome 5020, DB list 2403 | Verified |
+| Title → Server List → Channel List | Verified on screen |
+| Character list / creation (persisted) | Verified on screen; several fields unknown |
+| Select character → enter map (2006/2007) | **Next**: schema of `0x00A40760` |
+| Movement, combat, persistence of progress | Not started |
+| Control tooling (`gamectl`, MCP server) | Implemented |
 
-## P0 — Resolve the immediate blocker
+## P0 — Enter the world
 
-- [ ] Trace ProudNet `SendUserMessage` and OnError/OnWarning callbacks without changing their results.
-- [ ] Explain why application request `2402 / 0x0962`, constructed by `0x0079A970`, does not appear in the TCP capture after welcome.
-- [ ] Follow `0x007874A0 → vtable +0xC8 → 0x00B55A30 → 0x00B75710 → 0x00B3FEC0 → 0x00B76050 → 0x00B53310`.
-- [ ] Inspect the object pointer at `+0x1570`, the value at `+0x1500`, transport state, and destination in `0x00B53310`. Establish pointer semantics through its constructor and uses.
-- [ ] Determine which initialization the shortened handshake skips: ServerSettings, UDP/TCP state, session keys, or send limits.
-- [ ] Recover the parser and meaning of awaited message `2403 / 0x0963`, then implement confirmed fields.
+- [x] Explain why 2402 was never sent (missing session key; strong encryption mode 1).
+- [x] Implement ProudNet RSA/AES key exchange and decrypt type 0x26.
+- [x] Recover and answer 2403, 2002, 2022, 5029, 2009, 2013.
+- [ ] Recover struct `0x00A40760` and vector `0x004B9210` for opcode 2007 (handler `0x007AA4B0`); implement the response.
+- [ ] Observe the client's next requests after 2007 (map loading, possibly a new connection or square/room join) and answer them.
+- [ ] Identify level/location fields shown on character select.
 
-Acceptance: capture the relevant client request, deliver a parser-accepted response, and observe initialization advancing past `0x0963` without forcing a client-side result.
-
-Local starting points: `research/tcp-route.c`, `route.c`, `proud-send.c`, `send.c`, `welcome.c`, and `startup-wait.c`. Addresses are also preserved in [PROTOCOL.md](docs/PROTOCOL.md), since `research/` is not tracked.
+Acceptance: the selected character loads into a map and is visible and controllable.
 
 ## P1 — Reproducible transport and serialization
 
@@ -39,8 +37,8 @@ Local starting points: `research/tcp-route.c`, `route.c`, `proud-send.c`, `send.
 - [ ] Distinguish ProudNet control messages, RMIs, and application events in logs.
 - [ ] Preserve small capture fixtures without personal information.
 - [ ] Identify `0x1D`; its current `0x1F` response is experimental.
-- [ ] Establish whether the local connection can remain plaintext or requires negotiation `5/6`.
-- [ ] If required, recover ServerSettings, RSA key representation, session keys, and encrypted/compressed envelopes.
+- [x] Negotiation 5/6 is required for game requests; ServerSettings, RSA and AES envelopes recovered.
+- [ ] Decide whether server → client messages should be encrypted.
 - [ ] Establish a verified TCP-only route before implementing full UDP/P2P.
 
 Acceptance: repeated clean client launches follow the same documented sequence without arbitrary delays or guessed packets.
@@ -51,8 +49,8 @@ Acceptance: repeated clean client launches follow the same documented sequence w
 - [ ] Recover bootstrap, server/channel list, and authentication operations from the application dispatcher.
 - [ ] Implement a local account and explicit session states.
 - [ ] Recover addresses and ports for subsequent connections.
-- [ ] Implement character listing, creation, and selection using the client's actual parsers.
-- [ ] Add simple, versioned local persistence with an explicit reset operation.
+- [x] Implement character listing and creation using the client's parsers (selection pending).
+- [x] Simple versioned local persistence (`data/characters.json`); reset = delete the file.
 
 Acceptance: the client displays a local server/channel, creates and selects a character, and retains it after restart.
 
@@ -82,7 +80,8 @@ Acceptance: a character enters a map, moves, and completes a minimum gameplay lo
 - [ ] Implement callbacks/tickets required by the observed local flow.
 - [ ] Remove dead termination-hook code and make diagnostics optional.
 - [ ] Fix builds: MSVC detection, working-directory independence, failure propagation, and stale-DLL prevention.
-- [ ] Add a launcher with client hash verification, test-copy preparation, startup/shutdown, and restoration.
+- [x] Session control with hash verification and owned-process shutdown (`tools/gamectl.py`, MCP `tools/mcp_server.py`).
+- [ ] Test-copy preparation and shim build/deploy in the launcher.
 - [ ] Investigate WSAConnect/ConnectEx/IPv6/UDP and additional outbound connections.
 - [ ] Separate or archive the speculative Auth/Lobby prototype.
 - [ ] Test from a clean checkout and clean local state without the original services.

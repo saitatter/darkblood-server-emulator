@@ -1,6 +1,6 @@
 # Recovered client protocol
 
-Documentation handoff: 2026-11-16, covering the 2026-11-15 investigation. These findings refer to the client hash in [STATUS.md](STATUS.md). Addresses are x86 VAs, image base `0x00400000`.
+Updated 2026-11-16 (second session: encrypted handshake through character creation). These findings refer to the client hash in [STATUS.md](STATUS.md). Addresses are x86 VAs, image base `0x00400000`.
 
 Confidence labels: **observed** in a process/capture; **static** from assembly/decompilation; **experimental** for emulator choices not established as original-server behavior.
 
@@ -32,144 +32,136 @@ magic  len=5 payload: type=0x30, u32=0x4000000F
 | Scalar reader wrapper | `0x00B70A50` | Used by CMessage |
 | Client dispatcher | `0x00B5F900` | Switch over message types 1..51 |
 
-`server/proudnet.py` implements this framing. Its 1 MiB frame limit is a local implementation limit, not a demonstrated universal client protocol limit.
+`server/proudnet.py` implements this framing. Its 1 MiB frame limit is a local implementation limit.
 
-## 2. Accepted local sequence
+## 2. Handshake (observed, complete for TCP)
 
-| Direction | Payload | Result / confidence |
+| Direction | Payload | Notes |
 | --- | --- | --- |
-| C → S | `30 0F 00 00 40` | Observed initial report; writer `0x00B5B910` |
-| S → C | `07` | Experimental: handler `0x00B5CF80` emits type 8 |
-| C → S | `08 01 00 9D 10 B1 D7 45 61 35 46 A8 CD EC B5 CF 75 E7 99 97 01 03 00` | Observed connection request |
-| S → C | `0B` + host ID + GUID + user data + endpoint | Accepted: connection callback returns result 0 |
-| S → C | `02` + JEvent 5020 | Delivered to the application and deserialized |
+| C → S | `30 0F 00 00 40` | Initial report, writer `0x00B5B910` |
+| S → C | `05` + bool + ServerSettings + blob(RSA public key) | Handler `0x00B5C8D0` |
+| C → S | `06` + blob(RSA-OAEP(session key)) + blob(AES(fast key)) | Built at `0x00B5CD2E` |
+| S → C | `07` | Session key accepted; handler `0x00B5CF80` emits type 8 |
+| C → S | `08` + blob(user data) + GUID + u32 | Connection request |
+| S → C | `0B` + u32 host ID + GUID + blob + wstr address + u16 port | Handler `0x00B5ED30` |
+| S → C | `02` + JEvent 5020 | Application welcome; plaintext user messages are accepted |
 
-Type 8 is statically reconstructed as: user-data blob with scalar length, raw16 GUID, then a protocol/version u32. The capture contains an empty blob, GUID bytes `9D10B1D745613546A8CDECB5CF75E799`, then `97 01 03 00`. The exact version semantics need confirmation; this value is distinct from the type-0x30 report.
-
-Type `0x0B` is read by `0x00B5ED30`:
+Type 5 body (fixed-width little-endian fields, read through `0x00B70740`):
 
 ```text
-u8   type = 0x0B
-u32  assigned client host ID
-16B  server GUID
-blob user data                   # scalar byte length + bytes
-wstr observed client address     # scalar UTF-16 code unit count + UTF-16LE
-u16  observed client port        # little-endian
+u8   bool (stored at client+0x1660)
+ServerSettings (reader 0x00B70DE0, defaults 0x00B82850, copied to client+0x638):
+  u8  fallback method          i32 server message max length (0x10000)
+  i32 client message max len   i32 default timeout ms (60000)
+  u8  direct-P2P start cond.   i32 over-send threshold
+  u8  Nagle                    i32 AES key length in bits (+0x1C; 128 used)
+  i32 fast key length in bits (+0x20; must be > 0, the random generator fails on 0)
+  u8 +0x24, u8 +0x25, u8 +0x26, u8 +0x27, u8 +0x2C, u8 +0x2D, u8 +0x2E, i32 +0x28
+blob RSA public key            ProudNet scalar length + PKCS#1 DER RSAPublicKey
 ```
 
-Local client host IDs start at 2; the game addresses the server as host 1. The emulator's server GUID is a test value. This sequence **skips encrypted negotiation** and is not a complete ProudNet handshake implementation.
+The client checks that the message was consumed exactly. The emulator's values are in `server/bootstrap_server.py:server_settings`; only the key lengths are known to matter.
 
-## 3. Incomplete negotiation and control
+## 3. Session crypto (static, verified by live decryption)
 
-| Type | Recovered information |
+- RSA: libtomcrypt `rsa_import` (`0x00B98A90`) and `rsa_encrypt_key_ex` (`0x00B991E0`, from `0x00B83CB0`) with padding 2 = OAEP, hash `sha1` (`0x00D79E28`), PRNG `fortuna`. The emulator generates a 1024-bit key on first start (`logs/server_rsa.key`).
+- The client draws a random AES session key (settings +0x1C bits) and a fast key (+0x20 bits). Type 6 carries RSA-OAEP(session key) and AES(fast key).
+- AES: CRijndael (`0x00B73740` key setup, block 16) in ECB mode (mode 0 of `0x00B74B30`). Envelope before encryption:
+
+```text
+plaintext | pad filler (pad bytes) | u32 CRC-32(plaintext) | u8 pad      pad = 16 - (len + 5) % 16
+```
+
+  CRC-32 is the standard table at `0x00E45D50` (`0x00B95F60`). The server checks the CRC of every decrypted message; the fast key in type 6 decrypts with a valid CRC, which confirms the reconstruction.
+- Fast encryption (type `0x27`, key setup `0x00B82D90`, RC4-like) is not used by observed traffic and is not implemented.
+
+### Encrypted messages (type 0x26)
+
+Game requests use RmiContext `0x00F2C410` with encryption mode 1. Without a session key `0x00B76050` aborted the send at `0x00B76515`, which was the first session's blocker.
+
+```text
+u8 0x26 | u8 encryption mode (1) | scalar length | AES envelope
+decrypted: u16 encryption counter (reliable sends, writer 0x00955E30) | inner ProudNet message (02 + JEvent)
+```
+
+Server → client messages are currently sent unencrypted (`02` + JEvent) and are accepted.
+
+### Control messages
+
+| Type | Information |
 | --- | --- |
-| `0x01` | RMI; observed little-endian ID `0xFA01`, followed by 8+4 bytes |
-| `0x02`, `0x03` | User message; route `0x00B5F6B0` delivers the remaining bytes to the application |
-| `0x05` | Handler `0x00B5C8D0`: bool, ServerSettings, public-key blob; initializes crypto and emits type 6 |
-| `0x06` | Client would send session-material blobs after type 5; unimplemented |
-| `0x07` | Handler `0x00B5CF80`: sends type 8 |
-| `0x0B` | Connection success, layout above |
-| `0x1C` | Observed ping: u64 client timer + u32 latency value; writer at `0x00B4A225` |
-| `0x1D` | Periodic control message without a body, roughly every 0.59 s; semantics unresolved |
-| `0x1E` | Handler `0x00B5F220`: two 8-byte values used for latency and clock-offset calculations |
-| `0x1F` | Consumed dispatcher branch; this does not establish it as the correct reply to 0x1D |
-| `0x26`, `0x27` | Decryption branches before redispatch; static, not tested |
-| `0x28` | Compressed envelope before redispatch; static route |
-
-The emulator replies to `0x1C` with `0x1E + echoed timer + local timer`. The `0x1D → 0x1F` reply is exploratory and needs verification.
-
-ServerSettings is read by `0x00B70DE0`, with defaults constructed by `0x00B82850`. It contains length/timeout/options/crypto fields and booleans. Its semantic schema is not sufficiently verified for implementation. RSA key representation and actual ciphers remain unresolved.
+| `0x01` | RMI. Observed IDs `0xFA01` (8+4 bytes) and `0xFA13`; not handled |
+| `0x1C` | Ping: u64 client timer + u32; reply `0x1E` + echoed timer + server time (reader `0x00B5F220`) |
+| `0x1D` | Periodic, about every 0.59 s; emulator replies `0x1F` (exploratory) |
+| `0x28` | Compressed envelope before redispatch; static only |
 
 ## 4. JSerBuffer and JEvent
 
-Application serialization is separate from ProudNet framing.
+JSerBuffer varints use little-endian seven-bit groups, but **setting bit 7 terminates the value**: zero = `80`, 100 = `E4`, 128 = `00 81`. Reader `0x00B357F0`, writer `0x00B357A0`. Application wide strings use this length in **bytes**, followed by UTF-16LE. ProudNet wide strings use a scalar count of UTF-16 code units.
 
-JSerBuffer varints use little-endian seven-bit groups, but **setting bit 7 terminates the value**. Examples: zero = `80`, 100 = `E4`, 128 = `00 81`. Reader: `0x00B357F0`; writer: `0x00B357A0`.
-
-Application wide strings use this length in **bytes**, followed by UTF-16LE. ProudNet wide strings instead use a scalar and a count of UTF-16 code units.
-
-JEvent, recovered from `0x00A1EB90` and `0x00B35E50`:
+JEvent (`0x00A1EB90`, `0x00B35E50`):
 
 ```text
 u32 opcode
-u64 metadata/session field       # complete semantics not established
+u64 session value            # 1 after welcome; echoed by the server
 J-varuint body_length
 if body_length != 0:
-    u8 compressed_flag
+    u8 flag                  # 0 in server messages; client 2203 sets 1 with a plain body
     body bytes
 ```
 
-The current writer emits only uncompressed bodies. Client decompression exists in `0x00B36110`; server-side decoding is not implemented.
+Handlers such as `0x0077CFA0` reject an ACK whose u64 differs from the client's stored value, so the emulator echoes the request's value. Client decompression exists in `0x00B36110`.
 
-Type checks vary. `0x00A48AF0` is a no-op returning true in this build. However, `0x00B35010` can validate a tag byte for types 15..26 when its type-check flag is active; welcome includes `0x17` before its map. Do not add tags universally to every field.
+**Body cursor:** `0x00A1EA20(peek)` reads the leading u32 result; with `peek = 0` the shared cursor stays after it, and readers created by `0x00A1E6A0` continue from there.
 
-## 5. Welcome 5020 and the next step
+**Container tags:** `0x00B35010` validates a tag byte only for tags 15..26 (`0x0F`..`0x1A`). Observed: `0x0F` map entry, `0x10` vector, `0x13` set-like container, `0x17` map. Struct tag `0x1E` is outside the range and is *not* written. Vectors and maps start with a J-varuint count; fixed arrays (`0x00A48DD0`) are a J-varuint count ≤ capacity followed by elements.
 
-| Function | Address | Role |
-| --- | --- | --- |
-| Welcome dispatcher | `0x0096D2C0` | Selects the handler for `0x139C` |
-| Welcome handler | `0x0096AF60` | Reads result and body, updates application state |
-| Result reader | `0x00A1EA20` | Reads u32 from the start of the body |
-| Welcome body reader | `0x00A519A0` | Schema used by the experimental implementation |
-| Body constructor | `0x00962AB0` | Client-side structure defaults |
-| Map reader | `0x0076D5C0` / `0x0076AFD0` | J-varuint element count, then entries |
-| Date reader | `0x00A49110` | Six u16 fields |
-| Startup sequence | `0x00749EE0` | Waits for 5020, then 2403 |
-| Event wait | `0x0094E1F0` | Polling with approximately 30-second timeout |
-| Next request constructor | `0x0079A970` | Opcode 2402 / 0x0962: `JUserClient::DBListREQ` |
-| Request sender | `0x007874A0` | `JUserClient::SendREQ(jEvt)` |
+Reader widths: `0x00B35150` u8, `0x00B35680` bool, `0x00B351E0` u16, `0x00B35300` u32, `0x00B35560` 4 bytes, `0x00B35430`/`0x00B356F0` 8 bytes, `0x00B35AB0` J-wstring.
 
-Structural welcome schema, after its result u32:
+## 5. Application flow (observed in the live client)
+
+Opcode names come from the client's table (`server/data/opcodes.tsv`, `tools/extract_opcodes.py`). Handlers come from the runtime map at `0x00F45250` (lookup `0x0075FD30`), dumped by the shim to `research/client/handler_map.txt`.
+
+| Step | Client request | Server response | Handler / schema | Status |
+| --- | --- | --- | --- | --- |
+| Connect | — | 5020 `eERC_AUTHENTICATE_GAMEUSER_ACK` | `0x0096AF60`, body `0x00A519A0`; result 0 → success (`0x00640750`) | Verified |
+| Startup | 2203 `eEGS_COMPUTER_STAT_NOT` | none | hardware report | Logged |
+| Startup, title | 2402 `eEGS_DB_LIST_GET_REQ` | 2403 `eEGS_DB_LIST_GET_ACK` | `0x00775340`: u32 result, `0x17` map of {`0x0F`, u32 key, `0x00A496B0`: wstr name, u16, u64, bool ×3} | Verified: Server List "Offline / None" |
+| Server Ok | 2001 `eEGS_KNOCK_SQUARELIST_REQ` (i32, u32 server key) | 2002 | `0x00757810`: u32 result; 0 proceeds (`0x00626390`). 2003 queue NOT (`0x00757840`: u16, u16) unused | Verified |
+| automatic | 2021 `eEGS_SQUARELIST_REQ` (i32, u32) | 2022 | `0x0077A550`: u32 result, `0x10` vector of {u64 id, wstr name, u32, u32, u32} (`0x00A49700`) | Verified: "Channel 1 · Normal · [Good]" |
+| Channel Ok | 5028 `eERC_JOIN_SQUARE_REQ` (i32, u64 square) | 5029 | `0x00757AD0`: u32 result, u64 | Verified |
+| automatic | 2008 `eEGS_GET_CHARLIST_REQ` | 2009 | `0x0077CFA0`: u32 result, `0x10` vector of character, `0x10` vector (`0x004B94C0`), u8 slots, u8, bool, `0x17` map (`0x007680E0`), `0x13` (`0x006B9F80`) | Verified: "N SLOT" = first u8 |
+| Creation | 2012 `eEGS_CREATE_CHARACTER_REQ` | 2013 | `0x00758070`: u32 result, character, u8 (→ `0x00F44E58`) | Verified: character appears |
+| Ok on character | 2006 `eEGS_SELECT_CHAR_REQ` (i32, u64 char id) | 2007 | `0x007AA4B0`: u32 result, struct `0x00A40760` (~30 nested readers), `0x10` vector `0x004B9210` | **Next blocker** |
+
+Create request (observed): `i32 0x7FFFFFFF, u8 class, wstr name, u32 face, u32 hair, 5 × u8 body sliders (head, arms, chest, torso, legs), u8`.
+
+Character struct (reader `0x00A4AB30`, constructor `0x00737BD0`):
 
 ```text
-u64
-J-wide-string
-u32, u32
-bool, bool, bool
-u64
-tag 0x17, J-varuint map_count, map entries
-u32, u32, u8
-J-wide-string
-u16 year, month, day, hour, minute, second
-u64, u64, u16
+array<u8, <=5> +0x32 body sliders (J-varuint count + bytes)
+u64 +0x00 id     u8 +0x08 class     u8 +0x09 index (12 crashed the client)
+wstr +0x0A name
+u32 +0x26 face   u32 +0x2A hair     u32 +0x2E      u64 +0x37
+{u16,u32,u32} +0x49    {u16,u32,u32} +0x53       (0x00A49BB0)
+bool +0x5D  u32 +0x5E  u64 +0x3F  u16 +0x47  4 bytes +0x62  u64 +0x66  u32 +0x6E  bool +0x72 +0x73 +0x74
 ```
 
-The current test uses result 0, u64 value 1, text `OfflinePlayer`, an empty map, local date/time, and other fields zero. Its body is 100 bytes and its complete JEvent is 114 bytes. Client instrumentation confirmed complete deserialization.
+Level and location on character select ("Level 0", "default town") did not change when any of these u16/u32/u64 fields were set; they come from another source (probably the second vector or the map in 2009).
 
-### Recovered DBListREQ / DBListACK Flow:
-* `0x0079A970` is statically identified via embedded developer log strings as `JUserClient::DBListREQ` (`L"Request DB list"`).
-* It constructs JEvent opcode `0x0962` (2402) and invokes `0x007874A0` (`JUserClient::SendREQ`).
-* `JUserClient::SendREQ` invokes `m_pjClient->SendUserMessage(Proud::HostID_Server)` via vtable slot `+0xC8` (`0x00B55A30`).
-* If `SendUserMessage` fails, `0x007874A0` logs `L"Invalidation in m_pjClient->SendUserMessage( Proud::HostID_Server )"` (string VA `0x00CF7B30`) and `0x0079A970` logs `L"Invalidation in SendREQ( jEvt )"` (string VA `0x00CF8458`).
-* Immediately after dispatching `DBListREQ`, the client calls `0x0094E1F0` waiting for event `0x0963` (2403, `DBListACK`).
-* Opcode map `0x00F49CE8` registers pairs: `0x951` (LoginREQ), `0x95E`/`0x95F` (ServerList/SelectChannel), `0x962`/`0x963` (DBListREQ/DBListACK), `0x965`/`0x967` (CharCreateREQ/ACK).
-
-### Internal Send Checks Identified:
-1. `0x00B3FEC0`: Checks `[CNetClient + 0x550]`. If `NULL` or `*[+0x550] == 0`, immediately aborts and returns `0` (FALSE).
-2. `0x00B53310`: Routing check. Checks `[CNetClient + 0x1570]` (remote host collection) and `[CNetClient + 0x1500]` (assigned client HostID). If empty, jumps to error cleanup at `0x00B53DB3` and returns `0` (FALSE).
+Correction to the first handoff: the pushes at `0x007B2C40` (`0x951`, `0x95E`, `0x95F`, `0x963`, `0x965`, `0x967`) are not login or server-list opcodes. The client names them `eEGS_INIT_PROFICIENCY_ACK`, `eEGS_BROKER_CHANGE_REGIST_COUNT`, `eEGS_POST_DAILY_SEND_RECOVER_NOT`, `eEGS_DB_LIST_GET_ACK`, `eEGS_EVENT_DELETE_CHARACTER_ACK`, `eEGS_CHAR_VERIFY_STAT_ACK`.
 
 ## 6. Instrumentation and continuation addresses
 
 | Address / slot | Role |
 | --- | --- |
-| `0x0092C2C0` | Function where the old SteamUser mock crashed at +0x62 |
-| `0x00A5D880` | OnJoinServerComplete; sets connected flag on result 0 |
-| `0x00D4FA90` | Connection callback vtable slot |
-| `0x00A5EFA0` | OnReceiveUserMessage; JEvent deserialization |
-| `0x00D4FA8C` | User-message vtable slot |
-| `0x0096B091` | Welcome-reader callsite instrumented for diagnostics |
-| `0x00F29AE8` | Connected flag observed after callback |
-| `0x00A5CF30` | Connected-flag getter |
-| `0x00787310` | Application-event dispatcher |
-| `0x007874A0` | `JUserClient::SendREQ` |
-| `0x0079A970` | `JUserClient::DBListREQ` (Opcode 0x0962) |
-| `0x0074A0B6` | Wait site for `DBListACK` (Opcode 0x0963) |
-| `0x00B55A30` | ProudNet `SendUserMessage` thunk (`sub ecx, 0xAC`) |
-| `0x00B75710` | ProudNet user message preparer |
-| `0x00B3FEC0` | ProudNet send guard (`[ecx + 0x550]`) |
-| `0x00B53310` | ProudNet send transport routing (`[edi + 0x1570]`, `[edi + 0x1500]`) |
-| `0x00D6EF8C` | ProudNet client-interface vtable; +0xC8 sends user messages |
-| `0x00B57910` | Core constructor initializing multiple vtables |
-| `0x00F2C410` | RmiContext used by game sending |
+| `0x00A5D880` / slot `0x00D4FA90` | OnJoinServerComplete (shim traces it and dumps the handler map) |
+| `0x00A5EFA0` / slot `0x00D4FA8C` | OnReceiveUserMessage |
+| `0x00787310` | Application-event dispatcher; `0x0075FD30` handler lookup |
+| `0x007874A0` | `JUserClient::SendREQ`; vtable `+0xC8` → `0x00B55A30` → `0x00B75710` |
+| `0x00B76050` | Send options; `[ctx+0x1C]` encryption mode; `0x00B76515` = no session key |
+| `0x0044CE00` / `0x004449B0` | Main loop / frame tick (Sleep frame limiter) |
+| `0x00749EE0` | Startup: waits 5020, sends 2402, waits 2403 |
+| `0x00640750` | Title-scene login-result handling (results 0, 9, 0xB, 0x1EA) |
 
-Send route and next probes are in [STATUS.md](STATUS.md) and [ROADMAP.md](../ROADMAP.md). All diagnostic patches are specific to the analyzed hash. Interpret boolean returns in AL; decompilers declaring them as int can expose undefined upper bits.
+All patches and addresses are specific to the analysed hash.

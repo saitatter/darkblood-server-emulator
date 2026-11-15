@@ -35,3 +35,156 @@ def welcome():
     body += struct.pack('<6H', now.year, now.month, now.day, now.hour, now.minute, now.second)
     body += struct.pack('<QQH', 0, 0, 0)
     return event(5020, body)
+
+
+def db_entry(name, u16=0, u64=0, flag_a=False, flag_b=False, flag_c=True):
+    # Reader 0xA496B0: wstring +0, u16 +1C, u64 +1E, bool +26, +27, +28.
+    # Defaults follow constructor 0x74DF70; field meanings are not recovered.
+    return wide_string(name) + struct.pack('<HQ???', u16, u64, flag_a, flag_b, flag_c)
+
+
+# Experimental local server list (map key -> entry).
+SERVERS = [(1, dict(name='Offline'))]
+
+
+def square_entry(square_id, name, a=0, b=100, c=0):
+    # Field meanings beyond id/name are not recovered yet.
+    return struct.pack('<Q', square_id) + wide_string(name) + struct.pack('<III', a, b, c)
+
+
+CHAR_SLOTS = 4  # first u8 of 2009: shown as "4 SLOT" on character select (observed)
+
+SQUARES = [dict(square_id=1, name='Channel 1')]
+
+
+class WireError(ValueError):
+    pass
+
+
+def read_varuint(data, offset):
+    value = shift = 0
+    while True:
+        if offset >= len(data):
+            raise WireError('Truncated J-varuint')
+        byte = data[offset]
+        offset += 1
+        value |= (byte & 127) << shift
+        if byte & 128:
+            return value, offset
+        shift += 7
+        if shift > 35:
+            raise WireError('J-varuint too long')
+
+
+def parse_event(data):
+    """Return (opcode, correlation, compressed, body) for a JEvent."""
+    if len(data) < 13:
+        raise WireError('Truncated JEvent header')
+    opcode, correlation = struct.unpack_from('<IQ', data)
+    size, offset = read_varuint(data, 12)
+    if size == 0:
+        return opcode, correlation, False, b''
+    if offset + 1 + size > len(data):
+        raise WireError('Truncated JEvent body')
+    return opcode, correlation, bool(data[offset]), data[offset + 1:offset + 1 + size]
+
+
+class GameSession:
+    """Application layer. Only responses with recovered parsers belong here."""
+
+    def __init__(self, transport):
+        self.transport = transport
+        self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
+
+    async def on_connected(self):
+        await self.transport.send_event(welcome(), note='welcome 5020')
+
+    async def on_user_message(self, data):
+        try:
+            opcode, correlation, compressed, body = parse_event(data)
+        except WireError as exc:
+            self.transport.record('bad-event', data, error=str(exc))
+            return
+        self.transport.record('event', body, opcode=opcode, opcode_hex='0x%04x' % opcode,
+                              correlation=correlation, compressed=compressed)
+        handler = getattr(self, 'on_%d' % opcode, None)
+        if handler is None:
+            self.transport.record('unhandled-event', body, opcode=opcode)
+            return
+        await handler(correlation, body)
+
+    async def on_2203(self, correlation, body):
+        # eEGS_COMPUTER_STAT_NOT: client hardware report; notification only.
+        pass
+
+    async def on_2402(self, correlation, body):
+        # eEGS_DB_LIST_GET_REQ -> eEGS_DB_LIST_GET_ACK, handler 0x775340:
+        # u32 result (0xA1EA20), tag 0x17 (0xB35010), map (0x76AFD0).
+        # Entry: tag 0x0F (0x754FC0), u32 key (0xB35300), value (0xA496B0).
+        ack = struct.pack('<I', 0) + b'\x17' + varuint(len(SERVERS))
+        for key, entry in SERVERS:
+            ack += b'\x0f' + struct.pack('<I', key) + db_entry(**entry)
+        await self.transport.send_event(event(2403, ack, correlation), note='DB list ack')
+
+    async def on_2001(self, correlation, body):
+        # eEGS_KNOCK_SQUARELIST_REQ (i32, u32 selected server key) ->
+        # eEGS_KNOCK_SQUARELIST_ACK, handler 0x757810: u32 result; 0 proceeds
+        # via 0x626390. 2003 (queue position NOT, 0x757840) is not needed.
+        await self.transport.send_event(event(2002, struct.pack('<I', 0), correlation),
+                                        note='knock square list ack')
+
+    async def on_2021(self, correlation, body):
+        # eEGS_SQUARELIST_REQ (i32, u32 server key) -> eEGS_SQUARELIST_ACK,
+        # handler 0x77A550: u32 result, tag 0x10, vector (0x4B27F0) of
+        # square entries (0xA49700): u64, wstring, u32, u32, u32.
+        ack = struct.pack('<I', 0) + b'\x10' + varuint(len(SQUARES))
+        for square in SQUARES:
+            ack += square_entry(**square)
+        await self.transport.send_event(event(2022, ack, correlation), note='square list ack')
+
+    async def on_5028(self, correlation, body):
+        # eERC_JOIN_SQUARE_REQ (i32, u64 square id) -> eERC_JOIN_SQUARE_ACK,
+        # handler 0x757AD0: u32 result, u64 (stored at window+0xB0; assumed
+        # to be the joined square id).
+        square_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
+        await self.transport.send_event(event(5029, struct.pack('<IQ', 0, square_id), correlation),
+                                        note='join square ack')
+
+    async def on_2008(self, correlation, body):
+        # eEGS_GET_CHARLIST_REQ -> eEGS_GET_CHARLIST_ACK, handler 0x77CFA0.
+        # The event u64 must match the client's stored session value.
+        # Body: u32 result, tag 0x10 vector (0x7739E0) of tag 0x1E +
+        # character (0xA4AB30), tag 0x10 vector (0x4B94C0), u8 slot count
+        # (-> 0xF23330, shown as "N SLOT"), u8 (-> 0xF44E58), bool,
+        # tag 0x17 map (0x7680E0), tag 0x13 container (0x6B9F80).
+        from characters import encode_character
+        chars = self.store().characters(self.account)
+        ack = struct.pack('<I', 0) + b'' + varuint(len(chars))
+        for char in chars:
+            ack += encode_character(char)  # element tag 0x1E is outside the checked range 15..26
+        ack += (b'' + varuint(0) + struct.pack('<BB?', CHAR_SLOTS, 0, False)
+                + b'' + varuint(0) + b'' + varuint(0))
+        await self.transport.send_event(event(2009, ack, correlation),
+                                        note='char list ack (%d)' % len(chars))
+
+    async def on_2012(self, correlation, body):
+        # eEGS_CREATE_CHARACTER_REQ -> eEGS_CREATE_CHARACTER_ACK, handler
+        # 0x758070: u32 result; if 0: character (0xA4AB30), u8 (-> 0xF44E58).
+        from characters import encode_character, parse_create_request
+        request = parse_create_request(body)
+        self.transport.record('create-character', body, **{k: str(v) for k, v in request.items()})
+        char = self.store().create(self.account, request)
+        if char is None:
+            ack = struct.pack('<I', 1)  # experimental failure code (name in use)
+        else:
+            ack = struct.pack('<I', 0) + encode_character(char) + struct.pack('<B', 0)
+        await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
+
+    _store = None
+
+    @classmethod
+    def store(cls):
+        if cls._store is None:
+            from characters import CharacterStore
+            cls._store = CharacterStore()
+        return cls._store

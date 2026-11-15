@@ -2,7 +2,7 @@
 
 ## Start here
 
-Read `README.md`, `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` before resuming implementation. Documentation handoff: 2026-11-16, covering the 2026-11-15 investigation. The user requested a pause for documentation; wait for their instruction before resuming game experiments.
+Read `README.md`, `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` before resuming implementation. Last update: 2026-11-16, second session (key exchange through character creation).
 
 Write and maintain all project documentation in English, as explicitly requested by the user.
 
@@ -10,7 +10,7 @@ Write and maintain all project documentation in English, as explicitly requested
 
 `main` is the clean source-only publication branch. The earlier history remains on local `master` and includes extracted game assets. Do not push `master`, use `git push --all`, or mirror the repository. Extracted assets remain on disk but are ignored on `main`.
 
-Goal: make the supplied Dark Blood client playable with a local offline server. This is incomplete. Current milestone: accepted local transport and decoded application welcome; the main thread next waits for application event `2403 (0x0963)`.
+Goal: make the supplied Dark Blood client playable with a local offline server. This is incomplete. Current milestone: encrypted ProudNet session, server/channel lists, character list and creation verified on screen. Next: select-character response 2007 (`0x007AA4B0`, struct `0x00A40760`).
 
 ## Machine and repository
 
@@ -38,11 +38,15 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 ## Implementation route
 
 - Current server: `python server/run_bootstrap.py` from the repo root, binding `127.0.0.1:9400`.
+- Drive live tests with `tools/gamectl.py` (or the `darkblood` MCP server): it verifies the client hash, refuses a busy port, and stops only processes it started. Use `enter-lobby` to reach character select.
+- Decompile with `tools/decomp.ps1 OUT.c 0xADDR...`; dump behaviour with the shim's `bp.txt` tracer and `sample.txt` sampler (see STATUS.md).
+- Opcode names: `server/data/opcodes.tsv`. Handler addresses: `research/client/handler_map.txt` (written by the shim on connect).
 - `server/server.py` is the earlier speculative Auth/Lobby prototype on ports 10001/10002. Its framing/opcodes are not recovered facts.
 - ProudNet scalars and JSerBuffer varints are different: width-prefixed signed integers versus seven-bit groups terminating when bit 7 is **set**.
 - Game events travel in ProudNet user messages (observed type `2`). Type `1` is RMI traffic; captured `0xFA01` does not establish a game login request.
-- Recover parser schemas before adding login/character/map responses. Do not invent opcode tables.
+- Recover parser schemas before adding responses. Do not invent opcode tables; use the client's own table. Fields without a recovered meaning are sent as zero/defaults and marked as such in code.
 - Welcome defaults are accepted by the serializer; most field meanings remain unknown.
+- Character field `+0x09` is an index: value 12 crashed the client.
 
 ## Experiments and client modifications
 
@@ -59,7 +63,7 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 ## Known gaps
 
 - SteamUser implements only three initial slots; SteamFriends only the first slot. Other interfaces still return invalid placeholder `1`, and many export signatures/callbacks are incomplete.
-- Transport skips encrypted negotiation `5/6`. Control reply `0x1D -> 0x1F` is exploratory, not a recovered production mapping.
+- Server → client messages are unencrypted; fast encryption (0x27) and UDP are not implemented. Control reply `0x1D -> 0x1F` is exploratory.
 - No automatic test suite yet. Native builds and bounded live-client tests were performed.
 - `docs/CRYPTO_KEYS.md` is provisional. Existing extracted XML is malformed; do not treat it as plaintext or mass-extract using an unverified key.
 - Keep game binaries, dumps, generated DLLs, captures, and unrelated user files out of Git. Keep reproducible source and concise evidence notes.

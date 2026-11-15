@@ -1,14 +1,13 @@
 # Dark Blood Online — offline emulator in development
 
-This project aims to run the supplied Dark Blood client against a local server. **Offline gameplay is not working yet.**
+This project aims to run the supplied Dark Blood client against a local server. **Offline gameplay is not working yet**, but the client now gets through login to character creation on the local server.
 
-Verified progress from the November 15, 2026 investigation:
+Verified progress (November 16, 2026):
 
-- The client starts with the Steam shim and opens the game window.
-- Its TCP connection to the original port `9400` is redirected to `127.0.0.1:9400`.
-- The experimental ProudNet handshake is accepted: `OnJoinServerComplete result=0`.
-- The client receives and deserializes application message `5020 / 0x139C`.
-- Initialization advances to waiting for message `2403 / 0x0963`. Server selection, characters, and entering a map are not implemented or verified.
+- The client starts with the Steam shim; its TCP connection to port `9400` is redirected to `127.0.0.1:9400`.
+- The real ProudNet key exchange runs locally (RSA-OAEP + AES); encrypted client requests are decrypted and checked.
+- Title screen → **Server List** ("Offline") → **Channel List** ("Channel 1") → **character select** → **character creation**. Created characters persist in `data/characters.json`.
+- Next step: the select-character response (opcode 2007) that loads the game world.
 
 ## Documentation
 
@@ -23,10 +22,16 @@ Verified progress from the November 15, 2026 investigation:
 | Component | Purpose / status |
 | --- | --- |
 | `client_hook/steam_api_hook.c` | Experimental x86 shim: Steam exports, minimal User/Friends interfaces, TCP redirect, diagnostics |
-| `server/run_bootstrap.py` | Entry point used for live-client experiments on port 9400 |
+| `server/run_bootstrap.py` | Local server entry point (127.0.0.1:9400) |
+| `server/proudnet_crypto.py` | Pure-Python AES/RSA-OAEP and the ProudNet message envelope |
+| `server/characters.py` | Character struct encoding and JSON persistence |
+| `server/data/opcodes.tsv` | Opcode names extracted from the client |
+| `tools/gamectl.py` | CLI/library: start/stop session, screenshots, input, intro skip, decoded events |
+| `tools/mcp_server.py` | MCP stdio server exposing `gamectl` (registered in `.mcp.json`) |
+| `tools/decomp.ps1` | One-command focused Ghidra decompilation |
 | `server/proudnet.py` | ProudNet framing observed in the client |
-| `server/game_wire.py` | JEvent serialization and experimental welcome message |
-| `server/bootstrap_server.py` | Local handshake and wire logging |
+| `server/game_wire.py` | JEvent serialization and application handlers |
+| `server/bootstrap_server.py` | ProudNet handshake, key exchange, decryption, wire logging |
 | `tools/capture_server.py` | Passive loopback TCP recorder |
 | `tools/debug_client.c` | Bounded launches, thread inspection, and image dumps |
 | `tools/image_to_pe.py` | Memory dump to static-analysis PE; output is not a playable client |
@@ -35,41 +40,34 @@ Verified progress from the November 15, 2026 investigation:
 
 `server/server.py`, `auth_server.py`, `lobby_server.py`, and `packet.py` belong to the earlier speculative prototype. Its `<uint16 length, uint16 opcode>` framing and `0x1001/0x2001` opcodes **have not been confirmed in the client**.
 
-## Reproduce the current milestone on this machine
+## Run it on this machine
 
-Requires Windows, Python 3.8+, and MSVC x86. The game client and assets are not included in this repository.
+Requires Windows, Python 3.8+, and MSVC x86. The game client and assets are not included in this repository. The test copy is `research/client/` (its `Data` is a junction to the original assets; see [STATUS.md](docs/STATUS.md) to prepare one).
 
-Original client: `C:\Users\saita\Downloads\Dark Blood\Dark Blood`. The existing test copy is `research/client/`; its `Data` directory is a junction to the original assets. See [STATUS.md](docs/STATUS.md) to prepare a fresh test copy.
-
-From the repository root, with the game closed:
+Build and deploy the shim with the game closed:
 
 ```powershell
-Push-Location client_hook
-.\build.bat
-Pop-Location
+client_hookuild.bat
 Copy-Item client_hook\steam_api.dll research\client\steam_api.dll
 ```
 
-Check the compiler output: the inherited build script still needs reliable failure propagation. Do not continue after a failed build using a stale DLL.
-
-First terminal:
+Then:
 
 ```powershell
-python server\run_bootstrap.py
+python tools\gamectl.py start          # server + client
+python tools\gamectl.py enter-lobby    # skip intro, pick server and channel
+python tools\gamectl.py events         # decoded protocol log
+python tools\gamectl.py stop
 ```
 
-Second terminal:
+Or play manually: `python serverun_bootstrap.py`, then launch `research\client\DarkBlood.exe` with `$env:__COMPAT_LAYER = 'RunAsInvoker'`. Click once the intro is loaded to skip it, press Enter on the server and channel lists, and use Create on character select.
 
-```powershell
-$env:__COMPAT_LAYER = 'RunAsInvoker'
-$lab = Join-Path $pwd 'research\client'
-Start-Process -FilePath "$lab\DarkBlood.exe" -WorkingDirectory $lab
-```
+### MCP server
 
-`RunAsInvoker` avoids the manifest's elevation request during these tests. Logs are written to `research/client/hook_log.txt` and `logs/wire.jsonl`. The expected result is the initialization progress above, not gameplay.
+`.mcp.json` registers `tools/mcp_server.py` as the `darkblood` MCP server, so MCP clients such as Claude Code opened in this repository can call `game_start`, `game_enter_lobby`, `game_screenshot`, `game_click`, `game_keys`, `game_type`, `game_events`, `game_wait_event`, `game_hook_log` and `game_stop`.
 
 ## Current limitations
 
-The local handshake uses a plaintext route accepted by this client. ProudNet encrypted negotiation `5/6`, UDP/P2P, and the complete game protocol are not implemented. The shim contains build-specific addresses and incomplete Steam interfaces; later calls can still crash. The asset decryption key is unverified.
+UDP/P2P, fast encryption (type 0x27), and the game protocol after character creation are not implemented. Several character fields have unknown meaning. The shim contains build-specific addresses and incomplete Steam interfaces; later calls can still crash. The asset decryption key is unverified.
 
 `research/`, `logs/`, compiled DLLs, and memory dumps are ignored by Git. The documentation preserves the information needed to resume without those local artifacts.

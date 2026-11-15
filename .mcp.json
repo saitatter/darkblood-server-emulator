@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "darkblood": {
+      "command": "python",
+      "args": ["tools/mcp_server.py"]
+    }
+  }
+}

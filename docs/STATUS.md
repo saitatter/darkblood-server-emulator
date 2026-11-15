@@ -1,45 +1,38 @@
 # Research status and handoff
 
-Documentation handoff: **November 16, 2026**, covering the investigation performed on November 15, Europe/Bucharest. Experimental work is paused at the user's request. Offline gameplay is not available yet.
+Updated **November 16, 2026** (second session). Offline gameplay is not available yet; the client now reaches character creation and selection against the local server.
 
-## Verified findings
+## Verified in the second session
 
-1. The initial Steam shim lacked exports required during dynamic import resolution. The earlier setup exited before normal Steam calls; termination hooks concealed this by sleeping forever.
-2. Completing the export surface and disabling global termination hooks allowed calls to `SteamAPI_RestartAppIfNecessary(267790)` and `SteamAPI_Init`.
-3. Returning pointer `1` from Steam interface getters caused invalid accesses. The observed crash at `0x0092C322` dereferenced `SteamUser()`'s result.
-4. Minimal SteamUser/SteamFriends interfaces let the client open its game window. SteamUser supplies handle, BLoggedOn, and SteamID; SteamFriends supplies persona name `OfflinePlayer`.
-5. This client attempted TCP connection to `54.173.235.121:9400`. This is an observed endpoint in the supplied copy, not a claim about a currently operating service. The new hook redirects to loopback while preserving the port.
-6. The passive local recorder received `13 57 01 05 30 0F 00 00 40` as the initial frame.
-7. The experimental plaintext ProudNet route was accepted. Instrumentation confirmed `OnJoinServerComplete result=0`.
-8. Application event `5020 / 0x139C`, wrapped in ProudNet user message type `2`, reached `OnReceiveUserMessage`: 114 bytes in the current experiment.
-9. The welcome parser finished with `reader_ok=1` and body cursor `100`. The trace `Welcome decoded=1766913` includes undefined upper bits of a boolean return in AL; the meaningful result is its low byte `1`.
-10. The main-thread stack in `research/decode.log` advanced to waiting for `0x0963 / 2403` at `0x0074A0C7`. Earlier traces showed the previous wait for `0x139C / 5020` at `0x0074A04F`.
+1. The send blocker was encryption: game requests use ProudNet strong encryption (RmiContext `0x00F2C410`, mode 1) and `0x00B76050` aborted at `0x00B76515` because the shortened handshake never established a session key.
+2. The emulator now performs the real key exchange (type 5 → 6 → 7): RSA-1024 OAEP-SHA1 for the session key, AES-128 ECB with a CRC-32 envelope for messages. The fast key in type 6 and every client message decrypt with a valid CRC.
+3. The client's opcode → name table (1,191 entries) and runtime handler map (298 entries) were recovered; see `server/data/opcodes.tsv` and [PROTOCOL.md](PROTOCOL.md#5-application-flow-observed-in-the-live-client).
+4. Observed flow with parser-accepted responses: welcome 5020 → DB list 2402/2403 (title Server List shows "Offline / None") → knock 2001/2002 → square list 2021/2022 (Channel List shows "Channel 1 · Normal · [Good]") → join square 5028/5029 → character list 2008/2009 (character select, "4 SLOT") → create 2012/2013 (character "Tester" appears, Warrior).
+5. Characters persist in `data/characters.json` (ignored by Git) and are listed again after a client restart.
+6. The intro cinematics are skipped by clicking once loading is complete; `gamectl skip-intro` clicks until the Server List opens.
+7. The client runs in exclusive fullscreen; GDI capture works once the window is focused. DXUT's Alt+Enter toggles windowed mode.
 
-The visible client remained at its splash/initialization screen. Server selection, completed login, character creation, map entry, movement, and combat have not been demonstrated.
+Screenshots of each stage are kept locally in `research/` (`shot8.png` server list, `g7.png` channel list, `g10.png` empty character select, `g11.png` creation, `g13.png` created character).
 
 ## Immediate blocker
 
-`0x0079A970` constructs application request `0x0962 / 2402`, then passes it through `0x007874A0` to ProudNet `SendUserMessage`. A corresponding application user message has not appeared in the TCP capture, although the main thread advances to waiting for response `0x0963`.
+Pressing Ok on a selected character sends `eEGS_SELECT_CHAR_REQ (2006)` = `i32, u64 char id`. The response (opcode 2007, handler `0x007AA4B0`) needs a large struct read by `0x00A40760` (about 30 nested readers, including `0x00A3E410`..`0x00A3EEC0`, `0x0076A8C0`, `0x0076AFD0`-style maps and `0x005EE0F0`) and a vector read by `0x004B9210`. Recover that schema with `tools/decomp.ps1`, then implement the response and observe map loading.
 
-Recovered static route:
+Other open items: character level/location shown as "Level 0 / default town" (source not identified; `+0x09` is an index and 12 crashed the client); RMI messages `0xFA01`/`0xFA13` are unhandled; `0x1D → 0x1F` remains exploratory.
 
-```text
-0x0079A970   constructs request 0x0962
-0x007874A0   serializes JEvent and invokes ProudNet interface +0xC8
-0x00B55A30   thunk: adjusts this by -0xAC
-0x00B75710   prepares ProudNet user message type 2
-0x00B3FEC0   initial guard and routing
-0x00B76050   send options / encryption branches
-0x00B53310   destination / transport routing
-```
+## First session findings (2026-11-15)
 
-`0x00B53310` checks an object pointer at `+0x1570` and a value at `+0x1500`. Observe their actual values and the executed branch before assigning meanings. Skipping the complete ProudNet negotiation might omit necessary initialization, but that is a hypothesis, not an established cause.
+1. The initial Steam shim lacked exports required during dynamic import resolution; termination hooks concealed this.
+2. Completing the export surface and disabling termination hooks allowed `SteamAPI_RestartAppIfNecessary(267790)` and `SteamAPI_Init`.
+3. Returning pointer `1` from Steam interface getters caused invalid accesses (crash at `0x0092C322`); minimal SteamUser/SteamFriends interfaces fixed startup.
+4. The client connects to `54.173.235.121:9400`; the shim redirects IPv4 `connect` to loopback, preserving the port.
+5. The plaintext route to `OnJoinServerComplete result=0` and the decoded 5020 welcome were reached; the encrypted route above replaces it.
 
 ## Artifact identities
 
 | Artifact | SHA-256 |
 | --- | --- |
-| Original `DarkBlood.exe` | `a82ae3d71b596418c1f3593cb63d3f9746318d452143c2e88f6ebbaaff339c931` |
+| Original `DarkBlood.exe` | `a82ae3d71b596418c1f3593cb63d3f9746318d452143c2e88f6ebbaff339c931` |
 | `research/normal.bin` | `7909a808a15a0caa8355fca5630b2497c66100e61d43a2aaf00b30a06519c894` |
 | `research/client/crash_image.bin` | `fdac37cd829cdea136f85e604d6386f9407dfe3f6e6a20e2d742c3efeb0b6ff4` |
 | `research/unpacked.analysis.exe` | `a05dde1ddfb5aafb0878452fb47d6dbcf4637885be5674bd8a3baeaa150756ba` |
@@ -82,26 +75,33 @@ The cropped splash screenshot is preserved locally as `research/splash-local.png
 
 ## Tools and reproduction
 
-Verified environment: Windows x64, Python 3.8, MSVC 2022 x86, Ghidra 12.1.4, JDK 21.0.9, and REA CLI 6.7.0. Python modules `pefile` and `capstone` are available. The bootstrap server uses only the standard library. `cryptography`, `Crypto`, `frida`, and `unicorn` were absent.
+Verified environment: Windows x64, Python 3.8, MSVC 2022 x86, Ghidra 12.1.4, JDK 21.0.9, REA CLI 6.7.0. The server and tools use only the Python standard library.
 
-### Prepare a fresh test copy
+### Driving the game
 
-Run from the repository root. This refuses an existing destination to preserve earlier experiments:
+`tools/gamectl.py` (CLI) and `tools/mcp_server.py` (MCP stdio server, registered in `.mcp.json`) start/stop the server and client, take screenshots, send keys/clicks, skip the intro, walk to character select, and decode the wire log with opcode names:
 
 ```powershell
-$source = 'C:\Users\saita\Downloads\Dark Blood\Dark Blood'
-$lab = Join-Path $pwd 'research\client'
-if (Test-Path -LiteralPath $lab) { throw 'Test copy already exists; inspect it before making changes.' }
-New-Item -ItemType Directory -Path $lab -Force | Out-Null
-Get-ChildItem -LiteralPath $source -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $lab
-}
-New-Item -ItemType Junction -Path (Join-Path $lab 'Data') -Target (Join-Path $source 'Data')
+python tools\gamectl.py start
+python tools\gamectl.py enter-lobby        # intro -> server -> channel -> character select
+python tools\gamectl.py screenshot research\shot.png
+python tools\gamectl.py events
+python tools\gamectl.py stop
 ```
 
-Large assets are shared through the junction. Avoid recursive operations that traverse it. Preserve the supplied original `steam_api.dll.bak`. Do not replace the original EXE with a memory dump or analysis fixture.
+`gamectl` stops only processes it started (`logs/session.json`) and refuses to start if port 9400 is busy.
 
-See the [README](../README.md) for shim compilation and manual launch. Do not run the passive recorder and bootstrap on the same port simultaneously.
+### Shim diagnostics
+
+- `research/client/bp.txt`: in-process INT3 tracer. Lines are `<hex VA> [max=N] [expr ...]`, with `reg+off` (dword), `reg+off.N` (bytes) and `@reg+off+off2` (dereference). It logs registers and restores the byte, single-steps and re-arms. No debugger is attached.
+- `research/client/sample.txt` (presence): logs the main thread's EIP and code return addresses every 5 s.
+- `handler_map.txt` is written at OnJoinServerComplete (columns: raw words; key = 2nd, handler = 4th).
+
+### Focused decompilation
+
+```powershell
+.	ools\decomp.ps1 research\out.c 0x7aa4b0 0xa40760
+```
 
 ### Passive capture
 
@@ -161,15 +161,14 @@ The original REA seed `0x92C2E0` begins inside the Steam-related function. Its c
 - The supplied `DarkbloodKR.ini` is not plaintext INI. Its packaging/obfuscation remains unresolved.
 - The Steam shim has incomplete export semantics and invalid interfaces not yet exercised by startup.
 - Termination-hook definitions remain as dead WIP code; they are not installed.
-- The bootstrap does not fully validate type-8 connection requests or implement application behavior after welcome.
+- The server does not validate type-8 connection requests. Application handlers exist only for the flow up to character creation.
+- Server → client messages are sent unencrypted; the client accepts them, but the original server may have encrypted them.
 - `0x1D → 0x1F` is exploratory. The `0x1E` timing parser is recovered; complete control-message semantics are not.
 - No dedicated automatic protocol test suite has been added. Native builds and bounded live-client experiments succeeded through the milestones above; these are not gameplay end-to-end tests.
 
 ## Workspace state at pause
 
-At the research pause, no commit had been created and no destructive Git operations had been performed. Research artifacts, wire logs, and generated binaries are ignored.
-
-The bootstrap server started during this session was stopped. No test client, debugger, or Ghidra process remained at inspection. The earlier `server/server.py` process, already present at the start, was left running. Verify processes and ports before resuming; historical PIDs must never be used without checking current ownership.
+Second session: changes are uncommitted on `main` (no commit was requested). The test client and server started by `gamectl` were stopped. The pre-existing `server/server.py` process (ports 10001/10002) was left untouched. Verify processes and ports before resuming.
 
 ## Public repository preparation
 
