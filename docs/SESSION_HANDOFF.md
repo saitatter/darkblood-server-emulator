@@ -3,6 +3,12 @@
 ## Pause — Cristian machine, 2026-11-17 (notes and repository sync only)
 
 - User is going to sleep and explicitly requested updated notes; resume next session.
+- Publication discovered a newer repository restriction: direct push to `main` is
+  rejected with GH006 (changes must use a pull request), despite older AGENTS guidance.
+  Notes are published on `docs/cristian-handoff-2026-11-17` through a PR. The checkout
+  is left on that branch; the automatic sync fetches but skips pull/push off main.
+  Do not force-push or bypass protection. Reconcile local main after the notes PR merges;
+  the existing sync script will also need review for the protected-branch workflow.
 - Recovered context from this repository. No game/server was launched, no UI input was sent,
   and no gameplay code, client binaries or character data was changed in this conversation.
 - Main is at `08b20e5` after `git pull --rebase origin main` reported already up to date.
