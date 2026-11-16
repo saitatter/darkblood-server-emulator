@@ -6,7 +6,7 @@ Verified progress (November 16, 2026):
 
 - The client starts with the Steam shim; its TCP connection to port `9400` is redirected to `127.0.0.1:9400`.
 - The real ProudNet key exchange runs locally (RSA-OAEP + AES); encrypted client requests are decrypted and checked.
-- Title screen → **Server List** ("Offline") → **Channel List** ("Channel 1") → **character select** → **character creation**. Created characters persist in `data/characters.json`.
+- Title screen → **Server List** ("Offline") → **Channel List** ("Channel 1") → **character select** → **character creation**. Created characters persist in `data/darkblood.db` (SQLite).
 - Next step: the select-character response (opcode 2007) that loads the game world.
 
 ## Documentation
@@ -27,7 +27,7 @@ Verified progress (November 16, 2026):
 | `src/darkblood/core/` | ProudNet framing and crypto, JSerBuffer/JEvent serialization |
 | `src/darkblood/frontend/` | Listeners, handshake/key exchange, relay, wire logging |
 | `src/darkblood/games/` | Game session, handlers per domain, messages, entities, client data readers |
-| `src/darkblood/player_management/` | Character persistence (`data/characters.json`) |
+| `src/darkblood/player_management/` | Character persistence (`data/darkblood.db`, SQLite) |
 | `assets/opcodes.tsv` | Opcode names extracted from the client |
 | `tools/gamectl.py` | CLI/library: start/stop session, screenshots, input, intro skip, decoded events |
 | `tools/mcp_server.py` | MCP stdio server exposing `gamectl` (registered in `.mcp.json`) |
@@ -37,8 +37,6 @@ Verified progress (November 16, 2026):
 | `tools/image_to_pe.py` | Memory dump to static-analysis PE; output is not a playable client |
 | `tools/FocusedDecompile.java` | Focused Ghidra decompilation at requested addresses |
 | `tools/jpk_extractor.py` | Earlier archive extractor; decryption needs verification |
-
-`legacy/speculative_prototype/` (`server.py`, `auth_server.py`, `lobby_server.py`, `packet.py`) belongs to the earlier speculative prototype. Its `<uint16 length, uint16 opcode>` framing and `0x1001/0x2001` opcodes **have not been confirmed in the client**.
 
 ## Run it on this machine
 

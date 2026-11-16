@@ -26,7 +26,6 @@ The goal of this project is to create an open-source, local offline server emula
 │   ├── player_management/  # Character persistence                       (C#: PlayerManagement)
 │   └── games/              # Session, handlers/, network/, entities/...   (C#: Games)
 ├── assets/                 # Static tables (opcodes.tsv, opcode_pairs.tsv, opcode_flags.tsv)
-├── legacy/                 # Earlier speculative prototype (not recovered facts)
 ├── tools/                  # Automation, control & analysis tooling
 │   ├── gamectl.py          # CLI / automation engine (starts server/client, input, screenshots)
 │   ├── mcp_server.py       # MCP stdio server for AI agents

@@ -761,14 +761,3 @@ class ItemDurabilityTest(unittest.TestCase):
     def test_item_durability_override(self):
         wire = Item(code='Wdag1N', uid=6, durability=7.5).encode()
         self.assertEqual(struct.unpack_from('<f', wire, 8)[0], 7.5)
-
-
-class InventoryMigrationTest(unittest.TestCase):
-    def test_bag_moves_off_reserved_container_2(self):
-        # 0x008354D0 ignores items whose container is 2.
-        from darkblood.player_management.characters import ensure_inventory
-        char = {'char_class': 4, 'items': [dict(code='AgloT1N', uid=3, container=2, slot=1)],
-                'bags': [{'bag_id': 1}, {'bag_id': 2, 'code': 'Ibaga0004', 'b28': 0, 'b29': 5, 'w2a': 0}]}
-        self.assertTrue(ensure_inventory(char))
-        self.assertEqual([b['bag_id'] for b in char['bags']], [1, 3])
-        self.assertEqual(char['items'][0]['container'], 3)

@@ -4,10 +4,8 @@ Struct reader 0xA4AB30 (constructor 0x737BD0); offsets are in the client
 object. Field names are only given where the value was observed in a request
 or on screen; the rest are named by offset and sent as zero.
 """
-import json
 import os
 import struct
-import threading
 from pathlib import Path
 from darkblood import REPO_ROOT
 from darkblood.core.serialization.jser import WireError, read_varuint
@@ -47,73 +45,20 @@ def encode_character(char):
     return Character.from_dict(char).encode_lobby_entry()
 
 
-class CharacterStore:
-    def __init__(self, path=None):
-        self.path = Path(path or DATA / 'characters.json')
-        self.lock = threading.Lock()
-        try:
-            self.data = json.loads(self.path.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            self.data = {'version': 1, 'next_id': 1, 'accounts': {}}
-
-    def save(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_suffix('.tmp')
-        tmp.write_text(json.dumps(self.data, indent=2), encoding='utf-8')
-        os.replace(tmp, self.path)
-
-    def characters(self, account):
-        return self.data['accounts'].get(account, [])
-
-    def get(self, account, char_id):
-        for c in self.characters(account):
-            if c['id'] == char_id:
-                return c
-        return None
-
-    def delete(self, account, char_id):
-        with self.lock:
-            chars = self.data['accounts'].get(account, [])
-            for i, c in enumerate(chars):
-                if c['id'] == char_id:
-                    del chars[i]
-                    self.save()
-                    return True
-            return False
-
-    def create(self, account, request):
-        with self.lock:
-            chars = self.data['accounts'].setdefault(account, [])
-            if any(c['name'].lower() == request['name'].lower()
-                   for acc in self.data['accounts'].values() for c in acc):
-                return None
-            char = dict(request, id=self.data['next_id'], level=1, tutorial_cleared=False)
-            self.data['next_id'] += 1
-            ensure_inventory(char)
-            chars.append(char)
-            self.save()
-            return char
-
-
 EQUIP_CONTAINER = 1  # item container treated as worn by the client (0x008354D0)
 # Container value 2 is reserved: 0x008354D0 drops every item whose container
-# is 2 without storing it, so a bag with id 2 never shows moved/added items
-# (live: unequipping into it left the client's slot empty and reusable).
-RESERVED_CONTAINER = 2
+# is 2 without storing it, so bag ids must avoid it.
 INVENTORY_BAG_CONTAINER = 3
 DEFAULT_BAG_CODE = 'Ibaga0004'
 DEFAULT_BAG_CAPACITY = 5
 
 
 def ensure_inventory(char):
-    """Give a character the equipment/bag state the 2007 reply needs.
+    """Give a new character its default equipment and first bag.
 
-    Characters created before inventory support have no 'bags'/'items'; they
-    receive the client's default equipment for their job
-    (DictItem:LoadDefaultEquipItem), worn in container 1. Live-verified: the
-    selected character renders with it. Container 3 provides an initial 5-cell
-    Ibaga0004 bag in UI slot 0 so inventory items can be viewed and stored.
-    Returns True if the record changed.
+    Equipment is the client's default set for the job
+    (DictItem:LoadDefaultEquipItem), worn in container 1. Container 3 is an
+    initial 5-cell Ibaga0004 bag in UI slot 0. Returns True if the record changed.
     """
     changed = False
     from darkblood.games.game_data.client_dict import default_equipment
@@ -126,22 +71,6 @@ def ensure_inventory(char):
              'b28': 0, 'b29': DEFAULT_BAG_CAPACITY, 'w2a': 0},
         ]
         changed = True
-    else:
-        bags = char['bags']
-        # Migrate records whose first bag used the reserved container id 2.
-        if any(b.get('bag_id') == RESERVED_CONTAINER for b in bags):
-            for b in bags:
-                if b.get('bag_id') == RESERVED_CONTAINER:
-                    b['bag_id'] = INVENTORY_BAG_CONTAINER
-            for item in char.get('items', []):
-                if item.get('container') == RESERVED_CONTAINER:
-                    item['container'] = INVENTORY_BAG_CONTAINER
-            changed = True
-        # Migrate existing records that only had the equipment bag
-        if not any(b.get('bag_id') == INVENTORY_BAG_CONTAINER for b in bags):
-            bags.append({'bag_id': INVENTORY_BAG_CONTAINER, 'code': DEFAULT_BAG_CODE,
-                         'b28': 0, 'b29': DEFAULT_BAG_CAPACITY, 'w2a': 0})
-            changed = True
 
     if 'items' not in char:
         gear = [code for code in default_equipment().get(job, []) if not code.startswith('C')]

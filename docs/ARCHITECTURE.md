@@ -21,7 +21,8 @@ src/darkblood/
     server.py                    TCP listeners, handshake, key exchange, wire log
     relay.py                     square/room relay address + relay PIDL (JoinGroup)
   player_management/                                                      -> C#: DarkBlood.PlayerManagement
-    characters.py                character store (data/characters.json), inventory bootstrap
+    characters.py                create-request parser, default inventory
+    store.py                     SQLite character store (data/darkblood.db)
   games/                                                                  -> C#: DarkBlood.Games
     session.py                   GameSession: JEvent dispatch to on_<opcode>
     state.py                     state shared by game and relay connections
@@ -33,7 +34,6 @@ src/darkblood/
     entities/items.py            Item (0x00A53F50), Bag (0x00A1EC30)
     missions/quests.py           ActiveQuest (2007 map 0x00A3E450)
     game_data/client_dict.py     readers for the client's Data/Dict tables
-legacy/speculative_prototype/    earlier guessed Auth/Lobby server (not recovered facts)
 tests/                           headless end-to-end tests (no game window)
 tools/                           gamectl, headless client, RE helpers
 ```

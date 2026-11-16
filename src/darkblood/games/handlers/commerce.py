@@ -119,8 +119,6 @@ class CommerceHandlers:
             ack = DragItemAck(result=1).encode()
             await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (no char)')
             return
-        from darkblood.player_management.characters import ensure_inventory
-        ensure_inventory(char)
         items = char.get('items', [])
         dragged = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not dragged:
@@ -162,8 +160,6 @@ class CommerceHandlers:
             ack = UseItemAck(result=1).encode()
             await self.transport.send_event(event(2039, ack, correlation), note='use item fail (no char)')
             return
-        from darkblood.player_management.characters import ensure_inventory
-        ensure_inventory(char)
         items = char.get('items', [])
         used_item = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not used_item:
@@ -198,8 +194,6 @@ class CommerceHandlers:
             ack = EquipItemAck(result=1).encode()
             await self.transport.send_event(event(2043, ack, correlation), note='equip item fail (no char)')
             return
-        from darkblood.player_management.characters import ensure_inventory
-        ensure_inventory(char)
         items = char.get('items', [])
         target_item = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not target_item:

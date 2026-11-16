@@ -1,5 +1,14 @@
 # Research status and handoff
 
+## Legacy and migration code removed, data reset — saita machine, 2026-11-16
+
+At the user's request, there is no legacy or migration code before the first release:
+- Removed `legacy/speculative_prototype/`, the JSON stores (`CharacterStore`, `JsonCharacterStore`), the
+  JSON auto-import/export of `SqliteCharacterStore`, and the inventory backfill/migration in `ensure_inventory`
+  and in the select/drag/use/equip handlers. `ensure_inventory` now only initialises new characters at creation.
+- `data/darkblood.db` and `data/characters.json` were deleted. The server starts with an empty SQLite database.
+- 112 headless tests pass.
+
 ## Dungeon damage, revive, daily coins, unequip — saita machine, 2026-11-16 (static + headless; live retest pending)
 
 Player report: very low damage to the first-dungeon boss; revive, daily rebirth coins and unequip did not work.
@@ -23,7 +32,7 @@ Evidence is the wire log of the 20:24-20:38 session plus static reconstruction. 
    (default 3) and `daily_rebirth_recv` (reset daily) and sends 2449 + 2286.
 4. Unequip: `0x008354D0` returns without storing any item whose container is 2. The inventory bag used id 2, so items dragged
    into it were dropped by the client. Live: uid 7 was unequipped to bag 2 slot 0, and the client then picked slot 0 again for uid 4;
-   the server swapped them back into the equipment. The bag is now id 3, and `ensure_inventory` migrates stored bags/items from 2 to 3.
+   the server swapped them back into the equipment. The bag is now id 3 (no migration; the data was reset).
 
 Open: confirm all four live; find the revive-button request; check whether `2143` values are f32 before persisting durability.
 

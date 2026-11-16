@@ -149,9 +149,6 @@ class FrontendHandlers:
         if not char:
             chars = self.store().characters(self.account)
             char = chars[0] if chars else dict(id=char_id, name=self.account, char_class=1)
-        from darkblood.player_management.characters import ensure_inventory
-        if ensure_inventory(char) and self.store().get(self.account, char.get('id')):
-            self.store().save()
         ack = build_select_char_ack(char)
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)

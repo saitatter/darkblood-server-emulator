@@ -8,7 +8,7 @@ Collects:
     2. Git commit hash, branch, and status.
     3. Client executable SHA-256 (if found in research/client/).
     4. Recent wire traffic from wire.jsonl (last N lines).
-    5. Character state snapshot (data/characters.json).
+    5. Character state snapshot (data/darkblood.db).
     6. Handler address map (research/client/handler_map.txt).
     7. Active server and client log snippets.
 """
@@ -109,9 +109,9 @@ def main():
             zf.writestr('wire_recent.jsonl', wire_content)
 
         # 3. Characters state
-        char_path = REPO_ROOT / 'data' / 'characters.json'
+        char_path = REPO_ROOT / 'data' / 'darkblood.db'
         if char_path.is_file():
-            zf.write(char_path, 'characters.json')
+            zf.write(char_path, 'darkblood.db')
 
         # 4. Handler map
         hmap_path = REPO_ROOT / 'research' / 'client' / 'handler_map.txt'
