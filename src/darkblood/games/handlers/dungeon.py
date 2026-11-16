@@ -1,11 +1,15 @@
 import struct
 
+from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import WireError, event, read_varuint, varuint, wide_string
 from darkblood.frontend.relay import RELAY_PORT
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
+    BackToSquareAck,
     ChangeDungeonLayerNot,
     ChangeMapCodeAck,
+    ChoiceRewardPartyRankAck,
+    ChoiceRewardPartyRankReq,
     CreateRoomAck,
     DailyRebirthCoinUseAck,
     DailyRebirthCoinUseReq,
@@ -157,4 +161,30 @@ class DungeonHandlers:
         ack = DailyRebirthCoinUseAck(result=0, daily_recv_cnt=1, pcbang_coin_remain=5).encode()
         await self.transport.send_event(event(2449, ack, correlation),
                                         note='daily rebirth coin use ack')
+
+    async def on_5045(self, correlation, body):
+        # eERC_BACK_TO_SQUARE_REQ (0x007A0000.c:8367) -> 5046 eERC_BACK_TO_SQUARE_ACK (0x007897F0).
+        # Return to town/square from dungeon.
+        from darkblood.games.entities.character import layer_net_id
+        ack = BackToSquareAck(result=0, square_uid=1, layer_net_id=layer_net_id()).encode()
+        await self.transport.send_event(event(5046, ack, correlation), note='back to square ack')
+
+    async def on_5090(self, correlation, body):
+        # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
+        req = ChoiceRewardPartyRankReq.decode(body)
+        char_id = selected_character.get('id', 1)
+        item_id = jhash('Ihppa0001')
+        ack = ChoiceRewardPartyRankAck(
+            result=0,
+            char_uid=char_id,
+            reward_uid=1,
+            item_id=item_id,
+            count=1,
+            drop_type=0,
+            box_type=0,
+            box_cost=0
+        ).encode()
+        await self.transport.send_event(event(5091, ack, correlation),
+                                        note='choice reward partyrank ack (card=%d)' % req.card_index)
+
 

@@ -1,18 +1,27 @@
 import struct
 
+from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
+from darkblood.games.entities.items import EQUIPPED, Item
 from darkblood.games.network.messages import (
+    AssignQuickslotAck,
+    AssignQuickslotReq,
     CharVerifyStatAck,
     CloseBagReq,
     CurrentCashAck,
     DragItemAck,
     DragItemReq,
+    EquipItemAck,
+    EquipItemReq,
     RouletteManagerInfoAck,
     StoreInfoAck,
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
+    UseItemAck,
+    UseItemReq,
 )
 from darkblood.games.state import selected_character
+
 
 
 class CommerceHandlers:
@@ -107,4 +116,99 @@ class CommerceHandlers:
         ack = CharVerifyStatAck(result=0).encode()
         await self.transport.send_event(event(2407, ack, correlation),
                                         note='char verify stat ack')
+
+    async def on_2038(self, correlation, body):
+        # eEGS_USE_ITEM_REQ (0x00780000.c:8159) -> 2039 eEGS_USE_ITEM_ACK (0x0077D4C0).
+        req = UseItemReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if not char:
+            ack = UseItemAck(result=1).encode()
+            await self.transport.send_event(event(2039, ack, correlation), note='use item fail (no char)')
+            return
+        from darkblood.player_management.characters import ensure_inventory
+        ensure_inventory(char)
+        items = char.get('items', [])
+        used_item = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not used_item:
+            ack = UseItemAck(result=1).encode()
+            await self.transport.send_event(event(2039, ack, correlation), note='use item fail (not found)')
+            return
+        # Consumable items decrement count or remove if exhausted
+        item_code = jhash(used_item.get('code', ''))
+        count = used_item.get('count', 1) - req.use_count
+        updated = []
+        if count <= 0:
+            items.remove(used_item)
+        else:
+            used_item['count'] = count
+            updated.append(Item(owner=char.get('id', -1), **used_item))
+        self.store().save()
+
+        ack = UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count).encode()
+        await self.transport.send_event(event(2039, ack, correlation),
+                                        note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
+
+    async def on_2042(self, correlation, body):
+        # eEGS_EQUIP_ITEM_REQ (0x00800000.c:500) -> 2043 eEGS_EQUIP_ITEM_ACK (0x007AE940).
+        req = EquipItemReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if not char:
+            ack = EquipItemAck(result=1).encode()
+            await self.transport.send_event(event(2043, ack, correlation), note='equip item fail (no char)')
+            return
+        from darkblood.player_management.characters import ensure_inventory
+        ensure_inventory(char)
+        items = char.get('items', [])
+        target_item = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target_item:
+            ack = EquipItemAck(result=1).encode()
+            await self.transport.send_event(event(2043, ack, correlation), note='equip item fail (not found)')
+            return
+        # Find any currently equipped item in target slot
+        target_slot = req.equip_slot if req.equip_slot >= 0 else target_item.get('slot', 0)
+        previous_equipped = next((i for i in items if i.get('container') == EQUIPPED and i.get('slot') == target_slot), None)
+        updated = [target_item]
+        if previous_equipped and previous_equipped is not target_item:
+            # Move previously equipped item into the bag slot vacated by target_item
+            previous_equipped['container'] = target_item.get('container', 2)
+            previous_equipped['slot'] = target_item.get('slot', 0)
+            updated.append(previous_equipped)
+        target_item['container'] = EQUIPPED
+        target_item['slot'] = target_slot
+        self.store().save()
+
+        wire_items = [Item(owner=char.get('id', -1), **i) for i in updated]
+        ack = EquipItemAck(result=0, items=wire_items).encode()
+        await self.transport.send_event(event(2043, ack, correlation),
+                                        note='equip item ack (uid=%d slot=%d)' % (req.item_uid, target_slot))
+
+    async def on_2044(self, correlation, body):
+        # eEGS_ASSIGN_QUICKSLOT_REQ (0x00780000.c:8513) -> 2045 eEGS_ASSIGN_QUICKSLOT_ACK (0x0078C4A0).
+        req = AssignQuickslotReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            qs = char.setdefault('quickslots', {})
+            qs[str(req.slot_num)] = dict(type=req.slot_type, ref_id=req.ref_id, ref_uid=req.ref_uid)
+            self.store().save()
+
+        ack = AssignQuickslotAck(result=0, slot_type=req.slot_type, slot_num=req.slot_num,
+                                 ref_id=req.ref_id, ref_uid=req.ref_uid).encode()
+        await self.transport.send_event(event(2045, ack, correlation),
+                                        note='assign quickslot ack (slot=%d ref=%08x)' % (req.slot_num, req.ref_id))
+
 

@@ -275,6 +275,27 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(struct.unpack_from('<i', ack2037)[0], 0)
             self.assertEqual(ack2037[4], 0x10)  # tag 0x10 vector
 
+            # 5090: eERC_CHOICE_REWARD_PARTYRANK_REQ -> 5091
+            client.send_event(5090, struct.pack('<ii', 0x7fffffff, 0))
+            _, ack5091 = await client.expect_event(5091)
+            self.assertEqual(struct.unpack_from('<iq', ack5091)[:2], (0, char['id']))
+
+            # 2044: eEGS_ASSIGN_QUICKSLOT_REQ -> 2045
+            client.send_event(2044, struct.pack('<BBiq', 0, 1, 12345, 1))
+            _, ack2045 = await client.expect_event(2045)
+            self.assertEqual(struct.unpack_from('<iBBiq', ack2045), (0, 0, 1, 12345, 1))
+
+            # 2042: eEGS_EQUIP_ITEM_REQ -> 2043
+            client.send_event(2042, struct.pack('<qi', 1, 0))
+            _, ack2043 = await client.expect_event(2043)
+            self.assertEqual(struct.unpack_from('<i', ack2043)[0], 0)
+
+            # 2038: eEGS_USE_ITEM_REQ -> 2039
+            client.send_event(2038, struct.pack('<qi', 1, 1))
+            _, ack2039 = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack2039)[0], 0)
+
+
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
             _, ack2345 = await client.expect_event(2345)
             self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, hashing.jhash('Act1') << 32, 1))

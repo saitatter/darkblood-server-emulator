@@ -1,6 +1,16 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
-## Update — 2026-11-16 ~17:35 (Combat death/rebirth, stat verify & item drag schemas implemented)
+## Update — 2026-11-16 ~17:45 (Dungeon clear reward, back-to-square, use item, equip & quickslot schemas implemented)
+
+Decompiled client handlers/senders and added full support:
+1. `5045 eERC_BACK_TO_SQUARE_REQ` (0x007A0000.c:8367) -> `5046 eERC_BACK_TO_SQUARE_ACK` (0x007897F0): returns character to town square with valid layer net ID. Handled in `on_5045`.
+2. `5090 eERC_CHOICE_REWARD_PARTYRANK_REQ` (0x00780000.c:9280: i32 prefix + i32 card_index) -> `5091 eERC_CHOICE_REWARD_PARTYRANK_ACK` (0x0078D660: i32 result + i64 char_uid + tag `0x1E` 12-byte item reward + i32 box_type + i32 box_cost). Handled in `on_5090`.
+3. `2038 eEGS_USE_ITEM_REQ` (0x00780000.c:8159: i64 item_uid + i32 use_count) -> `2039 eEGS_USE_ITEM_ACK` (0x0077D4C0: i32 result + tag `0x10` vector of updated items + i32 item_id + i32 use_count). Updates item count, persists, and notifies client. Handled in `on_2038`.
+4. `2042 eEGS_EQUIP_ITEM_REQ` (0x00800000.c:500: i64 item_uid + i32 equip_slot) -> `2043 eEGS_EQUIP_ITEM_ACK` (0x007AE940: i32 result + tag `0x10` vector of equipped/unequipped Item structs). Swaps previous equipment to bag and equips new gear. Handled in `on_2042`.
+5. `2044 eEGS_ASSIGN_QUICKSLOT_REQ` (0x00780000.c:8513: u8 ucType + u8 ucSlotNum + i32 nRefID + i64 nRefUID) -> `2045 eEGS_ASSIGN_QUICKSLOT_ACK` (0x0078C4A0: i32 result + echoes slot/ref data). Persists quickslots on character. Handled in `on_2044`.
+
+16/16 headless tests pass.
+
 
 Live play in Lucid Forest (`Act1_G1_A10`) confirmed active gameplay loop:
 - Player interacted with new bag cells: emitted `2036 eEGS_DRAG_ITEM_REQ` (moving item 7 to container 2 slot 0) and `2028 eEGS_CLOSE_BAG_REQ` (closing container 2).

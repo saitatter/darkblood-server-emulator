@@ -812,3 +812,160 @@ class DailyRebirthCoinUseAck:
     def encode(self) -> bytes:
         return struct.pack('<iHI', self.result, self.daily_recv_cnt, self.pcbang_coin_remain)
 
+
+@dataclass
+class ChoiceRewardPartyRankReq:
+    """Opcode 5090: eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280).
+
+    Wire format: i32 prefix (0x7FFFFFFF) + i32 card_index.
+    """
+    prefix: int = 0x7FFFFFFF
+    card_index: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChoiceRewardPartyRankReq':
+        if len(data) >= 8:
+            prefix, card_index = struct.unpack_from('<ii', data, 0)
+            return cls(prefix=prefix, card_index=card_index)
+        return cls()
+
+
+@dataclass
+class ChoiceRewardPartyRankAck:
+    """Opcode 5091: eERC_CHOICE_REWARD_PARTYRANK_ACK (On_opcode_5091 0x0078D660).
+
+    Wire format:
+      i32 result (0 = success)
+      i64 nChoiceCharUID
+      tag 0x1E + 12-byte struct (u32 uid, u32 item_id, u16 count, u16 drop_type)
+      i32 nBoxType
+      i32 nBoxCost
+    """
+    result: int = 0
+    char_uid: int = 0
+    reward_uid: int = 1
+    item_id: int = 0
+    count: int = 1
+    drop_type: int = 0
+    box_type: int = 0
+    box_cost: int = 0
+
+    def encode(self) -> bytes:
+        data = struct.pack('<iq', self.result, self.char_uid)
+        data += b'\x1e' + struct.pack('<IIHH', self.reward_uid, self.item_id, self.count, self.drop_type)
+        data += struct.pack('<ii', self.box_type, self.box_cost)
+        return data
+
+
+@dataclass
+class UseItemReq:
+    """Opcode 2038: eEGS_USE_ITEM_REQ (0x00780000.c:8159).
+
+    Wire format: i64 item_uid + i32 use_count (12 bytes).
+    """
+    item_uid: int = 0
+    use_count: int = 1
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UseItemReq':
+        if len(data) >= 12:
+            item_uid, use_count = struct.unpack_from('<qi', data, 0)
+            return cls(item_uid=item_uid, use_count=use_count)
+        return cls()
+
+
+@dataclass
+class UseItemAck:
+    """Opcode 2039: eEGS_USE_ITEM_ACK (On_opcode_2039 0x0077D4C0).
+
+    Wire format:
+      i32 result (0 = success)
+      tag 0x10 vector of Item structs (vecItem)
+      i32 nItemID
+      i32 nUseCount
+    """
+    result: int = 0
+    items: list = field(default_factory=list)
+    item_id: int = 0
+    use_count: int = 1
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items)
+                + struct.pack('<Ii', self.item_id, self.use_count))
+
+
+
+@dataclass
+class AssignQuickslotReq:
+    """Opcode 2044: eEGS_ASSIGN_QUICKSLOT_REQ (0x00780000.c:8513).
+
+    Wire format: u8 ucType + u8 ucSlotNum + i32 nRefID + i64 nRefUID (14 bytes).
+    """
+    slot_type: int = 0
+    slot_num: int = 0
+    ref_id: int = 0
+    ref_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AssignQuickslotReq':
+        if len(data) >= 14:
+            stype, snum, rid, ruid = struct.unpack_from('<BBiq', data, 0)
+            return cls(slot_type=stype, slot_num=snum, ref_id=rid, ref_uid=ruid)
+        return cls()
+
+
+@dataclass
+class AssignQuickslotAck:
+    """Opcode 2045: eEGS_ASSIGN_QUICKSLOT_ACK (On_eEGS_ASSIGN_QUICKSLOT_ACK 0x0078C4A0).
+
+    Wire format:
+      i32 result (0 = success)
+      u8 ucType
+      u8 ucSlotNum
+      i32 nRefID
+      i64 nRefUID
+    """
+    result: int = 0
+    slot_type: int = 0
+    slot_num: int = 0
+    ref_id: int = 0
+    ref_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iBBiq', self.result, self.slot_type, self.slot_num, self.ref_id, self.ref_uid)
+
+
+@dataclass
+class EquipItemReq:
+    """Opcode 2042: eEGS_EQUIP_ITEM_REQ (0x00800000.c:500).
+
+    Wire format: i64 item_uid + i32 equip_slot (12 bytes).
+    """
+    item_uid: int = 0
+    equip_slot: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'EquipItemReq':
+        if len(data) >= 12:
+            item_uid, equip_slot = struct.unpack_from('<qi', data, 0)
+            return cls(item_uid=item_uid, equip_slot=equip_slot)
+        return cls()
+
+
+@dataclass
+class EquipItemAck:
+    """Opcode 2043: eEGS_EQUIP_ITEM_ACK (On_eEGS_EQUIP_ITEM_ACK 0x007AE940).
+
+    Wire format: i32 result (0 = success) + tag 0x10 vector of Item structs.
+    """
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(item.encode() for item in self.items))
+
+
