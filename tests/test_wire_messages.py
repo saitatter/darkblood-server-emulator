@@ -12,7 +12,7 @@ from darkblood.games.network import messages
 
 class WireMessagesTest(unittest.TestCase):
     def test_delete_character_messages(self):
-        raw_req = struct.pack('<q', 123456789)
+        raw_req = bytes.fromhex('ffffff7f') + struct.pack('<q', 123456789)
         req = messages.DeleteCharacterReq.decode(raw_req)
         self.assertEqual(req.char_uid, 123456789)
 

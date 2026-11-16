@@ -190,14 +190,15 @@ class RelayJoinGroupAck:
 class DeleteCharacterReq:
     """Opcode 2014: eEGS_DELETE_CHARACTER_REQ (0x00780000.c:6618).
 
-    Wire format: i64 nDelCharUID (8 bytes).
+    Wire format: i32 prefix + i64 nDelCharUID, like 2006
+    (live: ffffff7f 0200000000000000 deletes character 2).
     """
     char_uid: int = 0
 
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteCharacterReq':
-        if len(data) >= 8:
-            return cls(char_uid=struct.unpack_from('<q', data, 0)[0])
+        if len(data) >= 12:
+            return cls(char_uid=struct.unpack_from('<q', data, 4)[0])
         return cls()
 
 @dataclass

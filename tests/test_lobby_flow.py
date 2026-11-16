@@ -26,7 +26,7 @@ class LobbyFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<I', ack2007)[0], 0)
 
             # Character deletion
-            client.send_event(2014, struct.pack('<q', char_id))
+            client.send_event(2014, struct.pack('<iq', 0x7fffffff, char_id))
             _, ack2015 = await client.expect_event(2015)
             self.assertEqual(struct.unpack_from('<iqi', ack2015), (0, char_id, 0))
 
