@@ -1,5 +1,14 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~19:30 (Milestone P1: Transport & Serialization Hardening, Roadmap Update)
+
+1. Completed P1 Objectives:
+   - Dedicated test suite `tests/test_transport.py` (11 tests) verifying ProudNet signed scalar boundaries (1, 2, 4, 8 bytes), invalid scalar widths, regression fixture for client first frame (`13 57 01 05 30 0F 00 00 40`), fragmented TCP delivery, coalesced TCP frames, and frame limits.
+   - Implemented `JSerBufferReader` in `darkblood.core.serialization.jser` with bounds checking for all primitive integers, floats, UTF-16LE wide strings, and vectors.
+   - Handled zlib compressed event payload unpacking with 4-byte uncompressed size header.
+2. Updated `ROADMAP.md` checking off verified progress in P0, P1, P2, P3, P4, and P5.
+3. Test suite expanded to 47 tests across 11 test categories, running in under 1.0 second.
+
 ## Update — 2026-11-16 ~19:15 (Guilds, Megaphone, Repairs, Upgrades, Bag Renaming, Contracts & Memos)
 
 Decompiled client handlers/senders and added full support:

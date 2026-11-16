@@ -1,5 +1,18 @@
 # Research status and handoff
 
+## Milestone P1: Reproducible Transport & Serialization Hardening — 2026-11-16 ~19:30
+
+* Transport & Serialization Test Suite (`tests/test_transport.py`, 11 comprehensive tests):
+  - ProudNet signed scalar boundaries across widths 1, 2, 4, 8 bytes and overflow checks beyond 64-bit signed ranges.
+  - Verification of invalid scalar width handling (e.g. widths 0, 3, 5, 255) raising `ProtocolError`.
+  - Regression fixture for the exact observed first client frame `13 57 01 05 30 0F 00 00 40` (type 0x30, parameter `0x4000000F`).
+  - Fragmented TCP frames (streaming 1 byte at a time through `pop_frame`) and coalesced TCP frames (multiple ProudNet frames in a single chunk).
+  - JSerBuffer inverted terminal bit varuints (bit 7 set: 0 -> `\x80`, 128 -> `\x00\x81`), truncation bounds, and length limit enforcement.
+  - Implemented `JSerBufferReader` class in `darkblood.core.serialization.jser` supporting bounds-checked reads for all primitive types, UTF-16LE wide strings, UTF-8 strings, and dynamic vector parsing.
+  - Hardened `parse_event` and `event` for zlib compression with 4-byte uncompressed size prefix matching client behavior.
+* Updated `ROADMAP.md` milestone progress across P0, P1, P2, P3, P4, and P5.
+* 47/47 unit and flow tests pass cleanly across all 11 test modules.
+
 ## Guilds, Megaphone, Repairs, Upgrades, Bag Renaming, Contracts & Memos — 2026-11-16 ~19:15
 
 * Decompiled and implemented wire schemas, domain handlers, and tests for 13 additional opcodes:
