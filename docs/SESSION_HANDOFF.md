@@ -1,5 +1,24 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Character select, deletion, server list, cash — saita machine, 2026-11-16 ~23:20 (static + headless; live retest pending)
+
+- In-game Menu → Select Character: `OnBtn_SelectChar` `0x00564490` opens `MB_Square_To_SelChar`; its OnOK runs `SquareToSelChar` `0x006FB360`,
+  which sends 5037 (`0x007ADA30`), waits for 5038, then sends 2008 (`0x00788DA0`) and waits for 2009. The server had no 5037 handler,
+  so the client timed out and closed the connection (RMI 0xFA06, then TCP close 2 s later), and the reconnect hook sent it to the server list.
+  5038 = u32 result (handler `0x007895C0`). Now answered.
+- Character select → server list sends 5032 and waits for 5033 (handler `0x00757960`, u32 result). Now answered.
+- Delete character: 2014/2246 bodies are `ffffff7f` + i64 uid (like 2006). The decoder read the uid at offset 0, so every delete failed with
+  "unavailable character". Fixing that exposed hard deletion; both characters were deleted live and recovered from SQLite free pages
+  (backup of the damaged file kept in the session scratchpad only). Deletion is now pending: `DeleteSelectedCharacter(true)` `0x006F1DD0` sends 2014;
+  2015 returns the completion time; `0x006F02E0` stores the flag/time at entry +0x5D/+0x5E. Cancel Delete sends 2246 (`0x006F1FE0` -> `0x00796BA0`);
+  2247 = i32 result + i64 uid (`0x0075A8A0`). Server delay: 24 h, expired records purged on 2008. The unit of +0x5E (Unix time?) is a hypothesis.
+  Direct delete (2244, `0x006F20D0`) requires an account flag and is not implemented.
+- Server list "Character" column: the 2403 entry u16 after the name is the character count. Row filler `0x0062E760` prints it, or `UI_191` "None" below 1.
+  The channel list header "Item" is the client's own text (`UI_504` over the Category column), not server data.
+- Cash: 2370 = u32 result + u64 cash + u32 mileage (`0x004CFDF0`, CP949 log labels 캐시 / 마일리지). Cash is stored per account in `meta`
+  (`cash:<account>`) and set from the dashboard (Characters tab, `/api/account/cash`). Buying (2371/2372, Steam 2712-2714) is not implemented.
+- Open: Exit → black screen was reported once; the stuck instance had gone through the reconnect hook. Not reproduced or analysed yet.
+
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)
 
 Report: the new Warrior looked wrong, and the tutorial sword did not show. `ensure_inventory` stored the default items in slots 0..7 in list order.
