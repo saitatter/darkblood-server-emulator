@@ -182,11 +182,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         game_probe = probe_socket('127.0.0.1', 9400)
         relay_probe = probe_socket('127.0.0.1', 9401)
         
-        # Count total characters across accounts
-        all_chars = []
-        for acc, chars in self.store.data.get('accounts', {}).items():
-            for c in chars:
-                all_chars.append(c)
+        all_chars = self.store.all_characters()
+        accounts = set(acc for acc, _ in all_chars)
 
         status = {
             'servers': {
@@ -204,11 +201,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 }
             },
             'database': {
-                'type': 'JSON Store & SQLite',
+                'type': 'SQLite Primary Backend',
                 'path': str(self.store.path),
-                'total_accounts': len(self.store.data.get('accounts', {})),
+                'total_accounts': len(accounts),
                 'total_characters': len(all_chars),
-                'next_id': self.store.data.get('next_id', 1)
+                'next_id': getattr(self.store, 'next_id', 1)
             },
             'opcodes': {
                 'total_discovered': len(self.opcodes_cache),
@@ -224,64 +221,60 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def serve_api_characters(self):
         result = []
-        for acc, chars in self.store.data.get('accounts', {}).items():
-            for c in chars:
-                result.append({
-                    'id': c.get('id'),
-                    'account': acc,
-                    'name': c.get('name', 'Unknown'),
-                    'class_id': c.get('char_class', 1),
-                    'class_name': CLASS_NAMES.get(c.get('char_class', 1), f"Class {c.get('char_class')}"),
-                    'level': c.get('level', 1),
-                    'tutorial_cleared': c.get('tutorial_cleared', False),
-                    'item_count': len(c.get('items', [])),
-                    'quests_active': len(c.get('quests_active', {})),
-                    'quests_done': len(c.get('quests_done', []))
-                })
+        for acc, c in self.store.all_characters():
+            result.append({
+                'id': c.get('id'),
+                'account': acc,
+                'name': c.get('name', 'Unknown'),
+                'class_id': c.get('char_class', 1),
+                'class_name': CLASS_NAMES.get(c.get('char_class', 1), f"Class {c.get('char_class')}"),
+                'level': c.get('level', 1),
+                'tutorial_cleared': c.get('tutorial_cleared', False),
+                'item_count': len(c.get('items', [])),
+                'quests_active': len(c.get('quests_active', {})),
+                'quests_done': len(c.get('quests_done', []))
+            })
         self.send_json(result)
 
     def serve_api_character_detail(self, char_id: int):
-        for acc, chars in self.store.data.get('accounts', {}).items():
-            for c in chars:
-                if c.get('id') == char_id:
-                    detail = dict(c)
-                    detail['account'] = acc
-                    detail['class_name'] = CLASS_NAMES.get(c.get('char_class', 1), f"Class {c.get('char_class')}")
-                    self.send_json(detail)
-                    return
+        for acc, c in self.store.all_characters():
+            if c.get('id') == char_id:
+                detail = dict(c)
+                detail['account'] = acc
+                detail['class_name'] = CLASS_NAMES.get(c.get('char_class', 1), f"Class {c.get('char_class')}")
+                self.send_json(detail)
+                return
         self.send_json({'error': 'Character not found'}, code=404)
 
     def handle_character_modify(self, char_id: int, updates: dict):
-        with self.store.lock:
-            found = False
-            for acc, chars in self.store.data.get('accounts', {}).items():
-                for c in chars:
-                    if c.get('id') == char_id:
-                        if 'level' in updates:
-                            c['level'] = max(1, min(60, int(updates['level'])))
-                        if 'name' in updates and updates['name'].strip():
-                            c['name'] = updates['name'].strip()
-                        if 'tutorial_cleared' in updates:
-                            c['tutorial_cleared'] = bool(updates['tutorial_cleared'])
-                        if 'gold' in updates:
-                            c['gold'] = max(0, int(updates['gold']))
-                        found = True
-                        break
-            if found:
-                self.store.save()
-                self.send_json({'success': True, 'char_id': char_id})
-            else:
-                self.send_json({'error': 'Character not found'}, code=404)
+        found = False
+        for acc, c in self.store.all_characters():
+            if c.get('id') == char_id:
+                if 'level' in updates:
+                    c['level'] = max(1, min(60, int(updates['level'])))
+                if 'name' in updates and updates['name'].strip():
+                    c['name'] = updates['name'].strip()
+                if 'tutorial_cleared' in updates:
+                    c['tutorial_cleared'] = bool(updates['tutorial_cleared'])
+                if 'gold' in updates:
+                    c['gold'] = max(0, int(updates['gold']))
+                if hasattr(self.store, 'update'):
+                    self.store.update(acc, c)
+                else:
+                    self.store.save()
+                found = True
+                break
+        if found:
+            self.send_json({'success': True, 'char_id': char_id})
+        else:
+            self.send_json({'error': 'Character not found'}, code=404)
 
     def handle_character_delete(self, char_id: int):
-        with self.store.lock:
-            for acc, chars in self.store.data.get('accounts', {}).items():
-                for i, c in enumerate(chars):
-                    if c.get('id') == char_id:
-                        del chars[i]
-                        self.store.save()
-                        self.send_json({'success': True, 'deleted_id': char_id})
-                        return
+        for acc, c in self.store.all_characters():
+            if c.get('id') == char_id:
+                self.store.delete(acc, char_id)
+                self.send_json({'success': True, 'deleted_id': char_id})
+                return
         self.send_json({'error': 'Character not found'}, code=404)
 
     def serve_api_opcodes(self, query_params: dict):

@@ -87,6 +87,17 @@ class JsonCharacterStore(ICharacterStore):
             self.save()
             return char
 
+    @property
+    def next_id(self) -> int:
+        return self.data.get('next_id', 1)
+
+    def all_characters(self) -> list:
+        result = []
+        for acc, chars in self.data.get('accounts', {}).items():
+            for c in chars:
+                result.append((acc, c))
+        return result
+
 
 class SqliteCharacterStore(ICharacterStore):
     """SQLite relational backend for characters with ACID durability and JSON migration."""
@@ -98,6 +109,34 @@ class SqliteCharacterStore(ICharacterStore):
         self._cache = {}  # (account, char_id) -> dict
         self._init_db()
         self._auto_import_if_empty()
+
+    @property
+    def path(self):
+        return self.db_path
+
+    @property
+    def next_id(self) -> int:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT value FROM meta WHERE key = "next_id"')
+            row = cur.fetchone()
+            return int(row['value']) if row else 1
+
+    def all_characters(self) -> list:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT account, id, data_json FROM characters ORDER BY id')
+            rows = cur.fetchall()
+            result = []
+            for r in rows:
+                key = (r['account'], r['id'])
+                if key in self._cache:
+                    result.append((r['account'], self._cache[key]))
+                else:
+                    char_dict = json.loads(r['data_json'])
+                    self._cache[key] = char_dict
+                    result.append((r['account'], char_dict))
+            return result
 
     def _auto_import_if_empty(self):
         """Auto-migrate legacy characters.json if sqlite database is brand new."""
