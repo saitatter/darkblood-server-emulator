@@ -260,8 +260,7 @@ class SelectCharacterAck:
     """Opcode 2007: eEGS_SELECT_CHAR_ACK response.
 
     Handler 0x007AA4B0:
-      u32 result (0 = success)
-      Untagged struct 0x00A40760 (Player World Record)
+      Untagged struct 0x00A40760, starting with u32 result (0 = success)
         Contains nested Character Details (0x00A52630) and 59 container/scalar fields
       Tag 0x10 + Vector 0x004B9210
     """
@@ -270,7 +269,8 @@ class SelectCharacterAck:
 
     def encode(self) -> bytes:
         p = bytearray(struct.pack('<I', self.result))
-        p += struct.pack('<I', 0)  # field 0
+        # Handler calls 0xA1EA20(1): peek result, then reset the body cursor.
+        # Reader 0xA40760 rereads that same u32; do not emit a second copy.
         p += varuint(0)  # 0xa3ed30 max 3
         p += varuint(0)  # 0xa1e840 max 10
 

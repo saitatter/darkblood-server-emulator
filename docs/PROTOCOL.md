@@ -216,3 +216,23 @@ test. The observed client run exited with access violation C0000005 at
 8EC5997B after requesting 2219; this does not establish a cause or a stable
 code address. The mapped crash image and hook log remain local. World
 entry remains unverified on this machine.
+
+### Canonical 2007 result prefix (local pass)
+
+Unlike handlers that call `0x00A1EA20(0)`, handler 2007 calls it with 1,
+which resets the shared body cursor to zero after peeking the result.
+Reader `0x00A40760` then consumes the same leading u32. Do not emit a
+second result/field-zero word. The canonical success body starts with
+`00 00 00 00 80 80` (result and two empty fixed-array counts). The
+previous duplicate word was accidentally tolerated as an overlong zero
+J-varuint. Local Tester ACK length is now 636 bytes; other names vary.
+The updated body was sent in a live selection exchange, followed by
+request 2219 and reply 2220. World entry is still not verified.
+
+A later diagnostic reached `JUserClient::Shutdown` (`0x007869A0`) from
+return site `0x007577EF`, in wrapper `0x00757750`, after mailbox handling.
+The SteamUser slot-16 stub was called with argument 0 and no new exception
+was logged. This is an application shutdown path, not proof that mailbox
+parsing failed. The next investigation should identify the UI/error event
+that invokes `0x00757750` and capture the shutdown message. Static outputs
+are local `research/event-result.c` and `research/dispatch-failure.c`.
