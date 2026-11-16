@@ -179,6 +179,12 @@ class HeadlessFlowTest(unittest.TestCase):
             _, ack5002 = await client.expect_event(5002)
             self.assertEqual(struct.unpack_from('<Iq', ack5002), (0, 1))
             self.assertEqual(ack5002[-6:], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
+            # 5014 success reader 0x7880A0: u16, u32, untagged J-wstring,
+            # three maps, then a mandatory vector (0x78836B).
+            client.send_event(5013)
+            _, ack5014 = await client.expect_event(5014)
+            self.assertEqual(ack5014, bytes.fromhex(
+                '00000000 0000 00000000 80 1780 1780 1780 1080'))
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
             _, ack2345 = await client.expect_event(2345)
             self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, models.jhash('Act1') << 32, 1))

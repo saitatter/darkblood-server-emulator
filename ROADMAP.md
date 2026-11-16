@@ -26,7 +26,9 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Correct JPK decryption (header flag `0x226`, whole blob); byte-identical repacker; private client-data workspace.
 - [ ] Load one edited JPK entry in the client (crc field semantics unknown).
 - [x] Live: movement, map change (5030/5031), NPC store window (2066), quest accept/complete (2074/2077).
-- [ ] Dungeon entry: 2010/2011 room list, 5001/5002 create room (singleplay), join room, P2P, monsters.
+- [x] Headless: 2010/2011 room list and 5001/5002 create room (singleplay).
+- [x] Correct 5014 start-game string/container framing from the client reader (static + headless).
+- [ ] Live dungeon entry: create/start room, join room, P2P, monsters; recover required map identifiers.
 - [ ] Persist quests, rewards and inventory; fill stores from storelist.lua.
 - [ ] Verify NPC interaction and persistence across sessions before claiming gameplay.
 

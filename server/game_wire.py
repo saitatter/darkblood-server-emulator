@@ -509,10 +509,13 @@ class GameSession:
                                         note='enter maptool ack')
 
     async def on_5013(self, correlation, body):
-        # eERC_START_GAME_REQ -> eERC_START_GAME_ACK (5014), handler 0x7880A0/0x788199:
-        # u32 result (0), u16 unk1, u32 unk2, tag 0x0B (empty string),
-        # 3x tag 0x17 (empty maps), tag 0 (end of tags) -> triggers scene transition 9 (world)
-        ack = struct.pack('<IHI', 0, 0, 0) + b'\x0b\x00\x17\x00\x17\x00\x17\x00\x00'
+        # eERC_START_GAME_REQ -> eERC_START_GAME_ACK (5014), handler 0x7880A0.
+        # Success reader: u16, u32, J-wstring (0xB35AB0), three 0x17 maps,
+        # then a 0x10 vector (0x78836B -> 0x4B94C0). Scalar/string type
+        # codes are not wire tags; empty lengths use the terminal byte 0x80.
+        # Field meanings and nonempty entries still need recovery.
+        ack = (struct.pack('<IHI', 0, 0, 0) + wide_string('')
+               + (b'\x17' + varuint(0)) * 3 + b'\x10' + varuint(0))
         await self.transport.send_event(event(5014, ack, correlation),
                                         note='start game ack')
 

@@ -1,5 +1,28 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 (Cristian resume, dungeon start serializer)
+
+Pulled/rebased `origin main`: already at `cbcc82e`. Upstream already implements
+2010/2011 room lists, 5001/5002 room creation, store dict loading, persistent
+quest completion/history, and 2344/2345 waypoints. Do not reimplement these.
+The older endpoint blocker below is historical and resolved.
+
+Rebuilt and deployed the current Steam shim on this machine (the previous DLL
+was from 03:01 and lacked newer fixes). Client executable SHA-256 still matches
+the documented `a82ae3...c931`. No game process was running during deployment.
+
+Fixed the old 5014 START_GAME_ACK serializer after focused Ghidra decompilation
+and x86 assembly confirmation: untagged J-wstring, three maps, mandatory final
+vector; all empty lengths terminate with 0x80. See PROTOCOL.md's dungeon start
+correction. Full headless suite passes (13 tests). No live dungeon acceptance
+claimed; field defaults remain provisional. Local evidence:
+`research/dungeon-start.c`, `research/dungeon-start.log`, `research/session.bin`.
+
+Exclusive game UI control was requested in this conversation; no answer yet.
+No client launched or UI input sent. Next: live-test create room and start game,
+then recover actual dungeon/map identifiers and the next observed requests.
+Do not treat corrected framing as verified dungeon entry.
+
 ## Update — 2026-11-16 ~07:00 (sixth session, town gameplay live)
 
 Live-verified with "Thief1": town entry, movement, map changes (5030 → 5031

@@ -1,5 +1,15 @@
 # Research status and handoff
 
+## Latest resume verification — Cristian, 2026-11-16
+
+`origin main` was already current at `cbcc82e`; upstream includes room list and
+creation responses, store dict loading, quest persistence/history and waypoints.
+Rebuilt/deployed the latest shim locally and verified the client executable hash.
+All 13 headless tests pass, including the corrected 5014 start-game response.
+Static and assembly evidence confirms its empty string has no type tag and its
+last container is a mandatory vector. Live dungeon entry remains unverified;
+see PROTOCOL.md's dungeon start correction and SESSION_HANDOFF.md.
+
 Updated **November 16, 2026** (second session). Offline gameplay is not available yet; the client now reaches character creation and selection against the local server.
 
 ## Tutorial skip and client data (saitatter machine, 2026-11-16, sixth session)

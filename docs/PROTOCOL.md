@@ -136,7 +136,7 @@ Opcode names come from the client's table (`server/data/opcodes.tsv`, `tools/ext
 | Ok on character | 2006 `eEGS_SELECT_CHAR_REQ` (i32, u64 char id) | 2007 `eEGS_SELECT_CHAR_ACK` | `0x007AA4B0`: u32 result, struct `0x00A40760` (651 bytes, full stats/visuals/skills), `0x10` vector `0x004B9210` | Verified |
 | World layer | 5030 `eERC_JOIN_LAYER_REQ` (i32, u64 layer id) | 5031 `eERC_JOIN_LAYER_ACK` | `0x00787A70`: u32 result, u64 layer_id, u64 instance_id, u8 tag (0 = absent) | Verified |
 | Enter map | 2016 `eEGS_ENTER_MAPTOOL_REQ` | 2017 `eEGS_ENTER_MAPTOOL_ACK` | `0x00757D20`: u32 result (0 triggers Scene 5) | Verified |
-| Start game | 5013 `eERC_START_GAME_REQ` | 5014 `eERC_START_GAME_ACK` | `0x007880A0`/`0x00788199`: u32 result, u16, u32, wstr, 3 × `0x17` map, tag 0 (triggers Scene 9: town) | Verified |
+| Start game | 5013 `eERC_START_GAME_REQ` | 5014 `eERC_START_GAME_ACK` | `0x007880A0`: u32 result, u16, u32, untagged J-wstring, 3 × `0x17` map, `0x10` vector (`0x004B94C0`) | Static + headless; live dungeon acceptance pending |
 
 Create request (observed): `i32 0x7FFFFFFF, u8 class, wstr name, u32 face, u32 hair, 5 × u8 body sliders (head, arms, chest, torso, legs), u8`.
 
@@ -172,6 +172,27 @@ client did **not** send 5030/2016/5013; after 2007 it sent 2219, 2131
 `eEGS_FRIEND_LIST_REQUEST_REQ`, 2569 (unnamed) and periodic opcode 0. The relay
 connection completed the handshake but carried no game events yet. Movement,
 NPC interaction beyond the dialogue, and persistence are not verified.
+
+### Dungeon start correction (Cristian, 2026-11-16; static + headless)
+
+In 5014 handler `0x007880A0`, calls at `0x0078822A`, `0x00788231`,
+`0x00788238` read u16, u32 and J-wstring. There is no string type tag on the
+wire. Three maps follow. At `0x0078836B` the handler checks tag `0x10`, then
+calls vector reader `0x004B94C0` at `0x0078837E`. The former serializer wrote
+`0B 00` for the string, `17 00` for empty maps, and a trailing zero; these
+are invalid empty-container encodings and omit the required vector tag.
+
+Correct default success body (19 bytes):
+`00000000 0000 00000000 80 1780 1780 1780 1080`.
+This fixes framing only. Zero scalar fields, the empty name and collections
+are provisional; required dungeon identifiers and nonempty state still need
+recovery. The call to `0x006DBFD0(9)` accesses an app-page object and does not
+prove a transition to town. Do not infer gameplay from the ACK alone.
+
+Evidence: matching executable hash in STATUS.md; local mapped image
+`research/session.bin`, focused output `research/dungeon-start.c`. Assembly
+confirms the reader calls independently of inferred decompiler signatures.
+Headless flow checks the complete default body; live acceptance is pending.
 
 ## 6. Instrumentation and continuation addresses
 
