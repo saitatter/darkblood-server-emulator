@@ -488,6 +488,79 @@ class WireMessagesTest(unittest.TestCase):
         not_gd = messages.GoldGoblinDisappearNot(goblin_id=1).encode()
         self.assertEqual(struct.unpack_from('<i', not_gd)[0], 1)
 
+    def test_achieve_and_title_messages(self):
+        req_title = messages.TitleChangeReq.decode(struct.pack('<i', 101))
+        self.assertEqual(req_title.title_id, 101)
+        ack_title = messages.TitleChangeAck(result=0, title_id=101).encode()
+        self.assertEqual(struct.unpack_from('<ii', ack_title), (0, 101))
+
+        req_ach = messages.AchieveGetListReq.decode(b'')
+        self.assertIsInstance(req_ach, messages.AchieveGetListReq)
+        ack_ach = messages.AchieveGetListAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_ach[:4])[0], 0)
+        self.assertEqual(ack_ach[4:6], b'\x1e\x17')
+
+        not_change = messages.AchieveChangeNot().encode()
+        self.assertEqual(not_change, b'\x17\x80\x17\x80\x17\x80')
+
+        not_complete = messages.AchieveCompleteNot().encode()
+        self.assertEqual(not_complete, b'\x10\x80\x10\x80')
+
+    def test_avatar_zam_and_taming_messages(self):
+        req_zam = messages.AvatarZamInsertReq.decode(struct.pack('<qq', 10, 20))
+        self.assertEqual((req_zam.avatar_item_uid, req_zam.zam_item_uid), (10, 20))
+        ack_zam = messages.AvatarZamInsertAck(result=0, updated_items=[]).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_zam[:4])[0], 0)
+
+        req_ezam = messages.AvatarZamEraseReq.decode(struct.pack('<q', 10))
+        self.assertEqual(req_ezam.avatar_item_uid, 10)
+        ack_ezam = messages.AvatarZamEraseAck(result=0, updated_items=[]).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_ezam[:4])[0], 0)
+
+        req_tdel = messages.TameingMonsterDeleteReq.decode(struct.pack('<ii', 5, 1))
+        self.assertEqual((req_tdel.monster_id, req_tdel.slot), (5, 1))
+        ack_tdel = messages.TamingMonsterDeleteAck(result=0, deleted_slot=1).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_tdel[:4])[0], 0)
+
+    def test_promotion_skill_reset_and_rebirth_coins(self):
+        not_init = messages.InitSkillNot(result=0, sp=50).encode()
+        self.assertEqual(struct.unpack_from('<ii', not_init[:8]), (0, 50))
+
+        not_promo = messages.PromotionNot(result=0, new_class=2, sp=20).encode()
+        self.assertEqual(struct.unpack_from('<iBi', not_promo[:9]), (0, 2, 20))
+
+        not_coin = messages.RebirthCoinChangeNot(result=0, coins=15).encode()
+        self.assertEqual(struct.unpack_from('<ih', not_coin), (0, 15))
+
+    def test_arena_sp_and_second_pass_messages(self):
+        req_asp = messages.UseArenaSpItemReq.decode(struct.pack('<q', 77))
+        self.assertEqual(req_asp.item_uid, 77)
+        ack_asp = messages.UseArenaSpItemAck(result=0, consumed_items=[], arena_sp=150).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_asp[:4])[0], 0)
+
+        req_aback = messages.ArenaBackToSquareReq.decode(b'')
+        self.assertIsInstance(req_aback, messages.ArenaBackToSquareReq)
+        ack_aback = messages.ArenaBackToSquareAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_aback), (0,))
+
+        ack_sp1 = messages.SecondPassCreateAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_sp1), (0,))
+        ack_sp2 = messages.SecondPassModifyAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_sp2), (0,))
+        ack_sp3 = messages.SecondPassAuthAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_sp3), (0,))
+
+    def test_remote_inspection_messages(self):
+        req_c = messages.RequestCharInfoReq.decode(struct.pack('<q', 123))
+        self.assertEqual(req_c.char_uid, 123)
+        ack_c = messages.RequestCharInfoAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_c[:4])[0], 0)
+
+        req_i = messages.RequestItemInfoReq.decode(struct.pack('<q', 456))
+        self.assertEqual(req_i.item_uid, 456)
+        ack_i = messages.RequestItemInfoAck(result=0, item_uid=456).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_i[:12]), (0, 456))
+
 
 
 

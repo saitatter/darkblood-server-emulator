@@ -497,13 +497,16 @@ class TamingMonsterDeleteAck:
     """Opcode 2351: eEGS_TAMEING_MONSTER_DELETE_ACK response.
 
     Binary schema: Reader 0x00771BB0.
-    u32 result (0 = success) + tag 0x10 vector.
+    u32 result (0 = success) + tag 0x10 vector + i32 deleted_slot.
     """
     result: int = 0
     monsters: list = field(default_factory=list)
+    deleted_slot: int = 0
 
     def encode(self) -> bytes:
-        return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.monsters))
+        return (struct.pack('<I', self.result)
+                + b'\x10' + varuint(len(self.monsters))
+                + struct.pack('<i', self.deleted_slot))
 
 
 @dataclass
@@ -3013,6 +3016,368 @@ class GoldGoblinDisappearNot:
 
     def encode(self) -> bytes:
         return struct.pack('<i', self.goblin_id)
+
+
+# =========================================================================
+# Titles & Achievements (2327-2336)
+# =========================================================================
+
+@dataclass
+class TitleChangeReq:
+    """Opcode 2335: eEGS_TITLE_CHANGE_REQ (0x00799753)."""
+    title_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'TitleChangeReq':
+        if len(data) >= 4:
+            return cls(title_id=struct.unpack_from('<i', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class TitleChangeAck:
+    """Opcode 2336: eEGS_TITLE_CHANGE_ACK (0x007751C0)."""
+    result: int = 0
+    title_id: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<ii', self.result, self.title_id)
+
+
+@dataclass
+class AchieveGetListReq:
+    """Opcode 2327: eEGS_ACHIEVE_GET_LIST_REQ."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'AchieveGetListReq':
+        return cls()
+
+
+@dataclass
+class AchieveGetListAck:
+    """Opcode 2328: eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        # result (u32) + Tag 0x1E + Tag 0x17 (map) + Tag 0x17 (map) + Tag 0x0A (bool) + Tag 0x10 (vector)
+        return (struct.pack('<i', self.result)
+                + b'\x1e\x17\x80\x17\x80\x0a\x00\x10\x80')
+
+
+@dataclass
+class AchieveChangeNot:
+    """Opcode 2329: eEGS_ACHIEVE_CHANGE_NOT (0x0076C720)."""
+    def encode(self) -> bytes:
+        # Tag 0x17 (map) + Tag 0x17 (map) + Tag 0x17 (map)
+        return b'\x17\x80\x17\x80\x17\x80'
+
+
+@dataclass
+class AchieveCompleteNot:
+    """Opcode 2330: eEGS_ACHIEVE_COMPLETE_NOT (0x0079D240)."""
+    def encode(self) -> bytes:
+        # Tag 0x10 (vector) + Tag 0x10 (vector)
+        return b'\x10\x80\x10\x80'
+
+
+# =========================================================================
+# Avatar Gem / Zam Socketing (2362-2365)
+# =========================================================================
+
+@dataclass
+class AvatarZamInsertReq:
+    """Opcode 2362: eEGS_AVATAR_ZAM_INSERT_REQ (0x007A46CB)."""
+    avatar_item_uid: int = 0
+    zam_item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AvatarZamInsertReq':
+        if len(data) >= 16:
+            return cls(*struct.unpack_from('<qq', data, 0))
+        return cls()
+
+
+@dataclass
+class AvatarZamInsertAck:
+    """Opcode 2363: eEGS_AVATAR_ZAM_INSERT_ACK (0x00782D00)."""
+    result: int = 0
+    updated_items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.updated_items))
+                + b''.join(i.encode() for i in self.updated_items))
+
+
+@dataclass
+class AvatarZamEraseReq:
+    """Opcode 2364: eEGS_AVATAR_ZAM_ERASE_REQ (0x007A481B)."""
+    avatar_item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AvatarZamEraseReq':
+        if len(data) >= 8:
+            return cls(avatar_item_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class AvatarZamEraseAck:
+    """Opcode 2365: eEGS_AVATAR_ZAM_ERASE_ACK (0x00782F40)."""
+    result: int = 0
+    updated_items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.updated_items))
+                + b''.join(i.encode() for i in self.updated_items))
+
+
+# =========================================================================
+# Monster Taming (2348-2351)
+# =========================================================================
+
+@dataclass
+class TameingMonsterInsertReq:
+    """Opcode 2348: eEGS_TAMEING_MONSTER_INSERT_REQ (0x00799BCC)."""
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'TameingMonsterInsertReq':
+        return cls(raw_payload=data)
+
+
+TameingMonsterInsertAck = TamingMonsterInsertAck
+
+
+@dataclass
+class TameingMonsterDeleteReq:
+    """Opcode 2350: eEGS_TAMEING_MONSTER_DELETE_REQ (0x00799D5A)."""
+    monster_id: int = 0
+    slot: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'TameingMonsterDeleteReq':
+        if len(data) >= 8:
+            return cls(*struct.unpack_from('<ii', data, 0))
+        return cls()
+
+
+TameingMonsterDeleteAck = TamingMonsterDeleteAck
+
+
+# =========================================================================
+# Skill Reset, Promotion & Rebirth Coins (2280, 2283, 2286)
+# =========================================================================
+
+@dataclass
+class InitSkillNot:
+    """Opcode 2280: eEGS_INIT_SKILL_NOT (0x00797740)."""
+    result: int = 0
+    sp: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<ii', self.result, self.sp) + b'\x17\x80'
+
+
+@dataclass
+class PromotionNot:
+    """Opcode 2283: eEGS_PROMOTION_NOT (0x00797F00)."""
+    result: int = 0
+    new_class: int = 1
+    sp: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<iBi', self.result, self.new_class, self.sp) + b'\x17\x80'
+
+
+@dataclass
+class RebirthCoinChangeNot:
+    """Opcode 2286: eEGS_REBIRTH_COIN_CHANGE_NOT (0x007983B0)."""
+    result: int = 0
+    coins: int = 10
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<ih', self.result, self.coins)
+
+
+# =========================================================================
+# Arena SP Item & Arena Square (2709-2710, 5165-5166)
+# =========================================================================
+
+@dataclass
+class UseArenaSpItemReq:
+    """Opcode 2709: eEGS_USE_ARENA_SP_ITEM_REQ."""
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UseArenaSpItemReq':
+        if len(data) >= 8:
+            return cls(item_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class UseArenaSpItemAck:
+    """Opcode 2710: eEGS_USE_ARENA_SP_ITEM_ACK (0x007A7CA0)."""
+    result: int = 0
+    consumed_items: list = field(default_factory=list)
+    arena_sp: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.consumed_items))
+                + b''.join(i.encode() for i in self.consumed_items)
+                + struct.pack('<i', self.arena_sp))
+
+
+@dataclass
+class ArenaBackToSquareReq:
+    """Opcode 5165: eERC_ARENA_BACK_TO_SQUARE_REQ."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'ArenaBackToSquareReq':
+        return cls()
+
+
+@dataclass
+class ArenaBackToSquareAck:
+    """Opcode 5166: eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+# =========================================================================
+# Second Password / PIN (5256-5261)
+# =========================================================================
+
+@dataclass
+class SecondPassCreateReq:
+    """Opcode 5256: eERC_SECOND_PASS_CREATE_REQ."""
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SecondPassCreateReq':
+        return cls(raw_payload=data)
+
+
+@dataclass
+class SecondPassCreateAck:
+    """Opcode 5257: eERC_SECOND_PASS_CREATE_ACK (0x0075B020)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class SecondPassModifyReq:
+    """Opcode 5258: eERC_SECOND_PASS_MODIFY_REQ."""
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SecondPassModifyReq':
+        return cls(raw_payload=data)
+
+
+@dataclass
+class SecondPassModifyAck:
+    """Opcode 5259: eERC_SECOND_PASS_MODIFY_ACK (0x0075B050)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class SecondPassAuthReq:
+    """Opcode 5260: eERC_SECOND_PASS_AUTH_REQ."""
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SecondPassAuthReq':
+        return cls(raw_payload=data)
+
+
+@dataclass
+class SecondPassAuthAck:
+    """Opcode 5261: eERC_SECOND_PASS_AUTH_ACK (0x0075B080)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+# =========================================================================
+# Remote Inspection (6011-6012, 6028-6029)
+# =========================================================================
+
+@dataclass
+class RequestCharInfoReq:
+    """Opcode 6011: eERT_REQUEST_CHAR_INFO_REQ."""
+    char_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RequestCharInfoReq':
+        if len(data) >= 8:
+            return cls(char_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class RequestCharInfoAck:
+    """Opcode 6012: eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        # result (u32) + bool(0) + Tag 0x1E summary struct + Tag 0x10 equipment + Tag 0x10 avatar
+        summary_dummy = b'\x00' * 32
+        return (struct.pack('<i', self.result)
+                + b'\x0a\x00\x1e' + summary_dummy + b'\x10\x80\x10\x80')
+
+
+@dataclass
+class RequestItemInfoReq:
+    """Opcode 6028: eERT_REQUEST_ITEM_INFO_REQ."""
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RequestItemInfoReq':
+        if len(data) >= 8:
+            return cls(item_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class RequestItemInfoAck:
+    """Opcode 6029: eERT_REQUEST_ITEM_INFO_ACK (0x00766C20)."""
+    result: int = 0
+    item_uid: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result) + struct.pack('<q', self.item_uid)
+        item_dummy = b'\x00' * 16
+        return struct.pack('<iq', self.result, self.item_uid) + b'\x1e' + item_dummy
+
 
 
 

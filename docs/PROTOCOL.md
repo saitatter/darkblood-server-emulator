@@ -520,6 +520,42 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `goblin_id: i32` -> `result: i32 (0), goblin_id: i32, tag 0x10 items vector`.
 - `5367 eERC_GOLDGOBLIEN_DISAPPEAR_NOT`:
   `goblin_id: i32`.
+- `2335 eEGS_TITLE_CHANGE_REQ` -> `2336 eEGS_TITLE_CHANGE_ACK` (`0x007751C0`):
+  `title_id: i32` -> `result: i32 (0), title_id: i32`.
+- `2327 eEGS_ACHIEVE_GET_LIST_REQ` -> `2328 eEGS_ACHIEVE_GET_LIST_ACK` (`0x0079D650`):
+  empty -> `result: i32 (0), tag 0x1E, tag 0x17 map, tag 0x17 map, tag 0x0A bool, tag 0x10 vector`.
+- `2329 eEGS_ACHIEVE_CHANGE_NOT` (`0x0076C720`):
+  3x Tag `0x17` map: real-time achievement progress updates.
+- `2330 eEGS_ACHIEVE_COMPLETE_NOT` (`0x0079D240`):
+  2x Tag `0x10` vector: completed achievements and rewards.
+- `2362 eEGS_AVATAR_ZAM_INSERT_REQ` -> `2363 eEGS_AVATAR_ZAM_INSERT_ACK` (`0x00782D00`):
+  `avatar_item_uid: i64, zam_item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
+- `2364 eEGS_AVATAR_ZAM_ERASE_REQ` -> `2365 eEGS_AVATAR_ZAM_ERASE_ACK` (`0x00782F40`):
+  `avatar_item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
+- `2348 eEGS_TAMEING_MONSTER_INSERT_REQ` -> `2349 eEGS_TAMEING_MONSTER_INSERT_ACK` (`0x00771A00`):
+  Tag `0x1E` monster struct -> `result: i32 (0), tag 0x10 vector`.
+- `2350 eEGS_TAMEING_MONSTER_DELETE_REQ` -> `2351 eEGS_TAMEING_MONSTER_DELETE_ACK` (`0x00771BB0`):
+  `monster_id: i32, slot: i32` -> `result: i32 (0), tag 0x10 vector, deleted_slot: i32`.
+- `2280 eEGS_INIT_SKILL_NOT` (`0x00797740`):
+  `result: i32 (0), sp: i32, tag 0x17 skill map`.
+- `2283 eEGS_PROMOTION_NOT` (`0x00797F00`):
+  `result: i32 (0), new_class: u8, sp: i32, tag 0x17 skill map`.
+- `2286 eEGS_REBIRTH_COIN_CHANGE_NOT` (`0x007983B0`):
+  `result: i32 (0), coins: i16`.
+- `2709 eEGS_USE_ARENA_SP_ITEM_REQ` -> `2710 eEGS_USE_ARENA_SP_ITEM_ACK` (`0x007A7CA0`):
+  `item_uid: i64` -> `result: i32 (0), consumed_items: tag 0x10 vector, arena_sp: i32`.
+- `5165 eERC_ARENA_BACK_TO_SQUARE_REQ` -> `5166 eERC_ARENA_BACK_TO_SQUARE_ACK` (`0x00758550`):
+  empty -> `result: i32 (0)`.
+- `5256 eERC_SECOND_PASS_CREATE_REQ` -> `5257 eERC_SECOND_PASS_CREATE_ACK` (`0x0075B020`):
+  raw PIN blob -> `result: i32 (0)`.
+- `5258 eERC_SECOND_PASS_MODIFY_REQ` -> `5259 eERC_SECOND_PASS_MODIFY_ACK` (`0x0075B050`):
+  raw PIN blob -> `result: i32 (0)`.
+- `5260 eERC_SECOND_PASS_AUTH_REQ` -> `5261 eERC_SECOND_PASS_AUTH_ACK` (`0x0075B080`):
+  raw PIN blob -> `result: i32 (0)`.
+- `6011 eERT_REQUEST_CHAR_INFO_REQ` -> `6012 eERT_REQUEST_CHAR_INFO_ACK` (`0x00790FA0`):
+  `char_uid: i64` -> `result: i32 (0), flag: bool, tag 0x1E summary, 2x tag 0x10 item vectors`.
+- `6028 eERT_REQUEST_ITEM_INFO_REQ` -> `6029 eERT_REQUEST_ITEM_INFO_ACK` (`0x00766C20`):
+  `item_uid: i64` -> `result: i32 (0), item_uid: i64, tag 0x1E item struct`.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 

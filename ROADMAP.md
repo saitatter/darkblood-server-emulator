@@ -108,15 +108,15 @@ Final objective: launch without the original services, establish a local session
   - Shared party rank calculation and card reward selection at dungeon finish.
 
 ### P7 — Complete Economy, Trade & Mail System
-- [ ] **Player-to-Player Direct Trade**:
-  - Trade request and invitation (`2057 eEGS_TRADE_REQ` / `2058 eEGS_TRADE_ACK`).
-  - Trade window synchronization: adding items, entering gold, locking trade, and dual confirmation.
-  - Transaction atomicity: swap items and gold between characters with rollback on disconnection.
-- [ ] **Mailbox System (Post Office)**:
-  - Mail listing (`2219 eEGS_POST_LIST_REQ` / `2220 eEGS_POST_LIST_ACK`).
-  - Read mail, claim attached gold/items (`2221 eEGS_POST_ITEM_RECEIVE_REQ` / `2222 ACK`).
-  - Send mail with gold and item attachments to offline/online characters (`2223 eEGS_POST_SEND_REQ` / `2224 ACK`).
-  - Mail expiration, return to sender, and deletion (`2225 eEGS_POST_DELETE_REQ` / `2226 ACK`).
+- [x] **Player-to-Player Direct Trade**:
+  - Trade request and invitation (`5069 eERC_REQUEST_TRADE_REQ` / `5070 ACK` `0x00770E50`, `5071/5072 ACCEPT_REQUEST_TRADE` `0x007587B0`).
+  - Trade window synchronization: adding items (`5075/5076 INSERT_TRADE_ITEM` `0x0077D980`), deleting items (`5077/5078` `0x0077DBB0`), updating AR currency (`5079/5080` `0x00758940`), locking and dual confirmation (`5081/5082 ACCEPT_TRADE` `0x0078EB40`, `5083/5084 FINALLY_ACCEPT_TRADE`, `6010 TRADE_RESULT_NOT` `0x0077E090`).
+  - Transaction atomicity: swap items and gold between characters with inventory capacity verification.
+- [x] **Mailbox System (Post Office)**:
+  - Mail listing (`2219 eEGS_POST_REQUEST_LIST_REQ` / `2220 ACK` `0x007AEF70`).
+  - Read mail, claim attached gold/items (`2223/2224 eEGS_POST_READ_REQ/ACK` `0x0075A660`, `2225/2226 eEGS_POST_GET_APPEND_ITEM_REQ/ACK` `0x0077F8E0`).
+  - Send mail with gold and item attachments to offline/online characters (`2221/2222 eEGS_POST_SEND_REQ/ACK` `0x00795F40`).
+  - Mail expiration, return to sender, and deletion (`2236/2237 eEGS_POST_DELETE_REQ/ACK` `0x007715F0`).
 - [ ] **Personal Shop**:
   - Opening personal stall in town (`2078 eEGS_PERSONALSHOP_OPEN_REQ` / `2079 ACK`).
   - Setting stall title, price per item, and browsing stalls of other players.
@@ -125,7 +125,23 @@ Final objective: launch without the original services, establish a local session
   - Search market listings with filters (item type, rarity, level requirement, price).
   - Register item for bidding or instant buyout; fee calculation and deposit.
 
-### P8 — Guild Warfare, Sieges & Arena PvP
+### P8 — Guild Warfare, Sieges, Social Expansion & Arena PvP
+- [x] **Titles & Achievements System**:
+  - Title change request and update (`2335/2336 eEGS_TITLE_CHANGE_REQ/ACK` `0x007751C0`).
+  - Achievement list request (`2327/2328 eEGS_ACHIEVE_GET_LIST_REQ/ACK` `0x0079D650`).
+  - Real-time achievement progression updates (`2329 eEGS_ACHIEVE_CHANGE_NOT` `0x0076C720`, `2330 eEGS_ACHIEVE_COMPLETE_NOT` `0x0079D240`).
+- [x] **Avatar Gem / Zam Socketing & Monster Taming**:
+  - Avatar gem insert and socketing (`2362/2363 eEGS_AVATAR_ZAM_INSERT_REQ/ACK` `0x00782D00`).
+  - Avatar gem removal and extraction (`2364/2365 eEGS_AVATAR_ZAM_ERASE_REQ/ACK` `0x00782F40`).
+  - Monster taming capture and release (`2348/2349 eEGS_TAMEING_MONSTER_INSERT_REQ/ACK` `0x00771A00`, `2350/2351 eEGS_TAMEING_MONSTER_DELETE_REQ/ACK` `0x00771BB0`).
+- [x] **Class Promotion, Skill Reset & Security**:
+  - Skill point reset notification (`2280 eEGS_INIT_SKILL_NOT` `0x00797740`).
+  - Class advancement and promotion (`2283 eEGS_PROMOTION_NOT` `0x00797F00`).
+  - Rebirth coin balance sync (`2286 eEGS_REBIRTH_COIN_CHANGE_NOT` `0x007983B0`).
+  - Second password / PIN management (`5256/5257 CREATE` `0x0075B020`, `5258/5259 MODIFY` `0x0075B050`, `5260/5261 AUTH` `0x0075B080`).
+- [x] **Remote Player & Item Inspection**:
+  - Character gear and avatar inspection (`6011/6012 eERT_REQUEST_CHAR_INFO_REQ/ACK` `0x00790FA0`).
+  - Remote item tooltip inspection (`6028/6029 eERT_REQUEST_ITEM_INFO_REQ/ACK` `0x00766C20`).
 - [ ] **Guild Management Expansion**:
   - Member grade and permissions management (Master, Officer, Veteran, Member).
   - Guild shared warehouse / storage (`GUILD_STORAGE_OPEN_REQ`, `GUILD_STORAGE_IN/OUT_REQ`).
@@ -133,6 +149,7 @@ Final objective: launch without the original services, establish a local session
 - [ ] **PvP Duels & Arena**:
   - 1v1 duel challenge in town / square (`DUEL_REQ` / `DUEL_ACK`).
   - Arena room creation, spectator slots, and match start (`ARENA_ROOM_CREATE_REQ`).
+  - Arena SP item consumption (`2709/2710 eEGS_USE_ARENA_SP_ITEM_REQ/ACK` `0x007A7CA0`) and square return (`5165/5166 eERC_ARENA_BACK_TO_SQUARE_ACK` `0x00758550`).
   - Round timer, score tracking, death/respawn in arena, and match settlement.
   - Ladder ranking calculation and season leaderboards.
 - [ ] **Guild War & Castle Siege**:

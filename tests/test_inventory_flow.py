@@ -207,6 +207,21 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2339 = await client.expect_event(2339)
             self.assertEqual(struct.unpack_from('<i', ack2339)[0], 0)
 
+            # 37. Avatar zam insert (2362 -> 2363)
+            client.send_event(2362, struct.pack('<qq', 10, 20))
+            _, ack2363 = await client.expect_event(2363)
+            self.assertEqual(struct.unpack_from('<i', ack2363[:4])[0], 0)
+
+            # 38. Avatar zam erase (2364 -> 2365)
+            client.send_event(2364, struct.pack('<q', 10))
+            _, ack2365 = await client.expect_event(2365)
+            self.assertEqual(struct.unpack_from('<i', ack2365[:4])[0], 0)
+
+            # 39. Use arena sp item (2709 -> 2710)
+            client.send_event(2709, struct.pack('<q', 30))
+            _, ack2710 = await client.expect_event(2710)
+            self.assertEqual(struct.unpack_from('<i', ack2710[:4])[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

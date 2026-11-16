@@ -708,6 +708,31 @@ class CommerceHandlers:
         ack = ItemSpiritChangeAck(result=0, spirit_uid=req.spirit_item_uid, items=[]).encode()
         await self.transport.send_event(event(2339, ack, correlation), note=f'item spirit change ack (spirit={req.spirit_item_uid})')
 
+    async def on_2362(self, correlation, body):
+        # eEGS_AVATAR_ZAM_INSERT_REQ -> 2363 eEGS_AVATAR_ZAM_INSERT_ACK (0x00782D00).
+        from darkblood.games.network.messages import AvatarZamInsertAck, AvatarZamInsertReq
+        req = AvatarZamInsertReq.decode(body)
+        self.transport.record('avatar-zam-insert-req', body, avatar_uid=req.avatar_item_uid, zam_uid=req.zam_item_uid)
+        ack = AvatarZamInsertAck(result=0, updated_items=[]).encode()
+        await self.transport.send_event(event(2363, ack, correlation), note=f'avatar zam insert ack (avatar={req.avatar_item_uid})')
+
+    async def on_2364(self, correlation, body):
+        # eEGS_AVATAR_ZAM_ERASE_REQ -> 2365 eEGS_AVATAR_ZAM_ERASE_ACK (0x00782F40).
+        from darkblood.games.network.messages import AvatarZamEraseAck, AvatarZamEraseReq
+        req = AvatarZamEraseReq.decode(body)
+        self.transport.record('avatar-zam-erase-req', body, avatar_uid=req.avatar_item_uid)
+        ack = AvatarZamEraseAck(result=0, updated_items=[]).encode()
+        await self.transport.send_event(event(2365, ack, correlation), note=f'avatar zam erase ack (avatar={req.avatar_item_uid})')
+
+    async def on_2709(self, correlation, body):
+        # eEGS_USE_ARENA_SP_ITEM_REQ -> 2710 eEGS_USE_ARENA_SP_ITEM_ACK (0x007A7CA0).
+        from darkblood.games.network.messages import UseArenaSpItemAck, UseArenaSpItemReq
+        req = UseArenaSpItemReq.decode(body)
+        self.transport.record('use-arena-sp-item-req', body, item_uid=req.item_uid)
+        ack = UseArenaSpItemAck(result=0, consumed_items=[], arena_sp=100).encode()
+        await self.transport.send_event(event(2710, ack, correlation), note=f'use arena sp item ack (item={req.item_uid})')
+
+
 
 
 

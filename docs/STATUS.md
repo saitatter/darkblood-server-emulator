@@ -1,5 +1,39 @@
 # Research status and handoff
 
+## Titles, Achievements, Avatar Zam Socketing, Security & Inspection — 2026-11-16 ~21:15
+
+* **Titles & Achievements System (Opcodes 2327 - 2336)**:
+  - Reverse engineered `0x007751C0` (`TitleChangeAck`), `0x0079D650` (`AchieveGetListAck`), `0x0076C720` (`AchieveChangeNot`), and `0x0079D240` (`AchieveCompleteNot`).
+  - Wire serialization: `TitleChangeReq/Ack` (i32 title_id -> i32 result, i32 title_id), `AchieveGetListReq/Ack` (Tag 0x1E + Tag 0x17 + Tag 0x17 + Tag 0x0A + Tag 0x10), `AchieveChangeNot` (3x Tag 0x17 maps), and `AchieveCompleteNot` (2x Tag 0x10 vectors).
+  - Wired domain handlers `on_2335` and `on_2327` in `social.py`.
+  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+* **Avatar Gem / Zam Socketing System (Opcodes 2362 - 2365)**:
+  - Reverse engineered `0x00782D00` (`AvatarZamInsertAck`) and `0x00782F40` (`AvatarZamEraseAck`).
+  - Wire serialization: `AvatarZamInsertReq/Ack` (i64 avatar_uid, i64 zam_uid -> i32 result, Tag 0x10 items) and `AvatarZamEraseReq/Ack` (i64 avatar_uid -> i32 result, Tag 0x10 items).
+  - Wired domain handlers `on_2362` and `on_2364` in `commerce.py`.
+  - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
+* **Class Promotion, Skill Reset & Rebirth Coins (Opcodes 2280, 2283, 2286)**:
+  - Reverse engineered `0x00797740` (`InitSkillNot`), `0x00797F00` (`PromotionNot`), and `0x007983B0` (`RebirthCoinChangeNot`).
+  - Wire serialization: `InitSkillNot` (u32 result, i32 sp, Tag 0x17 skills map), `PromotionNot` (u32 result, u8 new_class, i32 sp, Tag 0x17 skills map), and `RebirthCoinChangeNot` (u32 result, i16 coins).
+  - Verified in `tests/test_wire_messages.py`.
+* **Arena SP Item & Arena Return (Opcodes 2709 - 2710, 5165 - 5166)**:
+  - Reverse engineered `0x007A7CA0` (`UseArenaSpItemAck`) and `0x00758550` (`ArenaBackToSquareAck`).
+  - Wire serialization: `UseArenaSpItemReq/Ack` (i64 item_uid -> u32 result, Tag 0x10 items, i32 arena_sp) and `ArenaBackToSquareReq/Ack`.
+  - Wired domain handler `on_2709` in `commerce.py` and `on_5165` in `social.py`.
+  - Verified in `tests/test_inventory_flow.py` and `tests/test_social_flow.py`.
+* **Second Password / Security PIN (Opcodes 5256 - 5261)**:
+  - Reverse engineered `0x0075B020` (`SecondPassCreateAck`), `0x0075B050` (`SecondPassModifyAck`), and `0x0075B080` (`SecondPassAuthAck`).
+  - Wire serialization: `SecondPassCreateReq/Ack`, `SecondPassModifyReq/Ack`, `SecondPassAuthReq/Ack`.
+  - Wired domain handlers `on_5256`, `on_5258`, and `on_5260` in `social.py`.
+  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+* **Remote Player & Item Inspection (Opcodes 6011 - 6012, 6028 - 6029)**:
+  - Reverse engineered `0x00790FA0` (`RequestCharInfoAck`) and `0x00766C20` (`RequestItemInfoAck`).
+  - Wire serialization: `RequestCharInfoReq/Ack` (i64 char_uid -> u32 result, bool flag, Tag 0x1E summary, 2x Tag 0x10 item vectors) and `RequestItemInfoReq/Ack` (i64 item_uid -> u32 result, i64 item_uid, Tag 0x1E item struct).
+  - Wired domain handlers `on_6011` and `on_6028` in `social.py`.
+  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+* **69/69 unit and flow tests passing cleanly** across all test modules in ~1.40s.
+
+
 ## Mentoring, Teaching & Gold Goblin Encounter Events — 2026-11-16 ~21:00
 
 * **Mentoring & Teaching System (Opcodes 5351 - 5357)**:

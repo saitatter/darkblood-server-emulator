@@ -204,6 +204,41 @@ class SocialFlowTest(ServerTestCase):
             _, ack5354 = await client.expect_event(5354)
             self.assertEqual(struct.unpack_from('<i', ack5354)[0], 0)
 
+            # 36. Title change (2335 -> 2336)
+            client.send_event(2335, struct.pack('<i', 55))
+            _, ack2336 = await client.expect_event(2336)
+            self.assertEqual(struct.unpack_from('<ii', ack2336), (0, 55))
+
+            # 37. Achieve get list (2327 -> 2328)
+            client.send_event(2327, b'')
+            _, ack2328 = await client.expect_event(2328)
+            self.assertEqual(struct.unpack_from('<i', ack2328[:4])[0], 0)
+
+            # 38. Arena back to square (5165 -> 5166)
+            client.send_event(5165, b'')
+            _, ack5166 = await client.expect_event(5166)
+            self.assertEqual(struct.unpack_from('<i', ack5166)[0], 0)
+
+            # 39. Second pass create (5256 -> 5257)
+            client.send_event(5256, b'\x01\x02\x03\x04')
+            _, ack5257 = await client.expect_event(5257)
+            self.assertEqual(struct.unpack_from('<i', ack5257)[0], 0)
+
+            # 40. Second pass auth (5260 -> 5261)
+            client.send_event(5260, b'\x01\x02\x03\x04')
+            _, ack5261 = await client.expect_event(5261)
+            self.assertEqual(struct.unpack_from('<i', ack5261)[0], 0)
+
+            # 41. Request char info (6011 -> 6012)
+            client.send_event(6011, struct.pack('<q', 8888))
+            _, ack6012 = await client.expect_event(6012)
+            self.assertEqual(struct.unpack_from('<i', ack6012[:4])[0], 0)
+
+            # 42. Request item info (6028 -> 6029)
+            client.send_event(6028, struct.pack('<q', 9999))
+            _, ack6029 = await client.expect_event(6029)
+            self.assertEqual(struct.unpack_from('<iq', ack6029[:12]), (0, 9999))
+
         self.run_async(self.with_server(scenario))
 
 

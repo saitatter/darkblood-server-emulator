@@ -444,5 +444,60 @@ class SocialHandlers:
         ack = AcceptRequestTeachingAck(result=0, accepted=True, mentor_uid=req.mentor_uid, mentor_name='Master').encode()
         await self.transport.send_event(event(5354, ack, correlation), note=f'accept request teaching ack (mentor={req.mentor_uid})')
 
+    async def on_2335(self, correlation, body):
+        # eEGS_TITLE_CHANGE_REQ -> 2336 eEGS_TITLE_CHANGE_ACK (0x007751C0).
+        from darkblood.games.network.messages import TitleChangeAck, TitleChangeReq
+        req = TitleChangeReq.decode(body)
+        self.transport.record('title-change-req', body, title_id=req.title_id)
+        ack = TitleChangeAck(result=0, title_id=req.title_id).encode()
+        await self.transport.send_event(event(2336, ack, correlation), note=f'title change ack (title={req.title_id})')
+
+    async def on_2327(self, correlation, body):
+        # eEGS_ACHIEVE_GET_LIST_REQ -> 2328 eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
+        from darkblood.games.network.messages import AchieveGetListAck
+        ack = AchieveGetListAck(result=0).encode()
+        await self.transport.send_event(event(2328, ack, correlation), note='achieve get list ack')
+
+    async def on_5165(self, correlation, body):
+        # eERC_ARENA_BACK_TO_SQUARE_REQ -> 5166 eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550).
+        from darkblood.games.network.messages import ArenaBackToSquareAck
+        ack = ArenaBackToSquareAck(result=0).encode()
+        await self.transport.send_event(event(5166, ack, correlation), note='arena back to square ack')
+
+    async def on_5256(self, correlation, body):
+        # eERC_SECOND_PASS_CREATE_REQ -> 5257 eERC_SECOND_PASS_CREATE_ACK (0x0075B020).
+        from darkblood.games.network.messages import SecondPassCreateAck
+        ack = SecondPassCreateAck(result=0).encode()
+        await self.transport.send_event(event(5257, ack, correlation), note='second pass create ack')
+
+    async def on_5258(self, correlation, body):
+        # eERC_SECOND_PASS_MODIFY_REQ -> 5259 eERC_SECOND_PASS_MODIFY_ACK (0x0075B050).
+        from darkblood.games.network.messages import SecondPassModifyAck
+        ack = SecondPassModifyAck(result=0).encode()
+        await self.transport.send_event(event(5259, ack, correlation), note='second pass modify ack')
+
+    async def on_5260(self, correlation, body):
+        # eERC_SECOND_PASS_AUTH_REQ -> 5261 eERC_SECOND_PASS_AUTH_ACK (0x0075B080).
+        from darkblood.games.network.messages import SecondPassAuthAck
+        ack = SecondPassAuthAck(result=0).encode()
+        await self.transport.send_event(event(5261, ack, correlation), note='second pass auth ack')
+
+    async def on_6011(self, correlation, body):
+        # eERT_REQUEST_CHAR_INFO_REQ -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0).
+        from darkblood.games.network.messages import RequestCharInfoAck, RequestCharInfoReq
+        req = RequestCharInfoReq.decode(body)
+        self.transport.record('request-char-info-req', body, char_uid=req.char_uid)
+        ack = RequestCharInfoAck(result=0).encode()
+        await self.transport.send_event(event(6012, ack, correlation), note=f'request char info ack (char={req.char_uid})')
+
+    async def on_6028(self, correlation, body):
+        # eERT_REQUEST_ITEM_INFO_REQ -> 6029 eERT_REQUEST_ITEM_INFO_ACK (0x00766C20).
+        from darkblood.games.network.messages import RequestItemInfoAck, RequestItemInfoReq
+        req = RequestItemInfoReq.decode(body)
+        self.transport.record('request-item-info-req', body, item_uid=req.item_uid)
+        ack = RequestItemInfoAck(result=0, item_uid=req.item_uid).encode()
+        await self.transport.send_event(event(6029, ack, correlation), note=f'request item info ack (item={req.item_uid})')
+
+
 
 
