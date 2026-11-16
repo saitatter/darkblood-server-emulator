@@ -388,23 +388,100 @@ class CommerceHandlers:
         # eEGS_BUY_ITEM_REQ (0x00780000.c:10667) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
         req = BuyItemReq.decode(body)
         self.transport.record('buy-item-req', body, store_id=req.store_id, item_id=req.item_id, count=req.count)
-        # Result 1: generic store rejection / item out of stock until inventory transactions are wired
-        ack = BuyItemAck(result=1).encode()
-        await self.transport.send_event(event(2068, ack, correlation),
-                                        note=f'buy item ack (store={req.store_id} item={req.item_id})')
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if not char:
+            ack = BuyItemAck(result=1).encode()
+            await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (no char)')
+            return
+
+        from darkblood.games.game_data import client_dict
+        from darkblood.player_management.characters import add_reward_items
+        item_code = None
+        for s_items in client_dict.store_items().values():
+            for code, _ in s_items:
+                if jhash(code) == req.item_id:
+                    item_code = code
+                    break
+            if item_code:
+                break
+        if not item_code:
+            item_code = 'Ihppa0001'
+
+        count = max(1, req.count)
+        cost = 100 * count
+        char_gold = char.get('gold', 100000)
+        if char_gold >= cost:
+            char_gold -= cost
+            char['gold'] = char_gold
+            char['u66'] = char_gold
+            new_items = add_reward_items(char, [(item_code, count)])
+            self.store().save()
+            wire_items = [Item(owner=char.get('id', -1), **i) for i in new_items]
+            ack = BuyItemAck(result=0, gold=char_gold, items=wire_items).encode()
+            await self.transport.send_event(event(2068, ack, correlation),
+                                            note=f'buy item ack (code={item_code} count={count} gold={char_gold})')
+        else:
+            ack = BuyItemAck(result=1).encode()
+            await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (insufficient gold)')
 
     async def on_2069(self, correlation, body):
         # eEGS_SELL_ITEM_REQ (0x00780000.c:10700) -> 2070 eEGS_SELL_ITEM_ACK (0x0077E8E0).
         req = SellItemReq.decode(body)
         self.transport.record('sell-item-req', body, npc_id=req.npc_id, item_uid=req.item_uid, count=req.count)
-        ack = SellItemAck(result=1).encode()
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if not char:
+            ack = SellItemAck(result=1).encode()
+            await self.transport.send_event(event(2070, ack, correlation), note='sell item fail (no char)')
+            return
+
+        items = char.get('items', [])
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target:
+            ack = SellItemAck(result=1).encode()
+            await self.transport.send_event(event(2070, ack, correlation), note='sell item fail (not found)')
+            return
+
+        cnt = max(1, req.count)
+        curr = target.get('count', 1)
+        del_cnt = min(cnt, curr)
+        if curr <= del_cnt:
+            items.remove(target)
+        else:
+            target['count'] = curr - del_cnt
+
+        earned = 50 * del_cnt
+        char_gold = char.get('gold', 0) + earned
+        char['gold'] = char_gold
+        char['u66'] = char_gold
+        self.store().save()
+
+        wire_items = [Item(owner=char.get('id', -1), **i) for i in items]
+        ack = SellItemAck(result=0, gold=char_gold, items=wire_items).encode()
         await self.transport.send_event(event(2070, ack, correlation),
-                                        note=f'sell item ack (item={req.item_uid} count={req.count})')
+                                        note=f'sell item ack (uid={req.item_uid} del={del_cnt} gold={char_gold})')
 
     async def on_2071(self, correlation, body):
         # eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30).
         req = RepurchaseItemReq.decode(body)
-        ack = RepurchaseItemAck(result=1).encode()
+        self.transport.record('repurchase-item-req', body, item_uid=req.item_uid)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        char_gold = char.get('gold', 0) if char else 0
+        ack = RepurchaseItemAck(result=0, gold=char_gold, items=[]).encode()
         await self.transport.send_event(event(2072, ack, correlation),
                                         note=f'repurchase item ack (item={req.item_uid})')
 

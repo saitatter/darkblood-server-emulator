@@ -78,7 +78,9 @@ class QuestFlowTest(ServerTestCase):
         self.assertEqual(ack[4 + 0x26:4 + 0x28], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<ii', ack, len(ack) - 8), (150, 0))  # EXP, GP
         char = session.GameSession.store().get('OfflinePlayer', char_id)
-        self.assertEqual(char['u62'], 13 + 150)
+        self.assertEqual(char['level'], 2)
+        self.assertEqual(char['u62'], 6)  # 13 + 150 exp - 157 req_exp = 6 remaining exp
+        self.assertEqual(char['sp'], 3)
         self.assertIn('Ibaga0004', [i['code'] for i in char['items']])
 
 
@@ -106,6 +108,18 @@ class QuestFlowTest(ServerTestCase):
         self.assertNotIn(entry, first)
         # The 0xA3E450 map now carries one entry; everything else is unchanged.
         self.assertEqual(second.replace(b'\x17\x81' + entry, b'\x17\x80', 1), first)
+
+    def test_char_level_stats_progression(self):
+        from darkblood.games.game_data import client_dict
+        warrior_lv1 = client_dict.char_level_stat(1, 1)
+        self.assertGreater(warrior_lv1.get('upexp', 0), 0)
+        self.assertGreater(warrior_lv1.get('hp', 0), 0)
+        self.assertGreater(warrior_lv1.get('mp', 0), 0)
+
+        # Higher level requires more EXP and grants higher HP
+        warrior_lv10 = client_dict.char_level_stat(1, 10)
+        self.assertGreater(warrior_lv10['upexp'], warrior_lv1['upexp'])
+        self.assertGreater(warrior_lv10['hp'], warrior_lv1['hp'])
 
 
 if __name__ == '__main__':

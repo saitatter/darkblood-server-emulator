@@ -155,5 +155,134 @@ class SocialHandlers:
         ack = GuildPersonLeaveAck(result=0).encode()
         await self.transport.send_event(event(2163, ack, correlation), note='guild person leave ack')
 
+    async def on_2179(self, correlation, body):
+        # eEGS_GUILD_MONEY_IN_REQ (0x00790000.c:3031) -> 2180 eEGS_GUILD_MONEY_IN_ACK (0x00794250).
+        from darkblood.games.network.messages import GuildMoneyInAck, GuildMoneyInReq
+        from darkblood.games.state import selected_character
+        req = GuildMoneyInReq.decode(body)
+        self.transport.record('guild-money-in-req', body, amount=req.amount)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        remain_gold = 0
+        if char:
+            current_gold = char.get('gold', 0)
+            deposit = min(max(0, req.amount), current_gold)
+            char['gold'] = current_gold - deposit
+            char['u66'] = char['gold']
+            guild_money = char.setdefault('guild_money', 0) + deposit
+            char['guild_money'] = guild_money
+            remain_gold = char['gold']
+            self.store().save()
+        ack = GuildMoneyInAck(result=0, remain_gold=remain_gold).encode()
+        await self.transport.send_event(event(2180, ack, correlation),
+                                        note=f'guild money in ack (deposited={req.amount} remain={remain_gold})')
+
+    async def on_2181(self, correlation, body):
+        # eEGS_GUILD_MONEY_OUT_REQ (0x00790000.c:3141) -> 2182 eEGS_GUILD_MONEY_OUT_ACK (0x00794470).
+        from darkblood.games.network.messages import GuildMoneyOutAck, GuildMoneyOutReq
+        from darkblood.games.state import selected_character
+        req = GuildMoneyOutReq.decode(body)
+        self.transport.record('guild-money-out-req', body, amount=req.amount)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        remain_gold = 0
+        if char:
+            guild_money = char.get('guild_money', 0)
+            withdraw = min(max(0, req.amount), guild_money)
+            char['guild_money'] = guild_money - withdraw
+            char['gold'] = char.get('gold', 0) + withdraw
+            char['u66'] = char['gold']
+            remain_gold = char['gold']
+            self.store().save()
+        ack = GuildMoneyOutAck(result=0, remain_gold=remain_gold).encode()
+        await self.transport.send_event(event(2182, ack, correlation),
+                                        note=f'guild money out ack (withdrawn={req.amount} remain={remain_gold})')
+
+    async def on_2183(self, correlation, body):
+        # eEGS_GUILD_LEVEL_UP_REQ (0x00790000.c:3250) -> 2184 eEGS_GUILD_LEVEL_UP_ACK (0x00753380).
+        from darkblood.games.network.messages import GuildLevelUpAck, GuildLevelUpReq
+        from darkblood.games.state import selected_character
+        req = GuildLevelUpReq.decode(body)
+        self.transport.record('guild-level-up-req', body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        new_level = 1
+        if char:
+            new_level = char.get('guild_level', 1) + 1
+            char['guild_level'] = new_level
+            self.store().save()
+        ack = GuildLevelUpAck(result=0, new_level=new_level).encode()
+        await self.transport.send_event(event(2184, ack, correlation),
+                                        note=f'guild level up ack (new_level={new_level})')
+
+    async def on_2185(self, correlation, body):
+        # eEGS_GUILD_NOTICE_MODIFY_REQ (0x00790000.c:3278) -> 2186 eEGS_GUILD_NOTICE_MODIFY_ACK (0x0075A120).
+        from darkblood.games.network.messages import GuildNoticeModifyAck, GuildNoticeModifyReq
+        from darkblood.games.state import selected_character
+        req = GuildNoticeModifyReq.decode(body)
+        self.transport.record('guild-notice-modify-req', body, notice=req.notice)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            char['guild_notice'] = req.notice
+            self.store().save()
+        ack = GuildNoticeModifyAck(result=0).encode()
+        await self.transport.send_event(event(2186, ack, correlation),
+                                        note='guild notice modify ack')
+
+    async def on_2188(self, correlation, body):
+        # eEGS_GUILD_NOTICE_DELETE_REQ (0x00790000.c:3388) -> 2189 eEGS_GUILD_NOTICE_DELETE_ACK (0x0074B830).
+        from darkblood.games.network.messages import GuildNoticeDeleteAck, GuildNoticeDeleteReq
+        from darkblood.games.state import selected_character
+        req = GuildNoticeDeleteReq.decode(body)
+        self.transport.record('guild-notice-delete-req', body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            char.pop('guild_notice', None)
+            self.store().save()
+        ack = GuildNoticeDeleteAck(result=0).encode()
+        await self.transport.send_event(event(2189, ack, correlation),
+                                        note='guild notice delete ack')
+
+    async def on_2214(self, correlation, body):
+        # eEGS_GUILD_ALL_SKILL_INIT_REQ -> 2215 eEGS_GUILD_ALL_SKILL_INIT_ACK (0x00752D80).
+        from darkblood.games.network.messages import GuildAllSkillInitAck, GuildAllSkillInitReq
+        from darkblood.games.state import selected_character
+        req = GuildAllSkillInitReq.decode(body)
+        self.transport.record('guild-all-skill-init-req', body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            char['guild_skills'] = {}
+            self.store().save()
+        ack = GuildAllSkillInitAck(result=0, param=0).encode()
+        await self.transport.send_event(event(2215, ack, correlation),
+                                        note='guild all skill init ack')
+
 
 

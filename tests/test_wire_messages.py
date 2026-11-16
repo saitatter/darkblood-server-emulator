@@ -135,14 +135,24 @@ class WireMessagesTest(unittest.TestCase):
         raw_buy = struct.pack('<iiH', 1, 12345, 2)
         req_buy = messages.BuyItemReq.decode(raw_buy)
         self.assertEqual((req_buy.store_id, req_buy.item_id, req_buy.count), (1, 12345, 2))
+        ack_buy = messages.BuyItemAck(result=0, gold=99800, items=[])
+        enc_buy = ack_buy.encode()
+        self.assertEqual(struct.unpack_from('<i', enc_buy)[0], 0)
+        self.assertEqual(enc_buy[4:5], b'\x1e')
 
         raw_sell = struct.pack('<iqi', 1, 7777777, 1)
         req_sell = messages.SellItemReq.decode(raw_sell)
         self.assertEqual((req_sell.npc_id, req_sell.item_uid, req_sell.count), (1, 7777777, 1))
+        ack_sell = messages.SellItemAck(result=0, gold=100050, items=[])
+        enc_sell = ack_sell.encode()
+        self.assertEqual(struct.unpack_from('<i', enc_sell)[0], 0)
 
         raw_re = struct.pack('<q', 8888888)
         req_re = messages.RepurchaseItemReq.decode(raw_re)
         self.assertEqual(req_re.item_uid, 8888888)
+        ack_re = messages.RepurchaseItemAck(result=0, gold=100050, items=[])
+        enc_re = ack_re.encode()
+        self.assertEqual(struct.unpack_from('<i', enc_re)[0], 0)
 
     def test_friend_list_management_messages(self):
         req_add = messages.FriendListAddReq.decode('BestFriend'.encode('utf-16le'))
@@ -238,6 +248,39 @@ class WireMessagesTest(unittest.TestCase):
         self.assertIsNotNone(req_gl)
         ack_gl = messages.GuildPersonLeaveAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_gl)[0], 0)
+
+        # 12. Guild banking & economy (2179/2180, 2181/2182)
+        req_gmi = messages.GuildMoneyInReq.decode(struct.pack('<q', 50000))
+        self.assertEqual(req_gmi.amount, 50000)
+        ack_gmi = messages.GuildMoneyInAck(result=0, remain_gold=25000).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_gmi), (0, 25000))
+
+        req_gmo = messages.GuildMoneyOutReq.decode(struct.pack('<q', 10000))
+        self.assertEqual(req_gmo.amount, 10000)
+        ack_gmo = messages.GuildMoneyOutAck(result=0, remain_gold=35000).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_gmo), (0, 35000))
+
+        # 13. Guild progression & notice (2183/2184, 2185/2186, 2188/2189, 2214/2215)
+        req_glu = messages.GuildLevelUpReq.decode(b'')
+        self.assertIsNotNone(req_glu)
+        ack_glu = messages.GuildLevelUpAck(result=0, new_level=3).encode()
+        self.assertEqual(struct.unpack_from('<ih', ack_glu), (0, 3))
+
+        notice_text = 'Welcome to the guild!'.encode('utf-16le')
+        req_gnm = messages.GuildNoticeModifyReq.decode(notice_text)
+        self.assertEqual(req_gnm.notice, 'Welcome to the guild!')
+        ack_gnm = messages.GuildNoticeModifyAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_gnm)[0], 0)
+
+        req_gnd = messages.GuildNoticeDeleteReq.decode(b'')
+        self.assertIsNotNone(req_gnd)
+        ack_gnd = messages.GuildNoticeDeleteAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_gnd)[0], 0)
+
+        req_gsi = messages.GuildAllSkillInitReq.decode(b'')
+        self.assertIsNotNone(req_gsi)
+        ack_gsi = messages.GuildAllSkillInitAck(result=0, param=0).encode()
+        self.assertEqual(struct.unpack_from('<ii', ack_gsi), (0, 0))
 
 
 

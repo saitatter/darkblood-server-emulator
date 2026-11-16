@@ -94,6 +94,9 @@ Acceptance: the client displays a local server/channel, creates and selects a ch
 - [x] Recover lobby-to-square/zone transfers and real map IDs.
 - [x] Implement spawn, coordinates, movement, and heartbeats.
 - [x] Implement the minimum inventory/equipment state required by the client.
+- [x] Wire store economy transactions: buy item (2067/2068), sell item (2069/2070), and repurchase (2071/2072) with balance/inventory persistence.
+- [x] Recover guild economy and progression: money deposit/withdraw (2179/2180, 2181/2182), level up (2183/2184), notice modify/delete (2185/2186, 2188/2189), and all skill init (2214/2215).
+- [x] Implement level-up & SP progression on EXP overflow using `charstat.lua` tables with 5087 (`LevelUpNot`) and 5086 (`ChangeExpNot`).
 - [x] Recover combat synchronization, monsters, and dungeon transitions.
 - [x] Implement damage, death/revival, loot, and persistent progress.
 - [ ] Verify actual movement and a combat cycle in the client.

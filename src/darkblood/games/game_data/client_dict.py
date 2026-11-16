@@ -194,3 +194,58 @@ def default_equipment():
             if m:
                 out[job].append(m.group(1))
     return out
+
+
+CLASS_SECTION_MAP = {
+    1: 'LoadStatWarrior',
+    2: 'LoadStatKnight',
+    3: 'LoadStatHunter',
+    4: 'LoadStatMage',
+    5: 'LoadStatThief',
+    6: 'LoadStatFighter',
+    7: 'LoadStatWHunter',
+}
+
+
+@lru_cache(maxsize=None)
+def char_level_stats():
+    """Returns mapping (char_class, level) -> {'upexp', 'hp', 'mp'} parsed from charstat.lua."""
+    path = data_root() / 'charstat.lua'
+    out = {}
+    if not path.exists():
+        return out
+
+    text = path.read_text(encoding='utf-8', errors='replace')
+    for cls_id, sec_name in CLASS_SECTION_MAP.items():
+        sec_start = text.find(sec_name)
+        if sec_start == -1:
+            continue
+        sec_end = text.find('assert(DictChar:', sec_start + 1)
+        sec_text = text[sec_start:sec_end] if sec_end != -1 else text[sec_start:]
+        for block in re.split(r'\{\s*\n', sec_text):
+            m_lvl = re.search(r'Level = (\d+)', block)
+            m_exp = re.search(r'UPExp = ([\d.]+)', block)
+            m_hp = re.search(r'HealthPoint = ([\d.]+)', block)
+            m_mp = re.search(r'ManaPoint = ([\d.]+)', block)
+            if m_lvl and m_exp:
+                lvl = int(m_lvl.group(1))
+                out[(cls_id, lvl)] = {
+                    'upexp': int(float(m_exp.group(1))),
+                    'hp': int(float(m_hp.group(1))) if m_hp else 100,
+                    'mp': int(float(m_mp.group(1))) if m_mp else 100,
+                }
+    return out
+
+
+def char_level_stat(char_class: int, level: int) -> dict:
+    """Returns stat dictionary for (char_class, level) with fallback formula."""
+    stats = char_level_stats()
+    res = stats.get((char_class, level))
+    if res:
+        return res
+    return {
+        'upexp': int(144 * (1.5 ** (level - 1))),
+        'hp': 200 + level * 150,
+        'mp': 50 + level * 20,
+    }
+

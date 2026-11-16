@@ -7,6 +7,7 @@ import struct
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
+from darkblood.games.entities.items import Item
 
 
 @dataclass
@@ -1343,12 +1344,34 @@ class BuyItemReq:
 class BuyItemAck:
     """Opcode 2068: eEGS_BUY_ITEM_ACK (On_eEGS_BUY_ITEM_ACK 0x0077E2F0).
 
-    Wire format: i32 result (non-zero triggers error popup and terminates frame).
+    Wire format:
+    If result != 0: i32 result (error popup, terminates frame).
+    If result == 0 (success):
+      - i32 result (0)
+      - tag 0x1e (32-byte store item record 0x00A489D0)
+      - i32 (prefix / u32)
+      - i64 gold (player gold, written to +0x70)
+      - tag 0x10 item vector (0x004B94C0)
+      - i32, i16, i64, i32
     """
     result: int = 0
+    store_record: bytes = b'\x00' * 32
+    u32_1: int = 0
+    gold: int = 0
+    items: list = field(default_factory=list)
+    u32_2: int = 0
+    u16_1: int = 0
+    i64_1: int = 0
+    u32_3: int = 0
 
     def encode(self) -> bytes:
-        return struct.pack('<i', self.result)
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<i', 0)
+                + b'\x1e' + (self.store_record[:32].ljust(32, b'\x00'))
+                + struct.pack('<iq', self.u32_1, self.gold)
+                + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
+                + struct.pack('<iHqi', self.u32_2, self.u16_1, self.i64_1, self.u32_3))
 
 
 @dataclass
@@ -1373,12 +1396,28 @@ class SellItemReq:
 class SellItemAck:
     """Opcode 2070: eEGS_SELL_ITEM_ACK (On_eEGS_SELL_ITEM_ACK 0x0077E8E0).
 
-    Wire format: i32 result (non-zero terminates frame; 0 returns updated inventory vector).
+    Wire format:
+    If result != 0: i32 result (error popup, terminates frame).
+    If result == 0 (success):
+      - i32 result (0)
+      - tag 0x10 item vector (0x004B9210)
+      - i64 gold (player gold, written to +0x70)
+      - tag 0x1e repurchase record (Item struct 0x00A53F50 + i32 + i64)
+      - tag 0x13 map (0x006B9200)
     """
     result: int = 0
+    gold: int = 0
+    items: list = field(default_factory=list)
 
     def encode(self) -> bytes:
-        return struct.pack('<i', self.result)
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        repurchase_record = b'\x1e' + Item(code='', uid=0).encode() + struct.pack('<iq', 0, 0)
+        return (struct.pack('<i', 0)
+                + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
+                + struct.pack('<q', self.gold)
+                + repurchase_record
+                + b'\x13\x80')
 
 
 @dataclass
@@ -1400,12 +1439,23 @@ class RepurchaseItemReq:
 class RepurchaseItemAck:
     """Opcode 2072: eEGS_REPURCHASE_ITEM_ACK (On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30).
 
-    Wire format: i32 result (non-zero triggers error popup).
+    Wire format:
+    If result != 0: i32 result (error popup).
+    If result == 0 (success):
+      - i32 result (0)
+      - tag 0x10 item vector (0x004B9210)
+      - i64 gold (player gold, written to +0x70)
     """
     result: int = 0
+    gold: int = 0
+    items: list = field(default_factory=list)
 
     def encode(self) -> bytes:
-        return struct.pack('<i', self.result)
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<i', 0)
+                + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
+                + struct.pack('<q', self.gold))
 
 
 @dataclass
@@ -1853,6 +1903,178 @@ class GuildPersonLeaveAck:
 
     def encode(self) -> bytes:
         return struct.pack('<i', self.result)
+
+
+@dataclass
+class GuildMoneyInReq:
+    """Opcode 2179: eEGS_GUILD_MONEY_IN_REQ (0x00790000.c:3031).
+
+    Wire format: i64 amount (8 bytes).
+    """
+    amount: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildMoneyInReq':
+        if len(data) >= 8:
+            return cls(amount=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class GuildMoneyInAck:
+    """Opcode 2180: eEGS_GUILD_MONEY_IN_ACK (On_eEGS_GUILD_MONEY_IN_ACK 0x00794250).
+
+    Wire format: i32 result (0 = success) + i64 remain_gold (written to +0x70).
+    """
+    result: int = 0
+    remain_gold: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<iq', self.result, self.remain_gold)
+
+
+@dataclass
+class GuildMoneyOutReq:
+    """Opcode 2181: eEGS_GUILD_MONEY_OUT_REQ (0x00790000.c:3141).
+
+    Wire format: i64 amount (8 bytes).
+    """
+    amount: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildMoneyOutReq':
+        if len(data) >= 8:
+            return cls(amount=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class GuildMoneyOutAck:
+    """Opcode 2182: eEGS_GUILD_MONEY_OUT_ACK (On_eEGS_GUILD_MONEY_OUT_ACK 0x00794470).
+
+    Wire format: i32 result (0 = success) + i64 remain_gold (written to +0x70).
+    """
+    result: int = 0
+    remain_gold: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<iq', self.result, self.remain_gold)
+
+
+@dataclass
+class GuildLevelUpReq:
+    """Opcode 2183: eEGS_GUILD_LEVEL_UP_REQ (0x00790000.c:3250).
+
+    Wire format: empty or i32 prefix.
+    """
+    prefix: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildLevelUpReq':
+        if len(data) >= 4:
+            return cls(prefix=struct.unpack_from('<i', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class GuildLevelUpAck:
+    """Opcode 2184: eEGS_GUILD_LEVEL_UP_ACK (On_eEGS_GUILD_LEVEL_UP_ACK 0x00753380).
+
+    Wire format: i32 result (0 = success) + i16 new_level.
+    """
+    result: int = 0
+    new_level: int = 1
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<ih', self.result, self.new_level)
+
+
+@dataclass
+class GuildNoticeModifyReq:
+    """Opcode 2185: eEGS_GUILD_NOTICE_MODIFY_REQ (0x00790000.c:3278).
+
+    Wire format: wide string notice.
+    """
+    notice: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildNoticeModifyReq':
+        return cls(notice=data.decode('utf-16le', errors='replace'))
+
+
+@dataclass
+class GuildNoticeModifyAck:
+    """Opcode 2186: eEGS_GUILD_NOTICE_MODIFY_ACK (On_eEGS_GUILD_NOTICE_MODIFY_ACK 0x0075A120).
+
+    Wire format: i32 result (0 = success).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class GuildNoticeDeleteReq:
+    """Opcode 2188: eEGS_GUILD_NOTICE_DELETE_REQ (0x00790000.c:3388).
+
+    Wire format: empty or i32 prefix.
+    """
+    prefix: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildNoticeDeleteReq':
+        if len(data) >= 4:
+            return cls(prefix=struct.unpack_from('<i', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class GuildNoticeDeleteAck:
+    """Opcode 2189: eEGS_GUILD_NOTICE_DELETE_ACK (On_eEGS_GUILD_NOTICE_DELETE_ACK 0x0074B830).
+
+    Wire format: i32 result (0 = success).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class GuildAllSkillInitReq:
+    """Opcode 2214: eEGS_GUILD_ALL_SKILL_INIT_REQ.
+
+    Wire format: empty or i32 prefix.
+    """
+    prefix: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildAllSkillInitReq':
+        if len(data) >= 4:
+            return cls(prefix=struct.unpack_from('<i', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class GuildAllSkillInitAck:
+    """Opcode 2215: eEGS_GUILD_ALL_SKILL_INIT_ACK (0x00752D80).
+
+    Wire format: i32 result (0 = success) + i32 param.
+    """
+    result: int = 0
+    param: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<ii', self.result, self.param)
 
 
 

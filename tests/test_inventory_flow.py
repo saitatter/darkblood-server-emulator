@@ -89,17 +89,17 @@ class InventoryFlowTest(ServerTestCase):
             # 13. Store buy item (2067 -> 2068)
             client.send_event(2067, struct.pack('<iiH', 1, 99999, 1))
             _, ack2068 = await client.expect_event(2068)
-            self.assertNotEqual(struct.unpack_from('<i', ack2068)[0], 0)
+            self.assertEqual(struct.unpack_from('<i', ack2068)[0], 0)
 
             # 14. Store sell item (2069 -> 2070)
             client.send_event(2069, struct.pack('<iqi', 1, 1, 1))
             _, ack2070 = await client.expect_event(2070)
-            self.assertNotEqual(struct.unpack_from('<i', ack2070)[0], 0)
+            self.assertEqual(struct.unpack_from('<i', ack2070)[0], 0)
 
             # 15. Store repurchase item (2071 -> 2072)
             client.send_event(2071, struct.pack('<q', 1))
             _, ack2072 = await client.expect_event(2072)
-            self.assertNotEqual(struct.unpack_from('<i', ack2072)[0], 0)
+            self.assertEqual(struct.unpack_from('<i', ack2072)[0], 0)
 
             # 16. Change bag name (2032 -> 2033)
             bname = 'Storage'.encode('utf-16le') + b'\x00\x00'

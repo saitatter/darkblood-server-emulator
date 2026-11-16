@@ -99,6 +99,37 @@ class SocialFlowTest(ServerTestCase):
             _, ack2156 = await client.expect_event(2156)
             self.assertEqual(struct.unpack_from('<i', ack2156)[0], 0)
 
+            # 17. Guild money deposit (2179 -> 2180)
+            client.send_event(2179, struct.pack('<q', 500))
+            _, ack2180 = await client.expect_event(2180)
+            self.assertEqual(struct.unpack_from('<i', ack2180)[0], 0)
+
+            # 18. Guild money withdraw (2181 -> 2182)
+            client.send_event(2181, struct.pack('<q', 200))
+            _, ack2182 = await client.expect_event(2182)
+            self.assertEqual(struct.unpack_from('<i', ack2182)[0], 0)
+
+            # 19. Guild level up (2183 -> 2184)
+            client.send_event(2183, b'')
+            _, ack2184 = await client.expect_event(2184)
+            self.assertEqual(struct.unpack_from('<i', ack2184)[0], 0)
+
+            # 20. Guild notice modify (2185 -> 2186)
+            gnotice = 'Guild rules apply'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2185, gnotice)
+            _, ack2186 = await client.expect_event(2186)
+            self.assertEqual(struct.unpack_from('<i', ack2186)[0], 0)
+
+            # 21. Guild notice delete (2188 -> 2189)
+            client.send_event(2188, b'')
+            _, ack2189 = await client.expect_event(2189)
+            self.assertEqual(struct.unpack_from('<i', ack2189)[0], 0)
+
+            # 22. Guild all skill init (2214 -> 2215)
+            client.send_event(2214, b'')
+            _, ack2215 = await client.expect_event(2215)
+            self.assertEqual(struct.unpack_from('<i', ack2215)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

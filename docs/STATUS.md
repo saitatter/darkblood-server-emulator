@@ -1,5 +1,26 @@
 # Research status and handoff
 
+## Level-Up Progression, Store Economy & Guild Banking — 2026-11-16 ~19:50
+
+* **Level-Up & SP Progression on EXP Overflow**:
+  - Implemented `char_level_stats()` and `char_level_stat(char_class, level)` in `src/darkblood/games/game_data/client_dict.py`, parsing `UPExp`, `HealthPoint`, and `ManaPoint` from `Data/Dict/charstat.lua` across all 7 character classes (`Warrior`, `Knight`, `Hunter`, `Mage`, `Thief`, `Fighter`, `WHunter`) with fallback geometric scaling.
+  - Wired level-up evaluation loop into quest reward completion (`on_2076` in `quests.py`). When EXP overflows `UPExp`, increments character level, grants 3 SP per level, updates max HP and MP, emits `5087 eERC_LEVEL_UP_NOT` and `5086 eERC_CHANGE_EXP_NOT`, and persists character state.
+  - Verified progression in `tests/test_quest_flow.py` (character levels from 1 -> 2, accumulates 3 SP, and carries remaining EXP).
+* **Store Economy Transactions & Inventory Persistence**:
+  - Reverse engineered `0x0077E2F0` (`On_eEGS_BUY_ITEM_ACK`), `0x0077E8E0` (`On_eEGS_SELL_ITEM_ACK`), and `0x0077EC30` (`On_eEGS_REPURCHASE_ITEM_ACK`).
+  - Implemented wire encoding for `BuyItemAck` (tag 0x1E store record, i32, i64 player gold, tag 0x10 item vector, i32, i16, i64, i32), `SellItemAck` (tag 0x10 item vector, i64 player gold, tag 0x1E repurchase item struct, tag 0x13 map), and `RepurchaseItemAck` (tag 0x10 item vector, i64 player gold).
+  - Wired `on_2067` (Buy Item): matches `item_id` hash against store item catalog, deducts gold, generates and adds item to player inventory via `add_reward_items`, and persists balance.
+  - Wired `on_2069` (Sell Item): decrements/removes sold item from player bags, awards gold, and saves character state.
+  - Wired `on_2071` (Repurchase Item): returns player gold balance.
+* **Guild Economy, Progression & Skill Reset Opcodes**:
+  - `2179 eEGS_GUILD_MONEY_IN_REQ` & `2180 eEGS_GUILD_MONEY_IN_ACK` (`0x00794250`): `<q` (deposit amount) -> `<iq` (result=0, remaining gold), updating player gold and guild bank.
+  - `2181 eEGS_GUILD_MONEY_OUT_REQ` & `2182 eEGS_GUILD_MONEY_OUT_ACK` (`0x00794470`): `<q` (withdraw amount) -> `<iq` (result=0, remaining gold), updating player gold and guild bank.
+  - `2183 eEGS_GUILD_LEVEL_UP_REQ` & `2184 eEGS_GUILD_LEVEL_UP_ACK` (`0x00753380`): empty -> `<ih` (result=0, new_level), incrementing guild level.
+  - `2185 eEGS_GUILD_NOTICE_MODIFY_REQ` & `2186 eEGS_GUILD_NOTICE_MODIFY_ACK` (`0x0075A120`): wide string notice -> `<i` (result=0).
+  - `2188 eEGS_GUILD_NOTICE_DELETE_REQ` & `2189 eEGS_GUILD_NOTICE_DELETE_ACK` (`0x0074B830`): empty -> `<i` (result=0).
+  - `2214 eEGS_GUILD_ALL_SKILL_INIT_REQ` & `2215 eEGS_GUILD_ALL_SKILL_INIT_ACK` (`0x00752D80`): empty -> `<ii` (result=0, param=0).
+* 48/48 unit and flow tests pass cleanly across all 11 test modules.
+
 ## Milestone P1: Reproducible Transport & Serialization Hardening — 2026-11-16 ~19:30
 
 * Transport & Serialization Test Suite (`tests/test_transport.py`, 11 comprehensive tests):

@@ -1,5 +1,27 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~19:50 (Level-Up Progression, Store Economy & Guild Banking)
+
+1. Level-Up & SP Progression on EXP Overflow:
+   - Added `char_level_stats()` and `char_level_stat(char_class, level)` in `darkblood.games.game_data.client_dict`, parsing `UPExp`, `HealthPoint`, and `ManaPoint` from `charstat.lua` across all 7 character classes (`Warrior`, `Knight`, `Hunter`, `Mage`, `Thief`, `Fighter`, `WHunter`) with fallback formula.
+   - Wired level-up loop into `on_2076` in `quests.py`: when EXP overflows `UPExp`, increments level, adds 3 SP per level, updates max HP and MP, and emits `5087 eERC_LEVEL_UP_NOT` and `5086 eERC_CHANGE_EXP_NOT`.
+   - Verified in `tests/test_quest_flow.py` (character level increases to 2, SP is 3, remaining EXP is carried over).
+2. Store Economy Transactions & Inventory Persistence:
+   - Reverse engineered `0x0077E2F0` (`BuyItemAck`), `0x0077E8E0` (`SellItemAck`), and `0x0077EC30` (`RepurchaseItemAck`).
+   - Wired `on_2067` (Buy): looks up item in store catalogs, deducts gold, generates and inserts item via `add_reward_items`, and persists state.
+   - Wired `on_2069` (Sell): removes item count, adds earned gold, and persists state.
+   - Wired `on_2071` (Repurchase): sends balance confirmation.
+   - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
+3. Guild Economy, Progression & Skill Reset Opcodes:
+   - `2179 eEGS_GUILD_MONEY_IN_REQ` & `2180 eEGS_GUILD_MONEY_IN_ACK` (`0x00794250`): `<q` -> `<iq`. Deposits gold into guild bank and updates player balance.
+   - `2181 eEGS_GUILD_MONEY_OUT_REQ` & `2182 eEGS_GUILD_MONEY_OUT_ACK` (`0x00794470`): `<q` -> `<iq`. Withdraws gold from guild bank and updates player balance.
+   - `2183 eEGS_GUILD_LEVEL_UP_REQ` & `2184 eEGS_GUILD_LEVEL_UP_ACK` (`0x00753380`): empty -> `<ih`. Increments guild level.
+   - `2185 eEGS_GUILD_NOTICE_MODIFY_REQ` & `2186 eEGS_GUILD_NOTICE_MODIFY_ACK` (`0x0075A120`): wide string -> `<i`. Updates guild notice.
+   - `2188 eEGS_GUILD_NOTICE_DELETE_REQ` & `2189 eEGS_GUILD_NOTICE_DELETE_ACK` (`0x0074B830`): empty -> `<i`. Clears guild notice.
+   - `2214 eEGS_GUILD_ALL_SKILL_INIT_REQ` & `2215 eEGS_GUILD_ALL_SKILL_INIT_ACK` (`0x00752D80`): empty -> `<ii`. Resets guild skills.
+4. Test Suite:
+   - 48/48 unit and flow tests passing across 11 test modules.
+
 ## Update — 2026-11-16 ~19:30 (Milestone P1: Transport & Serialization Hardening, Roadmap Update)
 
 1. Completed P1 Objectives:

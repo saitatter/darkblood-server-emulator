@@ -415,11 +415,25 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2055 eEGS_DELETE_SKILL_SPEECH_REQ` (`0x00780000.c:9708`) -> `2056 eEGS_DELETE_SKILL_SPEECH_ACK` (`0x0078E270`):
   `sKindNameIndex: u16` -> `result: i32, sKindNameIndex: u16`. Clears shout text.
 - `2067 eEGS_BUY_ITEM_REQ` (`0x00780000.c:10667`) -> `2068 eEGS_BUY_ITEM_ACK` (`0x0077E2F0`):
-  `store_id: i32, item_id: i32, count: u16` -> `result: i32`. Non-zero (1) error response safely terminates shop transaction without requiring missing inventory structs.
+  `store_id: i32, item_id: i32, count: u16` -> On success: `result: i32 (0), tag 0x1e store record (32 bytes), prefix: i32, gold: i64, tag 0x10 items vector (0x004B94C0), u32, u16, i64, u32`. Deducts gold, adds items to inventory, and saves player state.
 - `2069 eEGS_SELL_ITEM_REQ` (`0x00780000.c:10700`) -> `2070 eEGS_SELL_ITEM_ACK` (`0x0077E8E0`):
-  `npc_id: i32, item_uid: i64, count: i32` -> `result: i32` (1 error code).
+  `npc_id: i32, item_uid: i64, count: i32` -> On success: `result: i32 (0), tag 0x10 items vector, gold: i64, tag 0x1e repurchase record (Item struct + i32 + i64), tag 0x13 map`. Removes item count, adds gold, and saves player state.
 - `2071 eEGS_REPURCHASE_ITEM_REQ` (`0x00780000.c:10735`) -> `2072 eEGS_REPURCHASE_ITEM_ACK` (`0x0077EC30`):
-  `item_uid: i64` -> `result: i32` (1 error code).
+  `item_uid: i64` -> On success: `result: i32 (0), tag 0x10 items vector, gold: i64`.
+- `2179 eEGS_GUILD_MONEY_IN_REQ` (`0x00790000.c:3031`) -> `2180 eEGS_GUILD_MONEY_IN_ACK` (`0x00794250`):
+  `amount: i64` -> `result: i32 (0), remain_gold: i64`. Deposits gold into guild bank and updates player gold.
+- `2181 eEGS_GUILD_MONEY_OUT_REQ` (`0x00790000.c:3141`) -> `2182 eEGS_GUILD_MONEY_OUT_ACK` (`0x00794470`):
+  `amount: i64` -> `result: i32 (0), remain_gold: i64`. Withdraws gold from guild bank and updates player gold.
+- `2183 eEGS_GUILD_LEVEL_UP_REQ` (`0x00790000.c:3250`) -> `2184 eEGS_GUILD_LEVEL_UP_ACK` (`0x00753380`):
+  empty / i32 prefix -> `result: i32 (0), new_level: i16`. Increments guild level.
+- `2185 eEGS_GUILD_NOTICE_MODIFY_REQ` (`0x00790000.c:3278`) -> `2186 eEGS_GUILD_NOTICE_MODIFY_ACK` (`0x0075A120`):
+  `notice: wstring` -> `result: i32 (0)`. Sets guild notice.
+- `2188 eEGS_GUILD_NOTICE_DELETE_REQ` (`0x00790000.c:3388`) -> `2189 eEGS_GUILD_NOTICE_DELETE_ACK` (`0x0074B830`):
+  empty / i32 prefix -> `result: i32 (0)`. Clears guild notice.
+- `2214 eEGS_GUILD_ALL_SKILL_INIT_REQ` -> `2215 eEGS_GUILD_ALL_SKILL_INIT_ACK` (`0x00752D80`):
+  empty / i32 prefix -> `result: i32 (0), param: i32 (0)`. Resets guild skills.
+- `5087 eERC_LEVEL_UP_NOT` (`0x0078CCF0`) & `5086 eERC_CHANGE_EXP_NOT` (`0x007775F0`):
+  Triggered when EXP overflows `UPExp` from `charstat.lua`. Emits level up (new_level, max_hp, max_mp) and 5086 exp details, granting 3 SP per level.
 - `2139 eEGS_FRIEND_LIST_ADD_REQ` (`0x00790000.c:1595`) -> `2140 eEGS_FRIEND_LIST_ADD_ACK` (`0x007591A0`):
   `char_name: wstring` -> `result: i32` (0xCE player offline / not found).
 - `2135 eEGS_FRIEND_LIST_DELETE_REQ` (`0x00790000.c:1824`) -> `2136 eEGS_FRIEND_LIST_DELETE_ACK` (`0x00759560`):
