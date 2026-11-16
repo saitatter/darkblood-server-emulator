@@ -512,6 +512,27 @@ class GTargetListAck:
 
 
 @dataclass
+class QuestStartAck:
+    """Opcode 2074: eEGS_QUEST_START_ACK (JAppPageTalkBox, case 0x659F00 -> 0x659790).
+
+    Field names from the handler's read-failure message
+    ("iQuestID >> iQuestUID >> jInfo >> vecItem"): u32 result, i32 iQuestID
+    (jhash of the quest key, e.g. 'Q0001S01'), i64 iQuestUID, jInfo = 18 raw
+    bytes (0x00A48A90; the client initialises it as i32 -1, u16 0xFFFF,
+    3 x i32 -1, sent unchanged here), tag 0x10 vecItem (item vector 0x4B9210,
+    empty). The quest UID is a local counter.
+    """
+    result: int = 0
+    quest_id: int = 0
+    quest_uid: int = 1
+
+    def encode(self) -> bytes:
+        qid = self.quest_id - (1 << 32) if self.quest_id >= 1 << 31 else self.quest_id
+        info = struct.pack('<iHiii', -1, 0xFFFF, -1, -1, -1)
+        return struct.pack('<Iiq', self.result, qid, self.quest_uid) + info + b'\x10' + varuint(0)
+
+
+@dataclass
 class StoreInfoAck:
     """Opcode 2066: eEGS_GET_STORE_INFO_ACK (handler 0x007842C0).
 

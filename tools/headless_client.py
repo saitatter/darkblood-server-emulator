@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'server'))
 
 from proudnet import blob, frame, pop_frame, read_scalar  # noqa: E402
 from proudnet_crypto import AES, envelope_encrypt  # noqa: E402
-from game_wire import event, parse_event  # noqa: E402
+from game_wire import event, parse_event, varuint  # noqa: E402
 from bootstrap_server import server_settings  # noqa: E402
 
 TRANSPORT_REPORT = b'\x30' + struct.pack('<I', 0x4000000f)
@@ -93,8 +93,14 @@ class HeadlessClient:
     def send(self, payload):
         self.writer.write(frame(payload))
 
-    def send_event(self, opcode, body=b'', correlation=1):
-        plain = struct.pack('<H', self.counter) + b'\x02' + event(opcode, body, correlation)
+    def send_event(self, opcode, body=b'', correlation=1, compressed=False):
+        if compressed:  # client form: flag 1, u32 inflated size + zlib stream
+            import zlib
+            packed = struct.pack('<I', len(body)) + zlib.compress(body)
+            raw = struct.pack('<IQ', opcode, correlation) + varuint(len(packed)) + b'\x01' + packed
+        else:
+            raw = event(opcode, body, correlation)
+        plain = struct.pack('<H', self.counter) + b'\x02' + raw
         self.counter += 1
         cipher = envelope_encrypt(self.aes, plain)
         self.send(b'\x26\x01' + blob(cipher))

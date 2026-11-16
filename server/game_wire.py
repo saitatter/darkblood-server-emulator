@@ -1,6 +1,7 @@
 """JSerBuffer/JEvent envelope recovered from client 0xA1EB90/0xB35E50."""
 import datetime
 import struct
+import zlib
 
 from models import (
     BackToSquareAck,
@@ -16,6 +17,7 @@ from models import (
     layer_net_id,
     NpcFirstMeetAck,
     PostListAck,
+    QuestStartAck,
     RelayAddressNot,
     RouletteManagerInfoAck,
     SelectCharacterAck,
@@ -183,6 +185,13 @@ class GameSession:
         except WireError as exc:
             self.transport.record('bad-event', data, error=str(exc))
             return
+        if compressed:
+            # Observed (2073, 2216, 2346): u32 inflated size + zlib stream.
+            try:
+                body = zlib.decompress(body[4:])
+            except zlib.error as exc:
+                self.transport.record('bad-event', data, error='zlib: %s' % exc)
+                return
         self.transport.record('event', body, opcode=opcode, opcode_hex='0x%04x' % opcode,
                               correlation=correlation, compressed=compressed)
         if getattr(self.transport.server, 'role', 'game') != 'game':
@@ -339,6 +348,21 @@ class GameSession:
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
         await self.transport.send_event(event(2066, StoreInfoAck(npc_id=npc_id).encode(), correlation),
                                         note='store info ack (npc %08x)' % npc_id)
+
+    async def on_2073(self, correlation, body):
+        # eEGS_QUEST_START_REQ (zlib body; observed: wstring, u32 quest id =
+        # jhash('Q0001S01'), ...) -> eEGS_QUEST_START_ACK 2074, case in
+        # JAppPageTalkBox dispatcher 0x659F00 -> 0x659790.
+        quest_id = 0
+        try:
+            length, offset = read_varuint(body, 0)
+            quest_id = struct.unpack_from('<I', body, offset + length)[0]
+        except (WireError, struct.error):
+            pass
+        self.quest_uid = getattr(self, 'quest_uid', 0) + 1
+        ack = QuestStartAck(quest_id=quest_id, quest_uid=self.quest_uid).encode()
+        await self.transport.send_event(event(2074, ack, correlation),
+                                        note='quest start ack (%08x)' % quest_id)
 
     async def on_2369(self, correlation, body):
         # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: u32 result + 12 raw bytes (zeros).
