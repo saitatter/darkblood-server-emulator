@@ -33,6 +33,7 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Active quests restored at selection (2007 map 0xA3E450); quest gold/EXP rewards from DictQuest (live: EXP bar, Ar gold).
 - [x] Default equipment worn from DictItem:LoadDefaultEquipItem (2007 bag/item vectors; live).
 - [x] Bag cells: recovered +0x28 tab filter, +0x29 capacity, +0x2A UI slot, bag_id high dword from client (0x00827D80, 0x005509F0, 0x00551310); container 2 added.
+- [x] Inventory & combat schemas: 2036/2037 drag item (slot swapping & persistence), 2028 close bag, 2406/2407 stat verify, 5093/5094 death notification, 2448/2449 rebirth coin revive.
 - [ ] Level-up on EXP overflow (charstat.lua UPExp), mission counters, package items (CPkg...).
 - [ ] Verify NPC interaction and persistence across sessions before claiming gameplay.
 

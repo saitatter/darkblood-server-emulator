@@ -7,7 +7,11 @@ from darkblood.games.network.messages import (
     ChangeDungeonLayerNot,
     ChangeMapCodeAck,
     CreateRoomAck,
+    DailyRebirthCoinUseAck,
+    DailyRebirthCoinUseReq,
     DropItemNot,
+    GameplayDieCharAck,
+    GameplayDieCharReq,
     GuideBeginnerUpdateReq,
     MonsterDeadReq,
     RoomInfoListAck,
@@ -124,3 +128,33 @@ class DungeonHandlers:
             self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
         except (struct.error, ValueError):
             pass
+
+    async def on_5093(self, correlation, body):
+        # eERC_GAMEPLAY_DIE_CHAR_REQ (sender 0x780000.c:10409) -> 5094 eERC_GAMEPLAY_DIE_CHAR_ACK.
+        # Player died in gameplay. Notify client of death, current HP (0), and available rebirth coins.
+        try:
+            req = GameplayDieCharReq.decode(body)
+            char_id = selected_character.get('id', 0)
+            ack = GameplayDieCharAck(
+                result=0,
+                from_char_uid=req.from_char_uid,
+                to_char_uid=char_id,
+                bDie=req.bDie,
+                damage=req.damage,
+                cur_hp=req.cur_hp,
+                max_hp=req.max_hp if req.max_hp > 0 else 500,
+                die_count=1,
+                rebirth_coin=5
+            ).encode()
+            await self.transport.send_event(event(5094, ack, correlation),
+                                            note='gameplay die char ack')
+        except (struct.error, ValueError):
+            pass
+
+    async def on_2448(self, correlation, body):
+        # eEGS_DAILY_REBIRTH_COIN_USE_REQ (0x00790000.c:10218) -> 2449 eEGS_DAILY_REBIRTH_COIN_USE_ACK.
+        # Revive character on screen using a rebirth coin.
+        ack = DailyRebirthCoinUseAck(result=0, daily_recv_cnt=1, pcbang_coin_remain=5).encode()
+        await self.transport.send_event(event(2449, ack, correlation),
+                                        note='daily rebirth coin use ack')
+

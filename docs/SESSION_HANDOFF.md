@@ -1,6 +1,22 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
-## Update — 2026-11-16 ~17:15 (Dungeon schemas, drops & bag cell display resolved)
+## Update — 2026-11-16 ~17:35 (Combat death/rebirth, stat verify & item drag schemas implemented)
+
+Live play in Lucid Forest (`Act1_G1_A10`) confirmed active gameplay loop:
+- Player interacted with new bag cells: emitted `2036 eEGS_DRAG_ITEM_REQ` (moving item 7 to container 2 slot 0) and `2028 eEGS_CLOSE_BAG_REQ` (closing container 2).
+- Player engaged dungeon monsters, took fatal damage, and emitted `5093 eERC_GAMEPLAY_DIE_CHAR_REQ`.
+- Rebirth modal triggered and player requested revival: `2448 eEGS_DAILY_REBIRTH_COIN_USE_REQ`.
+- Periodic stat heartbeat observed: `2406 eEGS_CHAR_VERIFY_STAT_REQ`.
+
+Decompiled client routines and implemented wire schemas:
+1. `2036 eEGS_DRAG_ITEM_REQ` (0x00790000.c:4212): i64 item_uid + i64 to_container + i32 to_slot. Handled in `on_2036`: swaps or moves items, saves to store, and returns `2037 eEGS_DRAG_ITEM_ACK` (0x0077F570: i32 result + tag `0x10` vector of updated Item structs).
+2. `2028 eEGS_CLOSE_BAG_REQ` (0x00550000.c:1773): i32 prefix + i64 bag_id. Client registers no ACK. Handled in `on_2028`.
+3. `2406 eEGS_CHAR_VERIFY_STAT_REQ` -> `2407 eEGS_CHAR_VERIFY_STAT_ACK` (0x0074B830): i32 result 0. Handled in `on_2406`.
+4. `5093 eERC_GAMEPLAY_DIE_CHAR_REQ` (0x00780000.c:10409): i64 from_char_uid + bool bDie + i32 damage + i32 cur_hp + i32 max_hp. Handled in `on_5093`: replies with `5094 eERC_GAMEPLAY_DIE_CHAR_ACK` (0x0078F090: i32 result + i64 from_uid + i64 to_uid + bool bDie + i32 damage + i32 cur_hp + i32 max_hp + u16 die_count + u16 sRebirthCoin=5).
+5. `2448 eEGS_DAILY_REBIRTH_COIN_USE_REQ`: i32 prefix + u8 coin_type. Handled in `on_2448`: replies with `2449 eEGS_DAILY_REBIRTH_COIN_USE_ACK` (0x0079DC70: i32 result + u16 sDailyRecvCnt + i32 nPCBangCoinRemain=5) to revive the player via client function `0x00559310`.
+
+16/16 headless tests pass.
+
 
 Decompiled senders/handlers and recovered wire formats for dungeon & inventory flow:
 1. 5095 eERC_CHANGE_DUNGEON_LAYER_NOT (0x007900B0): i32 0x7FFFFFFF + i64 layer_net_id

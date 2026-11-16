@@ -240,6 +240,41 @@ class HeadlessFlowTest(unittest.TestCase):
             # 5063: eERC_MONSTER_DEAD_REQ (monster id 100, overkill 0)
             client.send_event(5063, struct.pack('<iII', 0x7fffffff, 100, 0))
 
+            # 2406: eEGS_CHAR_VERIFY_STAT_REQ -> 2407
+            client.send_event(2406, bytes.fromhex('ffffff7f0000000010801080621ac3412811ea41b802414088b60e400ad7233cffffffff'))
+            _, ack2407 = await client.expect_event(2407)
+            self.assertEqual(struct.unpack_from('<i', ack2407)[0], 0)
+
+            # 5093: eERC_GAMEPLAY_DIE_CHAR_REQ -> 5094
+            client.send_event(5093, struct.pack('<q?iii', 0, True, 50, 0, 500))
+            _, ack5094 = await client.expect_event(5094)
+            res, from_uid, to_uid, bDie, dmg, hp, max_hp, die_cnt, coins = struct.unpack_from('<iqq?iiiHH', ack5094)
+            self.assertEqual((res, bDie, hp, max_hp, coins), (0, True, 0, 500, 5))
+
+            # 2448: eEGS_DAILY_REBIRTH_COIN_USE_REQ -> 2449
+            client.send_event(2448, bytes.fromhex('ffffff7f00'))
+            _, ack2449 = await client.expect_event(2449)
+            res, daily_cnt, pcbang = struct.unpack_from('<iHI', ack2449)
+            self.assertEqual((res, daily_cnt, pcbang), (0, 1, 5))
+
+            # 2028: eEGS_CLOSE_BAG_REQ
+            client.send_event(2028, struct.pack('<iq', 0x7fffffff, 2))
+
+            # Ensure character has an item to drag
+            from darkblood.games.state import selected_character
+            chars = session.GameSession.store().characters('OfflinePlayer')
+            if chars:
+                char = chars[0]
+                char['items'] = [dict(code='AbodT1N', uid=1, container=1, slot=0)]
+                selected_character['id'] = char['id']
+                session.GameSession.store().save()
+
+            # 2036: eEGS_DRAG_ITEM_REQ -> 2037
+            client.send_event(2036, struct.pack('<qqi', 1, 2, 0))
+            _, ack2037 = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', ack2037)[0], 0)
+            self.assertEqual(ack2037[4], 0x10)  # tag 0x10 vector
+
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
             _, ack2345 = await client.expect_event(2345)
             self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, hashing.jhash('Act1') << 32, 1))

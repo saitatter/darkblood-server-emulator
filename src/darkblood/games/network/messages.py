@@ -661,3 +661,154 @@ class DropItemNot:
     def encode(self) -> bytes:
         header = struct.pack('<I', self.source_id) + b'\x10' + varuint(len(self.drops))
         return header + b''.join(d.encode() for d in self.drops)
+
+
+@dataclass
+class CloseBagReq:
+    """Opcode 2028: eEGS_CLOSE_BAG_REQ (0x00550000.c:1773).
+
+    Wire format: i32 prefix (0x7FFFFFFF) + i64 bag_id.
+    """
+    prefix: int = 0x7FFFFFFF
+    bag_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'CloseBagReq':
+        if len(data) >= 12:
+            prefix, bag_id = struct.unpack_from('<iq', data, 0)
+            return cls(prefix=prefix, bag_id=bag_id)
+        return cls()
+
+
+@dataclass
+class DragItemReq:
+    """Opcode 2036: eEGS_DRAG_ITEM_REQ (JUserClient::DragItemREQ 0x00790000.c:4212).
+
+    Wire format: i64 item_uid + i64 to_container + i32 to_slot (20 bytes).
+    """
+    item_uid: int = 0
+    to_container: int = 0
+    to_slot: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DragItemReq':
+        if len(data) >= 20:
+            item_uid, to_container, to_slot = struct.unpack_from('<qqi', data, 0)
+            return cls(item_uid=item_uid, to_container=to_container, to_slot=to_slot)
+        return cls()
+
+
+@dataclass
+class DragItemAck:
+    """Opcode 2037: eEGS_DRAG_ITEM_ACK (On_eEGS_DRAG_ITEM_ACK 0x0077F570).
+
+    Wire format: i32 result (0 = success) + tag 0x10 vector of Item structs.
+    """
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(item.encode() for item in self.items))
+
+
+@dataclass
+class CharVerifyStatReq:
+    """Opcode 2406: eEGS_CHAR_VERIFY_STAT_REQ. Heartbeat / stat verification from client."""
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'CharVerifyStatReq':
+        return cls(raw_payload=data)
+
+
+@dataclass
+class CharVerifyStatAck:
+    """Opcode 2407: eEGS_CHAR_VERIFY_STAT_ACK (On_eEGS_CHAR_VERIFY_STAT_ACK 0x0074B830)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class GameplayDieCharReq:
+    """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (0x00780000.c:10409).
+
+    Wire format: i64 from_char_uid + bool bDie + i32 damage + i32 cur_hp + i32 max_hp (21 bytes).
+    """
+    from_char_uid: int = 0
+    bDie: bool = True
+    damage: int = 0
+    cur_hp: int = 0
+    max_hp: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GameplayDieCharReq':
+        if len(data) >= 21:
+            from_uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?iii', data, 0)
+            return cls(from_char_uid=from_uid, bDie=bDie, damage=damage, cur_hp=cur_hp, max_hp=max_hp)
+        return cls()
+
+
+@dataclass
+class GameplayDieCharAck:
+    """Opcode 5094: eERC_GAMEPLAY_DIE_CHAR_ACK (On_eERC_GAMEPLAY_DIE_CHAR_ACK 0x0078F090).
+
+    Wire format:
+      i32 result (0)
+      i64 from_char_uid
+      i64 to_char_uid
+      bool bDie
+      i32 damage
+      i32 cur_hp
+      i32 max_hp
+      u16 die_count
+      (if bDie and to_char_uid == player_uid):
+      u16 sRebirthCoin
+    """
+    result: int = 0
+    from_char_uid: int = 0
+    to_char_uid: int = 0
+    bDie: bool = True
+    damage: int = 0
+    cur_hp: int = 0
+    max_hp: int = 500
+    die_count: int = 1
+    rebirth_coin: int = 5
+
+    def encode(self) -> bytes:
+        data = struct.pack('<iqq?iiiH', self.result, self.from_char_uid, self.to_char_uid,
+                           self.bDie, self.damage, self.cur_hp, self.max_hp, self.die_count)
+        if self.bDie:
+            data += struct.pack('<H', self.rebirth_coin)
+        return data
+
+
+@dataclass
+class DailyRebirthCoinUseReq:
+    """Opcode 2448: eEGS_DAILY_REBIRTH_COIN_USE_REQ. Client requests to revive with coin."""
+    prefix: int = 0x7FFFFFFF
+    coin_type: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DailyRebirthCoinUseReq':
+        prefix = struct.unpack_from('<i', data, 0)[0] if len(data) >= 4 else 0x7FFFFFFF
+        coin_type = data[4] if len(data) > 4 else 0
+        return cls(prefix=prefix, coin_type=coin_type)
+
+
+@dataclass
+class DailyRebirthCoinUseAck:
+    """Opcode 2449: eEGS_DAILY_REBIRTH_COIN_USE_ACK (On_eEGS_DAILY_REBIRTH_COIN_USE_ACK 0x0079DC70).
+
+    Wire format: i32 result (0 = success) + u16 sDailyRecvCnt + i32 nPCBangCoinRemain.
+    """
+    result: int = 0
+    daily_recv_cnt: int = 1
+    pcbang_coin_remain: int = 5
+
+    def encode(self) -> bytes:
+        return struct.pack('<iHI', self.result, self.daily_recv_cnt, self.pcbang_coin_remain)
+
