@@ -1,10 +1,11 @@
 """Frontend flow: server/channel lists, character list, creation and selection."""
+import asyncio
 import datetime
 import struct
 import time
 
 from darkblood.core.serialization.jser import event, varuint, wide_string
-from darkblood.games.entities.character import Character, delete_seconds_left
+from darkblood.games.entities.character import Character, delete_seconds_left, layer_net_id
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.frontend.relay import RELAY_PORT
@@ -12,6 +13,7 @@ from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, squar
 from darkblood.games.network.messages import (
     DeleteCharacterAck,
     DeleteCharacterReq,
+    BackToSquareAck,
     JoinSquareAck,
     QuestHistoryNot,
     RelayAddressNot,
@@ -117,6 +119,8 @@ class FrontendHandlers:
             event(5134, RelayAddressNot(port=RELAY_PORT).encode()),
             note='relay address not'
         )
+        if not self.active_char_id and not getattr(self, 'charlist_requested', False):
+            asyncio.ensure_future(self._resume_after_reconnect(square_id))
         # Register in GameWorldManager only if a character has already been selected
         if self.active_char_id:
             try:
@@ -128,6 +132,35 @@ class FrontendHandlers:
             except Exception:
                 pass
 
+    async def _resume_after_reconnect(self, square_id: int):
+        """Answer the SelectChannel branch that skips the character list.
+
+        JAppPageSelectChannel::SelectChannel (caller of 0x007ABDD0 and 0x00788DA0,
+        decompiled/00630000.c ~10200) reads the local user's UID through
+        JNetUserMgr 0x00946570 (singleton 0x00F2EE90). When it is -1 it waits
+        for 5029, sends 2008 and waits for 2009. Otherwise (a character is
+        still loaded: in-game channel change, or the shim's reconnect after a
+        server drop) it sends nothing after 5028 and blocks on 5031
+        (eERC_JOIN_LAYER_ACK, handler 0x00787A70) for ~30 s, then drops the
+        connection. A fresh login sends 2008 within milliseconds of 5029, so
+        silence for 1 s means the second branch: send 5031 and restore the
+        session's character (process-wide selection, else the account's first).
+        """
+        await asyncio.sleep(1.0)
+        if self.active_char_id or getattr(self, 'charlist_requested', False):
+            return
+        char_id = selected_character.get('id') or 0
+        if not self.store().get(self.account, char_id):
+            chars = self.store().characters(self.account)
+            if not chars:
+                return
+            char_id = chars[0]['id']
+        selected_character['id'] = char_id
+        self.active_char_id = char_id
+        ack = BackToSquareAck(square_uid=square_id, layer_net_id=layer_net_id()).encode()
+        await self.transport.send_event(event(5031, ack),
+                                        note='join layer ack (resume char %d after reconnect)' % char_id)
+
     async def handle_get_char_list(self, correlation: int, body: bytes):
         """Opcode 2008 (eEGS_GET_CHARLIST_REQ) -> 2009 (eEGS_GET_CHARLIST_ACK).
 
@@ -136,6 +169,7 @@ class FrontendHandlers:
         levels, classes, and equipped gear previews.
         """
         from darkblood.player_management.characters import encode_character
+        self.charlist_requested = True
         now = int(time.time())
         for char in self.store().characters(self.account):
             if char.get('delete_time') and char['delete_time'] <= now:
