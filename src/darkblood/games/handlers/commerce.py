@@ -654,6 +654,52 @@ class CommerceHandlers:
         ack = FinallyAcceptTradeAck(result=0).encode()
         await self.transport.send_event(event(5084, ack, correlation), note='trade finally accept ack')
 
+    async def on_2254(self, correlation, body):
+        # eEGS_MAGICENCHANT_ENCHANT_REQ -> 2255 eEGS_MAGICENCHANT_ENCHANT_ACK (0x00796DC0).
+        from darkblood.games.network.messages import MagicEnchantEnchantAck, MagicEnchantEnchantReq
+        from darkblood.games.state import selected_character
+        req = MagicEnchantEnchantReq.decode(body)
+        self.transport.record('magicenchant-enchant-req', body, item_uid=req.item_uid)
+        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        gold = char.get('gold', 0) if char else 0
+        ack = MagicEnchantEnchantAck(result=0, items=[], gold=gold).encode()
+        await self.transport.send_event(event(2255, ack, correlation), note=f'magicenchant enchant ack (item={req.item_uid})')
+
+    async def on_2256(self, correlation, body):
+        # eEGS_MAGICENCHANT_ERASE_OPTION_REQ -> 2257 eEGS_MAGICENCHANT_ERASE_OPTION_ACK (0x00797120).
+        from darkblood.games.network.messages import MagicEnchantEraseOptionAck, MagicEnchantEraseOptionReq
+        from darkblood.games.state import selected_character
+        req = MagicEnchantEraseOptionReq.decode(body)
+        self.transport.record('magicenchant-erase-option-req', body, item_uid=req.item_uid)
+        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        gold = char.get('gold', 0) if char else 0
+        ack = MagicEnchantEraseOptionAck(result=0, items=[], gold=gold).encode()
+        await self.transport.send_event(event(2257, ack, correlation), note=f'magicenchant erase option ack (item={req.item_uid})')
+
+    async def on_2258(self, correlation, body):
+        # eEGS_MAGICENCHANT_EXPEND_SLOT_REQ -> 2259 eEGS_MAGICENCHANT_EXPEND_SLOT_ACK (0x0077FC60).
+        from darkblood.games.network.messages import MagicEnchantExpendSlotAck, MagicEnchantExpendSlotReq
+        req = MagicEnchantExpendSlotReq.decode(body)
+        self.transport.record('magicenchant-expend-slot-req', body, item_uid=req.item_uid)
+        ack = MagicEnchantExpendSlotAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(2259, ack, correlation), note=f'magicenchant expend slot ack (item={req.item_uid})')
+
+    async def on_2284(self, correlation, body):
+        # eEGS_RANDOM_ITEM_UPGRADE_REQ -> 2285 eEGS_RANDOM_ITEM_UPGRADE_ACK (0x0077FED0).
+        from darkblood.games.network.messages import RandomItemUpgradeAck, RandomItemUpgradeReq
+        req = RandomItemUpgradeReq.decode(body)
+        self.transport.record('random-item-upgrade-req', body, item_uid=req.item_uid)
+        ack = RandomItemUpgradeAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(2285, ack, correlation), note=f'random item upgrade ack (item={req.item_uid})')
+
+    async def on_2672(self, correlation, body):
+        # eEGS_FIX_ITEM_UPGRADE_REQ -> 2673 eEGS_FIX_ITEM_UPGRADE_ACK (0x00783C40).
+        from darkblood.games.network.messages import FixItemUpgradeAck, FixItemUpgradeReq
+        req = FixItemUpgradeReq.decode(body)
+        self.transport.record('fix-item-upgrade-req', body, item_uid=req.item_uid)
+        ack = FixItemUpgradeAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(2673, ack, correlation), note=f'fix item upgrade ack (item={req.item_uid})')
+
 
 
 

@@ -379,6 +379,55 @@ class WireMessagesTest(unittest.TestCase):
         ack_fl = messages.QuestFailAck(result=0, quest_id=0x87654321).encode()
         self.assertEqual(struct.unpack_from('<iI', ack_fl[:8]), (0, 0x87654321))
 
+    def test_magic_enchant_and_upgrade_messages(self):
+        req_enc = messages.MagicEnchantEnchantReq.decode(struct.pack('<qqq', 1, 2, 3))
+        self.assertEqual((req_enc.item_uid, req_enc.catalyst_uid, req_enc.scroll_uid), (1, 2, 3))
+        ack_enc = messages.MagicEnchantEnchantAck(result=0, items=[], gold=1000).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_enc)[0], 0)
+
+        req_era = messages.MagicEnchantEraseOptionReq.decode(struct.pack('<q', 1))
+        self.assertEqual(req_era.item_uid, 1)
+        ack_era = messages.MagicEnchantEraseOptionAck(result=0, items=[], gold=1000).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_era)[0], 0)
+
+        req_exp = messages.MagicEnchantExpendSlotReq.decode(struct.pack('<qq', 1, 2))
+        self.assertEqual((req_exp.item_uid, req_exp.stone_uid), (1, 2))
+        ack_exp = messages.MagicEnchantExpendSlotAck(result=0, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_exp)[0], 0)
+
+        req_rnd = messages.RandomItemUpgradeReq.decode(struct.pack('<qq', 1, 2))
+        self.assertEqual((req_rnd.item_uid, req_rnd.stone_uid), (1, 2))
+        ack_rnd = messages.RandomItemUpgradeAck(result=0, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_rnd)[0], 0)
+
+        req_fix = messages.FixItemUpgradeReq.decode(struct.pack('<qq', 1, 2))
+        self.assertEqual((req_fix.item_uid, req_fix.stone_uid), (1, 2))
+        ack_fix = messages.FixItemUpgradeAck(result=0, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_fix)[0], 0)
+
+    def test_item_pickup_and_drop_messages(self):
+        req_p = messages.PickUpItemReq.decode(struct.pack('<q', 999))
+        self.assertEqual(req_p.drop_uid, 999)
+        ack_p = messages.PickUpItemAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_p)[0], 0)
+
+        ack_res = messages.PickUpItemResultAck(result=0, picker_uid=123, item=None).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_res[:12]), (0, 123))
+
+        not_ar = messages.GetDropArNot(result=0, gold=500, drop_id=1, picker_uid=123).encode()
+        self.assertEqual(struct.unpack_from('<iiiq', not_ar), (0, 500, 1, 123))
+
+    def test_friend_presence_and_char_info_messages(self):
+        not_conn = messages.FriendMyConnectionNot(char_uid=777, is_online=True).encode()
+        self.assertEqual(struct.unpack_from('<q?', not_conn[:9]), (777, True))
+
+        not_disc = messages.FriendMyDisconnectionNot(char_uid=777, notify=True).encode()
+        self.assertEqual(struct.unpack_from('<q?', not_disc), (777, True))
+
+        not_info = messages.UpdateCharInfoNot(char_details=b'\x01\x02\x03', layer_net_id=555).encode()
+        self.assertEqual(not_info[0], 0x1E)
+
+
 
 
 

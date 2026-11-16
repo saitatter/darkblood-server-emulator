@@ -1,5 +1,23 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~20:30 (SQLite Storage Backend, Item Enchanting, Upgrades & Loot Pickup)
+
+1. SQLite Character Store & JSON Migration (Milestone P9):
+   - Designed `ICharacterStore` interface and implemented `SqliteCharacterStore` in `src/darkblood/player_management/store.py` backed by `data/darkblood.db`.
+   - Supports atomic transactions, relational indexes on `name` (case-insensitive) and `account`, and full character JSON blob storage.
+   - Implemented bidirectional migration utilities `import_from_json(json_path)` and `export_to_json(json_path)`.
+   - Verified in `tests/test_character_store.py`: CRUD operations, case-insensitive duplicate name rejection, and bidirectional JSON <-> SQLite migration.
+2. Magic Enchanting & Item Upgrades (Opcodes 2254 - 2259, 2284 - 2285, 2672 - 2673):
+   - Reverse engineered `0x00796DC0` (`MagicEnchantEnchantAck`), `0x00797120` (`MagicEnchantEraseOptionAck`), `0x0077FC60` (`MagicEnchantExpendSlotAck`), `0x0077FED0` (`RandomItemUpgradeAck`), and `0x00783C40` (`FixItemUpgradeAck`).
+   - Implemented wire serialization and domain handlers `on_2254`, `on_2256`, `on_2258`, `on_2284`, and `on_2672` in `commerce.py`.
+   - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
+3. Item Drop, Pickup & Real-Time Presence (Opcodes 5065 - 5068, 5114, 5118 - 5119, 5096):
+   - Reverse engineered `0x0078AD80` (`PickUpItemResultAck`), `0x00792700` (`GetDropArNot`), `0x0077A8A0` (`FriendMyConnectionNot`), `0x00758FA0` (`FriendMyDisconnectionNot`), and `0x0078C990` (`UpdateCharInfoNot`).
+   - Implemented wire serialization and domain handlers `on_5065` (Pick up item) emitting 5066 and 5068 in `dungeon.py`.
+   - Verified in `tests/test_dungeon_flow.py` and `tests/test_wire_messages.py`.
+4. Test Suite:
+   - 61/61 unit and flow tests passing cleanly across all 11 test modules in ~1.38s.
+
 ## Update — 2026-11-16 ~20:10 (Mailbox, P2P Trade, Party Invites, GM Console Commands & Quest State)
 
 1. Mailbox System (Opcodes 2221 - 2237):

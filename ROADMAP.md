@@ -148,10 +148,10 @@ Final objective: launch without the original services, establish a local session
     - `darkblood.games.network.messages.dungeon`
     - `darkblood.games.network.messages.social`
     - `darkblood.games.network.messages.guild`
-- [ ] **Database & Storage Abstraction**:
+- [x] **Database & Storage Abstraction**:
   - Introduce `ICharacterStore` interface with abstract async methods.
-  - Implement SQLite backend (`data/darkblood.db`) for high reliability and SQL querying.
-  - Implement export/import tool between JSON and SQLite.
+  - Implement SQLite backend (`data/darkblood.db`) for high reliability and SQL querying (`src/darkblood/player_management/store.py`).
+  - Implement export/import tool between JSON and SQLite (`import_from_json`, `export_to_json`).
 - [ ] **Domain Entity Decoupling**:
   - Decouple low-level ProudNet transport session from high-level `PlayerCharacter` and `WorldInstance`.
   - Introduce an event-driven `GameWorldManager` managing player entities, square instances, and dungeon instances.
@@ -220,6 +220,11 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 5079 / 5080 | `eERC_UPDATE_TRADE_AR_REQ / ACK` | **Implemented** | Update gold offered in trade (`0x00758940`) |
 | 5081 / 5082 | `eERC_ACCEPT_TRADE_REQ / ACK` | **Implemented** | Lock and accept trade terms (`0x0078EB40`) |
 | 5083 / 5084 | `eERC_FINALLY_ACCEPT_TRADE_REQ / ACK` | **Implemented** | Final trade transaction execution |
+| 2254 / 2255 | `eEGS_MAGICENCHANT_ENCHANT_REQ / ACK` | **Implemented** | Magic enchanting application (`0x00796DC0`) |
+| 2256 / 2257 | `eEGS_MAGICENCHANT_ERASE_OPTION_REQ/ACK`| **Implemented** | Erase magical option from gear (`0x00797120`)|
+| 2258 / 2259 | `eEGS_MAGICENCHANT_EXPEND_SLOT_REQ/ACK`| **Implemented** | Expand item socket slot (`0x0077FC60`) |
+| 2284 / 2285 | `eEGS_RANDOM_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Random item stat upgrade (`0x0077FED0`) |
+| 2672 / 2673 | `eEGS_FIX_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Fixed item stat upgrade (`0x00783C40`) |
 | 2078 / 2079 | `eEGS_PERSONALSHOP_OPEN_REQ / ACK` | Planned | Open personal shop stall in town |
 | 2080 / 2081 | `eEGS_PERSONALSHOP_BUY_REQ / ACK` | Planned | Purchase from player's personal stall |
 
@@ -258,8 +263,11 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 5095 | `eERC_CHANGE_DUNGEON_LAYER_NOT` | **Implemented** | Enter next dungeon layer/sub-area (`0x007900B0`)|
 | 2422 | `eEGS_ACTIVE_WARFLAG_REQ` | **Implemented** | Active war flag state update (`0x0079C300`) |
 | 2448 / 2449 | `eEGS_REBIRTH_COIN_REVIVE_REQ / ACK`| **Implemented** | Revive in dungeon using coin (`0x00795450`) |
+| 5065 / 5066 | `eERC_PICK_UP_ITEM_REQ / ACK` | **Implemented** | Pick up dropped loot from ground (`0x0078AD80`)|
+| 5068 | `eERC_PICK_UP_ITEM_RESULT_ACK` | **Implemented** | Broadcast item picked up by player (`0x0078AD80`)|
+| 5114 | `eERC_GET_DROP_AR_NOT` | **Implemented** | Gold dropped by monster picked up (`0x00792700`)|
+| 5096 | `eERC_UPDATE_CHAR_INFO_NOT` | **Implemented** | Real-time gear and visual sync (`0x0078C990`) |
 | 5060 / 5061 | `eERC_MONSTER_SPAWN_NOT` | Planned | Dynamic monster wave spawn |
-| 5065 / 5066 | `eERC_LOOT_PICKUP_REQ / ACK` | Planned | Pick up dropped loot from ground |
 
 ### 6. Social, Friends, Guilds & Post (Opcodes 2128 - 2237, 2569 - 2595, 5040 - 5041)
 | Opcode Pair | Name | Status | Function / Handler |
@@ -270,6 +278,8 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 2133 / 2134 | `eEGS_FRIEND_LIST_UPDATE_REQ / ACK` | **Implemented** | Update friend memo (`0x00752E80`) |
 | 2135 / 2136 | `eEGS_FRIEND_LIST_DELETE_REQ / ACK` | **Implemented** | Remove friend from list (`0x00759560`) |
 | 2139 / 2140 | `eEGS_FRIEND_LIST_ADD_REQ / ACK` | **Implemented** | Send friend request (`0x007591A0`) |
+| 5118 | `eERC_FRIEND_MY_CONNECTION_NOT` | **Implemented** | Friend came online notification (`0x0077A8A0`)|
+| 5119 | `eERC_FRIEND_MY_DISCONNECTION_NOT` | **Implemented** | Friend went offline notification (`0x00758FA0`)|
 | 5121 / 5122 | `eERC_GUILD_CREATE_PROPOSAL_REQ/ACK`| **Implemented** | Guild name availability check (`0x00759750`) |
 | 2150 / 2151 | `eEGS_GUILD_CREATE_REQ / ACK` | **Implemented** | Register new guild (`0x00793720`) |
 | 2155 / 2156 | `eEGS_GUILD_PERSON_JOIN_REQ / ACK` | **Implemented** | Accept guild member join (`0x0075A220`) |

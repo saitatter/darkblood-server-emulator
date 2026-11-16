@@ -474,6 +474,26 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `quest_id: u32` -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
 - `2080 eEGS_QUEST_FAIL_REQ` -> `2081 eEGS_QUEST_FAIL_ACK` (`0x006223B0`):
   `quest_id: u32` -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
+- `2254 eEGS_MAGICENCHANT_ENCHANT_REQ` -> `2255 eEGS_MAGICENCHANT_ENCHANT_ACK` (`0x00796DC0`):
+  `item_uid: i64, catalyst_uid: i64, scroll_uid: i64` -> `result: i32 (0), items: tag 0x10 vector, gold: i64`.
+- `2256 eEGS_MAGICENCHANT_ERASE_OPTION_REQ` -> `2257 eEGS_MAGICENCHANT_ERASE_OPTION_ACK` (`0x00797120`):
+  `item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector, gold: i64`.
+- `2258 eEGS_MAGICENCHANT_EXPEND_SLOT_REQ` -> `2259 eEGS_MAGICENCHANT_EXPEND_SLOT_ACK` (`0x0077FC60`):
+  `item_uid: i64, stone_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
+- `2284 eEGS_RANDOM_ITEM_UPGRADE_REQ` -> `2285 eEGS_RANDOM_ITEM_UPGRADE_ACK` (`0x0077FED0`):
+  `item_uid: i64, stone_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
+- `2672 eEGS_FIX_ITEM_UPGRADE_REQ` -> `2673 eEGS_FIX_ITEM_UPGRADE_ACK` (`0x00783C40`):
+  `item_uid: i64, stone_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
+- `5065 eERC_PICK_UP_ITEM_REQ` -> `5066 eERC_PICK_UP_ITEM_ACK` & `5068 eERC_PICK_UP_ITEM_RESULT_ACK` (`0x0078AD80`):
+  `drop_uid: i64` -> `5066: result: i32 (0)` and `5068: result: i32 (0), picker_uid: i64` + Tag `0x1E` Item struct.
+- `5114 eERC_GET_DROP_AR_NOT` (`0x00792700`):
+  Emits monster gold drop pickup on screen: `result: i32 (0), gold: i32, drop_id: i32, picker_uid: i64`.
+- `5118 eERC_FRIEND_MY_CONNECTION_NOT` (`0x0077A8A0`):
+  `char_uid: i64, is_online: bool, param1: i64, param2: i64`.
+- `5119 eERC_FRIEND_MY_DISCONNECTION_NOT` (`0x00758FA0`):
+  `char_uid: i64, notify: bool`.
+- `5096 eERC_UPDATE_CHAR_INFO_NOT` (`0x0078C990`):
+  Tag `0x1E` Character Details struct + layer_net_id: real-time visual and stat synchronization.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 

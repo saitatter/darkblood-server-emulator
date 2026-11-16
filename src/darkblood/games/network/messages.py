@@ -2538,6 +2538,216 @@ class QuestFailAck:
         return struct.pack('<iI', self.result, self.quest_id) + b'\x1e\x10\x80'
 
 
+# --- Enchanting & Upgrade Opcodes (2254-2259, 2284-2285, 2672-2673) ---
+@dataclass
+class MagicEnchantEnchantReq:
+    """Opcode 2254: eEGS_MAGICENCHANT_ENCHANT_REQ."""
+    item_uid: int = 0
+    catalyst_uid: int = 0
+    scroll_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'MagicEnchantEnchantReq':
+        if len(data) >= 24:
+            return cls(*struct.unpack_from('<qqq', data, 0))
+        return cls()
+
+
+@dataclass
+class MagicEnchantEnchantAck:
+    """Opcode 2255: eEGS_MAGICENCHANT_ENCHANT_ACK (0x00796DC0)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+    gold: int = 0
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items)
+                + struct.pack('<q', self.gold))
+
+
+@dataclass
+class MagicEnchantEraseOptionReq:
+    """Opcode 2256: eEGS_MAGICENCHANT_ERASE_OPTION_REQ."""
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'MagicEnchantEraseOptionReq':
+        if len(data) >= 8:
+            return cls(item_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class MagicEnchantEraseOptionAck:
+    """Opcode 2257: eEGS_MAGICENCHANT_ERASE_OPTION_ACK (0x00797120)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+    gold: int = 0
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items)
+                + struct.pack('<q', self.gold))
+
+
+@dataclass
+class MagicEnchantExpendSlotReq:
+    """Opcode 2258: eEGS_MAGICENCHANT_EXPEND_SLOT_REQ."""
+    item_uid: int = 0
+    stone_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'MagicEnchantExpendSlotReq':
+        if len(data) >= 16:
+            return cls(*struct.unpack_from('<qq', data, 0))
+        return cls()
+
+
+@dataclass
+class MagicEnchantExpendSlotAck:
+    """Opcode 2259: eEGS_MAGICENCHANT_EXPEND_SLOT_ACK (0x0077FC60)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class RandomItemUpgradeReq:
+    """Opcode 2284: eEGS_RANDOM_ITEM_UPGRADE_REQ."""
+    item_uid: int = 0
+    stone_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RandomItemUpgradeReq':
+        if len(data) >= 16:
+            return cls(*struct.unpack_from('<qq', data, 0))
+        return cls()
+
+
+@dataclass
+class RandomItemUpgradeAck:
+    """Opcode 2285: eEGS_RANDOM_ITEM_UPGRADE_ACK (0x0077FED0)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class FixItemUpgradeReq:
+    """Opcode 2672: eEGS_FIX_ITEM_UPGRADE_REQ."""
+    item_uid: int = 0
+    stone_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'FixItemUpgradeReq':
+        if len(data) >= 16:
+            return cls(*struct.unpack_from('<qq', data, 0))
+        return cls()
+
+
+@dataclass
+class FixItemUpgradeAck:
+    """Opcode 2673: eEGS_FIX_ITEM_UPGRADE_ACK (0x00783C40)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+# --- Loot Pickup & Monster Drop Notifications (5065-5068, 5114) ---
+@dataclass
+class PickUpItemReq:
+    """Opcode 5065: eERC_PICK_UP_ITEM_REQ."""
+    drop_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PickUpItemReq':
+        if len(data) >= 8:
+            return cls(drop_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class PickUpItemAck:
+    """Opcode 5066: eERC_PICK_UP_ITEM_ACK."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class PickUpItemResultAck:
+    """Opcode 5068: eERC_PICK_UP_ITEM_RESULT_ACK (0x0078AD80)."""
+    result: int = 0
+    picker_uid: int = 0
+    item: object = None
+
+    def encode(self) -> bytes:
+        item_bytes = b'\x1e\x00' if self.item is None else (b'\x1e' + self.item.encode())
+        return struct.pack('<iq', self.result, self.picker_uid) + item_bytes
+
+
+@dataclass
+class GetDropArNot:
+    """Opcode 5114: eERC_GET_DROP_AR_NOT (0x00792700)."""
+    result: int = 0
+    gold: int = 0
+    drop_id: int = 0
+    picker_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iiiq', self.result, self.gold, self.drop_id, self.picker_uid)
+
+
+# --- Friend Presence & Real-Time Char Info (5118, 5119, 5096) ---
+@dataclass
+class FriendMyConnectionNot:
+    """Opcode 5118: eERC_FRIEND_MY_CONNECTION_NOT (0x0077A8A0)."""
+    char_uid: int = 0
+    is_online: bool = True
+    param1: int = 0
+    param2: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<q?qq', self.char_uid, self.is_online, self.param1, self.param2)
+
+
+@dataclass
+class FriendMyDisconnectionNot:
+    """Opcode 5119: eERC_FRIEND_MY_DISCONNECTION_NOT (0x00758FA0)."""
+    char_uid: int = 0
+    notify: bool = True
+
+    def encode(self) -> bytes:
+        return struct.pack('<q?', self.char_uid, self.notify)
+
+
+@dataclass
+class UpdateCharInfoNot:
+    """Opcode 5096: eERC_UPDATE_CHAR_INFO_NOT (0x0078C990)."""
+    char_details: bytes = b''
+    layer_net_id: int = 0
+
+    def encode(self) -> bytes:
+        return b'\x1e' + self.char_details + struct.pack('<q', self.layer_net_id)
+
+
+
 
 
 

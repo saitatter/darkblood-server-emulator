@@ -177,6 +177,31 @@ class InventoryFlowTest(ServerTestCase):
             _, ack5074 = await client.expect_event(5074)
             self.assertEqual(struct.unpack_from('<i', ack5074)[0], 0)
 
+            # 31. Magic enchant (2254 -> 2255)
+            client.send_event(2254, struct.pack('<qqq', 1, 2, 0))
+            _, ack2255 = await client.expect_event(2255)
+            self.assertEqual(struct.unpack_from('<i', ack2255)[0], 0)
+
+            # 32. Magic enchant erase option (2256 -> 2257)
+            client.send_event(2256, struct.pack('<q', 1))
+            _, ack2257 = await client.expect_event(2257)
+            self.assertEqual(struct.unpack_from('<i', ack2257)[0], 0)
+
+            # 33. Magic enchant expend slot (2258 -> 2259)
+            client.send_event(2258, struct.pack('<qq', 1, 2))
+            _, ack2259 = await client.expect_event(2259)
+            self.assertEqual(struct.unpack_from('<i', ack2259)[0], 0)
+
+            # 34. Random item upgrade (2284 -> 2285)
+            client.send_event(2284, struct.pack('<qq', 1, 2))
+            _, ack2285 = await client.expect_event(2285)
+            self.assertEqual(struct.unpack_from('<i', ack2285)[0], 0)
+
+            # 35. Fix item upgrade (2672 -> 2673)
+            client.send_event(2672, struct.pack('<qq', 1, 2))
+            _, ack2673 = await client.expect_event(2673)
+            self.assertEqual(struct.unpack_from('<i', ack2673)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

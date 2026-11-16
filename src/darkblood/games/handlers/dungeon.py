@@ -214,4 +214,15 @@ class DungeonHandlers:
         ack = ChangeTeamAck(result=0, team_id=req.team_id).encode()
         await self.transport.send_event(event(5016, ack, correlation), note=f'change team ack (team={req.team_id})')
 
+    async def on_5065(self, correlation, body):
+        # eERC_PICK_UP_ITEM_REQ -> 5066 eERC_PICK_UP_ITEM_ACK & 5068 eERC_PICK_UP_ITEM_RESULT_ACK (0x0078AD80).
+        from darkblood.games.network.messages import PickUpItemAck, PickUpItemReq, PickUpItemResultAck
+        req = PickUpItemReq.decode(body)
+        self.transport.record('pick-up-item-req', body, drop_uid=req.drop_uid)
+        char_uid = selected_character.get('id', 1)
+        ack = PickUpItemAck(result=0).encode()
+        await self.transport.send_event(event(5066, ack, correlation), note=f'pick up item ack (drop={req.drop_uid})')
+        res_ack = PickUpItemResultAck(result=0, picker_uid=char_uid, item=None).encode()
+        await self.transport.send_event(event(5068, res_ack), note=f'pick up item result ack (drop={req.drop_uid})')
+
 

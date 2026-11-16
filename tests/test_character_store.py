@@ -5,6 +5,7 @@ from pathlib import Path
 
 from tests.common import ROOT  # ensures paths
 from darkblood.player_management.characters import CharacterStore, ensure_inventory, EQUIP_CONTAINER
+from darkblood.player_management.store import JsonCharacterStore, SqliteCharacterStore
 
 
 class CharacterStoreTest(unittest.TestCase):
@@ -62,6 +63,63 @@ class CharacterStoreTest(unittest.TestCase):
 
         # Calling again on already populated char does not re-add
         self.assertFalse(ensure_inventory(char))
+
+
+class SqliteCharacterStoreTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.tmp.name) / 'darkblood.db'
+        self.json_path = Path(self.tmp.name) / 'characters.json'
+        self.store = SqliteCharacterStore(db_path=self.db_path)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_sqlite_create_and_get_character(self):
+        req = {'name': 'SqlHero', 'char_class': 2}
+        char = self.store.create('PlayerAccount', req)
+        self.assertIsNotNone(char)
+        self.assertEqual(char['name'], 'SqlHero')
+        self.assertEqual(char['id'], 1)
+        self.assertEqual(char['level'], 1)
+
+        found = self.store.get('PlayerAccount', 1)
+        self.assertEqual(found['name'], 'SqlHero')
+        chars = self.store.characters('PlayerAccount')
+        self.assertEqual(len(chars), 1)
+
+    def test_sqlite_duplicate_name_case_insensitive_rejected(self):
+        self.store.create('Account1', {'name': 'Paladin', 'char_class': 1})
+        dup = self.store.create('Account2', {'name': 'paladin', 'char_class': 2})
+        self.assertIsNone(dup)
+
+    def test_sqlite_delete_character(self):
+        char = self.store.create('Acc', {'name': 'SqlToDel', 'char_class': 1})
+        self.assertTrue(self.store.delete('Acc', char['id']))
+        self.assertIsNone(self.store.get('Acc', char['id']))
+        self.assertEqual(len(self.store.characters('Acc')), 0)
+        self.assertFalse(self.store.delete('Acc', 999))
+
+    def test_sqlite_json_bidirectional_migration(self):
+        # 1. Create character in SQLite
+        char = self.store.create('SyncAcc', {'name': 'MigrateHero', 'char_class': 3})
+        # 2. Export to JSON
+        self.store.export_to_json(self.json_path)
+        self.assertTrue(self.json_path.exists())
+
+        # 3. Read with JsonCharacterStore
+        json_store = JsonCharacterStore(path=self.json_path)
+        json_char = json_store.get('SyncAcc', char['id'])
+        self.assertIsNotNone(json_char)
+        self.assertEqual(json_char['name'], 'MigrateHero')
+
+        # 4. Create new DB and import from JSON
+        new_db = Path(self.tmp.name) / 'imported.db'
+        imported_store = SqliteCharacterStore(db_path=new_db)
+        imported_store.import_from_json(self.json_path)
+        imported_char = imported_store.get('SyncAcc', char['id'])
+        self.assertIsNotNone(imported_char)
+        self.assertEqual(imported_char['name'], 'MigrateHero')
 
 
 if __name__ == '__main__':
