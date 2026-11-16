@@ -149,14 +149,12 @@ class ActiveWarFlagReq:
 
 @dataclass
 class GameplayDieCharReq:
-    """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0, 21 bytes, no prefix).
+    """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0).
 
-    Wire format: u64 char_uid + bool bDie + u32 + u32 + u32 (0x00B353D0,
-    0x00B35630, 3 x 0x00B352B0). char_uid is the client's own UID: the 5094
-    handler compares the echoed value with 0x00946570. Observed live on death:
-    uid 0, bDie 1, three zero words. The u32 meanings are not recovered; the
-    5094 handler converts the first two to floats for 0x0055BEF0.
+    Wire format: optional i32 prefix (0x7FFFFFFF) + i64 char_uid + bool bDie +
+    i32 damage + i32 cur_hp + i32 max_hp (21 or 25 bytes).
     """
+    prefix: int = 0x7FFFFFFF
     char_uid: int = 0
     bDie: bool = True
     damage: int = 0
@@ -165,9 +163,13 @@ class GameplayDieCharReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'GameplayDieCharReq':
-        if len(data) >= 21:
-            uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?III', data, 0)
-            return cls(char_uid=uid, bDie=bDie, damage=damage, cur_hp=cur_hp, max_hp=max_hp)
+        offset = 0
+        prefix = 0x7FFFFFFF
+        if len(data) >= 25 and data[:4] == b'\xff\xff\xff\x7f':
+            offset = 4
+        if len(data) >= offset + 21:
+            uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?iii', data, offset)
+            return cls(prefix=prefix, char_uid=uid, bDie=bDie, damage=damage, cur_hp=cur_hp, max_hp=max_hp)
         return cls()
 
 @dataclass

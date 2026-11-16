@@ -161,6 +161,11 @@ class DungeonHandlers:
         # report the remaining count in the trailing u16.
         req = GameplayDieCharReq.decode(body)
         char = self._current_char()
+        player_uid = selected_character.get('id', 0)
+        if char is not None:
+            player_uid = char.get('id', player_uid)
+        char_uid = req.char_uid if req.char_uid != 0 else player_uid
+
         coins = 0
         if char is not None:
             coins = int(char.get('rebirth_coins', 3))
@@ -169,19 +174,29 @@ class DungeonHandlers:
                 char['rebirth_coins'] = coins
                 self.store().save()
         self.die_count = getattr(self, 'die_count', 0) + (1 if req.bDie else 0)
+
+        # On revive (bDie = False), other_uid must match the reviving player UID (0x0055C354)
+        # to execute the revival routine (0x00548D80).
+        reviver_uid = char_uid if not req.bDie else 0
+        max_hp = req.max_hp if req.max_hp > 0 else 1000
+        cur_hp = req.cur_hp if req.bDie else max_hp
+
         ack = GameplayDieCharAck(
             result=0,
-            char_uid=req.char_uid,
-            other_uid=0,
+            char_uid=char_uid,
+            other_uid=reviver_uid,
             bDie=req.bDie,
             damage=req.damage,
-            cur_hp=req.cur_hp,
-            max_hp=req.max_hp,
+            cur_hp=cur_hp,
+            max_hp=max_hp,
             die_count=self.die_count,
             rebirth_coin=coins,
         ).encode()
         await self.transport.send_event(event(5094, ack, correlation),
-                                        note='gameplay die char ack (die=%d coins=%d)' % (req.bDie, coins))
+                                        note='gameplay die char ack (die=%d uid=%d coins=%d)' % (req.bDie, char_uid, coins))
+        if not req.bDie:
+            await self.transport.send_event(event(2286, RebirthCoinChangeNot(result=0, coins=coins).encode()),
+                                            note='rebirth coin change not (%d)' % coins)
 
     async def on_2448(self, correlation, body):
         # eEGS_DAILY_REBIRTH_COIN_USE_REQ -> 2449 (0x0079DC70) + 2286 (0x007983B0).

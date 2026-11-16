@@ -53,14 +53,18 @@ class DungeonFlowTest(ServerTestCase):
             client.send_event(5093, bytes.fromhex('000000000000000001000000000000000000000000'))
             _, ack5094 = await client.expect_event(5094)
             res, uid, other, bDie, a, b, c, cnt = struct.unpack_from('<Iqq?IIIH', ack5094)
-            self.assertEqual((res, uid, other, bDie), (0, 0, 0, True))
+            self.assertEqual((res, uid, other, bDie), (0, char_id, 0, True))
             self.assertEqual(len(ack5094), 35)  # no coin u16 when bDie is set
 
-            # 8b. Revive (bDie = 0) spends one coin; trailing u16 = coins left.
-            client.send_event(5093, struct.pack('<q?III', 0, False, 0, 0, 0))
+            # 8b. Revive (bDie = 0) with 0x7FFFFFFF prefix spends one coin; trailing u16 = coins left.
+            client.send_event(5093, struct.pack('<i', 0x7fffffff) + struct.pack('<q?III', 0, False, 0, 0, 0))
             _, ack5094 = await client.expect_event(5094)
+            res, uid, other, bDie = struct.unpack_from('<Iqq?', ack5094)
+            self.assertEqual((res, uid, other, bDie), (0, char_id, char_id, False))
             self.assertEqual(struct.unpack_from('<?', ack5094, 20)[0], False)
             self.assertEqual(struct.unpack_from('<H', ack5094, 35)[0], 2)
+            _, not2286_revive = await client.expect_event(2286)
+            self.assertEqual(struct.unpack_from('<IH', not2286_revive), (0, 2))
 
             # 9. Daily rebirth coin claim (2448 -> 2449 + 2286): tops coins up to 3.
             client.send_event(2448, bytes.fromhex('ffffff7f00'))
