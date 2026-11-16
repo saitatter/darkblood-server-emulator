@@ -14,9 +14,12 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Correct implicit struct tags, trailer u8, absent lookup sentinels and result prefix.
 - [x] Add empty mailbox ACK 2220 and handle the exercised SteamUser slot 16.
 - [x] Capture the post-selection C++ exception without swallowing it.
-- [ ] Recover endpoint reader 0x00A48A90 and trace connection parameters into 2007.
-- [ ] Supply a client-derived valid local endpoint and verify completion of the selection wait.
-- [ ] Observe a loaded map and working controls before claiming gameplay.
+- [x] Trace the endpoint: 2007 connects `JP2PClient` to the relay buffer filled by 5134 (`0x0075AAE0`), not by `0x00A48A90`.
+- [x] Send 5134 (127.0.0.1:9401) after 5029 and run a relay listener; selection wait completes.
+- [x] Town rendered with the character and an NPC dialogue that advances with Space (saitatter machine).
+- [ ] Answer 2131 friend list and 2569; recover the relay server's application protocol.
+- [ ] Verify movement (click/keys), NPC interaction and persistence before claiming gameplay.
+- [ ] Headless/automated tests: protocol-level client replay without the graphics window.
 
 ## Current milestones
 
@@ -28,7 +31,7 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 | Welcome 5020, DB list 2403 | Verified |
 | Title → Server List → Channel List | Verified on screen |
 | Character list / creation (persisted) | Verified on screen; several fields unknown |
-| Select character → enter map (2006/2007) | **Next**: schema of `0x00A40760` |
+| Select character → enter map (2006/2007 + relay 5134) | Town rendered; movement not yet verified |
 | Movement, combat, persistence of progress | Not started |
 | Control tooling (`gamectl`, MCP server) | Implemented |
 

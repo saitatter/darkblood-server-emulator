@@ -130,6 +130,7 @@ Opcode names come from the client's table (`server/data/opcodes.tsv`, `tools/ext
 | Server Ok | 2001 `eEGS_KNOCK_SQUARELIST_REQ` (i32, u32 server key) | 2002 | `0x00757810`: u32 result; 0 proceeds (`0x00626390`). 2003 queue NOT (`0x00757840`: u16, u16) unused | Verified |
 | automatic | 2021 `eEGS_SQUARELIST_REQ` (i32, u32) | 2022 | `0x0077A550`: u32 result, `0x10` vector of {u64 id, wstr name, u32, u32, u32} (`0x00A49700`) | Verified: "Channel 1 · Normal · [Good]" |
 | Channel Ok | 5028 `eERC_JOIN_SQUARE_REQ` (i32, u64 square) | 5029 | `0x00757AD0`: u32 result, u64 | Verified |
+| after 5029 | — | 5134 `eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT` | `0x0075AAE0`: no result word; implicit `0x1E` struct = 6 raw bytes (`0x00A48910`) written to the relay buffer at `[owner+0x6C]`: IPv4 bytes in network order + u16 LE port. Handler then calls `JP2PClient::Connect` (`0x00956C80`) | Verified: client connects to `127.0.0.1:9401` |
 | automatic | 2008 `eEGS_GET_CHARLIST_REQ` | 2009 | `0x0077CFA0`: u32 result, `0x10` vector of character, `0x10` vector (`0x004B94C0`), u8 slots, u8, bool, `0x17` map (`0x007680E0`), `0x13` (`0x006B9F80`) | Verified: "N SLOT" = first u8 |
 | Creation | 2012 `eEGS_CREATE_CHARACTER_REQ` | 2013 | `0x00758070`: u32 result, character, u8 (→ `0x00F44E58`) | Verified: character appears |
 | Ok on character | 2006 `eEGS_SELECT_CHAR_REQ` (i32, u64 char id) | 2007 `eEGS_SELECT_CHAR_ACK` | `0x007AA4B0`: u32 result, struct `0x00A40760` (651 bytes, full stats/visuals/skills), `0x10` vector `0x004B9210` | Verified |
@@ -153,6 +154,24 @@ bool +0x5D  u32 +0x5E  u64 +0x3F  u16 +0x47  4 bytes +0x62  u64 +0x66  u32 +0x6E
 Level and location on character select ("Level 0", "default town") did not change when any of these u16/u32/u64 fields were set; they come from another source (probably the second vector or the map in 2009).
 
 Correction to the first handoff: the pushes at `0x007B2C40` (`0x951`, `0x95E`, `0x95F`, `0x963`, `0x965`, `0x967`) are not login or server-list opcodes. The client names them `eEGS_INIT_PROFICIENCY_ACK`, `eEGS_BROKER_CHANGE_REGIST_COUNT`, `eEGS_POST_DAILY_SEND_RECOVER_NOT`, `eEGS_DB_LIST_GET_ACK`, `eEGS_EVENT_DELETE_CHARACTER_ACK`, `eEGS_CHAR_VERIFY_STAT_ACK`.
+
+### Relay connection and world entry (local pass, 2026-11-16)
+
+Handler 2007 ends with `JP2PClient::Connect(0, [owner+0x6C])` at `0x007AAD98`
+(`JP2PFactory::Connect` `0x00956A90` creates a new `CNetClient` and calls its
+vtable `+0x34`, which reaches `0x00B54B40`). The 6-byte buffer is filled only by
+5134. Without 5134 it is zero, `0x00B54B40` throws Proud error 14 ("Unknown
+Internet address") and the 30 s selection wait times out. The tracer confirmed the
+zero buffer at `0x007AA6C2` and the filled buffer `7F000001 B924` after 5134.
+
+With 5134 sent after 5029 and a second ProudNet listener on 9401 (role `relay`,
+same handshake, no welcome), the selection completed and the client rendered the
+town: character "Lv.0 Tester", NPC dialogue "Scarlet Harrow" advancing with Space
+(screenshots `research/relay1.png`, `relay2.png`, local only). In this run the
+client did **not** send 5030/2016/5013; after 2007 it sent 2219, 2131
+`eEGS_FRIEND_LIST_REQUEST_REQ`, 2569 (unnamed) and periodic opcode 0. The relay
+connection completed the handshake but carried no game events yet. Movement,
+NPC interaction beyond the dialogue, and persistence are not verified.
 
 ## 6. Instrumentation and continuation addresses
 

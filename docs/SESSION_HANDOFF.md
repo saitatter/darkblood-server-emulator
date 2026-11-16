@@ -1,5 +1,17 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — saitatter machine, 2026-11-16 03:30
+
+The "Unknown Internet address" blocker below is RESOLVED. The endpoint was the
+square relay address filled by 5134 (`0x0075AAE0`), not the 18-byte `0x00A48A90`
+block. The server sends 5134 = 127.0.0.1:9401 after 5029, and `run_bootstrap.py`
+runs a handshake-only relay listener on 9401. Town loaded and the NPC dialogue
+advanced with Space. Next: 2131 / 2569 responses, relay protocol, movement
+verification, and headless protocol tests (the user asked to avoid launching the
+graphics window for every test). Uncommitted `tools/gamectl.py` select-character
+and `client_hook/steam_api_hook.c` edits on this machine belong to another agent
+(agy/Gemini) and were used but not committed.
+
 ## Read this first
 
 Goal: a reproducible, open-source local Dark Blood server. Offline gameplay is

@@ -51,6 +51,17 @@ def square_entry(square_id, name, a=0, b=100, c=0):
     return ChannelSquare(square_id=square_id, name=name, a=a, load=b, c=c).encode()
 
 
+# Square relay endpoint (opcode 5134). Reader 0xA48910 copies 6 raw bytes
+# into the buffer at [handler owner + 0x6C]; JP2PFactory::Connect (0x956A90)
+# uses them as IPv4 address bytes in network order + u16 little-endian port
+# (observed: shim logged connect() -> 127.0.0.1:9401 before redirection).
+RELAY_PORT = 9401
+
+
+def relay_address(port=RELAY_PORT):
+    return bytes([127, 0, 0, 1]) + struct.pack('<H', port)
+
+
 CHAR_SLOTS = 4  # first u8 of 2009: shown as "4 SLOT" on character select (observed)
 
 SQUARES = [dict(square_id=1, name='Channel 1')]
@@ -108,6 +119,8 @@ class GameSession:
         self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
 
     async def on_connected(self):
+        if getattr(self.transport.server, 'role', 'game') != 'game':
+            return
         await self.transport.send_event(welcome(), note='welcome 5020')
 
     async def on_user_message(self, data):
@@ -118,6 +131,9 @@ class GameSession:
             return
         self.transport.record('event', body, opcode=opcode, opcode_hex='0x%04x' % opcode,
                               correlation=correlation, compressed=compressed)
+        if getattr(self.transport.server, 'role', 'game') != 'game':
+            self.transport.record('relay-event', body, opcode=opcode)
+            return
         handler = getattr(self, 'on_%d' % opcode, None)
         if handler is None:
             self.transport.record('unhandled-event', body, opcode=opcode)
@@ -160,6 +176,12 @@ class GameSession:
         square_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
         await self.transport.send_event(event(5029, struct.pack('<IQ', 0, square_id), correlation),
                                         note='join square ack')
+        # eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT, handler 0x75AAE0: no result
+        # word; implicit 0x1E struct = 6 raw bytes (0xA48910). Without it the
+        # relay buffer stays zero and 2007's JP2PClient::Connect (0x7AAD98)
+        # throws Proud error 14 "Unknown Internet address" in 0xB54B40.
+        await self.transport.send_event(event(5134, relay_address()),
+                                        note='relay address not')
 
     async def on_2008(self, correlation, body):
         # eEGS_GET_CHARLIST_REQ -> eEGS_GET_CHARLIST_ACK, handler 0x77CFA0.

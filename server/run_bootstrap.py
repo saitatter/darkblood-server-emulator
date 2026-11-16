@@ -1,14 +1,18 @@
-"""Run the experimental client-compatible transport on 127.0.0.1:9400."""
+"""Run the experimental client-compatible transport on 127.0.0.1:9400
+(game) and 127.0.0.1:9401 (square relay announced by opcode 5134)."""
 import asyncio
 import logging
 from bootstrap_server import BootstrapServer
+from game_wire import RELAY_PORT
 
 
 async def main():
-    server = BootstrapServer()
-    await server.start()
-    async with server.server:
-        await server.server.serve_forever()
+    game = BootstrapServer()
+    relay = BootstrapServer(port=RELAY_PORT, role='relay')
+    await game.start()
+    await relay.start()
+    async with game.server, relay.server:
+        await asyncio.gather(game.server.serve_forever(), relay.server.serve_forever())
 
 
 if __name__ == '__main__':

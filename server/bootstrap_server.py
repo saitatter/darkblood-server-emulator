@@ -168,10 +168,15 @@ class Session:
 
 class BootstrapServer:
     def __init__(self, host='127.0.0.1', port=9400, log_path=None,
-                 key_path=None):
+                 key_path=None, role='game'):
         if host != '127.0.0.1':
             raise ValueError('The research server must bind to IPv4 loopback')
         self.host, self.port = host, port
+        # 'game': login/lobby server (welcome 5020 and game events).
+        # 'relay': square relay endpoint announced by 5134; reached through
+        # JP2PClient::Connect (0x956C80). Its application protocol is not
+        # recovered yet, so it only completes the ProudNet handshake and logs.
+        self.role = role
         self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
         self.guid = uuid.UUID('a1d7e8c2-5a20-44af-94e1-52424c4f4f44').bytes_le
         key_file = str(key_path) if key_path else str(ROOT / 'logs' / 'server_rsa.key')
@@ -182,10 +187,12 @@ class BootstrapServer:
     async def start(self):
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.server = await asyncio.start_server(self.handle_client, self.host, self.port)
-        logger.info('Listening on %s:%s', self.host, self.port)
+        logger.info('Listening on %s:%s (%s)', self.host, self.port, self.role)
 
     def record(self, peer, event, data=b'', **extra):
         entry = dict(time=time.time(), peer=peer, event=event, hex=data.hex())
+        if self.role != 'game':
+            entry['role'] = self.role
         entry.update({k: v for k, v in extra.items() if v is not None})
         with self.log_path.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps(entry) + '\n')

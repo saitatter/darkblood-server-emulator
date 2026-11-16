@@ -2,6 +2,16 @@
 
 Updated **November 16, 2026** (second session). Offline gameplay is not available yet; the client now reaches character creation and selection against the local server.
 
+## World entry reproduced (saitatter machine, 2026-11-16, 03:23)
+
+The Proud error 14 blocker is resolved. 2007's handler connects `JP2PClient`
+(`0x00956C80`) to a relay endpoint that only 5134 `eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT`
+fills. The server now sends 5134 (127.0.0.1:9401) after 5029 and
+`run_bootstrap.py` also listens on 9401 as a handshake-only relay. After selecting
+"Tester", the town loaded with the character and an NPC dialogue, and Space
+advanced the dialogue. Movement and further gameplay are not verified. Unhandled
+next requests: 2131, 2569, opcode 0. See PROTOCOL.md §5.
+
 ## Latest local handoff ? 2026-11-16
 
 [SESSION_HANDOFF.md](SESSION_HANDOFF.md) records the current machine setup and
