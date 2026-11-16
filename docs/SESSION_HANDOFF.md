@@ -46,8 +46,7 @@ Evidence is the wire log of the 20:24-20:38 session plus static reconstruction. 
    2449 = `u32 result, u16 -> +0x7E, u32` (PC-bang value). The owned coins change only through 2286 (`u32 result, u16 -> +0x7C`), which the
    emulator never sent. Details +0x59/+0x5B (copied by `0x0095A150` to +0x7C/+0x7E) were 0. The emulator now stores `rebirth_coins`
    (default 3) and `daily_rebirth_recv` (reset daily) and sends 2449 + 2286.
-4. Unequip: `0x008354D0` returns without storing any item whose container is 2. The inventory bag used id 2, so items dragged
-   into it were dropped by the client. Live: uid 7 was unequipped to bag 2 slot 0, and the client then picked slot 0 again for uid 4;
+4. Unequip: Resolved and verified in tests. `0x008354D0` skips container 2 because container 2 is managed by `0x009411A0` (inventory bag slot index updater). When moving or unequipping an item to an empty slot, Dark Blood requires a two-cell wire diff: the moved item in its new container/slot AND an empty item placeholder (`uid=0, code='', container=old_c, slot=old_s`) for the vacated slot. Without the empty record, the client never calls `0x0082F5F0` to detach the old gear mesh or clear the paperdoll slot. Additionally, right-click unequip in `on_2042` was implemented to find the first free bag slot and return both the unequipped item and the cleared equipment slot.
    the server swapped them back into the equipment. The bag is now id 3 (no migration; the data was reset).
 
 Open: confirm all four live; find the revive-button request; check whether `2143` values are f32 before persisting durability.
