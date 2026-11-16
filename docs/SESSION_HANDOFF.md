@@ -1,5 +1,25 @@
 # Session handoff — 2026-11-17 (saita machine)
 
+## Reconnect stall after 5028, equip prefix, drag slots — saita machine, 2026-11-17 ~02:05
+
+- 2042 equip: the live body is `ffffff7f` + i64 uid + i32 slot (-1). The decoder read the uid at offset 0, so every equip/unequip
+  answered "not found". Fixed and verified live (helmet -> slot 13, axe -> slot 0).
+- Drag/equip slot validation (static + headless): a drop on the item's own cell sent an empty record for that cell and the client
+  cleared it; swaps moved the displaced item into an equipment slot of another type (necklace -> shoulder, shoulder -> glove);
+  right-click equip of an unmapped item went to slot 0. `fits_equip_slot` now gates drag and 2042; unmapped A* items fit slots 7-12.
+  The live character's items were moved back once in `data/darkblood.db` (backup in the session scratchpad only).
+- Reconnect stall (seen from the tutorial and from the world): after the shim's reconnect, 5028 -> 5029 + 5134 arrive but the client
+  never sends 2008 and drops the connection ~33 s later. `JAppPageSelectChannel::SelectChannel` (decompiled/00630000.c ~10200)
+  reads the local user UID via `0x00946570` (JNetUserMgr singleton `0x00F2EE90`, holder at +0x78). If it is -1 it waits for 5029,
+  sends 2008 and waits for 2009; otherwise (in-game channel change) it waits for 5031 (`0x00787A70`) and closes the channel page.
+  The reconnect hook keeps the local user loaded.
+  Tried and reverted: answering with 5031 after 1 s of silence. Live result: the channel page closed and the client sat on the lobby
+  background with the quest tracker overlaid (unusable).
+  Next: find what clears the +0x78 holder on the normal Menu -> Select Character -> Server list path (5037/5038, 2009, 5032/5033
+  handlers did not show it statically), e.g. with the shim tracer on `0x00946570`, then call it from the reconnect hook before
+  ChangeState(eAS_Lobby). Reading process memory from outside is denied (OpenProcess error 5).
+- 2358 (guide beginner update) has no client handler for 2359; the server records it without replying. Guide ids are not persisted.
+
 ## 2075 quest progress fix — saita machine, 2026-11-17 ~01:35 (static + headless; live retest pending)
 
 - Report: tutorial still did not progress after killing the hogs. The hook log showed 2075 arriving as `10 81 1E 7C 8E C5 34 ...`.
