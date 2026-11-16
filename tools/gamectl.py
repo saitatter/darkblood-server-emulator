@@ -131,11 +131,7 @@ def start(server_only=False, client_only=False):
             raise GameError('Server did not start listening; see logs/server.log')
     if not server_only:
         env = dict(os.environ, __COMPAT_LAYER='RunAsInvoker')
-        DETACHED_PROCESS = 0x00000008
-        si = subprocess.STARTUPINFO()
-        si.lpDesktop = 'WinSta0\\Default'
-        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env,
-                                  creationflags=DETACHED_PROCESS, startupinfo=si)
+        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env)
         state['client_pid'] = client.pid
     _save_state(state)
     return status()
@@ -169,6 +165,11 @@ user32.OpenDesktopW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.BOOL,
 user32.OpenDesktopW.restype = wintypes.HANDLE
 user32.SetThreadDesktop.argtypes = [wintypes.HANDLE]
 user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+user32.BringWindowToTop.argtypes = [wintypes.HWND]
+user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.SetActiveWindow.argtypes = [wintypes.HWND]
+user32.SetFocus.argtypes = [wintypes.HWND]
 user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 user32.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
 user32.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
@@ -269,8 +270,21 @@ def client_rect(hwnd):
 
 def focus(hwnd=None):
     hwnd = hwnd or _window()
-    user32.SetForegroundWindow(hwnd)
-    time.sleep(0.25)
+    cur_thread = kernel32.GetCurrentThreadId()
+    target_pid = wintypes.DWORD()
+    target_thread = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(target_pid))
+    if cur_thread != target_thread:
+        user32.AttachThreadInput(cur_thread, target_thread, True)
+    try:
+        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        user32.BringWindowToTop(hwnd)
+        user32.SetForegroundWindow(hwnd)
+        user32.SetActiveWindow(hwnd)
+        user32.SetFocus(hwnd)
+    finally:
+        if cur_thread != target_thread:
+            user32.AttachThreadInput(cur_thread, target_thread, False)
+    time.sleep(0.15)
     return hwnd
 
 
@@ -397,7 +411,7 @@ def skip_intro(timeout=60):
     """
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if count_events(2402) >= 2:
+        if count_events(2402) >= 2 or count_events(2001) >= 1:
             return 'server list open'
         if find_window():
             click(0.5, 0.5)

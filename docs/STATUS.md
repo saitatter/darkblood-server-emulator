@@ -14,11 +14,25 @@ Updated **November 16, 2026** (second session). Offline gameplay is not availabl
 
 Screenshots of each stage are kept locally in `research/` (`shot8.png` server list, `g7.png` channel list, `g10.png` empty character select, `g11.png` creation, `g13.png` created character).
 
+## Third session findings & achievements (2026-11-16)
+
+1. **Character Selection (2006 → 2007):** Recovered the complete 651-byte binary schema for `eEGS_SELECT_CHAR_ACK` (`0x007AA4B0` / reader `0x00A40760`). Modeled with high-level dataclasses in `server/models.py` (`GameServer`, `ChannelSquare`, `CharacterClass`, `CharacterVisuals`, `Character`, `SelectCharacterAck`).
+2. **ProudNet RMI Ping/Pong Protocol (0xFA01 → 0xFA02):** Reverse engineered client ping handler at `0x00B47ED0` in `normal.bin`. Client sends RMI ping type 1 (`0x01`, ID `0xFA01`). Implemented immediate `0xFA02` pong response echoing timestamp and sequence in `server/bootstrap_server.py`.
+3. **World Transition Opcode Pipeline:**
+   - **5030 → 5031 (`eERC_JOIN_LAYER`):** Handler `0x00787A70` (`u32 result`, `u64 layer_id`, `u64 instance_id`, `u8 tag`).
+   - **2016 → 2017 (`eEGS_ENTER_MAPTOOL`):** Handler `0x00757D20` (`u32 result` = 0 triggers Scene 5).
+   - **5013 → 5014 (`eERC_START_GAME`):** Handler `0x007880A0`/`0x00788199` (`u32 result`, `u16`, `u32`, `wstr`, 3 × `0x17` map, `u8 tag` = 0 triggers Scene 9 / Town).
+4. **Multi-Desktop Windows Sandbox Automation:**
+   - Discovered that the Windows agent sandbox creates isolated virtual desktops on `WinSta0` (`exebox-...`).
+   - Enhanced `tools/gamectl.py` to traverse all desktops via `EnumDesktopsW` and `EnumDesktopWindows`, attaching via `SetThreadDesktop`.
+   - Enhanced input delivery using `AttachThreadInput`, `BringWindowToTop`, `SetForegroundWindow`, and dual `mouse_event`/`keybd_event` + `PostMessageW` routing.
+5. **Collaborator Setup & Recurring Sync:**
+   - Granted direct write/push access on `main` to `CristianVita` (`cri999sti@gmail.com`).
+   - Created [CONTRIBUTING.md](../CONTRIBUTING.md) and established a mandatory 10-minute sync rule for all agents.
+
 ## Immediate blocker
 
-Pressing Ok on a selected character sends `eEGS_SELECT_CHAR_REQ (2006)` = `i32, u64 char id`. The response (opcode 2007, handler `0x007AA4B0`) needs a large struct read by `0x00A40760` (about 30 nested readers, including `0x00A3E410`..`0x00A3EEC0`, `0x0076A8C0`, `0x0076AFD0`-style maps and `0x005EE0F0`) and a vector read by `0x004B9210`. Recover that schema with `tools/decomp.ps1`, then implement the response and observe map loading.
-
-Other open items: character level/location shown as "Level 0 / default town" (source not identified; `+0x09` is an index and 12 crashed the client); RMI messages `0xFA01`/`0xFA13` are unhandled; `0x1D → 0x1F` remains exploratory.
+The world load sequence triggers Scene 9 (Town). Next step is to observe and implement the in-world entity synchronization and movement notifications (`eERC_UPDATE_CHAR_INFO_NOT` 5096, `eERC_MOVE_NOT`, etc.) to achieve full interactive free-roam in town.
 
 ## First session findings (2026-11-15)
 

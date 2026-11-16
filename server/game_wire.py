@@ -203,19 +203,25 @@ class GameSession:
         await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
 
     async def on_5030(self, correlation, body):
-        # eERC_JOIN_LAYER_REQ (i32, u64 layer id) -> eERC_JOIN_LAYER_ACK (5031), handler 0x787B40
+        # eERC_JOIN_LAYER_REQ (i32, u64 layer id) -> eERC_JOIN_LAYER_ACK (5031), handler 0x787A70:
+        # u32 result (0), u64 layer_id, u64 instance_id (1), u8 tag (0 = absent)
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
-        await self.transport.send_event(event(5031, struct.pack('<IQ', 0, layer_id), correlation),
+        ack = struct.pack('<IQQB', 0, layer_id, 1, 0)
+        await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
 
     async def on_2016(self, correlation, body):
-        # eEGS_ENTER_MAPTOOL_REQ -> eEGS_ENTER_MAPTOOL_ACK (2017), handler 0x757D60
+        # eEGS_ENTER_MAPTOOL_REQ -> eEGS_ENTER_MAPTOOL_ACK (2017), handler 0x757D20:
+        # u32 result (0 -> triggers scene transition 5 via 0x6DBFD0)
         await self.transport.send_event(event(2017, struct.pack('<I', 0), correlation),
                                         note='enter maptool ack')
 
     async def on_5013(self, correlation, body):
-        # eERC_START_GAME_REQ -> eERC_START_GAME_ACK (5014), handler 0x788120
-        await self.transport.send_event(event(5014, struct.pack('<I', 0), correlation),
+        # eERC_START_GAME_REQ -> eERC_START_GAME_ACK (5014), handler 0x7880A0/0x788199:
+        # u32 result (0), u16 unk1, u32 unk2, tag 0x0B (empty string),
+        # 3x tag 0x17 (empty maps), tag 0 (end of tags) -> triggers scene transition 9 (world)
+        ack = struct.pack('<IHI', 0, 0, 0) + b'\x0b\x00\x17\x00\x17\x00\x17\x00\x00'
+        await self.transport.send_event(event(5014, ack, correlation),
                                         note='start game ack')
 
     _store = None
