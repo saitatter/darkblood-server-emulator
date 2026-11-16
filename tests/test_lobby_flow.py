@@ -75,5 +75,24 @@ class LobbyFlowTest(ServerTestCase):
         self.run_async(self.with_server(scenario))
 
 
+class ServerListCountTest(ServerTestCase):
+    def test_server_list_shows_character_count(self):
+        """2403 u16 after the name is the character count (0x0062E760; 0 -> 'None')."""
+        async def scenario(client):
+            await lobby_flow(client)
+            for name in ('CountA', 'CountB'):
+                client.send_event(2012, create_request(name, char_class=5))
+                await client.expect_event(2013)
+            client.send_event(2402, b'')
+            _, ack = await client.expect_event(2403)
+            name = 'Offline'.encode('utf-16le')
+            count = struct.unpack_from('<H', ack, ack.index(name) + len(name))[0]
+            store = session.GameSession.store()
+            self.assertEqual(count, len(store.characters('OfflinePlayer')))
+            self.assertGreaterEqual(count, 2)
+
+        self.run_async(self.with_server(scenario))
+
+
 if __name__ == '__main__':
     unittest.main()

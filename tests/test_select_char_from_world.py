@@ -28,6 +28,11 @@ class SelectCharFromWorldTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<I', ack2009)[0], 0)
             self.assertIn('Returner'.encode('utf-16le'), ack2009)
 
+            # Back from character select to the server list.
+            client.send_event(5032, b'')
+            _, ack5033 = await client.expect_event(5033)
+            self.assertEqual(ack5033, struct.pack('<I', 0))
+
         self.run_async(self.with_server(scenario))
 
 

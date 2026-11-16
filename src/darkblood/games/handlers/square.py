@@ -134,6 +134,20 @@ class SquareHandlers:
         await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
                                         note='leave layer ack')
 
+    async def handle_leave_square(self, correlation: int, body: bytes):
+        """Opcode 5032 (eERC_LEAVE_SQUARE_REQ) -> 5033 (eERC_LEAVE_SQUARE_ACK).
+
+        Sent when going back from character select to the server list (live,
+        empty body, 2026-11-16 23:02). Handler 0x00757960 reads only a u32
+        result: 0 leaves the channel and clears the stored square (+0xB0/+0xB4
+        of state 8); other values open an error box.
+        """
+        if self.active_char_id:
+            from darkblood.games.world import GameWorldManager
+            GameWorldManager.get().unregister_player(self.active_char_id)
+        await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
+                                        note='leave square ack')
+
     # Opcode backward-compatibility aliases
     on_2082 = handle_clear_tutorial
     on_2084 = handle_clear_opening
@@ -143,5 +157,6 @@ class SquareHandlers:
     on_5124 = handle_get_gtarget_list
     on_5030 = handle_join_layer
     on_5037 = handle_leave_layer
+    on_5032 = handle_leave_square
     on_2016 = handle_enter_maptool
     on_2344 = handle_waypoint_insert

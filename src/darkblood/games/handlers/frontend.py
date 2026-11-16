@@ -71,9 +71,13 @@ class FrontendHandlers:
         Returns the list of game server clusters (world entries) with status,
         population, and display tags.
         """
+        # The u16 after the name is the account's character count on that
+        # server: the row filler 0x0062E760 prints it, or UI_191 ("None")
+        # when it is below 1. Single offline server, so all characters count.
+        char_count = len(self.store().characters(self.account))
         ack = struct.pack('<I', 0) + b'\x17' + varuint(len(SERVERS))
         for key, entry in SERVERS:
-            ack += b'\x0f' + struct.pack('<I', key) + db_entry(**entry)
+            ack += b'\x0f' + struct.pack('<I', key) + db_entry(**dict(entry, u16=char_count))
         await self.transport.send_event(event(2403, ack, correlation), note='DB list ack')
 
     async def handle_knock_square_list(self, correlation: int, body: bytes):
