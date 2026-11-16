@@ -543,6 +543,55 @@ static void* user_vtable[] = {
     NULL, NULL, NULL, NULL, NULL, NULL,
     UserSlot16
 };
+/* Offline ISteamUserStats (slot order of STEAMUSERSTATS_INTERFACE_VERSION011).
+ * Client JSteamMgr::FindLeaderboards (0x0092CE00), reached from SquarePlay
+ * (call at 0x007004E5), calls slot 23 (+0x5C) FindLeaderboard(const char*)
+ * and skips the request when the returned SteamAPICall_t is 0. The former
+ * placeholder pointer 1 crashed at 0x0092CF06. Each stub pops the exact
+ * thiscall argument bytes of its SDK signature and returns 0 / false / "". */
+static unsigned int stats_seen;
+static void StatsLog(int slot) {
+    if (slot < 32 && !(stats_seen & (1u << slot))) {
+        stats_seen |= 1u << slot;
+        RawLogFmt("[STEAM] SteamUserStats slot %d (+0x%X), offline stub", slot, slot * 4);
+    }
+}
+#define STATS0(n) static unsigned __int64 __fastcall Stats##n(void* s, void* e) \
+    { (void)s; (void)e; StatsLog(n); return 0; }
+#define STATS(n, ...) static unsigned __int64 __fastcall Stats##n(void* s, void* e, __VA_ARGS__) \
+    { (void)s; (void)e; StatsLog(n); return 0; }
+#define STATSS(n, ...) static const char* __fastcall Stats##n(void* s, void* e, __VA_ARGS__) \
+    { (void)s; (void)e; StatsLog(n); return ""; }
+STATS0(0)                                   /* RequestCurrentStats() */
+STATS(1, int a, int b)                      /* GetStat(name, float*) */
+STATS(2, int a, int b)                      /* GetStat(name, int32*) */
+STATS(3, int a, int b)                      /* SetStat(name, float) */
+STATS(4, int a, int b)                      /* SetStat(name, int32) */
+STATS(5, int a, int b, int c, int d)        /* UpdateAvgRateStat(name, float, double) */
+STATS(6, int a, int b)                      /* GetAchievement(name, bool*) */
+STATS(7, int a)                             /* SetAchievement(name) */
+STATS(8, int a)                             /* ClearAchievement(name) */
+STATS(9, int a, int b, int c)               /* GetAchievementAndUnlockTime */
+STATS0(10)                                  /* StoreStats() */
+STATS(11, int a)                            /* GetAchievementIcon(name) */
+STATSS(12, int a, int b)                    /* GetAchievementDisplayAttribute */
+STATS(13, int a, int b, int c)              /* IndicateAchievementProgress */
+STATS0(14)                                  /* GetNumAchievements() */
+STATSS(15, int a)                           /* GetAchievementName(index) */
+STATS(16, int a, int b)                     /* RequestUserStats(CSteamID) */
+STATS(17, int a, int b, int c, int d)       /* GetUserStat(id, name, float*) */
+STATS(18, int a, int b, int c, int d)       /* GetUserStat(id, name, int32*) */
+STATS(19, int a, int b, int c, int d)       /* GetUserAchievement */
+STATS(20, int a, int b, int c, int d, int f) /* GetUserAchievementAndUnlockTime */
+STATS(21, int a)                            /* ResetAllStats(bool) */
+STATS(22, int a, int b, int c)              /* FindOrCreateLeaderboard */
+STATS(23, int a)                            /* FindLeaderboard(name) */
+static void* stats_vtable[] = {
+    Stats0, Stats1, Stats2, Stats3, Stats4, Stats5, Stats6, Stats7, Stats8,
+    Stats9, Stats10, Stats11, Stats12, Stats13, Stats14, Stats15, Stats16,
+    Stats17, Stats18, Stats19, Stats20, Stats21, Stats22, Stats23
+};
+static void** stats_interface = stats_vtable;
 static void* friends_vtable[] = { PersonaName };
 static void** user_interface = user_vtable;
 static void** friends_interface = friends_vtable;
@@ -550,7 +599,7 @@ __declspec(dllexport) void* __cdecl SteamApps() { RawLog("SteamApps"); return (v
 __declspec(dllexport) void* __cdecl SteamUser() { RawLog("SteamUser"); return &user_interface; }
 __declspec(dllexport) void* __cdecl SteamFriends() { RawLog("SteamFriends"); return &friends_interface; }
 __declspec(dllexport) void* __cdecl SteamUtils() { return (void*)1; }
-__declspec(dllexport) void* __cdecl SteamUserStats() { return (void*)1; }
+__declspec(dllexport) void* __cdecl SteamUserStats() { return &stats_interface; }
 __declspec(dllexport) void* __cdecl SteamNetworking() { return (void*)1; }
 __declspec(dllexport) void* __cdecl SteamClient() { return (void*)1; }
 
