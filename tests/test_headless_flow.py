@@ -56,7 +56,9 @@ class HeadlessFlowTest(unittest.TestCase):
             client.send_event(2012, create_request('Headless'))
             _, created = await client.expect_event(2013)
             self.assertEqual(struct.unpack_from('<I', created)[0], 0)
-            char_id = struct.unpack_from('<Q', created, 4)[0]  # character starts with u64 id
+            char_id = struct.unpack_from('<Q', created, 10)[0]  # u32 result (4B) + varuint+sliders (6B) -> u64 id
+            self.assertEqual(created[18], 1)  # level
+            self.assertEqual(created[19], 1)  # knight
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             _, out[2007] = await client.expect_event(2007)
             return out
@@ -115,7 +117,10 @@ class HeadlessFlowTest(unittest.TestCase):
             client.send_event(2012, create_request('ThiefTester', char_class=4))
             _, created = await client.expect_event(2013)
             self.assertEqual(struct.unpack_from('<I', created)[0], 0)
-            char_id = struct.unpack_from('<Q', created, 4)[0]
+            # Layout: u32 result (4B), varuint+sliders (6B), u64 id (8B), u8 level (1B), u8 char_class (1B)
+            self.assertEqual(created[18], 1)  # level must be 1
+            self.assertEqual(created[19], 4)  # class must be Thief (4)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
             # Select the Thief character
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             _, ack2007 = await client.expect_event(2007)

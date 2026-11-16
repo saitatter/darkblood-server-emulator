@@ -76,7 +76,7 @@ class CharacterStore:
             if any(c['name'].lower() == request['name'].lower()
                    for acc in self.data['accounts'].values() for c in acc):
                 return None
-            char = dict(request, id=self.data['next_id'])
+            char = dict(request, id=self.data['next_id'], level=1, tutorial_cleared=False)
             self.data['next_id'] += 1
             chars.append(char)
             self.save()

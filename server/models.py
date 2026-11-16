@@ -127,7 +127,7 @@ class Character:
     b72: bool = False
     b73: bool = False
     b74: bool = False
-    tutorial_cleared: bool = True
+    tutorial_cleared: bool = False
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -166,7 +166,7 @@ class Character:
             b72=data.get('b72', False),
             b73=data.get('b73', False),
             b74=data.get('b74', False),
-            tutorial_cleared=data.get('tutorial_cleared', True)
+            tutorial_cleared=data.get('tutorial_cleared', False)
         )
 
     def to_dict(self) -> dict:
@@ -203,7 +203,7 @@ class Character:
         """Serialize for Reader 0x00A4AB30 (Character Select list & creation ack)."""
         body = self.visuals.body_sliders[:5]
         out = varuint(len(body)) + bytes(body)
-        out += struct.pack('<QBB', self.id, int(self.char_class), self.u09)
+        out += struct.pack('<QBB', self.id, self.level, int(self.char_class))
         out += wide_string(self.name)
         out += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
         out += struct.pack('<Q', self.u37)
@@ -227,7 +227,7 @@ class Character:
         b += struct.pack('<B', int(self.char_class))
         # Face, hair, and cosmetic parameter (Reader 0x00A52630 +0x35, +0x39, +0x3D)
         b += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
-        b += struct.pack('<B', self.u09)
+        b += struct.pack('<B', self.level)
         b += struct.pack('<IQI', self.u62, self.u66, self.u6e)
         b += struct.pack('<HHHH', 0, 0, 0, 0)
         # Sub-struct 0xa488f0: untagged 24 bytes
