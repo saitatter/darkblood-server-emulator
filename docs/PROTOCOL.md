@@ -168,3 +168,17 @@ Correction to the first handoff: the pushes at `0x007B2C40` (`0x951`, `0x95E`, `
 | `0x00640750` | Title-scene login-result handling (results 0, 9, 0xB, 0x1EA) |
 
 All patches and addresses are specific to the analysed hash.
+
+## Local serializer correction (2026-11-16)
+
+Ghidra 12.2 analysis of a mapped image from the matching client confirms that
+`0x00B35010` returns success without consuming bytes for tags outside
+`0x0F..0x1A`. In particular, struct tag `0x1E` must not be emitted in
+`Character.encode_world_details` or `SelectCharacterAck.encode`. Explicit
+struct tags shifted subsequent fields in the previous serializers. Container
+tags remain present. Static output is retained locally in
+`research/select-fields.c` and `research/select-character.c`.
+
+Local live validation reached character selection (2008/2009), but Enter did
+not emit request 2006 during that run. Acceptance of the corrected 2007 and
+world entry remain unverified on this machine.

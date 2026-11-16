@@ -205,6 +205,7 @@ class Character:
 
     def encode_world_details(self) -> bytes:
         """Serialize for struct Reader 0x00A52630 inside Opcode 2007 (SELECT_CHAR_ACK)."""
+        # 0x00B35010 consumes only tags 0x0F..0x1A; struct 0x1E is implicit.
         b = bytearray()
         sliders = self.visuals.body_sliders[:5]
         b += varuint(len(sliders)) + bytes(sliders)  # 0xa48dd0
@@ -216,23 +217,23 @@ class Character:
         b += struct.pack('<B', 0)
         b += struct.pack('<IQI', 0, 0, 0)
         b += struct.pack('<HHHH', 0, 0, 0, 0)
-        # Sub-struct 0xa488f0: tag 0x1E + 24 bytes
-        b += b'\x1e' + (b'\x00' * 24)
+        # Sub-struct 0xa488f0: untagged 24 bytes
+        b += (b'\x00' * 24)
         b += struct.pack('<Q?HHHHII', 0, False, 0, 0, 0, 0, 0, 0)
         b += struct.pack('<f', 0.0)
         b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
-        # 2 x 0xa49bb0 (tag 0x1E + u16, u32, u32)
-        b += b'\x1e' + struct.pack('<HII', 0, 0, 0)
-        b += b'\x1e' + struct.pack('<HII', 0, 0, 0)
-        # bool + 0xa48b40 (tag 0x1E + 74 bytes)
+        # 2 x 0xa49bb0 (untagged u16, u32, u32)
+        b += struct.pack('<HII', 0, 0, 0)
+        b += struct.pack('<HII', 0, 0, 0)
+        # bool + 0xa48b40 (untagged 74 bytes)
         b += struct.pack('<?', False)
-        b += b'\x1e' + (b'\x00' * 74)
+        b += (b'\x00' * 74)
         b += struct.pack('<I', 0)
         # 5 x tag 0x10 vectors
         for _ in range(5):
             b += b'\x10' + varuint(0)
-        # 0xa48b60: tag 0x1E + 4 bytes
-        b += b'\x1e' + (b'\x00' * 4)
+        # 0xa48b60: untagged 4 bytes
+        b += (b'\x00' * 4)
         b += struct.pack('<H?HH', 0, False, 0, 0)
         # 2 x tag 0x17 maps
         b += b'\x17' + varuint(0)
@@ -257,7 +258,7 @@ class SelectCharacterAck:
 
     Handler 0x007AA4B0:
       u32 result (0 = success)
-      Tag 0x1E + Struct 0x00A40760 (Player World Record)
+      Untagged struct 0x00A40760 (Player World Record)
         Contains nested Character Details (0x00A52630) and 59 container/scalar fields
       Tag 0x10 + Vector 0x004B9210
     """
@@ -266,13 +267,12 @@ class SelectCharacterAck:
 
     def encode(self) -> bytes:
         p = bytearray(struct.pack('<I', self.result))
-        p += b'\x1e'  # struct 0x00A40760
         p += struct.pack('<I', 0)  # field 0
         p += varuint(0)  # 0xa3ed30 max 3
         p += varuint(0)  # 0xa1e840 max 10
 
         # Nested character struct 0x00A52630
-        p += b'\x1e' + self.character.encode_world_details()
+        p += self.character.encode_world_details()
 
         # Fields following character details in 0x00A40760:
         p += struct.pack('<QQQQBB', 0, 0, 0, 0, 0, 0)
@@ -288,7 +288,7 @@ class SelectCharacterAck:
         p += struct.pack('<QII', 0, 0, 0)
         p += b'\x17' + varuint(0)  # 0xa3e450
         p += b'\x13' + varuint(0)  # 0x5ee0f0
-        p += b'\x1e' + (b'\x00' * 18)  # 0x641e00 (tag 0x1E + 18 bytes)
+        p += (b'\x00' * 18)  # 0x641e00 (untagged 18 bytes)
         p += b'\x13' + varuint(0)  # 0x5ee0f0
         p += struct.pack('<QQQIQ', 0, 0, 0, 0, 0)
         p += struct.pack('<Q', 0)
@@ -300,8 +300,8 @@ class SelectCharacterAck:
         p += b'\x17' + varuint(0)  # 0x485220
         p += b'\x17' + varuint(0)  # 0x485220
         p += wide_string('')  # 0xb35ab0
-        # 0x74c1d0: tag 0x1E + 2 maps + bool
-        p += b'\x1e' + b'\x17' + varuint(0) + b'\x17' + varuint(0) + struct.pack('<?', False)
+        # 0x74c1d0: untagged 2 maps + bool
+        p += b'\x17' + varuint(0) + b'\x17' + varuint(0) + struct.pack('<?', False)
         p += b'\x17' + varuint(0)  # 0xa3ea00
         p += struct.pack('<QQI', 0, 0, 0)
         p += b'\x10' + varuint(0)  # 0x4da660
@@ -309,13 +309,13 @@ class SelectCharacterAck:
         p += struct.pack('<HQQ', 0, 0, 0)
         p += b'\x17' + varuint(0)  # 0x5f9190
         p += b'\x17' + varuint(0)  # 0x76aba0
-        # 0xa1e8c0: tag 0x1E + map + u64 + bool + u64
-        p += b'\x1e' + b'\x17' + varuint(0) + struct.pack('<Q?Q', 0, False, 0)
+        # 0xa1e8c0: untagged map + u64 + bool + u64
+        p += b'\x17' + varuint(0) + struct.pack('<Q?Q', 0, False, 0)
         p += b'\x10' + varuint(0)  # 0xa3edd0
-        # 0xa1eea0: tag 0x1E + u32 + u64 + u64 + u64
-        p += b'\x1e' + struct.pack('<IQQQ', 0, 0, 0, 0)
-        # 0xa1e900: tag 0x1E + map + vector
-        p += b'\x1e' + b'\x17' + varuint(0) + b'\x10' + varuint(0)
+        # 0xa1eea0: untagged u32 + u64 + u64 + u64
+        p += struct.pack('<IQQQ', 0, 0, 0, 0)
+        # 0xa1e900: untagged map + vector
+        p += b'\x17' + varuint(0) + b'\x10' + varuint(0)
         p += struct.pack('<H', 0)
         p += b'\x10' + varuint(0)  # 0x4da660
         p += b'\x17' + varuint(0)  # 0x5f9150
