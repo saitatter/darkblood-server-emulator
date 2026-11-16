@@ -1,5 +1,37 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Pause — Cristian machine, 2026-11-17 (notes and repository sync only)
+
+- User is going to sleep and explicitly requested updated notes; resume next session.
+- Recovered context from this repository. No game/server was launched, no UI input was sent,
+  and no gameplay code, client binaries or character data was changed in this conversation.
+- Main is at `08b20e5` after `git pull --rebase origin main` reported already up to date.
+  Collaborator work has advanced beyond the earlier 16-test/dungeon-layer checkpoint;
+  read the newer entries below and current STATUS/ROADMAP before selecting work.
+  Recent commits fix revive request prefixes/reviver UID, unequip containers, invalid
+  inventory moves, leave-room opcode 5005, and pending deletion timing.
+  These changes were not tested locally during this conversation. No tests were run.
+- Last recorded Cristian live checkpoint remains dungeon rendering with manual dungeon
+  movement/combat confirmation pending. Do not turn collaborator implementation or test
+  claims into newly verified local gameplay. Ask for exclusive UI control before live input.
+- Verified Windows task `DarkBlood-RepoSync-10min` exists, is enabled/Ready, repeats every
+  ten minutes, and its last recorded result was 0. It launches `pythonw.exe` with
+  `research/automation/sync_hidden.pyw`, which invokes `sync.ps1` without a console.
+- Reviewed the actual sync script: fetch first; on clean tracked files and non-divergent
+  main it pulls/rebases and pushes `origin main`. It skips active Git operations, tracked
+  uncommitted changes, other branches and divergence. It does not create commits.
+  Origin is `https://github.com/saitatter/darkblood-server-emulator` for fetch and push.
+  Explained to the user that unchanged syncs add no GitHub commits, while new local commits
+  are published directly to the collaborator's main branch. The task was left unchanged.
+- User's earlier `no-daemon` message was clarified as an attempt to enable YOLO mode;
+  it is not a restriction on background processes. Session already has full access and
+  approvals disabled. Romanian communication; English project documentation.
+- Preserve untracked `docs/LOCAL_SETUP.md`: it is an older setup note, not the current
+  resume target. Preserve all collaborator edits and character data.
+- Next: inspect fresh Git state/upstream and the latest handoff/status/protocol/roadmap,
+  run the appropriate headless checks before implementation, then select remaining work
+  from current evidence. No new gameplay task was chosen during this brief session.
+
 ## Character select, deletion, server list, cash — saita machine, 2026-11-16 ~23:20 (static + headless; live retest pending)
 
 - In-game Menu → Select Character: `OnBtn_SelectChar` `0x00564490` opens `MB_Square_To_SelChar`; its OnOK runs `SquareToSelChar` `0x006FB360`,

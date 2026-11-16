@@ -2,6 +2,11 @@
 
 Updated **November 16, 2026**.
 
+Resume note (**November 17, 2026**, Cristian): documentation-only session; no new
+milestones or tests verified locally. Upstream checked at `08b20e5`. Review the latest
+SESSION_HANDOFF/STATUS entries before continuing; the last Cristian dungeon control
+check remains pending. Automatic ten-minute Git synchronization remains enabled.
+
 Final objective: launch without the original services, establish a local session, persist character and world state, enter maps/dungeons, and provide full offline singleplayer and LAN multiplayer gameplay.
 
 ---

@@ -1,5 +1,14 @@
 # Research status and handoff
 
+## Cristian pause — 2026-11-17 (documentation only)
+
+Context recovered and upstream main checked at `08b20e5`; already up to date.
+No game/server launch, gameplay changes or tests in this conversation. Local dungeon
+movement/combat remains unverified in the last Cristian live checkpoint. Newer saita
+findings below remain separate evidence. The ten-minute hidden Git sync task was
+verified enabled; it publishes existing commits but creates no commits itself.
+See SESSION_HANDOFF.md's 2026-11-17 pause entry for exact resume context.
+
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)
 
 Report: the new Warrior looked wrong, and the tutorial sword did not show. `ensure_inventory` stored the default items in slots 0..7 in list order.
