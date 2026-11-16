@@ -30,7 +30,10 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Correct 5014 start-game string/container framing from the client reader (static + headless).
 - [x] Live dungeon entry (single play): 5043/5044 gate, 5009/5010 map code, 5013/5014 start; Lucid Forest (`Act1_G1_A10`) loads with monsters.
 - [ ] Dungeon follow-ups: 5095 CHANGE_DUNGEON_LAYER_NOT, 2422 ACTIVE_WARFLAG_REQ (unhandled); kills/rewards/clear and return to town.
-- [ ] Persist quests, rewards and inventory; fill stores from storelist.lua.
+- [x] Active quests restored at selection (2007 map 0xA3E450); quest gold/EXP rewards from DictQuest (live: EXP bar, Ar gold).
+- [x] Default equipment worn from DictItem:LoadDefaultEquipItem (2007 bag/item vectors; live).
+- [ ] Bag cells: equipped bag shows in the UI (bag +0x2A slot index) but its cells/items do not; reward items are stored and sent in 2077 unverified.
+- [ ] Level-up on EXP overflow (charstat.lua UPExp), mission counters, package items (CPkg...).
 - [ ] Verify NPC interaction and persistence across sessions before claiming gameplay.
 
 ## Current milestones

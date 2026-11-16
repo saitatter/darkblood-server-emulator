@@ -78,6 +78,59 @@ class CharacterStore:
                 return None
             char = dict(request, id=self.data['next_id'], level=1, tutorial_cleared=False)
             self.data['next_id'] += 1
+            ensure_inventory(char)
             chars.append(char)
             self.save()
             return char
+
+
+EQUIP_CONTAINER = 1  # item container treated as worn by the client (0x008354D0)
+
+
+def ensure_inventory(char):
+    """Give a character the equipment/bag state the 2007 reply needs.
+
+    Characters created before inventory support have no 'bags'/'items'; they
+    receive the client's default equipment for their job
+    (DictItem:LoadDefaultEquipItem), worn in container 1. Live-verified: the
+    selected character renders with it. Returns True if the record changed.
+    """
+    if 'bags' in char and 'items' in char:
+        return False
+    from client_dict import default_equipment
+    job = int(char.get('char_class', 0))
+    # Package items ("CPkg...") in the list are not wearable; they are left
+    # out until the bag/cell display is recovered.
+    gear = [code for code in default_equipment().get(job, []) if not code.startswith('C')]
+    char.setdefault('bags', [{'bag_id': EQUIP_CONTAINER}])
+    char.setdefault('items', [dict(code=code, uid=next_item_uid(char), container=EQUIP_CONTAINER, slot=i)
+                              for i, code in enumerate(gear)])
+    return True
+
+
+def next_item_uid(char):
+    """Per-character item UID counter (UIDs only need to be unique per owner here)."""
+    uid = int(char.get('next_item_uid', 1))
+    char['next_item_uid'] = uid + 1
+    return uid
+
+
+def add_reward_items(char, items):
+    """Store reward items in the first non-equipment bag, next free slots.
+
+    Returns the stored item records. Without an equipped bag the items go to
+    container -1 (client default bag 0x00828600(-1)); their display in the
+    inventory window is NOT verified yet.
+    """
+    bags = [b['bag_id'] for b in char.get('bags', []) if b.get('bag_id') != EQUIP_CONTAINER]
+    container = bags[0] if bags else -1
+    used = {i['slot'] for i in char.get('items', []) if i.get('container') == container}
+    stored = []
+    for code, count in items:
+        for _ in range(max(1, int(count))):
+            slot = next(s for s in range(256) if s not in used)
+            used.add(slot)
+            record = dict(code=code, uid=next_item_uid(char), container=container, slot=slot)
+            char.setdefault('items', []).append(record)
+            stored.append(record)
+    return stored

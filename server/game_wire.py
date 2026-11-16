@@ -24,6 +24,9 @@ from models import (
     RelayAddressNot,
     RoomInfoListAck,
     SelectDungeonAck,
+    Bag,
+    Item,
+    ActiveQuest,
     ChangeMapCodeAck,
     RouletteManagerInfoAck,
     SelectCharacterAck,
@@ -138,7 +141,15 @@ def build_char_details(char):
 def build_select_char_ack(char):
     """Serialize eEGS_SELECT_CHAR_ACK (2007) using SelectCharacterAck model."""
     c = char if isinstance(char, Character) else Character.from_dict(char)
-    return SelectCharacterAck(result=0, character=c).encode()
+    active = []
+    if isinstance(char, dict):
+        active = [ActiveQuest.from_store(q, r) for q, r in char.get('quests_active', {}).items()]
+    bags, items = [], []
+    if isinstance(char, dict):
+        bags = [Bag(**b) for b in char.get('bags', [])]
+        items = [Item(owner=char.get('id', -1), **i) for i in char.get('items', [])]
+    return SelectCharacterAck(result=0, character=c, active_quests=active,
+                              bags=bags, items=items).encode()
 
 
 class WireError(ValueError):
@@ -280,6 +291,9 @@ class GameSession:
         if not char:
             chars = self.store().characters(self.account)
             char = chars[0] if chars else dict(id=char_id, name=self.account, char_class=1)
+        from characters import ensure_inventory
+        if ensure_inventory(char) and self.store().get(self.account, char.get('id')):
+            self.store().save()
         ack = build_select_char_ack(char)
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)
@@ -378,8 +392,13 @@ class GameSession:
             pass
         char = self.store().get(self.account, selected_character.get('id', 1))
         active = char.setdefault('quests_active', {}) if char else {}
-        uid = active.get(str(quest_id)) or max([0] + list(active.values())) + 1
-        active[str(quest_id)] = uid
+        quests = {q: ActiveQuest.from_store(q, r) for q, r in active.items()}
+        if str(quest_id) in quests:
+            uid = quests[str(quest_id)].uid
+        else:
+            uid = max([0] + [q.uid for q in quests.values()]) + 1
+            tracked = sum(q.tracked for q in quests.values()) < 5  # 0x00A60960
+            active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=[])
         if char:
             self.store().save()
         ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
@@ -448,22 +467,38 @@ class GameSession:
 
     async def on_2076(self, correlation, body):
         # eEGS_QUEST_COMPLETE_REQ (same observed prefix as 2073: wstring, u32
-        # quest id) -> eEGS_QUEST_COMPLETE_ACK 2077. No rewards offline yet.
-        quest_id = 0
+        # quest id, i32 selected reward index, -1 = none) -> 2077. Rewards come
+        # from the client's DictQuest tables (client_dict.quest_rewards).
+        quest_id, select = 0, -1
         try:
             length, offset = read_varuint(body, 0)
-            quest_id = struct.unpack_from('<I', body, offset + length)[0]
+            quest_id, select = struct.unpack_from('<Ii', body, offset + length)
         except (WireError, struct.error):
             pass
+        from client_dict import quest_rewards
+        exp, gold, gp, items = quest_rewards(quest_id, select)
         char = self.store().get(self.account, selected_character.get('id', 1)) or {}
-        total = Character.from_dict(char).u66 if char else Character().u66
+        already = quest_id in char.get('quests_done', [])
+        if already:
+            exp = gold = gp = 0
+        total = (Character.from_dict(char).u66 if char else Character().u66) + gold
         if char:  # persist completion (sent back in 2410 at the next selection)
             char.setdefault('quests_active', {}).pop(str(quest_id), None)
             done = char.setdefault('quests_done', [])
             if quest_id not in done:
                 done.append(quest_id)
+            char['u66'] = total
+            char['u62'] = Character.from_dict(char).u62 + exp
+            from characters import add_reward_items
+            reward_items = [] if already else add_reward_items(char, items)
             self.store().save()
-        ack = QuestCompleteAck(quest_id=quest_id, total=total).encode()
+        else:
+            reward_items = []
+        self.transport.record('quest-rewards', b'', quest='%08x' % quest_id, exp=str(exp),
+                              gold=str(gold), gp=str(gp), items=repr(items))
+        owner = char.get('id', -1) if char else -1
+        ack = QuestCompleteAck(quest_id=quest_id, total=total, exp=exp, gp=gp,
+                               items=[Item(owner=owner, **i) for i in reward_items]).encode()
         await self.transport.send_event(event(2077, ack, correlation),
                                         note='quest complete ack (%08x)' % quest_id)
 

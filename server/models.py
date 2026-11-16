@@ -305,6 +305,112 @@ class Character:
 # Opcode ACK Responses
 # =====================================================================
 
+def _i32(value: int) -> int:
+    return value - (1 << 32) if value >= 1 << 31 else value
+
+
+EQUIPPED = 1  # item container id treated as "worn" by 0x008354D0
+
+
+@dataclass
+class Item:
+    """Item struct 0x00A53F50 (0xE4 bytes in memory), used by 2007, 2077, 2116...
+
+    Wire order (all untagged except the 0x10 vectors), defaults from the
+    client constructors 0x004AAA00/0x004AAB20:
+      0x00A539A0 base: two arrays 0x00A4B250 (+0x0C, +0x6B: varint count
+        <= 2 of 10-byte 0x00A49BB0 u16/u32/u32 entries), u16 +0, u16 +2, u16 +4 (0xFFFF), f32 +7 (0), bool +6,
+        u16 +0x20 (0xFFFF), vector +0x22 (0x0084FC60), vector +0x32
+        (0x004D9610), u32 +0x97 (0), i64 +0x9B (0), time64 +0xA3 (0),
+        struct 0x00A53630 {bool, vector 0x00A52330}, vector +0x53,
+        u32 +0x63, u32 +0x67, u32 +0x7F (-1), f32 +0x83 (-1.0), u32 +0x87
+        (-1), f32 +0x8B (-1.0), u32 +0x8F, u32 +0x93 (-1), u8 +0x0B (0)
+      outer: i64 +0xAB owner character UID (must match the player or -1;
+        0x008354D0), i64 +0xB3 item UID, u32 +0xBB item code = jhash(item id)
+        (8 GetItemProp 0x009E5440 call sites read it), i64 +0xBF container
+        (1 = equipped, 2 = skipped, otherwise a bag id looked up by
+        0x00828600), u8 +0xC7 slot index in the container, J-wstring +0xC8.
+    Meanings of the base fields are not recovered; constructor defaults are sent.
+    """
+    code: str
+    uid: int
+    owner: int = -1
+    container: int = -1
+    slot: int = 0
+
+    def encode(self) -> bytes:
+        # 0x00A4B250 x2 (+0x0C, +0x6B): varint count (max 2) of 10-byte
+        # 0x00A49BB0 entries (u16, u32, u32); sent empty.
+        b = varuint(0) + varuint(0)
+        b += struct.pack('<HHHf?H', 0xFFFF, 0xFFFF, 0xFFFF, 0.0, False, 0xFFFF)
+        b += b'\x10' + varuint(0) + b'\x10' + varuint(0)
+        b += struct.pack('<Iqq', 0, 0, 0)
+        b += struct.pack('<?', False) + b'\x10' + varuint(0)
+        b += b'\x10' + varuint(0)
+        b += struct.pack('<iiififiiB', -1, -1, -1, -1.0, -1, -1.0, -1, -1, 0)
+        b += struct.pack('<qqIqB', self.owner, self.uid, jhash(self.code), self.container, self.slot)
+        return b + wide_string('')
+
+
+@dataclass
+class Bag:
+    """Container entry of the 2007 bag vector (0x00558010 -> 0x005499F0 -> 0x00A1EC30, 0x2F bytes).
+
+    i64 +0 id (matched against Item.container by 0x00828600; -1 default),
+    u32 +8 (default -1; assumption: bag item code), J-wstring +0xC, u8 +0x28
+    (0xFF), u8 +0x29, u16 +0x2A (0xFFFF), bool +0x2C, bool +0x2D, bool +0x2E
+    (1). Defaults from 0x00A1E760; meanings not recovered.
+    """
+    bag_id: int = -1
+    code: int = -1  # int hash, or item id string (hashed)
+    b28: int = 0xFF
+    b29: int = 0
+    w2a: int = 0xFFFF
+    f2c: bool = False
+    f2d: bool = False
+    f2e: bool = True
+
+    def encode(self) -> bytes:
+        code = jhash(self.code) if isinstance(self.code, str) else self.code
+        return (struct.pack('<qi', self.bag_id, _i32(code) if code != -1 else -1)
+                + wide_string('') + struct.pack('<BBH???', self.b28, self.b29, self.w2a,
+                                                self.f2c, self.f2d, self.f2e))
+
+
+@dataclass
+class ActiveQuest:
+    """One entry of the active-quest map in 2007 (reader 0x00A3E450 -> 0x00A209B0).
+
+    Element: tag 0x0F, u32 key (0xB35300) = quest id, then the implicit value
+    struct 0x00A49BE0 (0x29 bytes, initialised by 0x00A5CF80): i64 quest UID,
+    i64 start time, u32 quest id, bool tracked, u32 array 0x00A48E50 (varint
+    count, max 5) of mission counters. Layout confirmed against 0x00A60960,
+    which the 2074 handler calls with (UID, server time from 0x00946570,
+    quest id) and sets tracked = (tracked quests < 5, counted by 0x00A5E250).
+    The start time's unit is not recovered; 0 is sent.
+    """
+    quest_id: int
+    uid: int
+    tracked: bool = True
+    counters: list = field(default_factory=list)
+    start_time: int = 0
+
+    def encode_entry(self) -> bytes:
+        qid = _i32(self.quest_id)
+        out = b'\x0f' + struct.pack('<i', qid)
+        out += struct.pack('<qqi?', self.uid, self.start_time, qid, self.tracked)
+        counters = list(self.counters)[:5]
+        out += varuint(len(counters)) + b''.join(struct.pack('<i', c) for c in counters)
+        return out
+
+    @classmethod
+    def from_store(cls, quest_id, record) -> 'ActiveQuest':
+        if isinstance(record, dict):
+            return cls(int(quest_id), int(record.get('uid', 1)), bool(record.get('tracked', True)),
+                       list(record.get('counters', [])))
+        return cls(int(quest_id), int(record))  # older stores kept only the UID
+
+
 @dataclass
 class SelectCharacterAck:
     """Opcode 2007: eEGS_SELECT_CHAR_ACK response.
@@ -316,6 +422,9 @@ class SelectCharacterAck:
     """
     result: int = 0
     character: Character = field(default_factory=Character)
+    active_quests: list = field(default_factory=list)  # [ActiveQuest]
+    bags: list = field(default_factory=list)  # [Bag]
+    items: list = field(default_factory=list)  # [Item]
 
     def encode(self) -> bytes:
         p = bytearray(struct.pack('<I', self.result))
@@ -330,8 +439,10 @@ class SelectCharacterAck:
         # Fields following character details in 0x00A40760:
         p += struct.pack('<QQQQBB', 0, 0, 0, 0, 0, 0)
         p += b'\x17' + varuint(0)  # 0xa40720
-        p += b'\x10' + varuint(0)  # 0x558010
-        p += b'\x10' + varuint(0)  # 0x4b9830
+        # 0x558010: bag vector (+0x293), consumed by 0x00837D60 -> 0x00836010.
+        p += b'\x10' + varuint(len(self.bags)) + b''.join(bag.encode() for bag in self.bags)
+        # 0x4b9830: item vector (+0x2A3), inserted by 0x00835990 after the bags.
+        p += b'\x10' + varuint(len(self.items)) + b''.join(item.encode() for item in self.items)
         p += b'\x10' + varuint(0)  # 0x4b2c30
         p += b'\x10' + varuint(0)  # 0xa3eec0
         p += b'\x17' + varuint(0)  # 0x4b1240
@@ -339,7 +450,10 @@ class SelectCharacterAck:
         p += b'\x13' + varuint(0)  # 0x76a8c0
         p += b'\x17' + varuint(0)  # 0xa3e410
         p += struct.pack('<QII', 0, 0, 0)
-        p += b'\x17' + varuint(0)  # 0xa3e450
+        # 0xa3e450: active quests (0xA209B0); same map that 2074 fills via 0xA60960.
+        p += b'\x17' + varuint(len(self.active_quests))
+        for quest in sorted(self.active_quests, key=lambda q: q.uid):
+            p += quest.encode_entry()
         p += b'\x13' + varuint(0)  # 0x5ee0f0
         p += (b'\x00' * 18)  # 0x641e00 (untagged 18 bytes)
         p += b'\x13' + varuint(0)  # 0x5ee0f0
@@ -642,22 +756,37 @@ class QuestHistoryNot:
 class QuestCompleteAck:
     """Opcode 2077: eEGS_QUEST_COMPLETE_ACK (JAppPageTalkBox, case 0x659F00 -> 0x656870).
 
-    u32 result, then implicit struct jAck (reader 0x00A55B70; draft from
-    tools/extract_schemas.py): i32 quest id (looked up via 0x00A7B390),
-    i32 (unknown), jInfo 18 raw bytes, i32 (unknown), i64 new total compared
-    with player +0x70 (= 2007 details +0x45, Character.u66; probably money or
-    experience -- sending the current value means "no change"), tag 0x10
-    reward item vector, tag 0x17 map<?, i16>, i32, i32 (unknown).
+    u32 result, then implicit struct jAck (reader 0x00A55B70), consumed by
+    0x00656870 (local offsets confirmed against the reader):
+      +0x00 i32 quest id (0x00A7B390 lookup)
+      +0x04 i32 index passed to 0x00A88560 (-1 skips its table; 0 observed safe)
+      +0x08 jInfo 18 raw bytes; first i32 1/2 selects extra actions (2 =
+            class change, "GAME_241"); -1 = none
+      +0x1A i32 (not read by the consumer)
+      +0x1E i64 new gold total: diff with player +0x70 (= 2007 details +0x45,
+            Character.u66) is announced ("GAME_783"), then stored
+      +0x26 tag 0x10 item vector (0x004B94C0) -> inventory insert 0x007741D0
+      +0x36 tag 0x17 map (0x004B0310), meaning unknown
+      +0x42 i32 shown as floating number type 0xC when the quest's reward
+            field (+0x19C of the quest prop) is positive: reward EXP
+      +0x46 i32 floating number type 0xE when positive: reward GP
+    The consumer never writes the player's EXP; the server persists it and
+    the client sees it at the next selection.
     """
     result: int = 0
     quest_id: int = 0
     total: int = 0
+    exp: int = 0
+    gp: int = 0
+    items: list = field(default_factory=list)  # [Item]
 
     def encode(self) -> bytes:
         qid = self.quest_id - (1 << 32) if self.quest_id >= 1 << 31 else self.quest_id
         info = struct.pack('<iHiii', -1, 0xFFFF, -1, -1, -1)
         return (struct.pack('<Iii', self.result, qid, 0) + info + struct.pack('<iq', 0, self.total)
-                + b'\x10' + varuint(0) + b'\x17' + varuint(0) + struct.pack('<ii', 0, 0))
+                + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
+                + b'\x17' + varuint(0)
+                + struct.pack('<ii', self.exp, self.gp))
 
 
 @dataclass

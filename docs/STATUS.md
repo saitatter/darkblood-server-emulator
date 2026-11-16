@@ -10,6 +10,24 @@ Lucid Forest Entrance without a logged crash. Initial viewport had no monsters;
 automated arrow/X input did not visibly act. Manual control check pending;
 local dungeon movement/combat is not yet established. 5095 remains unhandled.
 See SESSION_HANDOFF.md for captures and the live session.
+## Quests, rewards, equipment — saita machine, 2026-11-16 ~15:00
+
+Live-verified with Thief1:
+* Active quests survive relog: 2007 struct 0x00A40760 map at +0x31F
+  (reader 0x00A3E450 -> 0x00A209B0) is the same map 2074 fills through
+  0x00A60960. Entry: tag 0x0F, u32 quest id, i64 UID, i64 start time, u32
+  quest id, bool tracked, u32[<=5] mission counters. The tracker showed
+  "Violent Monsters - Berserk Hogs defeated 0/1" after relog.
+* Details u62 is EXP (HUD "EXP 13 / 144" = charstat UPExp of level 1) and
+  u66 is gold (inventory "Ar: 21 Ar"). 2077 jAck mapped (models.QuestCompleteAck):
+  +0x1E new gold total, +0x26 item vector, +0x42 EXP, +0x46 GP. Rewards come
+  from DictQuest (RewardExp/Gold/GP, RewardItemG, RewardSelectG + request index).
+* Items: struct 0x00A53F50 fully mapped (two 0x00A4B250 arrays precede the
+  u16 fields -- missing them broke 2007 parsing). Container 1 = worn; the
+  default equipment list renders on the character. 2007 bag vector +0x293
+  (0x00A1EC30, 0x2F bytes): i64 id, u32 bag item code, wstr, u8, u8, u16 UI
+  slot index (+0x2A), 3 bools. An Ibaga0004 bag appeared in UI slot 0 but its
+  cells and a potion stored in it did not; that display path is the next step.
 
 ## Dungeon entry live — saita machine, 2026-11-16 ~13:30
 

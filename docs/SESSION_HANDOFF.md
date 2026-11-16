@@ -28,6 +28,15 @@ Screenshots (local): `research/test2-dungeon.png`,
 latest traversal `research/test2-ui.png`. Wire log session starts at byte
 2027398 (~13:41); new server runs e410c89. Next: manual control result,
 then combat/drop/clear flow or input delivery debugging as supported by evidence.
+## Update — 2026-11-16 ~15:00 (saita machine, quests/rewards/equipment)
+
+See STATUS.md top. Fixed: active quest lost after relog, rewards ignored,
+naked characters. Existing records get `bags`/`items` on next selection
+(characters.ensure_inventory). Inventory window opens via the leftmost HUD
+menu icon (click 0.468,0.955); the `i` key via gamectl did not work.
+Open: bag cell display (try bag +0x28/+0x29 and the inventory page code from
+Lua_UnequipBag 0x00552A90 / 0x00827D80), level-up, 5095, 2422, 2358.
+User proposed an MHServerEmu-like layout ahead of a later C# port (not done).
 
 ## Update — 2026-11-16 ~13:30 (saita machine, dungeon entry live)
 
