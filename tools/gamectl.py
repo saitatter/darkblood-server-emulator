@@ -131,7 +131,11 @@ def start(server_only=False, client_only=False):
             raise GameError('Server did not start listening; see logs/server.log')
     if not server_only:
         env = dict(os.environ, __COMPAT_LAYER='RunAsInvoker')
-        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env)
+        flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        si = subprocess.STARTUPINFO()
+        si.lpDesktop = r'WinSta0\Default'
+        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env,
+                                  startupinfo=si, creationflags=flags)
         state['client_pid'] = client.pid
     _save_state(state)
     return status()
@@ -455,12 +459,41 @@ def enter_lobby(timeout=90):
     return 'character select reached'
 
 
-def select_character():
-    """From character select screen: press Enter to confirm and send opcode 2006."""
+def select_character(timeout=15):
+    """From character select screen: click slot, click confirm/press Enter to send opcode 2006."""
     focus()
-    keys('enter')
-    time.sleep(1)
-    return 'character select confirmed'
+    deadline = time.time() + timeout
+    # Slot 1 on left and character avatar in center
+    click(0.20, 0.35)
+    time.sleep(0.3)
+    click(0.50, 0.50)
+    time.sleep(0.3)
+    while time.time() < deadline:
+        if count_events(2006) >= 1:
+            return 'character select confirmed (opcode 2006 sent)'
+        focus()
+        keys('enter')
+        time.sleep(0.5)
+        if count_events(2006) >= 1:
+            return 'character select confirmed (opcode 2006 sent)'
+        # Bottom-right 'Game Start' / Ok button
+        click(0.85, 0.94)
+        time.sleep(0.5)
+        if count_events(2006) >= 1:
+            return 'character select confirmed (opcode 2006 sent)'
+        click(0.80, 0.92)
+        time.sleep(0.5)
+        if count_events(2006) >= 1:
+            return 'character select confirmed (opcode 2006 sent)'
+        click(0.20, 0.35, double=True)
+        time.sleep(0.5)
+        if count_events(2006) >= 1:
+            return 'character select confirmed (opcode 2006 sent)'
+        click(0.50, 0.50, double=True)
+        time.sleep(1.0)
+    if count_events(2006) >= 1:
+        return 'character select confirmed'
+    return 'character select attempted (no 2006 seen yet)'
 
 
 # ---------------------------------------------------------------------- events
@@ -511,7 +544,9 @@ def hook_log(lines=40):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
-    sub.add_parser('start')
+    p_start = sub.add_parser('start')
+    p_start.add_argument('--client-only', action='store_true', help='Only start DarkBlood.exe')
+    p_start.add_argument('--server-only', action='store_true', help='Only start the server')
     sub.add_parser('stop')
     sub.add_parser('status')
     shot = sub.add_parser('screenshot')
@@ -527,13 +562,14 @@ def main(argv=None):
     clk.add_argument('--right', action='store_true')
     sub.add_parser('skip-intro')
     sub.add_parser('enter-lobby')
+    sub.add_parser('select-character')
     ev = sub.add_parser('events')
     ev.add_argument('--all', action='store_true')
     sub.add_parser('hook-log')
     args = parser.parse_args(argv)
     try:
         if args.command == 'start':
-            result = start()
+            result = start(client_only=args.client_only, server_only=args.server_only)
         elif args.command == 'stop':
             result = stop()
         elif args.command == 'status':
@@ -551,6 +587,8 @@ def main(argv=None):
             result = skip_intro()
         elif args.command == 'enter-lobby':
             result = enter_lobby()
+        elif args.command == 'select-character':
+            result = select_character()
         elif args.command == 'events':
             result = '\n'.join(events(include_transport=args.all))
         else:

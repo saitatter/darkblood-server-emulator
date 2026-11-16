@@ -150,6 +150,9 @@ class Session:
             elif rmi_id == 0xfa13:
                 self.record('rmi-fa13', payload)
                 return
+            elif self.server.role == 'relay' and rmi_id in game_wire.RELAY_RMI:
+                await game_wire.relay_rmi(self, rmi_id, payload[3:])
+                return
         self.record('unhandled-rmi', payload)
 
     async def handle_encrypted(self, payload):

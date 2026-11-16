@@ -62,6 +62,37 @@ def relay_address(port=RELAY_PORT):
     return bytes([127, 0, 0, 1]) + struct.pack('<H', port)
 
 
+# Relay PIDL (game-defined, not ProudNet internal). Proxy C2S vtable 0xD1CD80:
+#   1001 JoinGroup  (0x956420/0x956500), 1002 LeaveGroup (0x9565E0/0x9566C0)
+#   args: u32 group type, {i64, i64} (0x977610), i64 (0xB6D3B0)
+# Stub S2C (0x9567A0, JS2CStub 0x96C220):
+#   3001 JoinGroupACK: u32 group HostID (-> factory+0x6C, 0x963CE0),
+#   ByteArray (scalar length + bytes) holding a JSerBuffer:
+#   tag 0x10, varuint count, entries {tag 0x0F, u64 char UID, u32 HostID}
+#   (0x90DD90 / 0x90CC90 / 0x6AD6C0). 0x96BC60 then expects a P2P link to
+#   every member except the local character.
+RELAY_RMI = {1001: 'JoinGroup', 1002: 'LeaveGroup'}
+RELAY_GROUP_HOST_ID = 0x10000  # local choice; any HostID distinct from peers
+selected_character = {'id': 0}  # set by 2006 on the game connection
+
+
+def join_group_ack(group_host_id, members):
+    from proudnet import scalar
+    body = b'' + varuint(len(members))
+    for char_uid, host_id in members:
+        body += b'' + struct.pack('<QI', char_uid, host_id)
+    return (b'' + struct.pack('<HI', 3001, group_host_id)
+            + scalar(len(body)) + body)
+
+
+async def relay_rmi(transport, rmi_id, args):
+    transport.record('relay-rmi', args, rmi=RELAY_RMI[rmi_id])
+    if rmi_id == 1001:
+        members = [(selected_character['id'], transport.host_id)]
+        await transport.send_payload(join_group_ack(RELAY_GROUP_HOST_ID, members),
+                                     note='relay JoinGroupACK 3001')
+
+
 CHAR_SLOTS = 4  # first u8 of 2009: shown as "4 SLOT" on character select (observed)
 
 SQUARES = [dict(square_id=1, name='Channel 1')]
@@ -203,6 +234,7 @@ class GameSession:
     async def on_2006(self, correlation, body):
         # eEGS_SELECT_CHAR_REQ (i32, u64 char id) -> eEGS_SELECT_CHAR_ACK (2007)
         char_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
+        selected_character['id'] = char_id
         char = self.store().get(self.account, char_id)
         if not char:
             chars = self.store().characters(self.account)
@@ -232,6 +264,45 @@ class GameSession:
                + b'\x17' + varuint(0) + struct.pack('<I?', 0, False))
         await self.transport.send_event(event(2220, ack, correlation),
                                         note='empty post list ack')
+
+    async def on_2131(self, correlation, body):
+        # eEGS_FRIEND_LIST_REQUEST_REQ -> eEGS_FRIEND_LIST_REQUEST_ACK (2132), handler 0x7712E0:
+        # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
+        ack = struct.pack('<I', 0) + b'\x17' + varuint(0)
+        await self.transport.send_event(event(2132, ack, correlation), note='friend list ack')
+
+    async def on_2569(self, correlation, body):
+        # Opcode 2569 -> 2570 ACK, handler 0x772160:
+        # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
+        ack = struct.pack('<I', 0) + b'\x17' + varuint(0)
+        await self.transport.send_event(event(2570, ack, correlation), note='opcode 2570 ack')
+
+    async def on_2082(self, correlation, body):
+        # eEGS_CLEAR_TUTORIAL_REQ -> eEGS_CLEAR_TUTORIAL_ACK (2083), handler 0x77EEB0:
+        # u32 result (0), tag 0x10 vector (0x4B9210). Empty vector is b'\x10\x00'.
+        # Triggers scene transition 9 (Town Scene) via 0x6DBFA0!
+        ack = struct.pack('<I', 0) + b'\x10' + varuint(0)
+        await self.transport.send_event(event(2083, ack, correlation), note='clear tutorial ack')
+
+    async def on_2346(self, correlation, body):
+        # eEGS_TUTORIAL_QUEST_START_REQ -> eEGS_TUTORIAL_QUEST_START_ACK (2347), handler 0x6481E0:
+        # u32 result (0 = success).
+        ack = struct.pack('<I', 0)
+        await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
+
+    async def on_2390(self, correlation, body):
+        # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0:
+        # u32 result (0), untagged 21 bytes (0xA48B80).
+        ack = struct.pack('<I', 0) + (b'\x00' * 21)
+        await self.transport.send_event(event(2391, ack, correlation), note='roulette manager info ack')
+
+    async def on_2353(self, correlation, body):
+        # eEGS_TUTORIAL_MONSTER_DEAD_NOT, sender 0x799E60: notification only.
+        pass
+
+    async def on_2352(self, correlation, body):
+        # eEGS_IP_ADDRESS_NOT: client LAN/WAN IP notification only.
+        pass
 
     async def on_5030(self, correlation, body):
         # eERC_JOIN_LAYER_REQ (i32, u64 layer id) -> eERC_JOIN_LAYER_ACK (5031), handler 0x787A70:

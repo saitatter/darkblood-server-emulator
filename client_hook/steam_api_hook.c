@@ -380,6 +380,92 @@ LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+typedef void* (__stdcall *Direct3DCreate9_t)(unsigned int SDKVersion);
+static Direct3DCreate9_t orig_Direct3DCreate9 = NULL;
+
+typedef long (__stdcall *CreateDevice_t)(void* self, unsigned int Adapter, unsigned int DeviceType,
+                                        void* hFocusWindow, unsigned long BehaviorFlags,
+                                        void* pPresentationParameters, void** ppReturnedDeviceInterface);
+static CreateDevice_t orig_CreateDevice = NULL;
+
+static long __stdcall Hook_CreateDevice(void* self, unsigned int Adapter, unsigned int DeviceType,
+                                        void* hFocusWindow, unsigned long BehaviorFlags,
+                                        void* pPresentationParameters, void** ppReturnedDeviceInterface) {
+    RawLogFmt("[D3D9] CreateDevice Adapter=%u Type=%u Flags=0x%08X Focus=%p",
+              Adapter, DeviceType, BehaviorFlags, hFocusWindow);
+
+    long hr = orig_CreateDevice(self, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                pPresentationParameters, ppReturnedDeviceInterface);
+    if (hr >= 0 && *ppReturnedDeviceInterface) {
+        RawLogFmt("[D3D9] CreateDevice OK (Adapter %u): hr=0x%08X dev=%p", Adapter, hr, *ppReturnedDeviceInterface);
+        return hr;
+    }
+    RawLogFmt("[D3D9] CreateDevice failed (hr=0x%08X); trying Adapter 1...", hr);
+
+    hr = orig_CreateDevice(self, 1, DeviceType, hFocusWindow, BehaviorFlags,
+                           pPresentationParameters, ppReturnedDeviceInterface);
+    if (hr >= 0 && *ppReturnedDeviceInterface) {
+        RawLogFmt("[D3D9] CreateDevice OK on Adapter 1: hr=0x%08X dev=%p", hr, *ppReturnedDeviceInterface);
+        return hr;
+    }
+
+    unsigned long sw_flags = (BehaviorFlags & ~0x44) | 0x20;
+    hr = orig_CreateDevice(self, Adapter, DeviceType, hFocusWindow, sw_flags,
+                           pPresentationParameters, ppReturnedDeviceInterface);
+    if (hr >= 0 && *ppReturnedDeviceInterface) {
+        RawLogFmt("[D3D9] CreateDevice OK with SW VP: hr=0x%08X dev=%p", hr, *ppReturnedDeviceInterface);
+        return hr;
+    }
+
+    hr = orig_CreateDevice(self, Adapter, 2, hFocusWindow, sw_flags,
+                           pPresentationParameters, ppReturnedDeviceInterface);
+    if (hr >= 0 && *ppReturnedDeviceInterface) {
+        RawLogFmt("[D3D9] CreateDevice OK with D3DDEVTYPE_REF: hr=0x%08X dev=%p", hr, *ppReturnedDeviceInterface);
+        return hr;
+    }
+
+    RawLogFmt("[D3D9] CreateDevice all fallbacks failed: hr=0x%08X", hr);
+    return hr;
+}
+
+static void* __stdcall Hook_Direct3DCreate9(unsigned int SDKVersion) {
+    RawLogFmt("[D3D9] Direct3DCreate9(SDKVersion=%u)", SDKVersion);
+    void* pD3D = orig_Direct3DCreate9(SDKVersion);
+    if (!pD3D) {
+        RawLog("[D3D9] Direct3DCreate9 returned NULL!");
+        return NULL;
+    }
+    void*** pVtbl = (void***)pD3D;
+    void** vtbl = *pVtbl;
+    if (vtbl && !orig_CreateDevice) {
+        DWORD oldProtect;
+        if (VirtualProtect(&vtbl[16], sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect)) {
+            orig_CreateDevice = (CreateDevice_t)vtbl[16];
+            vtbl[16] = (void*)Hook_CreateDevice;
+            VirtualProtect(&vtbl[16], sizeof(void*), oldProtect, &oldProtect);
+            RawLogFmt("[D3D9] Hooked CreateDevice at %p (orig=%p)", &vtbl[16], orig_CreateDevice);
+        }
+    }
+    return pD3D;
+}
+
+typedef int (WINAPI *MessageBoxA_t)(HWND, LPCSTR, LPCSTR, UINT);
+static MessageBoxA_t orig_MessageBoxA = NULL;
+static int WINAPI Hook_MessageBoxA(HWND hwnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) {
+    RawLogFmt("[MSGBOX-A] Caption='%s' Text='%s'", lpCaption ? lpCaption : "", lpText ? lpText : "");
+    return orig_MessageBoxA ? orig_MessageBoxA(hwnd, lpText, lpCaption, uType) : IDOK;
+}
+
+typedef int (WINAPI *MessageBoxW_t)(HWND, LPCWSTR, LPCWSTR, UINT);
+static MessageBoxW_t orig_MessageBoxW = NULL;
+static int WINAPI Hook_MessageBoxW(HWND hwnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType) {
+    char cap[256] = {0}; char txt[512] = {0};
+    if (lpCaption) WideCharToMultiByte(CP_ACP, 0, lpCaption, -1, cap, sizeof(cap)-1, NULL, NULL);
+    if (lpText) WideCharToMultiByte(CP_ACP, 0, lpText, -1, txt, sizeof(txt)-1, NULL, NULL);
+    RawLogFmt("[MSGBOX-W] Caption='%s' Text='%s'", cap, txt);
+    return orig_MessageBoxW ? orig_MessageBoxW(hwnd, lpText, lpCaption, uType) : IDOK;
+}
+
 static void InstallHooks() {
     if(orig_connect) return;
     BYTE* call=(BYTE*)0x0096b091;
@@ -414,6 +500,24 @@ static void InstallHooks() {
         orig_connect = (connect_t)InstallInlineHook((void*)GetProcAddress(hWs2, "connect"), (void*)Hook_connect);
     }
     RawLog("[INIT] Network hook setup complete");
+
+    HMODULE hUser32 = GetModuleHandleA("user32.dll");
+    if (hUser32) {
+        void* pMsgA = (void*)GetProcAddress(hUser32, "MessageBoxA");
+        if (pMsgA) orig_MessageBoxA = (MessageBoxA_t)InstallInlineHook(pMsgA, (void*)Hook_MessageBoxA);
+        void* pMsgW = (void*)GetProcAddress(hUser32, "MessageBoxW");
+        if (pMsgW) orig_MessageBoxW = (MessageBoxW_t)InstallInlineHook(pMsgW, (void*)Hook_MessageBoxW);
+    }
+
+    HMODULE hD3D9 = LoadLibraryA("d3d9.dll");
+    if (hD3D9) {
+        void* pCreate = (void*)GetProcAddress(hD3D9, "Direct3DCreate9");
+        if (pCreate) {
+            orig_Direct3DCreate9 = (Direct3DCreate9_t)InstallInlineHook(pCreate, (void*)Hook_Direct3DCreate9);
+            RawLogFmt("[INIT] Direct3DCreate9 hooked: %p", orig_Direct3DCreate9);
+        }
+    }
+
     LoadBreakpoints();
 }
 

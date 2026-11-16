@@ -67,6 +67,37 @@ class HeadlessFlowTest(unittest.TestCase):
         # 5134: 6 raw bytes, IPv4 network order + u16 LE port (verified live).
         self.assertEqual(out[5134], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
 
+    def test_town_and_tutorial_opcodes(self):
+        async def scenario(client):
+            await client.connect()
+            # Friend list 2131 -> 2132
+            client.send_event(2131)
+            _, ack2132 = await client.expect_event(2132)
+            self.assertEqual(struct.unpack_from('<I', ack2132)[0], 0)
+
+            # Opcode 2569 -> 2570
+            client.send_event(2569)
+            _, ack2570 = await client.expect_event(2570)
+            self.assertEqual(struct.unpack_from('<I', ack2570)[0], 0)
+
+            # Clear tutorial 2082 -> 2083 (triggers Scene 9)
+            client.send_event(2082, struct.pack('<iB', 0x7fffffff, 0))
+            _, ack2083 = await client.expect_event(2083)
+            self.assertEqual(struct.unpack_from('<I', ack2083)[0], 0)
+
+            # Tutorial quest start 2346 -> 2347
+            client.send_event(2346)
+            _, ack2347 = await client.expect_event(2347)
+            self.assertEqual(struct.unpack_from('<I', ack2347)[0], 0)
+
+            # Roulette info 2390 -> 2391
+            client.send_event(2390)
+            _, ack2391 = await client.expect_event(2391)
+            self.assertEqual(struct.unpack_from('<I', ack2391)[0], 0)
+            self.assertEqual(len(ack2391), 25)
+
+        self.run_async(self.with_server(scenario))
+
     def test_relay_handshake_without_welcome(self):
         async def scenario(client):
             await client.connect()
