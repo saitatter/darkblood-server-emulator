@@ -64,6 +64,36 @@ Full Ghidra analysis through REA produced retained Evidence. The initial artific
 
 `tools/FocusedDecompile.java` provides faster targeted analysis using `-noanalysis`, requested function seeds, limited callee discovery, and return-based stack-purge metadata. Its output may contain incorrect signatures, merged function bodies, and inaccurate stack variables. Check important details against assembly and live observations.
 
+### Full named Ghidra project (2026-11-16, saitatter machine)
+
+Reproducible from local evidence (all outputs stay under ignored `research/`):
+
+```sh
+python tools/image_to_pe.py research/normal.bin research/normal.analysis.exe --entry 0x92C2C0
+python tools/gen_symbols.py research/normal.bin -o research/symbols.tsv
+# GHIDRA_HEADLESS_MAXMEM=8G, JAVA_HOME set:
+analyzeHeadless research/ghidra-full DarkBlood -import research/normal.analysis.exe -overwrite \
+  -scriptPath tools -preScript ApplySymbols.java research/symbols.tsv \
+  -postScript ApplySymbols.java research/symbols.tsv
+analyzeHeadless research/ghidra-full DarkBlood -process -noanalysis -scriptPath tools \
+  -postScript ExportDecompiled.java research/decompiled 30
+```
+
+`normal.analysis.exe` (SHA-256 `344442f6...aca67`) wraps `normal.bin`, the
+normal-launch dump without diagnostic patches; like `unpacked.analysis.exe` it
+is a static fixture, never a runnable client. `gen_symbols.py` recovers 282
+opcode handler names (`On_<opcode>`; 59 opcodes are missing from
+`opcodes.tsv` and stay `On_opcode_N`), 1,806 lua_tinker binding names
+(`Lua_<name>`, the Lua-visible name) and 4,373 RTTI names
+(`Class::vftable`, `Class::vfNN` for slots owned by one class). Open the project
+in the Ghidra GUI for navigation; `research/decompiled/*.c` and
+`functions.tsv` are greppable pseudocode.
+
+Known limit: calls written as `nop; call 0x600xxxxx` go to protector-allocated
+stubs outside the image (no DLL is based there), replacing the original
+`call [IAT]` thunks. They show as `func_0x600xxxxx` until a live process dump of
+that region maps each stub to its CRT/MFC/WinAPI target.
+
 The client contains ProudNet networking and its own JSerBuffer/JEvent serialization. The initial Auth/Lobby prototype did not implement those real formats. The actual accepted sequence and the remaining `2403` initialization wait are documented in [PROTOCOL.md](PROTOCOL.md) and [ROADMAP.md](../ROADMAP.md).
 
 ## SteamUser slot 16 crash (local 2026-11-16 verification)
