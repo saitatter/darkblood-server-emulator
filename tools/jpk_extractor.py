@@ -10,7 +10,7 @@ import struct
 import zlib
 import argparse
 
-KEY_73 = b'234G335C,;G67,54;e,CC;3,B@372233E3GD,00735B:E,;2:2,73d;,:326,366G:;;BBE;3'
+KEY_73 = b'305D006B-8D74-458f-BB80-CA243100F0DA-11406C9F-8393-42e8-9037-077D988CCF80'
 
 def read_varint(f):
     num = 0
@@ -33,7 +33,7 @@ def read_ugly_string(f):
 
 def decrypt_data(data: bytes) -> bytes:
     key_len = len(KEY_73)
-    return bytes([b ^ KEY_73[i % key_len] for i, b in enumerate(data)])
+    return bytes([((b - 1) & 0xFF) ^ KEY_73[i % key_len] for i, b in enumerate(data)])
 
 def extract_jpk(jpk_path: str, output_dir: str, decrypt: bool = True):
     print(f"[*] Processing: {jpk_path}")
@@ -78,9 +78,13 @@ def extract_jpk(jpk_path: str, output_dir: str, decrypt: bool = True):
                 real_name = name1
                 file_data = f.read(size)
 
-            if decrypt and (real_name.lower().endswith(('.xml', '.lua', '.txt', '.ini'))):
-                if file_data.startswith(b'\x10\x10N*]') or not file_data.startswith(b'<?xml') and not file_data.startswith(b'--'):
-                    file_data = decrypt_data(file_data)
+            if decrypt and real_name.lower().endswith(('.xml', '.lua', '.txt', '.ini')):
+                if not (file_data.startswith(b'<?xml') or file_data.startswith(b'\x1bLua') or file_data.startswith(b'--')):
+                    dec = decrypt_data(file_data)
+                    if (dec.startswith(b'<?xml') or dec.startswith(b'\x1bLua') or
+                        dec.startswith(b'--') or dec.startswith(b'\r\n') or
+                        dec.startswith(b'\n') or b'=' in dec[:50] or b'SETUP' in dec[:50] or b'COMMAND' in dec[:50]):
+                        file_data = dec
 
             dest_path = os.path.join(output_dir, real_name)
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
