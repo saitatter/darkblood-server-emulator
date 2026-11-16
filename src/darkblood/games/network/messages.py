@@ -1227,5 +1227,240 @@ class LearnSkillAck:
         return struct.pack('<iHBiq', self.result, self.skill_index, self.level, self.remain_sp, self.remain_gold)
 
 
+@dataclass
+class ChangeBagPropertyReq:
+    """Opcode 2048: eEGS_CHANGE_BAG_PROPERTY_REQ (0x00550000.c:676).
+
+    Wire format: i64 nBagUID + u8 ucProperty (9 bytes).
+    """
+    bag_uid: int = 0
+    property: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeBagPropertyReq':
+        if len(data) >= 9:
+            uid, prop = struct.unpack_from('<qB', data, 0)
+            return cls(bag_uid=uid, property=prop)
+        return cls()
+
+
+@dataclass
+class ChangeBagPropertyAck:
+    """Opcode 2049: eEGS_CHANGE_BAG_PROPERTY_ACK (On_eEGS_CHANGE_BAG_PROPERTY_ACK 0x00774040).
+
+    Wire format: i32 result + i64 nBagUID + u8 ucProperty.
+    """
+    result: int = 0
+    bag_uid: int = 0
+    property: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iqB', self.result, self.bag_uid, self.property)
+
+
+@dataclass
+class ModifySkillSpeechReq:
+    """Opcode 2053: eEGS_MODIFY_SKILL_SPEECH_REQ (0x00780000.c:9674).
+
+    Wire format: u16 sKindNameIndex + wide string strSpeech.
+    """
+    skill_index: int = 0
+    speech: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ModifySkillSpeechReq':
+        if len(data) >= 2:
+            sidx = struct.unpack_from('<H', data, 0)[0]
+            speech = ''
+            if len(data) > 2:
+                rem = data[2:]
+                speech = rem.decode('utf-16le', errors='replace')
+            return cls(skill_index=sidx, speech=speech)
+        return cls()
+
+
+@dataclass
+class ModifySkillSpeechAck:
+    """Opcode 2054: eEGS_MODIFY_SKILL_SPEECH_ACK (On_eEGS_MODIFY_SKILL_SPEECH_ACK 0x0078E090).
+
+    Wire format: i32 result + u16 sKindNameIndex + wide string strSpeech.
+    """
+    result: int = 0
+    skill_index: int = 0
+    speech: str = ''
+
+    def encode(self) -> bytes:
+        return struct.pack('<iH', self.result, self.skill_index) + wide_string(self.speech)
+
+
+@dataclass
+class DeleteSkillSpeechReq:
+    """Opcode 2055: eEGS_DELETE_SKILL_SPEECH_REQ (0x00780000.c:9708).
+
+    Wire format: u16 sKindNameIndex.
+    """
+    skill_index: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DeleteSkillSpeechReq':
+        if len(data) >= 2:
+            return cls(skill_index=struct.unpack_from('<H', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class DeleteSkillSpeechAck:
+    """Opcode 2056: eEGS_DELETE_SKILL_SPEECH_ACK (On_eEGS_DELETE_SKILL_SPEECH_ACK 0x0078E270).
+
+    Wire format: i32 result + u16 sKindNameIndex.
+    """
+    result: int = 0
+    skill_index: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iH', self.result, self.skill_index)
+
+
+@dataclass
+class BuyItemReq:
+    """Opcode 2067: eEGS_BUY_ITEM_REQ (0x00780000.c:10667).
+
+    Wire format: i32 npc_id + i32 item_id + u16 count (10 bytes).
+    """
+    store_id: int = 0
+    item_id: int = 0
+    count: int = 1
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'BuyItemReq':
+        if len(data) >= 10:
+            sid, iid, cnt = struct.unpack_from('<iiH', data, 0)
+            return cls(store_id=sid, item_id=iid, count=cnt)
+        return cls()
+
+
+@dataclass
+class BuyItemAck:
+    """Opcode 2068: eEGS_BUY_ITEM_ACK (On_eEGS_BUY_ITEM_ACK 0x0077E2F0).
+
+    Wire format: i32 result (non-zero triggers error popup and terminates frame).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class SellItemReq:
+    """Opcode 2069: eEGS_SELL_ITEM_REQ (0x00780000.c:10700).
+
+    Wire format: i32 npc_id + i64 item_uid + u16 count (14 bytes).
+    """
+    npc_id: int = 0
+    item_uid: int = 0
+    count: int = 1
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SellItemReq':
+        if len(data) >= 14:
+            nid, uid, cnt = struct.unpack_from('<iqi', data, 0)
+            return cls(npc_id=nid, item_uid=uid, count=cnt)
+        return cls()
+
+
+@dataclass
+class SellItemAck:
+    """Opcode 2070: eEGS_SELL_ITEM_ACK (On_eEGS_SELL_ITEM_ACK 0x0077E8E0).
+
+    Wire format: i32 result (non-zero terminates frame; 0 returns updated inventory vector).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class RepurchaseItemReq:
+    """Opcode 2071: eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735).
+
+    Wire format: i64 item_uid (8 bytes).
+    """
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RepurchaseItemReq':
+        if len(data) >= 8:
+            return cls(item_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class RepurchaseItemAck:
+    """Opcode 2072: eEGS_REPURCHASE_ITEM_ACK (On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30).
+
+    Wire format: i32 result (non-zero triggers error popup).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class FriendListAddReq:
+    """Opcode 2139: eEGS_FRIEND_LIST_ADD_REQ (0x00790000.c:1595).
+
+    Wire format: wide string char_name.
+    """
+    char_name: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'FriendListAddReq':
+        return cls(char_name=data.decode('utf-16le', errors='replace'))
+
+
+@dataclass
+class FriendListAddAck:
+    """Opcode 2140: eEGS_FRIEND_LIST_ADD_ACK (On_eEGS_FRIEND_LIST_ADD_ACK 0x007591A0).
+
+    Wire format: i32 result (0xCE = player offline/not found).
+    """
+    result: int = 0xCE
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class FriendListDeleteReq:
+    """Opcode 2135: eEGS_FRIEND_LIST_DELETE_REQ (0x00790000.c:1824).
+
+    Wire format: i64 char_uid (8 bytes).
+    """
+    char_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'FriendListDeleteReq':
+        if len(data) >= 8:
+            return cls(char_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class FriendListDeleteAck:
+    """Opcode 2136: eEGS_FRIEND_LIST_DELETE_ACK (On_eEGS_FRIEND_LIST_DELETE_ACK 0x00759560).
+
+    Wire format: i32 result + i64 char_uid.
+    """
+    result: int = 0
+    char_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iq', self.result, self.char_uid)
+
+
+
 
 

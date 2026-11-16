@@ -6,11 +6,17 @@ from darkblood.games.entities.items import EQUIPPED, Item
 from darkblood.games.network.messages import (
     AssignQuickslotAck,
     AssignQuickslotReq,
+    BuyItemAck,
+    BuyItemReq,
+    ChangeBagPropertyAck,
+    ChangeBagPropertyReq,
     CharVerifyStatAck,
     CloseBagReq,
     CurrentCashAck,
     DeleteItemAck,
     DeleteItemReq,
+    DeleteSkillSpeechAck,
+    DeleteSkillSpeechReq,
     DragItemAck,
     DragItemReq,
     EquipItemAck,
@@ -18,8 +24,14 @@ from darkblood.games.network.messages import (
     HttpNoticeCheckAck,
     LearnSkillAck,
     LearnSkillReq,
+    ModifySkillSpeechAck,
+    ModifySkillSpeechReq,
     PlayOptionUpdateReq,
+    RepurchaseItemAck,
+    RepurchaseItemReq,
     RouletteManagerInfoAck,
+    SellItemAck,
+    SellItemReq,
     StoreInfoAck,
     SwitchBagAck,
     SwitchBagReq,
@@ -308,6 +320,84 @@ class CommerceHandlers:
                             remain_sp=remain_sp, remain_gold=remain_gold).encode()
         await self.transport.send_event(event(2051, ack, correlation),
                                         note=f'learn skill ack (skill={req.skill_index} lvl={req.level})')
+
+    async def on_2048(self, correlation, body):
+        # eEGS_CHANGE_BAG_PROPERTY_REQ (0x00550000.c:676) -> 2049 eEGS_CHANGE_BAG_PROPERTY_ACK (0x00774040).
+        req = ChangeBagPropertyReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            for bag in char.get('bags', []):
+                if bag.get('bag_id') == req.bag_uid:
+                    bag['b28'] = req.property
+                    break
+            self.store().save()
+        ack = ChangeBagPropertyAck(result=0, bag_uid=req.bag_uid, property=req.property).encode()
+        await self.transport.send_event(event(2049, ack, correlation),
+                                        note=f'change bag property ack (bag={req.bag_uid} prop={req.property})')
+
+    async def on_2053(self, correlation, body):
+        # eEGS_MODIFY_SKILL_SPEECH_REQ (0x00780000.c:9674) -> 2054 eEGS_MODIFY_SKILL_SPEECH_ACK (0x0078E090).
+        req = ModifySkillSpeechReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            speeches = char.setdefault('skill_speeches', {})
+            speeches[str(req.skill_index)] = req.speech
+            self.store().save()
+        ack = ModifySkillSpeechAck(result=0, skill_index=req.skill_index, speech=req.speech).encode()
+        await self.transport.send_event(event(2054, ack, correlation),
+                                        note=f'modify skill speech ack (skill={req.skill_index})')
+
+    async def on_2055(self, correlation, body):
+        # eEGS_DELETE_SKILL_SPEECH_REQ (0x00780000.c:9708) -> 2056 eEGS_DELETE_SKILL_SPEECH_ACK (0x0078E270).
+        req = DeleteSkillSpeechReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            speeches = char.setdefault('skill_speeches', {})
+            speeches.pop(str(req.skill_index), None)
+            self.store().save()
+        ack = DeleteSkillSpeechAck(result=0, skill_index=req.skill_index).encode()
+        await self.transport.send_event(event(2056, ack, correlation),
+                                        note=f'delete skill speech ack (skill={req.skill_index})')
+
+    async def on_2067(self, correlation, body):
+        # eEGS_BUY_ITEM_REQ (0x00780000.c:10667) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
+        req = BuyItemReq.decode(body)
+        self.transport.record('buy-item-req', body, store_id=req.store_id, item_id=req.item_id, count=req.count)
+        # Result 1: generic store rejection / item out of stock until inventory transactions are wired
+        ack = BuyItemAck(result=1).encode()
+        await self.transport.send_event(event(2068, ack, correlation),
+                                        note=f'buy item ack (store={req.store_id} item={req.item_id})')
+
+    async def on_2069(self, correlation, body):
+        # eEGS_SELL_ITEM_REQ (0x00780000.c:10700) -> 2070 eEGS_SELL_ITEM_ACK (0x0077E8E0).
+        req = SellItemReq.decode(body)
+        self.transport.record('sell-item-req', body, npc_id=req.npc_id, item_uid=req.item_uid, count=req.count)
+        ack = SellItemAck(result=1).encode()
+        await self.transport.send_event(event(2070, ack, correlation),
+                                        note=f'sell item ack (item={req.item_uid} count={req.count})')
+
+    async def on_2071(self, correlation, body):
+        # eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30).
+        req = RepurchaseItemReq.decode(body)
+        ack = RepurchaseItemAck(result=1).encode()
+        await self.transport.send_event(event(2072, ack, correlation),
+                                        note=f'repurchase item ack (item={req.item_uid})')
+
 
 
 

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Dark Blood Emulator Documentation
+    url: https://github.com/saitatter/darkblood-server-emulator/tree/main/docs
+    about: Review PROTOCOL.md, STATUS.md, and ARCHITECTURE.md for current research state.

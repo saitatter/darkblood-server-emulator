@@ -42,3 +42,21 @@ class SocialHandlers:
         from darkblood.games.network.messages import GetInviteListAck
         ack = GetInviteListAck().encode()
         await self.transport.send_event(event(2025, ack, correlation), note='invite list ack')
+
+    async def on_2139(self, correlation, body):
+        # eEGS_FRIEND_LIST_ADD_REQ (0x00790000.c:1595) -> 2140 eEGS_FRIEND_LIST_ADD_ACK (0x007591A0).
+        from darkblood.games.network.messages import FriendListAddAck, FriendListAddReq
+        req = FriendListAddReq.decode(body)
+        self.transport.record('friend-add', body, name=req.char_name)
+        # Default response: 0xCE (player not found or offline)
+        ack = FriendListAddAck(result=0xCE).encode()
+        await self.transport.send_event(event(2140, ack, correlation), note=f'friend add ack ({req.char_name})')
+
+    async def on_2135(self, correlation, body):
+        # eEGS_FRIEND_LIST_DELETE_REQ (0x00790000.c:1824) -> 2136 eEGS_FRIEND_LIST_DELETE_ACK (0x00759560).
+        from darkblood.games.network.messages import FriendListDeleteAck, FriendListDeleteReq
+        req = FriendListDeleteReq.decode(body)
+        self.transport.record('friend-delete', body, char_uid=req.char_uid)
+        ack = FriendListDeleteAck(result=0, char_uid=req.char_uid).encode()
+        await self.transport.send_event(event(2136, ack, correlation), note=f'friend delete ack ({req.char_uid})')
+

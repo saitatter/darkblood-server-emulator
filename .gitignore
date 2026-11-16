@@ -16,3 +16,7 @@ extracted_sample/
 *.pcapng
 *.saz
 /data/
+*.zip
+darkblood_diagnostics_*.zip
+scratch_find_opcodes.py
+

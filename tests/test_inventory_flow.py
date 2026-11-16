@@ -70,6 +70,37 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2051 = await client.expect_event(2051)
             self.assertEqual(struct.unpack_from('<iHBiq', ack2051)[:3], (0, 101, 2))
 
+            # 10. Change bag property (2048 -> 2049)
+            client.send_event(2048, struct.pack('<qB', 2, 3))
+            _, ack2049 = await client.expect_event(2049)
+            self.assertEqual(struct.unpack_from('<iqB', ack2049), (0, 2, 3))
+
+            # 11. Modify skill speech (2053 -> 2054)
+            shout = 'Die!'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2053, struct.pack('<H', 101) + struct.pack(f'<{len(shout)}s', shout))
+            _, ack2054 = await client.expect_event(2054)
+            self.assertEqual(struct.unpack_from('<iH', ack2054), (0, 101))
+
+            # 12. Delete skill speech (2055 -> 2056)
+            client.send_event(2055, struct.pack('<H', 101))
+            _, ack2056 = await client.expect_event(2056)
+            self.assertEqual(struct.unpack_from('<iH', ack2056), (0, 101))
+
+            # 13. Store buy item (2067 -> 2068)
+            client.send_event(2067, struct.pack('<iiH', 1, 99999, 1))
+            _, ack2068 = await client.expect_event(2068)
+            self.assertNotEqual(struct.unpack_from('<i', ack2068)[0], 0)
+
+            # 14. Store sell item (2069 -> 2070)
+            client.send_event(2069, struct.pack('<iqi', 1, 1, 1))
+            _, ack2070 = await client.expect_event(2070)
+            self.assertNotEqual(struct.unpack_from('<i', ack2070)[0], 0)
+
+            # 15. Store repurchase item (2071 -> 2072)
+            client.send_event(2071, struct.pack('<q', 1))
+            _, ack2072 = await client.expect_event(2072)
+            self.assertNotEqual(struct.unpack_from('<i', ack2072)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

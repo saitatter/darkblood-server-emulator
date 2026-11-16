@@ -109,6 +109,55 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(ack[8:10], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<Ii', ack, 10), (hashing.jhash('Ihppa0001'), -1))
 
+    def test_change_bag_property_messages(self):
+        raw_req = struct.pack('<qB', 2, 3)
+        req = messages.ChangeBagPropertyReq.decode(raw_req)
+        self.assertEqual((req.bag_uid, req.property), (2, 3))
+
+        ack = messages.ChangeBagPropertyAck(result=0, bag_uid=2, property=3)
+        self.assertEqual(struct.unpack_from('<iqB', ack.encode()), (0, 2, 3))
+
+    def test_skill_speech_messages(self):
+        req_mod = messages.ModifySkillSpeechReq.decode(struct.pack('<H', 105) + 'Fire!'.encode('utf-16le'))
+        self.assertEqual(req_mod.skill_index, 105)
+
+        ack_mod = messages.ModifySkillSpeechAck(result=0, skill_index=105, speech='Fire!')
+        enc_mod = ack_mod.encode()
+        self.assertEqual(struct.unpack_from('<iH', enc_mod[:6]), (0, 105))
+
+        req_del = messages.DeleteSkillSpeechReq.decode(struct.pack('<H', 105))
+        self.assertEqual(req_del.skill_index, 105)
+
+        ack_del = messages.DeleteSkillSpeechAck(result=0, skill_index=105)
+        self.assertEqual(struct.unpack_from('<iH', ack_del.encode()), (0, 105))
+
+    def test_store_transaction_messages(self):
+        raw_buy = struct.pack('<iiH', 1, 12345, 2)
+        req_buy = messages.BuyItemReq.decode(raw_buy)
+        self.assertEqual((req_buy.store_id, req_buy.item_id, req_buy.count), (1, 12345, 2))
+
+        raw_sell = struct.pack('<iqi', 1, 7777777, 1)
+        req_sell = messages.SellItemReq.decode(raw_sell)
+        self.assertEqual((req_sell.npc_id, req_sell.item_uid, req_sell.count), (1, 7777777, 1))
+
+        raw_re = struct.pack('<q', 8888888)
+        req_re = messages.RepurchaseItemReq.decode(raw_re)
+        self.assertEqual(req_re.item_uid, 8888888)
+
+    def test_friend_list_management_messages(self):
+        req_add = messages.FriendListAddReq.decode('BestFriend'.encode('utf-16le'))
+        self.assertEqual(req_add.char_name, 'BestFriend')
+
+        ack_add = messages.FriendListAddAck(result=0xCE)
+        self.assertEqual(struct.unpack_from('<i', ack_add.encode())[0], 0xCE)
+
+        req_del = messages.FriendListDeleteReq.decode(struct.pack('<q', 54321))
+        self.assertEqual(req_del.char_uid, 54321)
+
+        ack_del = messages.FriendListDeleteAck(result=0, char_uid=54321)
+        self.assertEqual(struct.unpack_from('<iq', ack_del.encode()), (0, 54321))
+
+
 
 if __name__ == '__main__':
     unittest.main()

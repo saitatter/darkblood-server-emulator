@@ -1,5 +1,21 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~18:50 (Diagnostic Tooling, GitHub Issue Templates, Store & Social Opcodes)
+
+1. Diagnostic Export Tool & Issue Templates:
+   - Added `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/opcode_investigation.yml`, and `config.yml`.
+   - Added `tools/export_diagnostics.py` producing `darkblood_diagnostics_<timestamp>.zip` containing OS, Git commit hash, client executable SHA256, recent wire logs, characters database, and opcode maps.
+2. Store, Bag Property, Skill Shout & Friend List Opcodes Implemented:
+   - `2048 eEGS_CHANGE_BAG_PROPERTY_REQ` -> `2049 eEGS_CHANGE_BAG_PROPERTY_ACK`: `<qB` -> `<iqB` updating tab filter `b28`.
+   - `2053 eEGS_MODIFY_SKILL_SPEECH_REQ` -> `2054 eEGS_MODIFY_SKILL_SPEECH_ACK`: `<H` + wide string -> `<iH` + wide string. Persists to character `skill_speeches`.
+   - `2055 eEGS_DELETE_SKILL_SPEECH_REQ` -> `2056 eEGS_DELETE_SKILL_SPEECH_ACK`: `<H` -> `<iH`. Deletes skill shout.
+   - `2067 eEGS_BUY_ITEM_REQ` -> `2068 eEGS_BUY_ITEM_ACK`: `<iiH` -> `<i` (result=1 rejection).
+   - `2069 eEGS_SELL_ITEM_REQ` -> `2070 eEGS_SELL_ITEM_ACK`: `<iqi` -> `<i` (result=1 rejection).
+   - `2071 eEGS_REPURCHASE_ITEM_REQ` -> `2072 eEGS_REPURCHASE_ITEM_ACK`: `<q` -> `<i` (result=1 rejection).
+   - `2139 eEGS_FRIEND_LIST_ADD_REQ` -> `2140 eEGS_FRIEND_LIST_ADD_ACK`: wide string -> `<i` (0xCE player offline).
+   - `2135 eEGS_FRIEND_LIST_DELETE_REQ` -> `2136 eEGS_FRIEND_LIST_DELETE_ACK`: `<q` -> `<iq` (result=0, char_uid).
+3. Test suite updated with 4 new tests covering all new messages and full end-to-end flows in `test_inventory_flow.py` and `test_social_flow.py`. 35/35 tests pass.
+
 ## Update — 2026-11-16 ~18:30 (Modular test suite refactoring into granular categories)
 
 Decomposed monolithic `test_headless_flow.py` into dedicated, modular test suites:

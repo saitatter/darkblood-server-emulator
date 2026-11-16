@@ -1,5 +1,25 @@
 # Research status and handoff
 
+## Diagnostic Export Tooling & GitHub Issue Templates — 2026-11-16 ~18:50
+
+* Added GitHub Issue Templates under `.github/ISSUE_TEMPLATE/`:
+  - `bug_report.yml`: GitHub Issue form for player bug reports, gameplay areas, unhandled opcodes, executable hashes, and diagnostic bundles.
+  - `opcode_investigation.yml`: Reverse engineering form for opcode number/name, handler address, hex payload, decompiled C snippet, and diagnostic bundle.
+  - `config.yml`: Helpful links to local documentation.
+* Implemented `tools/export_diagnostics.py`:
+  - Automatically gathers OS info, Git commit hash, client executable SHA-256 (`DarkBlood.exe`), recent entries from `wire.jsonl`, `data/characters.json`, `research/client/handler_map.txt`, and `assets/opcodes.tsv`.
+  - Packages diagnostics into a zip file `darkblood_diagnostics_<timestamp>.zip` for easy issue submission.
+* Decompiled and implemented wire schemas, domain handlers, and tests for 8 additional opcodes:
+  - `2048 eEGS_CHANGE_BAG_PROPERTY_REQ` & `2049 eEGS_CHANGE_BAG_PROPERTY_ACK`: `<qB` (nBagUID, ucProperty) -> `<iqB` (result, nBagUID, ucProperty) updating tab filter `b28` on bag. Handled in `on_2048`.
+  - `2053 eEGS_MODIFY_SKILL_SPEECH_REQ` & `2054 eEGS_MODIFY_SKILL_SPEECH_ACK`: `<H` (sKindNameIndex) + wide string -> `<iH` + wide string, persisting custom skill shout text on character. Handled in `on_2053`.
+  - `2055 eEGS_DELETE_SKILL_SPEECH_REQ` & `2056 eEGS_DELETE_SKILL_SPEECH_ACK`: `<H` (sKindNameIndex) -> `<iH` (result, sKindNameIndex) removing shout text. Handled in `on_2055`.
+  - `2067 eEGS_BUY_ITEM_REQ` & `2068 eEGS_BUY_ITEM_ACK`: `<iiH` (store_id, item_id, count) -> `<i` (result=1 rejection until store inventory is populated). Handled in `on_2067`.
+  - `2069 eEGS_SELL_ITEM_REQ` & `2070 eEGS_SELL_ITEM_ACK`: `<iqi` (npc_id, item_uid, count) -> `<i` (result=1 rejection). Handled in `on_2069`.
+  - `2071 eEGS_REPURCHASE_ITEM_REQ` & `2072 eEGS_REPURCHASE_ITEM_ACK`: `<q` (item_uid) -> `<i` (result=1 rejection). Handled in `on_2071`.
+  - `2139 eEGS_FRIEND_LIST_ADD_REQ` & `2140 eEGS_FRIEND_LIST_ADD_ACK`: wide string -> `<i` (0xCE player offline / not found). Handled in `on_2139`.
+  - `2135 eEGS_FRIEND_LIST_DELETE_REQ` & `2136 eEGS_FRIEND_LIST_DELETE_ACK`: `<q` (char_uid) -> `<iq` (result=0, char_uid). Handled in `on_2135`.
+* 35/35 headless tests pass cleanly across all categories.
+
 ## Modular Test Suite Refactoring — 2026-11-16 ~18:30
 
 * Refactored monolithic `test_headless_flow.py` into 10 granular, modular test modules:

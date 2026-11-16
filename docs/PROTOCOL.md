@@ -392,6 +392,25 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 `eERC_GTARGET_LIST_ACK` (result + empty vector of `{i32,bool,bool}`), 2369 →
 2370 `eEGS_BILLING_GET_CURRENT_CASH_ACK` (result + 12 raw bytes, zero).
 
+### Store, Skills & Social Opcodes (2026-11-16)
+
+- `2048 eEGS_CHANGE_BAG_PROPERTY_REQ` (`0x00550000.c:676`) -> `2049 eEGS_CHANGE_BAG_PROPERTY_ACK` (`0x00774040`):
+  `nBagUID: i64, ucProperty: u8` -> `result: i32, nBagUID: i64, ucProperty: u8`. Updates bag tab filter `+0x28`.
+- `2053 eEGS_MODIFY_SKILL_SPEECH_REQ` (`0x00780000.c:9674`) -> `2054 eEGS_MODIFY_SKILL_SPEECH_ACK` (`0x0078E090`):
+  `sKindNameIndex: u16, speech: wstring` -> `result: i32, sKindNameIndex: u16, speech: wstring`. Sets shout text for skill invocation.
+- `2055 eEGS_DELETE_SKILL_SPEECH_REQ` (`0x00780000.c:9708`) -> `2056 eEGS_DELETE_SKILL_SPEECH_ACK` (`0x0078E270`):
+  `sKindNameIndex: u16` -> `result: i32, sKindNameIndex: u16`. Clears shout text.
+- `2067 eEGS_BUY_ITEM_REQ` (`0x00780000.c:10667`) -> `2068 eEGS_BUY_ITEM_ACK` (`0x0077E2F0`):
+  `store_id: i32, item_id: i32, count: u16` -> `result: i32`. Non-zero (1) error response safely terminates shop transaction without requiring missing inventory structs.
+- `2069 eEGS_SELL_ITEM_REQ` (`0x00780000.c:10700`) -> `2070 eEGS_SELL_ITEM_ACK` (`0x0077E8E0`):
+  `npc_id: i32, item_uid: i64, count: i32` -> `result: i32` (1 error code).
+- `2071 eEGS_REPURCHASE_ITEM_REQ` (`0x00780000.c:10735`) -> `2072 eEGS_REPURCHASE_ITEM_ACK` (`0x0077EC30`):
+  `item_uid: i64` -> `result: i32` (1 error code).
+- `2139 eEGS_FRIEND_LIST_ADD_REQ` (`0x00790000.c:1595`) -> `2140 eEGS_FRIEND_LIST_ADD_ACK` (`0x007591A0`):
+  `char_name: wstring` -> `result: i32` (0xCE player offline / not found).
+- `2135 eEGS_FRIEND_LIST_DELETE_REQ` (`0x00790000.c:1824`) -> `2136 eEGS_FRIEND_LIST_DELETE_ACK` (`0x00759560`):
+  `char_uid: i64` -> `result: i32, char_uid: i64`.
+
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 
 App-state enum (registered at `0x00705CD0` as `eAS_* = %d`): 0 SelectChar,

@@ -1,0 +1,100 @@
+name: Bug Report / Client Disconnect
+description: Report an unhandled opcode, client crash, state desync, or emulation bug.
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue!
+        
+        > [!IMPORTANT]
+        > **Automatic Diagnostic Bundle Extraction:**
+        > Please run the diagnostic tool in your repository to automatically package all wire call logs, handler maps, environment details, and server state:
+        > ```bash
+        > python tools/export_diagnostics.py
+        > ```
+        > This creates a `darkblood_diagnostics_<timestamp>.zip` file. Please drag and drop it into the upload field below so that AI agents and maintainers can immediately reproduce and resolve the issue.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Target Gameplay Area
+      description: What part of the game were you interacting with when the issue occurred?
+      options:
+        - "Auth / Handshake / Server List (Ports 9400/9401)"
+        - "Character Selection & Creation"
+        - "Town / NPC Dialogue / Stores"
+        - "Inventory / Items / Bags / Quickslots"
+        - "Dungeon Gates & Map Loading"
+        - "Dungeon Combat / Monsters / Drops / Deaths"
+        - "Skills & Skill Learning"
+        - "Quests & Dialogue Rewards"
+        - "Social / Mailbox / Friends / Guild"
+        - "Relay / P2P Connection"
+        - "Other / Build Tooling"
+    validations:
+      required: true
+
+  - type: input
+    id: opcode
+    attributes:
+      label: Unhandled Opcode (if known)
+      description: The opcode number or name logged (e.g. `2067 eEGS_BUY_ITEM_REQ`, `5095`).
+      placeholder: "e.g. 2067"
+    validations:
+      required: false
+
+  - type: input
+    id: client_sha256
+    attributes:
+      label: Client DarkBlood.exe SHA-256
+      description: The SHA-256 of your DarkBlood.exe binary.
+      value: "7276ea95d5ce9ff36c57659dc66e92f25fc28eb43aa1b753f2cfbbd8e3b56bfb"
+    validations:
+      required: true
+
+  - type: input
+    id: commit_hash
+    attributes:
+      label: Server Git Commit Hash
+      description: The commit hash of your server (`git rev-parse HEAD`).
+      placeholder: "e.g. bee95c3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to Reproduce
+      description: Clear, step-by-step description of how you triggered the issue.
+      placeholder: |
+        1. Start server with `python run_server.py`.
+        2. Log into character selection and select character.
+        3. Enter town and walk to NPC store.
+        4. Attempt to purchase item X.
+        5. Observe disconnect / unhandled opcode in server log.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_vs_actual
+    attributes:
+      label: Expected vs Actual Behavior
+      description: What should happen versus what actually happened in the client or server.
+      placeholder: |
+        Expected: Item is added to inventory, Ar decremented.
+        Actual: Server logs unhandled opcode 2067 and client displays error popup.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics_upload
+    attributes:
+      label: Diagnostic Bundle / Logs (.zip attachment)
+      description: |
+        Drag and drop the ZIP bundle created by `python tools/export_diagnostics.py` here.
+        If you have raw hex dumps or stack traces, paste them here as well.
+      placeholder: "Attach darkblood_diagnostics_*.zip here or paste raw wire packet trace."
+    validations:
+      required: false

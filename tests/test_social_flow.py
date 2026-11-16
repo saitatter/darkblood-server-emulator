@@ -49,6 +49,17 @@ class SocialFlowTest(ServerTestCase):
             _, ack2095 = await client.expect_event(2095)
             self.assertEqual(struct.unpack_from('<II', ack2095), (0, 0xeaec51bd))
 
+            # 8. Friend list add (2139 -> 2140: returns 0xCE player offline / not found)
+            fname = 'Buddy'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2139, fname)
+            _, ack2140 = await client.expect_event(2140)
+            self.assertEqual(struct.unpack_from('<i', ack2140)[0], 0xCE)
+
+            # 9. Friend list delete (2135 -> 2136)
+            client.send_event(2135, struct.pack('<q', 123456))
+            _, ack2136 = await client.expect_event(2136)
+            self.assertEqual(struct.unpack_from('<iq', ack2136), (0, 123456))
+
         self.run_async(self.with_server(scenario))
 
 

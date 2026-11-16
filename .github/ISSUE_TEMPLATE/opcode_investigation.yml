@@ -1,0 +1,71 @@
+name: Opcode Investigation / Protocol Feature
+description: Submit captured wire packets, handler analysis, or a protocol schema request for AI agents and maintainers to implement.
+title: "[OPCODE]: "
+labels: ["protocol", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when requesting or contributing a reverse-engineered wire schema or opcode handler.
+
+        > [!TIP]
+        > You can package wire captures and diagnostic logs using:
+        > ```bash
+        > python tools/export_diagnostics.py
+        > ```
+
+  - type: input
+    id: opcode_number
+    attributes:
+      label: Opcode Number & Hex
+      description: The decimal and hex opcode (e.g. `2067 (0x0813)`).
+      placeholder: "e.g. 2067 (0x0813)"
+    validations:
+      required: true
+
+  - type: input
+    id: opcode_name
+    attributes:
+      label: Opcode Name
+      description: The symbolic name from `assets/opcodes.tsv`.
+      placeholder: "e.g. eEGS_BUY_ITEM_REQ"
+    validations:
+      required: false
+
+  - type: input
+    id: handler_addr
+    attributes:
+      label: Client Handler / Sender Address
+      description: The virtual address from `research/client/handler_map.txt` or Ghidra decompilation.
+      placeholder: "e.g. 0x0077E2F0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: wire_payload
+    attributes:
+      label: Captured Wire Payload / Hex Dump
+      description: Raw hex dump or packet snippet captured in `wire.jsonl` or Wireshark.
+      placeholder: "e.g. 13 57 01 0a 02 13 08 00 00 00 ..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: decompiled_snippet
+    attributes:
+      label: Decompiled Code / Struct Layout
+      description: Excerpt from decompiled code (`research/decompiled/*.c`) or Ghidra showing the field reads/writes.
+      placeholder: |
+        FUN_00b352b0(store_id);
+        FUN_00b352b0(item_id);
+        FUN_00b35190(count);
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics_zip
+    attributes:
+      label: Diagnostic Bundle (.zip)
+      description: Attach `darkblood_diagnostics_*.zip` or PCAP capture here.
+    validations:
+      required: false
