@@ -1,5 +1,22 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~07:00 (sixth session, town gameplay live)
+
+Live-verified with "Thief1": town entry, movement, map changes (5030 → 5031
+now uses the 5046 layout; the old u8 0 made the client resend 5030 forever),
+empty NPC store window (2065 → 2066), quest accepted and shown in the journal
+(2073 → 2074, quest ids = jhash('Q0001S01')), quest completed without
+rewards (2076 → 2077) and the next quest Q0002S01 started. Compressed client
+events are inflated only when a zlib stream follows (2001/2203 set the flag
+with plain bodies). Protector stubs resolved from an elevated live dump
+(research/stub_names.tsv, 708 targets) and applied in Ghidra.
+
+Open next: dungeon entry — 2010 GET_ROOMINFOLIST (→ 2011, handler
+0x77A1F0), 5001 CREATE_ROOM "singleplay" (→ 5002, dispatcher 0x59D970), then
+join room / P2P / monsters. Also: 2358 GUIDE_BEGINNER_UPDATE (→ 2359, receiver
+not found), 2594/2595, 2216/2217, quest persistence and rewards, store items
+from storelist.lua, skip with a fresh character (not yet retested).
+
 ## Update — 2026-11-16 06:12 (sixth session, live results)
 
 Tutorial fix live-verified: "Thief1" entered SquarePlay. New shim with offline

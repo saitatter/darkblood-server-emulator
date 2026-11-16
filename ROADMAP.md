@@ -25,7 +25,10 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [ ] Live-verify skip with a fresh character; answer 5124, 2594, 2216, 2369, 2712, 2024.
 - [x] Correct JPK decryption (header flag `0x226`, whole blob); byte-identical repacker; private client-data workspace.
 - [ ] Load one edited JPK entry in the client (crc field semantics unknown).
-- [ ] Verify movement (click/keys), NPC interaction and persistence before claiming gameplay.
+- [x] Live: movement, map change (5030/5031), NPC store window (2066), quest accept/complete (2074/2077).
+- [ ] Dungeon entry: 2010/2011 room list, 5001/5002 create room (singleplay), join room, P2P, monsters.
+- [ ] Persist quests, rewards and inventory; fill stores from storelist.lua.
+- [ ] Verify NPC interaction and persistence across sessions before claiming gameplay.
 
 ## Current milestones
 
