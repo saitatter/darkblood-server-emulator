@@ -108,6 +108,11 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(struct.unpack_from('<I', ack2391)[0], 0)
             self.assertEqual(len(ack2391), 25)
 
+            # NPC first meet 2094 -> 2095
+            client.send_event(2094, struct.pack('<iI', 0x7fffffff, 0xeaec51bd))
+            _, ack2095 = await client.expect_event(2095)
+            self.assertEqual(struct.unpack_from('<II', ack2095), (0, 0xeaec51bd))
+
         self.run_async(self.with_server(scenario))
 
     def test_thief_creation_and_selection(self):

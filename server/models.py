@@ -488,6 +488,20 @@ class RouletteManagerInfoAck:
 
 
 @dataclass
+class NpcFirstMeetAck:
+    """Opcode 2095: eEGS_NPC_FIRST_MEET_ACK response.
+
+    Binary schema: Reader 0x00752B60.
+    u32 result (0 = success) + u32 npc_id.
+    """
+    result: int = 0
+    npc_id: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<II', self.result, self.npc_id)
+
+
+@dataclass
 class RelayJoinGroupAck:
     """ProudNet Relay RMI 3001: JoinGroupACK.
 

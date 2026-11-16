@@ -10,6 +10,7 @@ from models import (
     GameServer,
     GuildOrAttendanceAck,
     JoinSquareAck,
+    NpcFirstMeetAck,
     PostListAck,
     RelayAddressNot,
     RouletteManagerInfoAck,
@@ -304,6 +305,15 @@ class GameSession:
             self.store().save()
         ack = ClearTutorialAck().encode()
         await self.transport.send_event(event(2083, ack, correlation), note='clear tutorial ack')
+
+    async def on_2094(self, correlation, body):
+        # eEGS_NPC_FIRST_MEET_REQ -> eEGS_NPC_FIRST_MEET_ACK (2095), handler 0x752B60:
+        # body: i32 dummy (0x7FFFFFFF), u32 npc_id.
+        # ack: u32 result (0), u32 npc_id.
+        npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
+        ack = NpcFirstMeetAck(result=0, npc_id=npc_id).encode()
+        await self.transport.send_event(event(2095, ack, correlation),
+                                        note='npc first meet ack (npc %d)' % npc_id)
 
     async def on_5045(self, correlation, body):
         # eERC_BACK_TO_SQUARE_REQ -> eERC_BACK_TO_SQUARE_ACK (5046), handler 0x7897F0:
