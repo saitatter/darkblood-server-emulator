@@ -2747,6 +2747,118 @@ class UpdateCharInfoNot:
         return b'\x1e' + self.char_details + struct.pack('<q', self.layer_net_id)
 
 
+# --- Customization, Renaming & Keymapping (2310-2311, 2314-2315, 2319-2320, 2338-2339) ---
+@dataclass
+class CharNickChangeReq:
+    """Opcode 2310: eEGS_CHAR_NICK_CHANGE_REQ."""
+    new_name: str = ''
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'CharNickChangeReq':
+        try:
+            length, off = read_varuint(data, 0)
+            name = data[off:off + length].decode('utf-16le', errors='ignore')
+            off += length
+            item_uid = struct.unpack_from('<q', data, off)[0] if off + 8 <= len(data) else 0
+            return cls(new_name=name, item_uid=item_uid)
+        except Exception:
+            return cls()
+
+
+@dataclass
+class CharNickChangeAck:
+    """Opcode 2311: eEGS_CHAR_NICK_CHANGE_ACK (0x00780200)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+    new_name: str = ''
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items)
+                + wide_string(self.new_name))
+
+
+@dataclass
+class GuildNameChangeReq:
+    """Opcode 2314: eEGS_GUILD_NAME_CHANGE_REQ."""
+    new_name: str = ''
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildNameChangeReq':
+        try:
+            length, off = read_varuint(data, 0)
+            name = data[off:off + length].decode('utf-16le', errors='ignore')
+            off += length
+            item_uid = struct.unpack_from('<q', data, off)[0] if off + 8 <= len(data) else 0
+            return cls(new_name=name, item_uid=item_uid)
+        except Exception:
+            return cls()
+
+
+@dataclass
+class GuildNameChangeAck:
+    """Opcode 2315: eEGS_GUILD_NAME_CHANGE_ACK (0x00780590)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+    new_name: str = ''
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items)
+                + wide_string(self.new_name))
+
+
+@dataclass
+class KeyboardSetCustomKeyReq:
+    """Opcode 2319: eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ."""
+    keys_blob: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'KeyboardSetCustomKeyReq':
+        return cls(keys_blob=data)
+
+
+@dataclass
+class KeyboardSetCustomKeyAck:
+    """Opcode 2320: eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960)."""
+    result: int = 0
+    keys_blob: bytes = b''
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result) + wide_string(self.keys_blob.decode('utf-16le', errors='ignore') if self.keys_blob else '')
+
+
+@dataclass
+class ItemSpiritChangeReq:
+    """Opcode 2338: eEGS_ITEM_SPIRIT_CHANGE_REQ."""
+    item_uid: int = 0
+    spirit_item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ItemSpiritChangeReq':
+        if len(data) >= 16:
+            return cls(*struct.unpack_from('<qq', data, 0))
+        return cls()
+
+
+@dataclass
+class ItemSpiritChangeAck:
+    """Opcode 2339: eEGS_ITEM_SPIRIT_CHANGE_ACK (0x00780860)."""
+    result: int = 0
+    spirit_uid: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<iq', self.result, self.spirit_uid)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+
 
 
 

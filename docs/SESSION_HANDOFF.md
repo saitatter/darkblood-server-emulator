@@ -1,5 +1,25 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~20:45 (Character & Guild Renaming, Custom Keybindings & Spirit Weapons)
+
+1. Character & Guild Renaming (Opcodes 2310 - 2315):
+   - Reverse engineered `0x00780200` (`CharNickChangeAck`) and `0x00780590` (`GuildNameChangeAck`).
+   - Wire serialization: `CharNickChangeReq/Ack` (wstring new_name, i64 item_uid -> i32 result, tag 0x10 items, wstring new_name) and `GuildNameChangeReq/Ack`.
+   - Wired domain handlers `on_2310` (character nickname change with character store persistence) and `on_2314` (guild name change) in `social.py`.
+   - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+2. Custom Keymapping & Keybindings (Opcodes 2319 - 2320):
+   - Reverse engineered `0x00753960` (`KeyboardSetCustomKeyAck`).
+   - Wire serialization: `KeyboardSetCustomKeyReq/Ack` (arbitrary raw keyboard mapping blob).
+   - Wired domain handler `on_2319` in `social.py` persisting custom key bindings on character record.
+   - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+3. Spirit Weapon System (Opcodes 2338 - 2339):
+   - Reverse engineered `0x00780860` (`ItemSpiritChangeAck`).
+   - Wire serialization: `ItemSpiritChangeReq/Ack` (i64 item_uid, i64 spirit_item_uid -> i32 result, i64 spirit_uid, tag 0x10 items).
+   - Wired domain handler `on_2338` in `commerce.py`.
+   - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
+4. Test Suite:
+   - 62/62 unit and flow tests passing cleanly across all 11 test modules in ~1.94s.
+
 ## Update — 2026-11-16 ~20:30 (SQLite Storage Backend, Item Enchanting, Upgrades & Loot Pickup)
 
 1. SQLite Character Store & JSON Migration (Milestone P9):

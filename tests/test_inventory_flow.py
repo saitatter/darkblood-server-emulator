@@ -202,6 +202,11 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2673 = await client.expect_event(2673)
             self.assertEqual(struct.unpack_from('<i', ack2673)[0], 0)
 
+            # 36. Item spirit change (2338 -> 2339)
+            client.send_event(2338, struct.pack('<qq', 1, 2))
+            _, ack2339 = await client.expect_event(2339)
+            self.assertEqual(struct.unpack_from('<i', ack2339)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

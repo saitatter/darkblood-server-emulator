@@ -392,5 +392,41 @@ class SocialHandlers:
         ack = ChatAck(result=0, channel=req.channel, sender=sender, message=reply_msg).encode()
         await self.transport.send_event(event(5041, ack, correlation), note=f'chat ack ({reply_msg})')
 
+    async def on_2310(self, correlation, body):
+        # eEGS_CHAR_NICK_CHANGE_REQ -> 2311 eEGS_CHAR_NICK_CHANGE_ACK (0x00780200).
+        from darkblood.games.network.messages import CharNickChangeAck, CharNickChangeReq
+        from darkblood.games.state import selected_character
+        req = CharNickChangeReq.decode(body)
+        new_name = req.new_name.strip()
+        self.transport.record('char-nick-change-req', body, new_name=new_name)
+        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        if char and new_name:
+            char['name'] = new_name
+            self.store().save()
+        ack = CharNickChangeAck(result=0, items=[], new_name=new_name).encode()
+        await self.transport.send_event(event(2311, ack, correlation), note=f'char nick change ack ({new_name})')
+
+    async def on_2314(self, correlation, body):
+        # eEGS_GUILD_NAME_CHANGE_REQ -> 2315 eEGS_GUILD_NAME_CHANGE_ACK (0x00780590).
+        from darkblood.games.network.messages import GuildNameChangeAck, GuildNameChangeReq
+        req = GuildNameChangeReq.decode(body)
+        new_name = req.new_name.strip()
+        self.transport.record('guild-name-change-req', body, new_name=new_name)
+        ack = GuildNameChangeAck(result=0, items=[], new_name=new_name).encode()
+        await self.transport.send_event(event(2315, ack, correlation), note=f'guild name change ack ({new_name})')
+
+    async def on_2319(self, correlation, body):
+        # eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960).
+        from darkblood.games.network.messages import KeyboardSetCustomKeyAck, KeyboardSetCustomKeyReq
+        from darkblood.games.state import selected_character
+        req = KeyboardSetCustomKeyReq.decode(body)
+        self.transport.record('keyboard-set-custom-key-req', body)
+        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        if char:
+            char['custom_keys'] = body.hex()
+            self.store().save()
+        ack = KeyboardSetCustomKeyAck(result=0, keys_blob=req.keys_blob).encode()
+        await self.transport.send_event(event(2320, ack, correlation), note='keyboard set custom key ack')
+
 
 

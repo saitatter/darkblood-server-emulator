@@ -176,6 +176,24 @@ class SocialFlowTest(ServerTestCase):
             _, ack_sp = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<iB', ack_sp[:5]), (0, 0))
 
+            # 31. Character nickname change (2310 -> 2311)
+            from darkblood.core.serialization.jser import wide_string
+            nick_payload = wide_string('RenamedHero') + struct.pack('<q', 123)
+            client.send_event(2310, nick_payload)
+            _, ack2311 = await client.expect_event(2311)
+            self.assertEqual(struct.unpack_from('<i', ack2311)[0], 0)
+
+            # 32. Guild name change (2314 -> 2315)
+            gname_payload = wide_string('RenamedGuild') + struct.pack('<q', 456)
+            client.send_event(2314, gname_payload)
+            _, ack2315 = await client.expect_event(2315)
+            self.assertEqual(struct.unpack_from('<i', ack2315)[0], 0)
+
+            # 33. Keyboard custom key set (2319 -> 2320)
+            client.send_event(2319, b'\x01\x02\x03\x04')
+            _, ack2320 = await client.expect_event(2320)
+            self.assertEqual(struct.unpack_from('<i', ack2320)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

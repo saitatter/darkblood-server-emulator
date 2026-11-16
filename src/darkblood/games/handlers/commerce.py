@@ -700,6 +700,14 @@ class CommerceHandlers:
         ack = FixItemUpgradeAck(result=0, items=[]).encode()
         await self.transport.send_event(event(2673, ack, correlation), note=f'fix item upgrade ack (item={req.item_uid})')
 
+    async def on_2338(self, correlation, body):
+        # eEGS_ITEM_SPIRIT_CHANGE_REQ -> 2339 eEGS_ITEM_SPIRIT_CHANGE_ACK (0x00780860).
+        from darkblood.games.network.messages import ItemSpiritChangeAck, ItemSpiritChangeReq
+        req = ItemSpiritChangeReq.decode(body)
+        self.transport.record('item-spirit-change-req', body, item_uid=req.item_uid)
+        ack = ItemSpiritChangeAck(result=0, spirit_uid=req.spirit_item_uid, items=[]).encode()
+        await self.transport.send_event(event(2339, ack, correlation), note=f'item spirit change ack (spirit={req.spirit_item_uid})')
+
 
 
 

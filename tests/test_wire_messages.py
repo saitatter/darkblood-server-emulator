@@ -427,6 +427,27 @@ class WireMessagesTest(unittest.TestCase):
         not_info = messages.UpdateCharInfoNot(char_details=b'\x01\x02\x03', layer_net_id=555).encode()
         self.assertEqual(not_info[0], 0x1E)
 
+    def test_customization_and_keymapping_messages(self):
+        req_nick = messages.CharNickChangeReq.decode(jser.wide_string('NewHero') + struct.pack('<q', 123))
+        self.assertEqual((req_nick.new_name, req_nick.item_uid), ('NewHero', 123))
+        ack_nick = messages.CharNickChangeAck(result=0, items=[], new_name='NewHero').encode()
+        self.assertEqual(struct.unpack_from('<i', ack_nick)[0], 0)
+
+        req_gname = messages.GuildNameChangeReq.decode(jser.wide_string('NewGuild') + struct.pack('<q', 456))
+        self.assertEqual((req_gname.new_name, req_gname.item_uid), ('NewGuild', 456))
+        ack_gname = messages.GuildNameChangeAck(result=0, items=[], new_name='NewGuild').encode()
+        self.assertEqual(struct.unpack_from('<i', ack_gname)[0], 0)
+
+        req_key = messages.KeyboardSetCustomKeyReq.decode(b'\x01\x02\x03\x04')
+        self.assertEqual(req_key.keys_blob, b'\x01\x02\x03\x04')
+        ack_key = messages.KeyboardSetCustomKeyAck(result=0, keys_blob=b'\x01\x02\x03\x04').encode()
+        self.assertEqual(struct.unpack_from('<i', ack_key)[0], 0)
+
+        req_sp = messages.ItemSpiritChangeReq.decode(struct.pack('<qq', 1, 2))
+        self.assertEqual((req_sp.item_uid, req_sp.spirit_item_uid), (1, 2))
+        ack_sp = messages.ItemSpiritChangeAck(result=0, spirit_uid=2, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_sp[:12]), (0, 2))
+
 
 
 

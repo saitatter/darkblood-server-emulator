@@ -494,6 +494,14 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `char_uid: i64, notify: bool`.
 - `5096 eERC_UPDATE_CHAR_INFO_NOT` (`0x0078C990`):
   Tag `0x1E` Character Details struct + layer_net_id: real-time visual and stat synchronization.
+- `2310 eEGS_CHAR_NICK_CHANGE_REQ` -> `2311 eEGS_CHAR_NICK_CHANGE_ACK` (`0x00780200`):
+  `new_name: wstring, item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector, new_name: wstring`.
+- `2314 eEGS_GUILD_NAME_CHANGE_REQ` -> `2315 eEGS_GUILD_NAME_CHANGE_ACK` (`0x00780590`):
+  `new_name: wstring, item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector, new_name: wstring`.
+- `2319 eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ` -> `2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK` (`0x00753960`):
+  `keys_blob: bytes` -> `result: i32 (0), keys_blob: wstring`.
+- `2338 eEGS_ITEM_SPIRIT_CHANGE_REQ` -> `2339 eEGS_ITEM_SPIRIT_CHANGE_ACK` (`0x00780860`):
+  `item_uid: i64, spirit_item_uid: i64` -> `result: i32 (0), spirit_uid: i64, items: tag 0x10 vector`.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 

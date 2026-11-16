@@ -225,6 +225,7 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 2258 / 2259 | `eEGS_MAGICENCHANT_EXPEND_SLOT_REQ/ACK`| **Implemented** | Expand item socket slot (`0x0077FC60`) |
 | 2284 / 2285 | `eEGS_RANDOM_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Random item stat upgrade (`0x0077FED0`) |
 | 2672 / 2673 | `eEGS_FIX_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Fixed item stat upgrade (`0x00783C40`) |
+| 2338 / 2339 | `eEGS_ITEM_SPIRIT_CHANGE_REQ / ACK` | **Implemented** | Spirit weapon stat transformation (`0x00780860`)|
 | 2078 / 2079 | `eEGS_PERSONALSHOP_OPEN_REQ / ACK` | Planned | Open personal shop stall in town |
 | 2080 / 2081 | `eEGS_PERSONALSHOP_BUY_REQ / ACK` | Planned | Purchase from player's personal stall |
 
@@ -296,6 +297,9 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 2223 / 2224 | `eEGS_POST_READ_REQ / ACK` | **Implemented** | Read mail content (`0x0075A660`) |
 | 2225 / 2226 | `eEGS_POST_GET_APPEND_ITEM_REQ / ACK` | **Implemented** | Claim attached items and gold (`0x0077F8E0`) |
 | 2236 / 2237 | `eEGS_POST_DELETE_REQ / ACK` | **Implemented** | Batch delete letters (`0x007715F0`) |
+| 2310 / 2311 | `eEGS_CHAR_NICK_CHANGE_REQ / ACK` | **Implemented** | Character rename scroll (`0x00780200`) |
+| 2314 / 2315 | `eEGS_GUILD_NAME_CHANGE_REQ / ACK` | **Implemented** | Guild rename scroll (`0x00780590`) |
+| 2319 / 2320 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ/ACK` | **Implemented** | Custom keybindings mapping (`0x00753960`) |
 | 2569 / 2570 | `eEGS_ATTENDANCE_CHECK_REQ / ACK` | **Implemented** | Daily attendance reward check |
 | 2594 / 2595 | `eEGS_HTTPNOTICE_CHECK_REQ / ACK` | **Implemented** | Web event notice check (`0x005A5110`) |
 
