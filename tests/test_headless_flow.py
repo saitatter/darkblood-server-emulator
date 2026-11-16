@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TMP = tempfile.TemporaryDirectory()
 os.environ['DARKBLOOD_DATA'] = TMP.name  # must be set before characters is imported
+os.environ['DARKBLOOD_CLIENT_DATA'] = TMP.name  # no private game tables in tests
 sys.path.insert(0, str(ROOT / 'server'))
 sys.path.insert(0, str(ROOT / 'tools'))
 
@@ -39,6 +40,12 @@ class SquareEntryTest(unittest.TestCase):
         self.assertEqual(models.jhash(''), 5381)
         self.assertEqual(models.jhash('A'), ((5381 * 33 + 0x41) * 33) & 0xffffffff)
         self.assertEqual(models.jhash('Act1'), 0x5F98AFAE)
+
+    def test_store_records_start_with_item_hash(self):
+        ack = models.StoreInfoAck(npc_id=1, items=[('Ihppa0001', -1)]).encode()
+        self.assertEqual(ack[8:10], b'\x10\x81')
+        self.assertEqual(struct.unpack_from('<Ii', ack, 10), (models.jhash('Ihppa0001'), -1))
+        self.assertEqual(len(ack), 10 + 32 + 2)
 
     def test_details_carry_layer_and_tutorial_flag(self):
         # Details +0x5F (u64 nJoinLayerNetID) is immediately followed by the

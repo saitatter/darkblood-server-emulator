@@ -608,18 +608,24 @@ class QuestCompleteAck:
 class StoreInfoAck:
     """Opcode 2066: eEGS_GET_STORE_INFO_ACK (handler 0x007842C0).
 
-    Draft schema (tools/extract_schemas.py): u32 result, i32, tag 0x10 vector
-    of 32-byte structs (0x00A489D0), tag 0x10 vector of item structs
-    (0x0077CEB0 -> 0x00A53F50). The i32 is echoed from the request's NPC id
-    (assumption); both vectors are empty offline until store contents from
-    Data/Dict/storelist.lua are mapped.
+    Draft schema (tools/extract_schemas.py): u32 result, i32 (stored at
+    store window +0xCC; NPC id echoed, assumption), tag 0x10 vector of 32-byte
+    records (0x00A489D0) and tag 0x10 vector of item structs (0x0077CEB0 ->
+    0x00A53F50, sent empty). Store open 0x005953D0 passes the first u32 of
+    each 32-byte record to 0x009E5870, an item-dict lookup returning the item
+    tab, so a record starts with jhash(item id). The other 28 bytes are not
+    recovered: i32 stock (-1 = unlimited, as in storelist.lua) + zeros.
     """
     result: int = 0
     npc_id: int = 0
+    items: list = field(default_factory=list)  # [(item id string, count)]
 
     def encode(self) -> bytes:
         npc = self.npc_id - (1 << 32) if self.npc_id >= 1 << 31 else self.npc_id
-        return struct.pack('<Ii', self.result, npc) + b'\x10' + varuint(0) + b'\x10' + varuint(0)
+        body = struct.pack('<Ii', self.result, npc) + b'\x10' + varuint(len(self.items))
+        for item, count in self.items:
+            body += struct.pack('<Ii', jhash(item), count) + b'\x00' * 24
+        return body + b'\x10' + varuint(0)
 
 
 @dataclass

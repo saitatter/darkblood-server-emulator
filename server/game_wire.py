@@ -352,8 +352,11 @@ class GameSession:
         # eEGS_GET_STORE_INFO_REQ (i32, u32 npc id; observed when talking to a
         # shop NPC) -> eEGS_GET_STORE_INFO_ACK 2066: empty store.
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
-        await self.transport.send_event(event(2066, StoreInfoAck(npc_id=npc_id).encode(), correlation),
-                                        note='store info ack (npc %08x)' % npc_id)
+        import client_dict
+        npc, items = client_dict.items_for_npc(npc_id)
+        ack = StoreInfoAck(npc_id=npc_id, items=items).encode()
+        await self.transport.send_event(event(2066, ack, correlation),
+                                        note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 
     async def on_2073(self, correlation, body):
         # eEGS_QUEST_START_REQ (zlib body; observed: wstring, u32 quest id =
