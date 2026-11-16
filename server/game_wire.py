@@ -3,6 +3,7 @@ import datetime
 import struct
 
 from models import (
+    BackToSquareAck,
     ChannelSquare,
     Character,
     ClearTutorialAck,
@@ -316,9 +317,10 @@ class GameSession:
                                         note='npc first meet ack (npc %d)' % npc_id)
 
     async def on_5045(self, correlation, body):
-        # eERC_BACK_TO_SQUARE_REQ -> eERC_BACK_TO_SQUARE_ACK (5046), handler 0x7897F0:
-        # u32 result (0 = success)
-        await self.transport.send_event(event(5046, struct.pack('<I', 0), correlation),
+        # eERC_BACK_TO_SQUARE_REQ -> eERC_BACK_TO_SQUARE_ACK (5046), handler 0x7897F0.
+        # Request body layout not recovered; the reply schema is in BackToSquareAck.
+        ack = BackToSquareAck(square_uid=SQUARES[0]['square_id']).encode()
+        await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
 
     async def on_2346(self, correlation, body):

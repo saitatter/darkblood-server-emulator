@@ -284,11 +284,64 @@ Following character selection and relay attachment, the client interacts with tu
 | --- | --- | --- | --- |
 | `2131` (`eEGS_FRIEND_LIST_REQUEST_REQ`) | `0x007712E0` | `2132` (`eEGS_FRIEND_LIST_REQUEST_ACK`) | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
 | `2569` | `0x00772160` | `2570` | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
-| `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) | `0x0077EEB0` | `2083` (`eEGS_CLEAR_TUTORIAL_ACK`) | `u32 result` (0) + tag `0x10` vector (`\x10\x00` empty vector). **Triggers Scene 9 (Town Scene)** via `0x006DBFA0(9)`! |
+| `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) | `0x0077EEB0` | `2083` (`eEGS_CLEAR_TUTORIAL_ACK`) | `u32 result` (0) + tag `0x10` reward vector (empty = `10 80`). `0x006DBFA0(9)` is a state **getter** (JAppStateTutorial), not a transition; its method `0x006E5CE0` sends 2084, sets SquarePlay `+0x75` and fades into `g_jAS_Tutorial:On_Tutorial_FadeOut()` (`0x006F2EC0`) → `ChangeState(eAS_SquarePlay)`. See §7. |
 | `2346` (`eEGS_TUTORIAL_QUEST_START_REQ`) | `0x006481E0` | `2347` (`eEGS_TUTORIAL_QUEST_START_ACK`) | `u32 result` (0) |
 | `2390` (`eEGS_ROULETTE_MANAGER_INFO_REQ`) | `0x006CC6B0` | `2391` (`eEGS_ROULETTE_MANAGER_INFO_ACK`) | `u32 result` (0) + untagged 21 zero bytes (`0x00A48B80`) |
 | `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) | Sender `0x00799E60` | None | Notification sent on tutorial mob defeat |
 | `2352` (`eEGS_IP_ADDRESS_NOT`) | Sender `0x00930` | None | Notification broadcasting client network IP |
 
 All responses are modeled as Python dataclasses in `server/models.py` and validated by automated end-to-end tests in `tests/test_headless_flow.py`.
+
+## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
+
+App-state enum (registered at `0x00705CD0` as `eAS_* = %d`): 0 SelectChar,
+1 Lobby, 2 GamePlay, 3 GameDuel, 4 SquarePlay, 5 MapTool, 6 CharTool, 7 Logo,
+8 DungeonGate, 9 Tutorial (the table continues). State objects sit at
+`JAppStateMgr+4+idx*8`; RTTI gives the vtables, e.g. `JAppStateTutorial`
+`0x00CDDF6C` and `JAppStateSquarePlay` `0x00CE16FC`.
+
+`JAppStateMgr` (`0x006F2E10` request, `0x006F8250` update) commits a requested
+state only when the previous state's vtable slot `0x2C` (can leave) and the next
+state's slot `0x30` (can enter) both return true. Otherwise, after 5000 ms it
+logs `change state fail!, time over` and falls back to `0x006D8C80`, i.e. the
+previous state (`+0x5CC`). **This is why "skip tutorial" restarted the
+tutorial:** SquarePlay could not be entered, so the client returned to Tutorial.
+
+`JAppStateSquarePlay` can-enter (`0x006FA540`) reads the player object
+(`0x0043A180` → `0x00946540`) `+0xF0`, u64 `nJoinLayerNetID`. `-1` fails. The
+high dword (`0x00A45380`) must be a square key in `DictMap+0x3C`
+(`0x00990030`), otherwise it shows "invalid layer netid" and fails. Squares come
+from `DictMap:LoadSquare` (`0x0098FD00`) in `Data/Dict/maplist.lua`; their
+`SquareID` strings (`Act1`, `Act2`, `ArenaLobby`, `Act4`) are keyed with
+JHashString: DJB2, seed 5381, `h = h*33 + (signed byte)` over the UTF-16LE bytes
+(`0x00B3B5A0` → `0x00B3AD70`). `jhash("Act1") = 0x5F98AFAE`.
+
+`0x0095A150` copies the 2007 character details (reader `0x00A52630`) into the
+player object. Fields relevant here:
+
+| Details offset | Player offset | Meaning (evidence) |
+| --- | --- | --- |
+| `+0x5F` u64 | `+0xF0` | `nJoinLayerNetID`, checked by SquarePlay can-enter |
+| `+0x9C` bool | `+0x80` | After selection `0x006F88C0` runs `ChangeState(eAS_Tutorial)` when 0 and `ChangeState(eAS_SquarePlay)` otherwise |
+
+The emulator previously sent 0 at `+0x5F`. It now sends
+`jhash("Act1") << 32 | 1`; the low dword is a local default whose meaning is not
+recovered.
+
+Tutorial exit: `g_jAS_Tutorial:On_Tutorial_Exit()` (`0x006E5C80`) sends 2082
+(`0x0078F950`: i32 + bool, observed `ffffff7f 00`). 2083 leads to
+`On_Tutorial_FadeOut` (`0x006F2EC0`) and `ChangeState(eAS_SquarePlay)`.
+
+### 5045 → 5046 `eERC_BACK_TO_SQUARE_ACK` (`0x007897F0`)
+
+Field names come from the handler's read-failure message:
+`u32 result, u64 nJoinSquareUID, u64 nJoinLayerNetID, tag 0x10 vecTargetState
+(0x00773870), bool bUseWaypoint, u64 iCurAr*`. Outside SquarePlay the handler
+validates the layer like can-enter, stores it at player `+0xF0`, runs
+`g_jAppStateMgr:ChangeState(eAS_SquarePlay)` when `JAppStateMgr+0x5C4 == -1`,
+and reconnects the relay. Implemented as `BackToSquareAck`; `vecTargetState`
+element layout is unknown and sent empty. The request body is not recovered.
+
+Status: static reconstruction plus headless tests. A live run that confirms the
+client enters SquarePlay after skip is still pending.
 

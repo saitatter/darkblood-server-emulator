@@ -14,6 +14,35 @@ import struct
 from typing import List, Optional, Tuple
 
 
+def jhash(text: str) -> int:
+    """JHashString key (0x00B3B5A0 -> 0x00B3AD70).
+
+    DJB2 (seed 5381, h = h * 33 + c) over the UTF-16LE bytes of the string,
+    each byte sign-extended. DictMap:LoadSquare (0x0098FD00) keys squares this
+    way by their ``SquareID`` string from Data/Dict/maplist.lua.
+    """
+    h = 5381
+    for byte in text.encode('utf-16le'):
+        h = (h * 33 + (byte - 256 if byte > 127 else byte)) & 0xffffffff
+    return h
+
+
+# SquareIDs declared by DictMap:LoadSquare in Data/Dict/maplist.lua.
+SQUARE_IDS = ('Act1', 'Act2', 'ArenaLobby', 'Act4')
+DEFAULT_SQUARE = 'Act1'
+DEFAULT_LAYER = 1  # low dword: not validated by CanEnter; local default
+
+
+def layer_net_id(square: str = DEFAULT_SQUARE, layer: int = DEFAULT_LAYER) -> int:
+    """u64 nJoinLayerNetID: high dword = jhash(SquareID), low dword = layer.
+
+    0x006FA540 converts it with 0x00A45380 (returns the high dword) and looks
+    it up in DictMap+0x3C through 0x00990030. The meaning of the low dword is
+    not recovered; 1 is a local default.
+    """
+    return (jhash(square) << 32) | (layer & 0xffffffff)
+
+
 class CharacterClass(IntEnum):
     """Player character classes in Dark Blood Online."""
     WARRIOR = 0
@@ -232,9 +261,17 @@ class Character:
         b += struct.pack('<HHHH', 0, 0, 0, 0)
         # Sub-struct 0xa488f0: untagged 24 bytes
         b += (b'\x00' * 24)
-        # Offset +0x9c in Reader 0x00A52630 is the tutorial-cleared flag (checked by 0x007081F0).
-        # When True, the client skips/completes tutorial and enters eAS_SquarePlay (Town).
-        b += struct.pack('<Q?HHHHII', 0, bool(self.tutorial_cleared), 0, 0, 0, 0, 0xffffffff, 0xffffffff)
+        # Details +0x5F (u64) and +0x9C (bool), copied by 0x0095A150 into the
+        # player object at +0xF0 and +0x80 respectively:
+        #  * player+0xF0 is nJoinLayerNetID. JAppStateSquarePlay's CanEnter
+        #    (vtable slot 0x30, 0x006FA540) rejects -1 and requires the high
+        #    dword to be a loaded SquareID hash, otherwise the state change
+        #    times out after 5 s (0x006F8343) and the client falls back to the
+        #    previous state -- the tutorial restarts after "skip".
+        #  * player+0x80 selects the state after selection (0x006F88C0):
+        #    0 -> ChangeState(eAS_Tutorial), nonzero -> eAS_SquarePlay.
+        b += struct.pack('<Q?HHHHII', layer_net_id(), bool(self.tutorial_cleared),
+                         0, 0, 0, 0, 0xffffffff, 0xffffffff)
         b += struct.pack('<f', 0.0)
         b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
         # 2 x 0xa49bb0 (untagged u16, u32, u32)
@@ -430,6 +467,30 @@ class ClearTutorialAck:
 
     def encode(self) -> bytes:
         return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.elements))
+
+
+@dataclass
+class BackToSquareAck:
+    """Opcode 5046: eERC_BACK_TO_SQUARE_ACK response.
+
+    Handler 0x007897F0; field names from its read-failure message
+    ("nJoinSquareUID >> nJoinLayerNetID >> vecTargetState >> bUseWaypoint >> iCurAr").
+    u32 result, u64 nJoinSquareUID, u64 nJoinLayerNetID, tag 0x10 vector
+    vecTargetState (0x00773870, element layout unknown -> empty), bool
+    bUseWaypoint, u64 iCurAr*. Outside SquarePlay the handler validates the
+    layer id like CanEnter, stores it at player+0xF0, runs
+    ``g_jAppStateMgr:ChangeState(eAS_SquarePlay)`` and reconnects the relay.
+    """
+    result: int = 0
+    square_uid: int = 1
+    layer_net_id: int = field(default_factory=layer_net_id)
+    use_waypoint: bool = False
+    cur_area: int = 0  # meaning not recovered; local default
+
+    def encode(self) -> bytes:
+        return (struct.pack('<IQQ', self.result, self.square_uid, self.layer_net_id)
+                + b'\x10' + varuint(0)
+                + struct.pack('<?Q', self.use_waypoint, self.cur_area))
 
 
 @dataclass
