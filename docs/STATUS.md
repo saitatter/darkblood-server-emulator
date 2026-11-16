@@ -1,5 +1,15 @@
 # Research status and handoff
 
+## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)
+
+Report: the new Warrior looked wrong, and the tutorial sword did not show. `ensure_inventory` stored the default items in slots 0..7 in list order.
+The slots have fixed meanings (`0x0070A8C0` maps slot to widget): 0 Weapon_1 (right), 1 Weapon_2 (left), 2 Armor, 3 Glove, 4 FootWear, 5 Belt,
+6 Shoulder, 7 Cloak, 8 Necklace, 9-10 EarRing, 11-12 Ring, 13 Helmet. The Thief/Fighter lists happened to put armour first. The Warrior list put its belt
+into the weapon slot and its sword into Belt. The slot now comes from the item: Abod 2, Aglo 3, Asho 4, Abel 5 (pants, BODY_B), Ader 6 (shoulder),
+Ahel 13, confirmed by each item's PartFilePath/DropImgFilePath. Weapons take the right hand, then the left; a shield/book takes the left hand.
+A third weapon (Knight: Wmack) goes to the bag. The two existing characters were fixed once in `data/darkblood.db` (no migration code).
+Hotbar: the Fighter's first entry sent 2044 for skills 410/411 (the client assigns them itself). The Warrior session sent none. Quickslots are stored but not yet sent back in 2007.
+
 ## Borderless fullscreen — saita machine, 2026-11-16 ~21:55 (device level verified; visual check pending)
 
 The game's "Full Screen" setting ("Window Mode" unchecked; JHoundOption +0x7C, RecreateDevice passes `bWindow = !+0x7C`) now runs

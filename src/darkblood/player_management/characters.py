@@ -74,11 +74,49 @@ def ensure_inventory(char):
 
     if 'items' not in char:
         gear = [code for code in default_equipment().get(job, []) if not code.startswith('C')]
-        char['items'] = [dict(code=code, uid=next_item_uid(char), container=EQUIP_CONTAINER, slot=i)
-                         for i, code in enumerate(gear)]
+        char['items'] = []
+        equipped = set()
+        for code in gear:
+            slot = equip_slot_for(code, equipped)
+            record = dict(code=code, uid=next_item_uid(char))
+            if slot is None:
+                record.update(container=INVENTORY_BAG_CONTAINER,
+                              slot=len([i for i in char['items'] if i['container'] == INVENTORY_BAG_CONTAINER]))
+            else:
+                equipped.add(slot)
+                record.update(container=EQUIP_CONTAINER, slot=slot)
+            char['items'].append(record)
         changed = True
 
     return changed
+
+
+# Equipment container slots, from 0x0070A8C0 (slot -> character-window
+# widget): 0 Slot_Weapon_1 (right hand), 1 Slot_Weapon_2 (left hand), 2 Armor,
+# 3 Glove, 4 FootWear, 5 Belt, 6 Shoulder, 7 Cloak, 8 NeckLace, 9/10 EarRing,
+# 11/12 Ring, 13 Helmet. Armour parts by item-id prefix, confirmed by each
+# item's PartFilePath/DropImgFilePath (BODY_A, GLOVE, BOOTS, BODY_B = pants,
+# SHOULDER, HELMET).
+ARMOR_SLOTS = {'Abod': 2, 'Aglo': 3, 'Asho': 4, 'Abel': 5, 'Ader': 6, 'Ahel': 13}
+WEAPON_RIGHT, WEAPON_LEFT = 0, 1
+OFFHAND_PREFIXES = ('Ashi', 'Abok')   # shield / book (LoadDefaultBody LWeapon)
+
+
+def equip_slot_for(code, taken):
+    """Equipment slot for a default item, or None if it belongs in a bag.
+
+    Weapons fill the right hand first and then the left hand (LoadDefaultBody
+    RWeapon then RWeapon2/LWeapon). A shield or book takes the left hand. A
+    third weapon (Knight: sword, shield, mace) goes to the bag.
+    """
+    slot = ARMOR_SLOTS.get(code[:4])
+    if slot is None and code.startswith(OFFHAND_PREFIXES):
+        slot = WEAPON_LEFT
+    if slot is None and code.startswith('W'):
+        slot = next((s for s in (WEAPON_RIGHT, WEAPON_LEFT) if s not in taken), None)
+    if slot is None or slot in taken:
+        return None
+    return slot
 
 
 def next_item_uid(char):

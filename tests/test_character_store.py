@@ -64,3 +64,25 @@ class SqliteCharacterStoreTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DefaultEquipmentSlotTest(unittest.TestCase):
+    def test_slots_follow_item_part_not_list_order(self):
+        from darkblood.player_management.characters import equip_slot_for
+        taken = set()
+        warrior = ['Abelw0002', 'Abodw0002', 'Aglow0001', 'Ashow0001', 'Ahelw0000',
+                   'Wlsww0001', 'AderW1N', 'Waxew0000']
+        slots = {}
+        for code in warrior:
+            slot = equip_slot_for(code, taken)
+            taken.add(slot)
+            slots[code] = slot
+        self.assertEqual(slots, {'Abelw0002': 5, 'Abodw0002': 2, 'Aglow0001': 3, 'Ashow0001': 4,
+                                 'Ahelw0000': 13, 'Wlsww0001': 0, 'AderW1N': 6, 'Waxew0000': 1})
+
+    def test_knight_third_weapon_goes_to_bag(self):
+        from darkblood.player_management.characters import equip_slot_for
+        taken = {0}
+        self.assertEqual(equip_slot_for('Ashik0001', taken), 1)
+        taken.add(1)
+        self.assertIsNone(equip_slot_for('Wmack0000', taken))
