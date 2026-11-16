@@ -18,6 +18,7 @@ import struct
 import zlib
 from pathlib import Path
 
+
 # --------------------------------------------------------------- AES (FIPS-197)
 _SBOX = [0] * 256
 _INV = [0] * 256

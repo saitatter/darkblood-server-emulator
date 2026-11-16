@@ -4,7 +4,7 @@ dispatch it.
 
 Inputs: the mapped image (research/normal.bin), function boundaries from the
 Ghidra export (research/decompiled/functions.tsv, tools/ExportDecompiled.java),
-names/pairs from server/data/opcodes.tsv and opcode_pairs.tsv, and the
+names/pairs from assets/opcodes.tsv and opcode_pairs.tsv, and the
 connect-time handler map (research/client/handler_map.txt) when present.
 
 Detected patterns (assembly level, per function):
@@ -39,11 +39,11 @@ REGS = ('eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp')
 
 def load_names():
     names, pairs = {}, {}
-    for line in open(ROOT / 'server/data/opcodes.tsv', encoding='utf-8'):
+    for line in open(ROOT / 'assets/opcodes.tsv', encoding='utf-8'):
         a = line.rstrip('\n').split('\t')
         if a[0].isdigit():
             names[int(a[0])] = a[1]
-    p = ROOT / 'server/data/opcode_pairs.tsv'
+    p = ROOT / 'assets/opcode_pairs.tsv'
     if p.exists():
         for line in open(p, encoding='utf-8'):
             a = line.rstrip('\n').split('\t')

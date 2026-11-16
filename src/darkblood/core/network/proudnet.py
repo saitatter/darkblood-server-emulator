@@ -5,6 +5,7 @@ Evidence: frame writer 0xB7FBE0, reader 0xB7FD80, signed scalar writer
 """
 import struct
 
+
 MAGIC = b'\x13\x57'
 MAX_FRAME = 1024 * 1024
 

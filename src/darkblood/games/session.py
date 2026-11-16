@@ -1,0 +1,65 @@
+"""Game connection session (JEvent dispatcher)."""
+import struct
+import zlib
+
+from darkblood.core.serialization.jser import WireError, parse_event
+from darkblood.games.handlers.commerce import CommerceHandlers
+from darkblood.games.handlers.dungeon import DungeonHandlers
+from darkblood.games.handlers.frontend import FrontendHandlers, welcome
+from darkblood.games.handlers.quests import QuestHandlers
+from darkblood.games.handlers.social import SocialHandlers
+from darkblood.games.handlers.square import SquareHandlers
+
+
+class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHandlers,
+                  QuestHandlers, DungeonHandlers):
+    """Application layer: JEvent dispatch to ``on_<opcode>`` handlers.
+
+    Handlers live in darkblood.games.handlers, one mixin per game domain.
+    Only responses with recovered parsers belong there.
+    """
+
+    def __init__(self, transport):
+        self.transport = transport
+        self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
+
+    async def on_connected(self):
+        if getattr(self.transport.server, 'role', 'game') != 'game':
+            return
+        await self.transport.send_event(welcome(), note='welcome 5020')
+
+    async def on_user_message(self, data):
+        try:
+            opcode, correlation, compressed, body = parse_event(data)
+        except WireError as exc:
+            self.transport.record('bad-event', data, error=str(exc))
+            return
+        if compressed and len(body) > 6 and body[4] == 0x78:
+            # Observed (2073, 2216, 2346): u32 inflated size + zlib stream.
+            # 2203 also sets the flag with a plain body, so inflate only when
+            # a zlib header follows and the size matches; otherwise keep it.
+            try:
+                inflated = zlib.decompress(body[4:])
+                if len(inflated) == struct.unpack_from('<I', body)[0]:
+                    body = inflated
+            except zlib.error:
+                pass
+        self.transport.record('event', body, opcode=opcode, opcode_hex='0x%04x' % opcode,
+                              correlation=correlation, compressed=compressed)
+        if getattr(self.transport.server, 'role', 'game') != 'game':
+            self.transport.record('relay-event', body, opcode=opcode)
+            return
+        handler = getattr(self, 'on_%d' % opcode, None)
+        if handler is None:
+            self.transport.record('unhandled-event', body, opcode=opcode)
+            return
+        await handler(correlation, body)
+
+    _store = None
+
+    @classmethod
+    def store(cls):
+        if cls._store is None:
+            from darkblood.player_management.characters import CharacterStore
+            cls._store = CharacterStore()
+        return cls._store

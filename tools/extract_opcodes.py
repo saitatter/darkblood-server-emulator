@@ -15,7 +15,7 @@ Earlier versions matched one fixed instruction order and dropped names whose
 bytes contained 0x0A (regex without re.S) or 0x68 inside immediates; anchoring
 on the map insert covers the compiler's scheduling variants.
 
-Usage: python tools/extract_opcodes.py research/normal.bin server/data/opcodes.tsv
+Usage: python tools/extract_opcodes.py research/normal.bin assets/opcodes.tsv
        (also writes opcode_pairs.tsv and opcode_flags.tsv next to the output)
 """
 import re

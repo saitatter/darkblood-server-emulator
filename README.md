@@ -22,23 +22,23 @@ Verified progress (November 16, 2026):
 | Component | Purpose / status |
 | --- | --- |
 | `client_hook/steam_api_hook.c` | Experimental x86 shim: Steam exports, minimal User/Friends interfaces, TCP redirect, diagnostics |
-| `server/run_bootstrap.py` | Local server entry point (127.0.0.1:9400) |
-| `server/proudnet_crypto.py` | Pure-Python AES/RSA-OAEP and the ProudNet message envelope |
-| `server/characters.py` | Character struct encoding and JSON persistence |
-| `server/data/opcodes.tsv` | Opcode names extracted from the client |
+| `run_server.py` | Local server entry point (127.0.0.1:9400 game, 9401 relay) |
+| `src/darkblood/` | Server package, MHServerEmu-like layout: see [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| `src/darkblood/core/` | ProudNet framing and crypto, JSerBuffer/JEvent serialization |
+| `src/darkblood/frontend/` | Listeners, handshake/key exchange, relay, wire logging |
+| `src/darkblood/games/` | Game session, handlers per domain, messages, entities, client data readers |
+| `src/darkblood/player_management/` | Character persistence (`data/characters.json`) |
+| `assets/opcodes.tsv` | Opcode names extracted from the client |
 | `tools/gamectl.py` | CLI/library: start/stop session, screenshots, input, intro skip, decoded events |
 | `tools/mcp_server.py` | MCP stdio server exposing `gamectl` (registered in `.mcp.json`) |
 | `tools/decomp.ps1` | One-command focused Ghidra decompilation |
-| `server/proudnet.py` | ProudNet framing observed in the client |
-| `server/game_wire.py` | JEvent serialization and application handlers |
-| `server/bootstrap_server.py` | ProudNet handshake, key exchange, decryption, wire logging |
 | `tools/capture_server.py` | Passive loopback TCP recorder |
 | `tools/debug_client.c` | Bounded launches, thread inspection, and image dumps |
 | `tools/image_to_pe.py` | Memory dump to static-analysis PE; output is not a playable client |
 | `tools/FocusedDecompile.java` | Focused Ghidra decompilation at requested addresses |
 | `tools/jpk_extractor.py` | Earlier archive extractor; decryption needs verification |
 
-`server/server.py`, `auth_server.py`, `lobby_server.py`, and `packet.py` belong to the earlier speculative prototype. Its `<uint16 length, uint16 opcode>` framing and `0x1001/0x2001` opcodes **have not been confirmed in the client**.
+`legacy/speculative_prototype/` (`server.py`, `auth_server.py`, `lobby_server.py`, `packet.py`) belongs to the earlier speculative prototype. Its `<uint16 length, uint16 opcode>` framing and `0x1001/0x2001` opcodes **have not been confirmed in the client**.
 
 ## Run it on this machine
 
@@ -60,7 +60,7 @@ python tools\gamectl.py events         # decoded protocol log
 python tools\gamectl.py stop
 ```
 
-Or play manually: `python serverun_bootstrap.py`, then launch `research\client\DarkBlood.exe` with `$env:__COMPAT_LAYER = 'RunAsInvoker'`. Click once the intro is loaded to skip it, press Enter on the server and channel lists, and use Create on character select.
+Or play manually: `python run_server.py`, then launch `research\client\DarkBlood.exe` with `$env:__COMPAT_LAYER = 'RunAsInvoker'`. Click once the intro is loaded to skip it, press Enter on the server and channel lists, and use Create on character select.
 
 ### MCP server
 

@@ -13,13 +13,14 @@ import struct
 import time
 import uuid
 from pathlib import Path
+from darkblood import REPO_ROOT
+from darkblood.core.network.crypto import AES, CryptoError, RSAKey, envelope_decrypt
+from darkblood.core.network.proudnet import ProtocolError, connection_success, frame, pop_frame, read_scalar, scalar
+from darkblood.frontend.relay import RELAY_RMI, relay_rmi
+from darkblood.games.session import GameSession
 
-from proudnet import (ProtocolError, connection_success, frame, pop_frame,
-                      read_scalar, scalar)
-from proudnet_crypto import AES, CryptoError, RSAKey, envelope_decrypt, envelope_encrypt
-import game_wire
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = REPO_ROOT
 
 logger = logging.getLogger('ProudNet')
 
@@ -58,7 +59,7 @@ class Session:
         self.state = 'new'
         self.aes = None
         self.fast_key = None
-        self.app = game_wire.GameSession(self)
+        self.app = GameSession(self)
 
     def record(self, event, data=b'', **extra):
         self.server.record(self.peer, event, data, **extra)
@@ -154,8 +155,8 @@ class Session:
             elif rmi_id == 0xfa13:
                 self.record('rmi-fa13', payload)
                 return
-            elif self.server.role == 'relay' and rmi_id in game_wire.RELAY_RMI:
-                await game_wire.relay_rmi(self, rmi_id, payload[3:])
+            elif self.server.role == 'relay' and rmi_id in RELAY_RMI:
+                await relay_rmi(self, rmi_id, payload[3:])
                 return
         self.record('unhandled-rmi', payload)
 

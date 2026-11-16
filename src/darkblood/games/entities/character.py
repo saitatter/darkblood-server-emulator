@@ -1,0 +1,219 @@
+"""Player character entity and its wire encodings (lobby entry, world details)."""
+from dataclasses import dataclass, field
+from enum import IntEnum
+from typing import List, Tuple
+import struct
+
+from darkblood.core.hashing import jhash
+from darkblood.core.serialization.jser import varuint, wide_string
+
+
+# SquareIDs declared by DictMap:LoadSquare in Data/Dict/maplist.lua.
+SQUARE_IDS = ('Act1', 'Act2', 'ArenaLobby', 'Act4')
+
+
+DEFAULT_SQUARE = 'Act1'
+
+
+DEFAULT_LAYER = 1  # low dword: not validated by CanEnter; local default
+
+
+def layer_net_id(square: str = DEFAULT_SQUARE, layer: int = DEFAULT_LAYER) -> int:
+    """u64 nJoinLayerNetID: high dword = jhash(SquareID), low dword = layer.
+
+    0x006FA540 converts it with 0x00A45380 (returns the high dword) and looks
+    it up in DictMap+0x3C through 0x00990030. The meaning of the low dword is
+    not recovered; 1 is a local default.
+    """
+    return (jhash(square) << 32) | (layer & 0xffffffff)
+
+
+class CharacterClass(IntEnum):
+    """Player character classes in Dark Blood Online."""
+    WARRIOR = 0
+    KNIGHT = 1
+    HUNTER = 2
+    MAGE = 3
+    THIEF = 4
+    FIGHTER = 5
+    WHUNTER = 6
+
+
+@dataclass
+class CharacterVisuals:
+    """Cosmetic and appearance parameters for a character."""
+    face: int = 0
+    hair: int = 0
+    body_sliders: List[int] = field(default_factory=lambda: [100, 100, 100, 100, 100])
+    extra: int = 0
+
+
+@dataclass
+class Character:
+    """High-level representation of a player character."""
+    id: int = 1
+    name: str = "Tester"
+    char_class: CharacterClass = CharacterClass.WARRIOR
+    visuals: CharacterVisuals = field(default_factory=CharacterVisuals)
+    level: int = 1
+    location: str = "default town"
+
+    # Low-level fields mapped by offset in client object 0x00A4AB30
+    u09: int = 0
+    u2e: int = 7
+    u37: int = 17
+    s49: Tuple[int, int, int] = (23, 25, 27)
+    s53: Tuple[int, int, int] = (29, 31, 33)
+    b5d: bool = False
+    u5e: int = 9
+    u3f: int = 19
+    u47: int = 11
+    u62: int = 13
+    u66: int = 21
+    u6e: int = 15
+    b72: bool = False
+    b73: bool = False
+    b74: bool = False
+    tutorial_cleared: bool = False
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Character':
+        """Instantiate a Character from storage JSON dictionary."""
+        visuals = CharacterVisuals(
+            face=data.get('face', 0),
+            hair=data.get('hair', 0),
+            body_sliders=list(data.get('body', [100] * 5)[:5]),
+            extra=data.get('extra', 0)
+        )
+        raw_class = data.get('char_class', 0)
+        try:
+            char_class = CharacterClass(raw_class)
+        except ValueError:
+            char_class = raw_class
+
+        return cls(
+            id=data.get('id', 1),
+            name=data.get('name', 'Tester'),
+            char_class=char_class,
+            visuals=visuals,
+            level=data.get('level', 1),
+            location=data.get('location', 'default town'),
+            u09=data.get('u09', 0),
+            u2e=data.get('u2e', 7),
+            u37=data.get('u37', 17),
+            s49=tuple(data.get('s49', (23, 25, 27))),
+            s53=tuple(data.get('s53', (29, 31, 33))),
+            b5d=data.get('b5d', False),
+            u5e=data.get('u5e', 9),
+            u3f=data.get('u3f', 19),
+            u47=data.get('u47', 11),
+            u62=data.get('u62', 13),
+            u66=data.get('u66', 21),
+            u6e=data.get('u6e', 15),
+            b72=data.get('b72', False),
+            b73=data.get('b73', False),
+            b74=data.get('b74', False),
+            tutorial_cleared=data.get('tutorial_cleared', False)
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to JSON-serializable dictionary for character storage."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'char_class': int(self.char_class),
+            'face': self.visuals.face,
+            'hair': self.visuals.hair,
+            'body': self.visuals.body_sliders,
+            'extra': self.visuals.extra,
+            'level': self.level,
+            'location': self.location,
+            'u09': self.u09,
+            'u2e': self.u2e,
+            'u37': self.u37,
+            's49': list(self.s49),
+            's53': list(self.s53),
+            'b5d': self.b5d,
+            'u5e': self.u5e,
+            'u3f': self.u3f,
+            'u47': self.u47,
+            'u62': self.u62,
+            'u66': self.u66,
+            'u6e': self.u6e,
+            'b72': self.b72,
+            'b73': self.b73,
+            'b74': self.b74,
+            'tutorial_cleared': self.tutorial_cleared
+        }
+
+    def encode_lobby_entry(self) -> bytes:
+        """Serialize for Reader 0x00A4AB30 (Character Select list & creation ack)."""
+        body = self.visuals.body_sliders[:5]
+        out = varuint(len(body)) + bytes(body)
+        out += struct.pack('<QBB', self.id, self.level, int(self.char_class))
+        out += wide_string(self.name)
+        out += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
+        out += struct.pack('<Q', self.u37)
+        out += struct.pack('<HII', *self.s49)
+        out += struct.pack('<HII', *self.s53)
+        out += struct.pack('<?I', bool(self.b5d), self.u5e)
+        out += struct.pack('<QH', self.u3f, self.u47)
+        out += struct.pack('<IQI', self.u62, self.u66, self.u6e)
+        out += struct.pack('<???', bool(self.b72), bool(self.b73), bool(self.b74))
+        return out
+
+    def encode_world_details(self) -> bytes:
+        """Serialize for struct Reader 0x00A52630 inside Opcode 2007 (SELECT_CHAR_ACK)."""
+        # 0x00B35010 consumes only tags 0x0F..0x1A; struct 0x1E is implicit.
+        b = bytearray()
+        sliders = self.visuals.body_sliders[:5]
+        b += varuint(len(sliders)) + bytes(sliders)  # 0xa48dd0
+        b += varuint(0)  # 0xa48d50 (u32 array max 2)
+        b += wide_string(self.name)
+        b += struct.pack('<QQQ', 0, 0, self.id)
+        b += struct.pack('<B', int(self.char_class))
+        # Face, hair, and cosmetic parameter (Reader 0x00A52630 +0x35, +0x39, +0x3D)
+        b += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
+        b += struct.pack('<B', self.level)
+        b += struct.pack('<IQI', self.u62, self.u66, self.u6e)
+        b += struct.pack('<HHHH', 0, 0, 0, 0)
+        # Sub-struct 0xa488f0: untagged 24 bytes
+        b += (b'\x00' * 24)
+        # Details +0x5F (u64) and +0x9C (bool), copied by 0x0095A150 into the
+        # player object at +0xF0 and +0x80 respectively:
+        #  * player+0xF0 is nJoinLayerNetID. JAppStateSquarePlay's CanEnter
+        #    (vtable slot 0x30, 0x006FA540) rejects -1 and requires the high
+        #    dword to be a loaded SquareID hash, otherwise the state change
+        #    times out after 5 s (0x006F8343) and the client falls back to the
+        #    previous state -- the tutorial restarts after "skip".
+        #  * player+0x80 selects the state after selection (0x006F88C0):
+        #    0 -> ChangeState(eAS_Tutorial), nonzero -> eAS_SquarePlay.
+        b += struct.pack('<Q?HHHHII', layer_net_id(), bool(self.tutorial_cleared),
+                         0, 0, 0, 0, 0xffffffff, 0xffffffff)
+        b += struct.pack('<f', 0.0)
+        b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        # 2 x 0xa49bb0 (untagged u16, u32, u32)
+        b += struct.pack('<HII', 0, 0, 0)
+        b += struct.pack('<HII', 0, 0, 0)
+        # bool + 0xa48b40 (untagged 74 bytes)
+        b += struct.pack('<?', False)
+        b += (b'\x00' * 74)
+        b += struct.pack('<I', 0)
+        # 5 x tag 0x10 vectors
+        for _ in range(5):
+            b += b'\x10' + varuint(0)
+        # 0xa48b60: untagged 4 bytes
+        b += (b'\x00' * 4)
+        b += struct.pack('<H?HH', 0, False, 0, 0)
+        # 2 x tag 0x17 maps
+        b += b'\x17' + varuint(0)
+        b += b'\x17' + varuint(0)
+        b += struct.pack('<HQQQQI', 0, 0, 0, 0, 0, 0)
+        # tag 0x10 vector
+        b += b'\x10' + varuint(0)
+        b += struct.pack('<?HH', False, 0, 0)
+        b += struct.pack('<f', 0.0)
+        # Reader 0xA52630: bool +1C9, u8 +1CA, u16 +1CB, bool +1CD/+1CE.
+        b += struct.pack('<?BH??', False, 0, 0, False, False)
+        b += wide_string('')
+        return bytes(b)

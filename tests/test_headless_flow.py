@@ -14,18 +14,22 @@ ROOT = Path(__file__).resolve().parent.parent
 TMP = tempfile.TemporaryDirectory()
 os.environ['DARKBLOOD_DATA'] = TMP.name  # must be set before characters is imported
 os.environ['DARKBLOOD_CLIENT_DATA'] = TMP.name  # no private game tables in tests
-sys.path.insert(0, str(ROOT / 'server'))
+sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'tools'))
 
-from bootstrap_server import BootstrapServer  # noqa: E402
-import game_wire  # noqa: E402
-import models  # noqa: E402
+from darkblood.frontend.server import BootstrapServer  # noqa: E402
+from darkblood.core import hashing  # noqa: E402
+from darkblood.core.serialization import jser  # noqa: E402
+from darkblood.frontend import relay  # noqa: E402
+from darkblood.games import session  # noqa: E402
+from darkblood.games.entities import character as entities  # noqa: E402
+from darkblood.games.network import messages  # noqa: E402
 from headless_client import HeadlessClient, lobby_flow  # noqa: E402
 
 
 def wide(text):
     raw = text.encode('utf-16le')
-    return game_wire.varuint(len(raw)) + raw
+    return jser.varuint(len(raw)) + raw
 
 
 def create_request(name, char_class=1):
@@ -37,22 +41,22 @@ def create_request(name, char_class=1):
 class SquareEntryTest(unittest.TestCase):
     def test_jhash_matches_client_djb2(self):
         # 0x00B3AD70: h = 5381; h = h * 33 + (signed byte) over UTF-16LE bytes.
-        self.assertEqual(models.jhash(''), 5381)
-        self.assertEqual(models.jhash('A'), ((5381 * 33 + 0x41) * 33) & 0xffffffff)
-        self.assertEqual(models.jhash('Act1'), 0x5F98AFAE)
+        self.assertEqual(hashing.jhash(''), 5381)
+        self.assertEqual(hashing.jhash('A'), ((5381 * 33 + 0x41) * 33) & 0xffffffff)
+        self.assertEqual(hashing.jhash('Act1'), 0x5F98AFAE)
 
     def test_store_records_start_with_item_hash(self):
-        ack = models.StoreInfoAck(npc_id=1, items=[('Ihppa0001', -1)]).encode()
+        ack = messages.StoreInfoAck(npc_id=1, items=[('Ihppa0001', -1)]).encode()
         self.assertEqual(ack[8:10], b'\x10\x81')
-        self.assertEqual(struct.unpack_from('<Ii', ack, 10), (models.jhash('Ihppa0001'), -1))
+        self.assertEqual(struct.unpack_from('<Ii', ack, 10), (hashing.jhash('Ihppa0001'), -1))
         self.assertEqual(len(ack), 10 + 32 + 2)
 
     def test_details_carry_layer_and_tutorial_flag(self):
         # Details +0x5F (u64 nJoinLayerNetID) is immediately followed by the
         # +0x9C tutorial flag; 0x0095A150 copies them to player +0xF0 / +0x80.
         for cleared in (False, True):
-            details = models.Character(tutorial_cleared=cleared).encode_world_details()
-            needle = struct.pack('<Q?', models.layer_net_id(), cleared)
+            details = entities.Character(tutorial_cleared=cleared).encode_world_details()
+            needle = struct.pack('<Q?', entities.layer_net_id(), cleared)
             self.assertEqual(details.count(needle), 1, cleared)
 
 
@@ -91,7 +95,7 @@ class HeadlessFlowTest(unittest.TestCase):
         for opcode in (2403, 2002, 2022, 5029, 2009, 2007):
             self.assertEqual(struct.unpack_from('<I', out[opcode])[0], 0, opcode)
         # 5134: 6 raw bytes, IPv4 network order + u16 LE port (verified live).
-        self.assertEqual(out[5134], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
+        self.assertEqual(out[5134], bytes([127, 0, 0, 1]) + struct.pack('<H', relay.RELAY_PORT))
 
     def test_town_and_tutorial_opcodes(self):
         async def scenario(client):
@@ -137,12 +141,12 @@ class HeadlessFlowTest(unittest.TestCase):
             _, ack5046 = await client.expect_event(5046)
             result, square_uid, layer = struct.unpack_from('<IQQ', ack5046)
             self.assertEqual((result, square_uid), (0, 1))
-            self.assertEqual(layer >> 32, models.jhash('Act1'))
+            self.assertEqual(layer >> 32, hashing.jhash('Act1'))
             self.assertEqual(ack5046[20:22], b'\x10\x80')  # tag + varuint 0: empty vecTargetState
             self.assertEqual(len(ack5046), 22 + 1 + 8)
 
             # Join layer 5030 -> 5031: observed request i32, u64 layer, u8
-            layer = models.jhash('Act1') << 32
+            layer = hashing.jhash('Act1') << 32
             client.send_event(5030, struct.pack('<iQB', 0x7fffffff, layer, 0))
             _, ack5031 = await client.expect_event(5031)
             self.assertEqual(struct.unpack_from('<IQQ', ack5031), (0, 1, layer))
@@ -157,15 +161,15 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(ack2066, struct.pack('<Ii', 0, -0x40e2443a) + b'\x10\x80\x10\x80')
             # Quest start 2073 (compressed like the client) -> 2074
             stamp = '2015-02-23 15:42:11, '.encode('utf-16le')
-            req = game_wire.varuint(len(stamp)) + stamp + struct.pack('<Ii', models.jhash('Q0001S01'), -1)
+            req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', hashing.jhash('Q0001S01'), -1)
             client.send_event(2073, req, compressed=True)
             _, ack2074 = await client.expect_event(2074)
             result, qid, quid = struct.unpack_from('<Iiq', ack2074)
-            self.assertEqual((result, qid & 0xffffffff, quid), (0, models.jhash('Q0001S01'), 1))
+            self.assertEqual((result, qid & 0xffffffff, quid), (0, hashing.jhash('Q0001S01'), 1))
             self.assertEqual(len(ack2074), 16 + 18 + 2)
             client.send_event(2076, req, compressed=True)
             _, ack2077 = await client.expect_event(2077)
-            self.assertEqual(struct.unpack_from('<Ii', ack2077)[1] & 0xffffffff, models.jhash('Q0001S01'))
+            self.assertEqual(struct.unpack_from('<Ii', ack2077)[1] & 0xffffffff, hashing.jhash('Q0001S01'))
             self.assertEqual(len(ack2077), 12 + 18 + 12 + 2 + 2 + 8)
             client.send_event(2119, bytes.fromhex('ffffff7f01001080'))  # observed live
             _, ack2120 = await client.expect_event(2120)
@@ -178,7 +182,7 @@ class HeadlessFlowTest(unittest.TestCase):
                 '965f00730069006e0067006c00650070006c0061007900ffffffffffffffffffff0100'))
             _, ack5002 = await client.expect_event(5002)
             self.assertEqual(struct.unpack_from('<Iq', ack5002), (0, 1))
-            self.assertEqual(ack5002[-6:], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
+            self.assertEqual(ack5002[-6:], bytes([127, 0, 0, 1]) + struct.pack('<H', relay.RELAY_PORT))
             # 5043 SELECT_DUNGEON (observed live after 5002) -> 5044 echoes the gate id.
             client.send_event(5043, bytes.fromhex('ffffff7f8e41006300740031005f0047003100'))
             _, ack5044 = await client.expect_event(5044)
@@ -200,7 +204,7 @@ class HeadlessFlowTest(unittest.TestCase):
                              + bytes.fromhex('1780 1780 1780 1080'))
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
             _, ack2345 = await client.expect_event(2345)
-            self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, models.jhash('Act1') << 32, 1))
+            self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, hashing.jhash('Act1') << 32, 1))
             client.send_event(2369)
             _, ack2370 = await client.expect_event(2370)
             self.assertEqual(ack2370, b'\x00' * 16)
@@ -213,9 +217,9 @@ class HeadlessFlowTest(unittest.TestCase):
         self.run_async(self.with_server(scenario))
 
     def test_quest_completion_persists(self):
-        quest = models.jhash('Q0001S01')
+        quest = hashing.jhash('Q0001S01')
         stamp = 'x'.encode('utf-16le')
-        req = game_wire.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
+        req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
 
         async def scenario(client):
             await lobby_flow(client)
@@ -237,7 +241,7 @@ class HeadlessFlowTest(unittest.TestCase):
         self.assertEqual(second, b'\x13\x81' + struct.pack('<I', quest) + b'\x00')
 
     def test_quest_rewards_from_client_dict(self):
-        import client_dict
+        from darkblood.games.game_data import client_dict
         # Minimal fixture in the unluac layout of Data/Dict/quest_act1.lua.
         dict_dir = Path(TMP.name) / 'lua_src' / 'data' / 'dict'
         dict_dir.mkdir(parents=True, exist_ok=True)
@@ -253,9 +257,9 @@ class HeadlessFlowTest(unittest.TestCase):
         self.addCleanup(client_dict.quests.cache_clear)
         self.addCleanup(client_dict.item_groups.cache_clear)
         self.addCleanup((dict_dir / 'quest_act1.lua').unlink)
-        quest = models.jhash('Q0002S01')
+        quest = hashing.jhash('Q0002S01')
         stamp = 'x'.encode('utf-16le')
-        req = game_wire.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
+        req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
 
         async def scenario(client):
             await lobby_flow(client)
@@ -275,16 +279,16 @@ class HeadlessFlowTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<q', ack, 4 + 0x1E)[0], 21 + 774)
         self.assertEqual(ack[4 + 0x26:4 + 0x28], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<ii', ack, len(ack) - 8), (150, 0))  # EXP, GP
-        char = game_wire.GameSession.store().get('OfflinePlayer', char_id)
+        char = session.GameSession.store().get('OfflinePlayer', char_id)
         self.assertEqual(char['u62'], 13 + 150)
         self.assertIn('Ibaga0004', [i['code'] for i in char['items']])
 
     def test_active_quest_restored_in_select_ack(self):
-        quest = models.jhash('Q0002S01')
+        quest = hashing.jhash('Q0002S01')
         stamp = 'x'.encode('utf-16le')
-        req = game_wire.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
+        req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
         entry = (b'\x0f' + struct.pack('<I', quest) + struct.pack('<qqI?', 1, 0, quest, True)
-                 + game_wire.varuint(0))
+                 + jser.varuint(0))
 
         async def scenario(client):
             await lobby_flow(client)

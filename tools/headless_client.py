@@ -18,12 +18,12 @@ import struct
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'server'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
 
-from proudnet import blob, frame, pop_frame, read_scalar  # noqa: E402
-from proudnet_crypto import AES, envelope_encrypt  # noqa: E402
-from game_wire import event, parse_event, varuint  # noqa: E402
-from bootstrap_server import server_settings  # noqa: E402
+from darkblood.core.network.crypto import AES, envelope_encrypt  # noqa: E402
+from darkblood.core.network.proudnet import blob, frame, pop_frame, read_scalar  # noqa: E402
+from darkblood.core.serialization.jser import event, parse_event, varuint  # noqa: E402
+from darkblood.frontend.server import server_settings  # noqa: E402
 
 TRANSPORT_REPORT = b'\x30' + struct.pack('<I', 0x4000000f)
 

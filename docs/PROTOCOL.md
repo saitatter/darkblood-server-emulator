@@ -32,7 +32,7 @@ magic  len=5 payload: type=0x30, u32=0x4000000F
 | Scalar reader wrapper | `0x00B70A50` | Used by CMessage |
 | Client dispatcher | `0x00B5F900` | Switch over message types 1..51 |
 
-`server/proudnet.py` implements this framing. Its 1 MiB frame limit is a local implementation limit.
+`src/darkblood/core/network/proudnet.py` implements this framing. Its 1 MiB frame limit is a local implementation limit.
 
 ## 2. Handshake (observed, complete for TCP)
 
@@ -60,7 +60,7 @@ ServerSettings (reader 0x00B70DE0, defaults 0x00B82850, copied to client+0x638):
 blob RSA public key            ProudNet scalar length + PKCS#1 DER RSAPublicKey
 ```
 
-The client checks that the message was consumed exactly. The emulator's values are in `server/bootstrap_server.py:server_settings`; only the key lengths are known to matter.
+The client checks that the message was consumed exactly. The emulator's values are in `src/darkblood/frontend/server.py:server_settings`; only the key lengths are known to matter.
 
 ## 3. Session crypto (static, verified by live decryption)
 
@@ -120,7 +120,7 @@ Reader widths: `0x00B35150` u8, `0x00B35680` bool, `0x00B351E0` u16, `0x00B35300
 
 ## 5. Application flow (observed in the live client)
 
-Opcode names come from the client's table (`server/data/opcodes.tsv`, `tools/extract_opcodes.py`). Handlers come from the runtime map at `0x00F45250` (lookup `0x0075FD30`), dumped by the shim to `research/client/handler_map.txt`.
+Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_opcodes.py`). Handlers come from the runtime map at `0x00F45250` (lookup `0x0075FD30`), dumped by the shim to `research/client/handler_map.txt`.
 
 | Step | Client request | Server response | Handler / schema | Status |
 | --- | --- | --- | --- | --- |
@@ -313,19 +313,19 @@ Following character selection and relay attachment, the client interacts with tu
 | `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) | Sender `0x00799E60` | None | Notification sent on tutorial mob defeat |
 | `2352` (`eEGS_IP_ADDRESS_NOT`) | Sender `0x00930` | None | Notification broadcasting client network IP |
 
-All responses are modeled as Python dataclasses in `server/models.py` and validated by automated end-to-end tests in `tests/test_headless_flow.py`.
+All responses are modeled as Python dataclasses in `src/darkblood/games/network/messages.py` and validated by automated end-to-end tests in `tests/test_headless_flow.py`.
 
 ## Protocol map tooling (2026-11-16, saitatter machine)
 
-- `server/data/opcodes.tsv`: 1,458 names with no gaps in any block, from the
+- `assets/opcodes.tsv`: 1,458 names with no gaps in any block, from the
   client's name map `0x00F49CF8` (`tools/extract_opcodes.py`). Earlier
   extractions missed every opcode containing a `0x0A` byte (e.g. 2594/2595
   `eEGS_HTTPNOTICE_CHECK_REQ/ACK`, 2712/2713 Steam billing) and 2007.
-- `server/data/opcode_pairs.tsv`: the client's own request→response map
+- `assets/opcode_pairs.tsv`: the client's own request→response map
   `0x00F49CE8` (491 pairs). Cross pairs are real: cheat requests answer with
   the normal ACK, and every regional authenticate request (Steam 5386, CYOU,
   WAYI, ...) answers with 5020.
-- `server/data/opcode_flags.tsv`: map `0x00F49D04`, values 0/16/17/33/41/64/129;
+- `assets/opcode_flags.tsv`: map `0x00F49D04`, values 0/16/17/33/41/64/129;
   meaning not recovered.
 - `tools/opcode_xrefs.py` → `research/opcode_xrefs.tsv`: per opcode, client
   senders (push + event constructor `0x00408C60`/`0x007AEE00`), switch

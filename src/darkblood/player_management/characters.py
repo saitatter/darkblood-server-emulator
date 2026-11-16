@@ -9,11 +9,12 @@ import os
 import struct
 import threading
 from pathlib import Path
+from darkblood import REPO_ROOT
+from darkblood.core.serialization.jser import WireError, read_varuint
+from darkblood.games.entities.character import Character
 
-from game_wire import WireError, read_varuint, varuint, wide_string
-from models import Character, CharacterClass, CharacterVisuals
 
-DATA = Path(os.environ.get('DARKBLOOD_DATA', Path(__file__).resolve().parent.parent / 'data'))
+DATA = Path(os.environ.get('DARKBLOOD_DATA', REPO_ROOT / 'data'))
 
 
 def read_wide(data, offset):
@@ -97,7 +98,7 @@ def ensure_inventory(char):
     """
     if 'bags' in char and 'items' in char:
         return False
-    from client_dict import default_equipment
+    from darkblood.games.game_data.client_dict import default_equipment
     job = int(char.get('char_class', 0))
     # Package items ("CPkg...") in the list are not wearable; they are left
     # out until the bag/cell display is recovered.

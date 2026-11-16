@@ -4,7 +4,7 @@
 Writes ``address<TAB>name<TAB>kind<TAB>source`` rows (kind: function | label):
 
 * opcode handlers: research/client/handler_map.txt (written by the shim) joined
-  with server/data/opcodes.tsv -> ``On_<eERC/eEGS name>``
+  with assets/opcodes.tsv -> ``On_<eERC/eEGS name>``
 * lua_tinker bindings: ``push fn / push "Name" / push reg / call`` and
   ``mov eax, fn; push eax; push "Name"; push reg; call`` -> ``Lua_<Name>``
 * MSVC RTTI: complete-object locators -> ``<Class>::vftable`` labels and, for
@@ -42,7 +42,7 @@ def cstr(img, va):
 
 def handlers():
     names = {}
-    for line in open(ROOT / 'server/data/opcodes.tsv', encoding='utf-8'):
+    for line in open(ROOT / 'assets/opcodes.tsv', encoding='utf-8'):
         a = line.rstrip('\n').split('\t')
         if len(a) >= 2 and a[0].isdigit():
             names[int(a[0])] = a[1]

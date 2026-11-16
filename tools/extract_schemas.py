@@ -226,7 +226,7 @@ def main():
         return 0
     count = cases = tables = 0
     names = {}
-    for line in open(ROOT / 'server/data/opcodes.tsv', encoding='utf-8'):
+    for line in open(ROOT / 'assets/opcodes.tsv', encoding='utf-8'):
         q = line.rstrip('\n').split('\t')
         if q[0].isdigit():
             names[int(q[0])] = q[1]

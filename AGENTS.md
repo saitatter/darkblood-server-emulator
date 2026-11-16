@@ -42,11 +42,12 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 
 ## Implementation route
 
-- Current server: `python server/run_bootstrap.py` from the repo root, binding `127.0.0.1:9400`.
+- Current server: `python run_server.py` from the repo root, binding `127.0.0.1:9400` (game) and `9401` (relay).
+- Code layout follows MHServerEmu for a later C# port: `src/darkblood/{core,frontend,player_management,games}`; read `docs/ARCHITECTURE.md` before adding handlers (new opcode = message dataclass + `on_<opcode>` in the domain mixin + headless test).
 - Drive live tests with `tools/gamectl.py` (or the `darkblood` MCP server): it verifies the client hash, refuses a busy port, and stops only processes it started. Use `enter-lobby` to reach character select.
 - Decompile with `tools/decomp.ps1 OUT.c 0xADDR...`; dump behaviour with the shim's `bp.txt` tracer and `sample.txt` sampler (see STATUS.md).
-- Opcode names: `server/data/opcodes.tsv`. Handler addresses: `research/client/handler_map.txt` (written by the shim on connect).
-- `server/server.py` is the earlier speculative Auth/Lobby prototype on ports 10001/10002. Its framing/opcodes are not recovered facts.
+- Opcode names: `assets/opcodes.tsv`. Handler addresses: `research/client/handler_map.txt` (written by the shim on connect).
+- `legacy/speculative_prototype/server.py` is the earlier speculative Auth/Lobby prototype on ports 10001/10002. Its framing/opcodes are not recovered facts.
 - ProudNet scalars and JSerBuffer varints are different: width-prefixed signed integers versus seven-bit groups terminating when bit 7 is **set**.
 - Game events travel in ProudNet user messages (observed type `2`). Type `1` is RMI traffic; captured `0xFA01` does not establish a game login request.
 - Recover parser schemas before adding responses. Do not invent opcode tables; use the client's own table. Fields without a recovered meaning are sent as zero/defaults and marked as such in code.
@@ -63,7 +64,7 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 - Preserve destination ports and copy sockaddr inputs before redirecting. Do not send experiments to the original remote service.
 - Current redirect covers IPv4 `connect` only. WSAConnect, ConnectEx, IPv6, and UDP are not covered; this is not complete offline isolation.
 - Diagnostic vtable/callsite hooks check expected targets before patching and should only trace behavior.
-- Bound test duration and stop only owned processes. The new bootstrap was stopped for the pause. The pre-existing `server/server.py` process was left alone (PID 44712 then; never reuse a recorded PID without verification).
+- Bound test duration and stop only owned processes. The new bootstrap was stopped for the pause. The pre-existing `legacy/speculative_prototype/server.py` process was left alone (PID 44712 then; never reuse a recorded PID without verification).
 
 ## Mandatory Agent Collaboration & Synchronization Rule
 

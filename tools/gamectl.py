@@ -119,7 +119,7 @@ def start(server_only=False, client_only=False):
         if not _port_free():
             raise GameError('127.0.0.1:%d is already in use by another process' % PORT)
         log = open(LOGS / 'server.log', 'w')
-        server = subprocess.Popen([sys.executable, '-u', str(ROOT / 'server' / 'run_bootstrap.py')],
+        server = subprocess.Popen([sys.executable, '-u', str(ROOT / 'run_server.py')],
                                   cwd=str(ROOT), stdout=log, stderr=subprocess.STDOUT,
                                   creationflags=subprocess.CREATE_NO_WINDOW)
         state['server_pid'] = server.pid
@@ -495,7 +495,7 @@ def select_character(timeout=15):
 # ---------------------------------------------------------------------- events
 def _opcode_names():
     names = {}
-    path = ROOT / 'server' / 'data' / 'opcodes.tsv'
+    path = ROOT / 'assets' / 'opcodes.tsv'
     if path.exists():
         for line in path.read_text(encoding='utf-8').splitlines():
             if line and not line.startswith('#'):

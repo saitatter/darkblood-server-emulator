@@ -115,7 +115,7 @@ Acceptance: a character enters a map, moves, and completes a minimum gameplay lo
 - [x] Session control with hash verification and owned-process shutdown (`tools/gamectl.py`, MCP `tools/mcp_server.py`).
 - [ ] Test-copy preparation and shim build/deploy in the launcher.
 - [ ] Investigate WSAConnect/ConnectEx/IPv6/UDP and additional outbound connections.
-- [ ] Separate or archive the speculative Auth/Lobby prototype.
+- [x] Separate or archive the speculative Auth/Lobby prototype (`legacy/speculative_prototype/`).
 - [ ] Test from a clean checkout and clean local state without the original services.
 
 Final acceptance: installation, launch, gameplay, saving, and shutdown are reproducible, documented, and verified.

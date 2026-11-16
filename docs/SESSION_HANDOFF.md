@@ -28,6 +28,19 @@ Screenshots (local): `research/test2-dungeon.png`,
 latest traversal `research/test2-ui.png`. Wire log session starts at byte
 2027398 (~13:41); new server runs e410c89. Next: manual control result,
 then combat/drop/clear flow or input delivery debugging as supported by evidence.
+## Update — 2026-11-16 ~16:00 (saita machine, MHServerEmu-style layout)
+
+At the user's request the server moved from `server/` into the package
+`src/darkblood` (see docs/ARCHITECTURE.md) ahead of a later C# port:
+`core` (proudnet, crypto, jser, hashing), `frontend` (listeners, relay),
+`player_management` (characters), `games` (session dispatcher, handler
+mixins per domain, messages, entities, missions, game_data). Code was moved
+verbatim (git mv where whole files moved); behaviour is unchanged: 15/15
+headless tests and a live lobby/selection/relay run pass. Start with
+`python run_server.py`; opcode tables are in `assets/`; the speculative
+prototype is in `legacy/`. Collaborators with local edits to
+server/game_wire.py or server/models.py must re-apply them in the new files.
+
 ## Update — 2026-11-16 ~15:00 (saita machine, quests/rewards/equipment)
 
 See STATUS.md top. Fixed: active quest lost after relog, rewards ignored,

@@ -15,10 +15,11 @@ import os
 import re
 from functools import lru_cache
 from pathlib import Path
+from darkblood import REPO_ROOT
+from darkblood.core.hashing import jhash
 
-from models import jhash
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = REPO_ROOT
 ID_RE = re.compile(r'^ {4}ID = "([^"]+)",?$')
 NAME_RE = re.compile(r'^ {6}"([^"]+)",?$')
 ITEM_RE = re.compile(r'^ {6}\{"([^"]+)", (-?\d+)\},?$')

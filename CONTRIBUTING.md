@@ -19,13 +19,14 @@ The goal of this project is to create an open-source, local offline server emula
 
 ### Repository Layout
 ```
-├── server/                 # Python emulator server implementation
-│   ├── run_bootstrap.py    # Main server entrypoint (binds 127.0.0.1:9400)
-│   ├── bootstrap_server.py # AsyncIO ProudNet transport listener
-│   ├── proudnet_crypto.py  # RSA-1024 OAEP, AES-128 ECB crypto implementation
-│   ├── game_wire.py        # JEvent packet framing, opcode dispatch, handlers
-│   ├── characters.py       # Character data storage & serialization
-│   └── data/               # Static tables (e.g. opcodes.tsv: 1,192 opcodes)
+├── run_server.py           # Server entrypoint (binds 127.0.0.1:9400 and 9401)
+├── src/darkblood/          # Server package (layout: docs/ARCHITECTURE.md)
+│   ├── core/               # ProudNet framing/crypto, JSer serialization  (C#: Core)
+│   ├── frontend/           # Listeners, handshake, relay                 (C#: Frontend)
+│   ├── player_management/  # Character persistence                       (C#: PlayerManagement)
+│   └── games/              # Session, handlers/, network/, entities/...   (C#: Games)
+├── assets/                 # Static tables (opcodes.tsv, opcode_pairs.tsv, opcode_flags.tsv)
+├── legacy/                 # Earlier speculative prototype (not recovered facts)
 ├── tools/                  # Automation, control & analysis tooling
 │   ├── gamectl.py          # CLI / automation engine (starts server/client, input, screenshots)
 │   ├── mcp_server.py       # MCP stdio server for AI agents
@@ -106,7 +107,7 @@ python tools/gamectl.py stop
 
 ## 5. Coding Standards & Documentation
 - **Language**: All documentation, code comments, and commit messages **must be written in English**.
-- **No Heavy Third-Party Dependencies**: The core server (`server/`) must run on standard Python 3.8+ without mandatory native compilation or heavy package dependencies.
+- **No Heavy Third-Party Dependencies**: The core server (`src/darkblood/`) must run on standard Python 3.8+ without mandatory native compilation or heavy package dependencies.
 - **Evidence-Based Reverse Engineering**:
   - Do not guess packet schemas. Extract handlers using Ghidra (`tools/decomp.ps1`) or REA.
   - Document disassembled/decompiled function virtual addresses (VAs) in docstrings.
