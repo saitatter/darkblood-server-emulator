@@ -23,6 +23,8 @@ from models import (
     QuestStartAck,
     RelayAddressNot,
     RoomInfoListAck,
+    SelectDungeonAck,
+    ChangeMapCodeAck,
     RouletteManagerInfoAck,
     SelectCharacterAck,
     StoreInfoAck,
@@ -416,6 +418,34 @@ class GameSession:
         await self.transport.send_event(event(5002, ack, correlation),
                                         note='create room ack (%s)' % name)
 
+    async def on_5043(self, correlation, body):
+        # eERC_SELECT_DUNGEON_REQ (sender 0x7AC1C0), observed body:
+        # ffffff7f + J-wstring gate id ("Act1_G1") -> 5044.
+        gate = ''
+        try:
+            length, offset = read_varuint(body, 4)
+            gate = body[offset:offset + length].decode('utf-16le')
+        except (WireError, UnicodeDecodeError):
+            pass
+        ack = SelectDungeonAck(gate_id=gate).encode()
+        await self.transport.send_event(event(5044, ack, correlation),
+                                        note='select dungeon ack (%s)' % gate)
+
+    async def on_5009(self, correlation, body):
+        # eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f
+        # + J-wstring map code ("Act1_G1_A10") + bool -> 5010, consumed by
+        # JAppStateDungeonGate vf20 -> 0x6D4A00 (only in app state 8).
+        code, flag = '', False
+        try:
+            length, offset = read_varuint(body, 4)
+            code = body[offset:offset + length].decode('utf-16le')
+            flag = body[offset + length:offset + length + 1] == bytes([1])
+        except (WireError, UnicodeDecodeError):
+            pass
+        ack = ChangeMapCodeAck(map_code=code, flag=flag).encode()
+        await self.transport.send_event(event(5010, ack, correlation),
+                                        note='change mapcode ack (%s)' % code)
+
     async def on_2076(self, correlation, body):
         # eEGS_QUEST_COMPLETE_REQ (same observed prefix as 2073: wstring, u32
         # quest id) -> eEGS_QUEST_COMPLETE_ACK 2077. No rewards offline yet.
@@ -513,8 +543,18 @@ class GameSession:
         # Success reader: u16, u32, J-wstring (0xB35AB0), three 0x17 maps,
         # then a 0x10 vector (0x78836B -> 0x4B94C0). Scalar/string type
         # codes are not wire tags; empty lengths use the terminal byte 0x80.
-        # Field meanings and nonempty entries still need recovery.
-        ack = (struct.pack('<IHI', 0, 0, 0) + wide_string('')
+        # The J-wstring is the map code: 0x788539 resolves it with 0x98E630
+        # and dereferences the result (+0x28), so an empty/unknown code
+        # crashes. The request (sender observed live) is ffffff7f + J-wstring
+        # map code ("Act1_G1_A10"); echo it. Other field meanings and nonempty
+        # entries still need recovery.
+        code = ''
+        try:
+            length, offset = read_varuint(body, 4)
+            code = body[offset:offset + length].decode('utf-16le')
+        except (WireError, UnicodeDecodeError):
+            pass
+        ack = (struct.pack('<IHI', 0, 0, 0) + wide_string(code)
                + (b'\x17' + varuint(0)) * 3 + b'\x10' + varuint(0))
         await self.transport.send_event(event(5014, ack, correlation),
                                         note='start game ack')

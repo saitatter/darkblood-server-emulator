@@ -179,12 +179,25 @@ class HeadlessFlowTest(unittest.TestCase):
             _, ack5002 = await client.expect_event(5002)
             self.assertEqual(struct.unpack_from('<Iq', ack5002), (0, 1))
             self.assertEqual(ack5002[-6:], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
+            # 5043 SELECT_DUNGEON (observed live after 5002) -> 5044 echoes the gate id.
+            client.send_event(5043, bytes.fromhex('ffffff7f8e41006300740031005f0047003100'))
+            _, ack5044 = await client.expect_event(5044)
+            self.assertEqual(ack5044, bytes.fromhex('00000000 1780 1380 8e')
+                             + 'Act1_G1'.encode('utf-16le') + bytes.fromhex('1380'))
+            # 5009 CHANGE_MAPCODE (observed live on the gate map) -> 5010.
+            client.send_event(5009, bytes.fromhex(
+                'ffffff7f9641006300740031005f00470031005f0041003100300000'))
+            _, ack5010 = await client.expect_event(5010)
+            self.assertEqual(ack5010, bytes.fromhex('00000000 96')
+                             + 'Act1_G1_A10'.encode('utf-16le') + bytes([0]))
             # 5014 success reader 0x7880A0: u16, u32, untagged J-wstring,
             # three maps, then a mandatory vector (0x78836B).
-            client.send_event(5013)
+            client.send_event(5013, bytes.fromhex(
+                'ffffff7f9641006300740031005f00470031005f00410031003000'))  # observed live
             _, ack5014 = await client.expect_event(5014)
-            self.assertEqual(ack5014, bytes.fromhex(
-                '00000000 0000 00000000 80 1780 1780 1780 1080'))
+            self.assertEqual(ack5014, bytes.fromhex('00000000 0000 00000000 96')
+                             + 'Act1_G1_A10'.encode('utf-16le')
+                             + bytes.fromhex('1780 1780 1780 1080'))
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
             _, ack2345 = await client.expect_event(2345)
             self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, models.jhash('Act1') << 32, 1))

@@ -1,5 +1,15 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~13:30 (saita machine, dungeon entry live)
+
+Dungeon entry works live (see STATUS.md top). Test route: gamectl
+start / enter-lobby / select-character, click (0.66,0.80) x4, click (0.05,0.62)
+x8 (follow the green arrows west into Gnogue Haram), wait for the gate map,
+click Lucid Forest at (0.723,0.60). Added 5043->5044 and 5009->5010; 5014 now
+echoes the map code. Next: 5095, 2422, monster kill flow, drops, dungeon
+clear/return to town. Thief1 is naked (no inventory/equipment implemented).
+2358 GUIDE_BEGINNER_UPDATE still unhandled. Session processes were stopped.
+
 ## Update — 2026-11-16 ~12:00 (Cristian live test)
 
 The user authorized exclusive game control. Started the updated local server

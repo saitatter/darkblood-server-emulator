@@ -136,7 +136,9 @@ Opcode names come from the client's table (`server/data/opcodes.tsv`, `tools/ext
 | Ok on character | 2006 `eEGS_SELECT_CHAR_REQ` (i32, u64 char id) | 2007 `eEGS_SELECT_CHAR_ACK` | `0x007AA4B0`: u32 result, struct `0x00A40760` (651 bytes, full stats/visuals/skills), `0x10` vector `0x004B9210` | Verified |
 | World layer | 5030 `eERC_JOIN_LAYER_REQ` (i32, u64 layer id) | 5031 `eERC_JOIN_LAYER_ACK` | `0x00787A70`: u32 result, u64 layer_id, u64 instance_id, u8 tag (0 = absent) | Verified |
 | Enter map | 2016 `eEGS_ENTER_MAPTOOL_REQ` | 2017 `eEGS_ENTER_MAPTOOL_ACK` | `0x00757D20`: u32 result (0 triggers Scene 5) | Verified |
-| Start game | 5013 `eERC_START_GAME_REQ` | 5014 `eERC_START_GAME_ACK` | `0x007880A0`: u32 result, u16, u32, untagged J-wstring, 3 × `0x17` map, `0x10` vector (`0x004B94C0`) | Static + headless; live dungeon acceptance pending |
+| Dungeon entrance (walk into town exit) | 2010 → 5001 `_singleplay` → 5043 `eERC_SELECT_DUNGEON_REQ` (i32, J-wstring gate id `Act1_G1`) | 5044 `eERC_SELECT_DUNGEON_ACK` | `0x007702E0`: u32 result, `0x17` map, `0x13` set, untagged J-wstring gate id (looked up by `0x006B2C00`, "Invalidation in m_pjGateProp" if unknown), `0x13` set. Then app state → dungeon gate (world map table) | Verified live: Gnogue Haram gate map shown |
+| Click dungeon on gate map | 5009 `eERC_CHANGE_MAPCODE_REQ` (i32, J-wstring map code `Act1_G1_A10`, bool) | 5010 `eERC_CHANGE_MAPCODE_ACK` | No JUserClient handler; JAppStateDungeonGate vf20 → `0x006D4A00` (app state 8): u32 result, untagged J-wstring map code, bool (meaning unknown; echoed) | Verified live |
+| Start game | 5013 `eERC_START_GAME_REQ` (i32, J-wstring map code) | 5014 `eERC_START_GAME_ACK` | `0x007880A0`: u32 result, u16, u32, untagged J-wstring **map code**, 3 × `0x17` map, `0x10` vector (`0x004B94C0`). An empty code crashed: `0x0098E630` returns NULL and `0x00788539` reads `+0x28` | Verified live: Lucid Forest Entrance loaded, monsters spawned, character moves |
 
 Create request (observed): `i32 0x7FFFFFFF, u8 class, wstr name, u32 face, u32 hair, 5 × u8 body sliders (head, arms, chest, torso, legs), u8`.
 

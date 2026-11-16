@@ -1,5 +1,17 @@
 # Research status and handoff
 
+## Dungeon entry live — saita machine, 2026-11-16 ~13:30
+
+Thief1 walked from town (Western Forked Road) into the Gnogue Haram entrance:
+2010 → 5001 `_singleplay` → 5043 `Act1_G1` → new 5044 → gate map shown;
+clicking Lucid Forest sent 5009 `Act1_G1_A10` → new 5010 → 5013 → 5014.
+5014's J-wstring is the map code (empty crashed at `0x00788539`: NULL+0x28 from
+`0x0098E630`). With the code echoed, "Lucid Forest Entrance" loaded with hog
+monsters, combo counter and movement; no exception in ~1 minute. Next requests:
+5095 `eERC_CHANGE_DUNGEON_LAYER_NOT` (`ffffff7f 04000000 46cdad32`) and 2422
+`eEGS_ACTIVE_WARFLAG_REQ` (`ffffff7f 1f000000`), both unhandled. Kills, drops,
+dungeon clear and return to town are not yet verified. 13/13 headless tests pass.
+
 ## Latest resume verification — Cristian, 2026-11-16
 
 Local live test (~11:54–12:00): existing Mage `lindic` selected successfully

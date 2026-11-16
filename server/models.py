@@ -583,6 +583,45 @@ class CreateRoomAck:
 
 
 @dataclass
+class SelectDungeonAck:
+    """Opcode 5044: eERC_SELECT_DUNGEON_ACK (JUserClient handler 0x007702E0).
+
+    Read order: u32 result (0x94 is a special failure stored on app page 9),
+    tag 0x17 map (0x0076AD10), tag 0x13 set (0x00765450), untagged J-wstring
+    (0x00B35AB0), tag 0x13 set (0x005EAB90: varint, i32 elements). On success
+    the wstring goes to JAppStateDungeonGate 0x006B2C00, which looks it up as
+    the gate property id (failure logs "Invalidation in m_pjGateProp"), so it
+    echoes the 5043 request ("Act1_G1"). The map and both sets feed
+    0x006BCD20 (SetDunHist); their element meanings are not recovered and
+    are sent empty. The handler then changes app state to the dungeon gate.
+    """
+    result: int = 0
+    gate_id: str = ''
+
+    def encode(self) -> bytes:
+        return (struct.pack('<I', self.result) + b'\x17' + varuint(0) + b'\x13' + varuint(0)
+                + wide_string(self.gate_id) + b'\x13' + varuint(0))
+
+
+@dataclass
+class ChangeMapCodeAck:
+    """Opcode 5010: eERC_CHANGE_MAPCODE_ACK (JAppStateDungeonGate vf20 -> 0x006D4A00).
+
+    Read order: u32 result (0x00B35300), untagged J-wstring map code
+    (0x00B35AB0), bool (0x00B35680). The map code is looked up as a map
+    property (failure: "Invalidation in pjProp") and joined to
+    "Data/Map/MyWork/". The bool's meaning is not recovered; it echoes the
+    trailing byte of the 5009 request.
+    """
+    result: int = 0
+    map_code: str = ''
+    flag: bool = False
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + wide_string(self.map_code) + struct.pack('<?', self.flag)
+
+
+@dataclass
 class QuestHistoryNot:
     """Opcode 2410: eEGS_QUEST_HISTORY_REFRESH_NOT (handler 0x0076C1E0).
 
