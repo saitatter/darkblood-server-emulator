@@ -93,6 +93,16 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5068 = await client.expect_event(5068)
             self.assertEqual(struct.unpack_from('<i', ack5068)[0], 0)
 
+            # 16. Gold goblin attack (5363 -> 5364)
+            client.send_event(5363, struct.pack('<ii', 1, 100))
+            _, ack5364 = await client.expect_event(5364)
+            self.assertEqual(struct.unpack_from('<i', ack5364)[0], 0)
+
+            # 17. Gold goblin dead (5365 -> 5366)
+            client.send_event(5365, struct.pack('<i', 1))
+            _, ack5366 = await client.expect_event(5366)
+            self.assertEqual(struct.unpack_from('<i', ack5366)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

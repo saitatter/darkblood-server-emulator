@@ -502,6 +502,24 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `keys_blob: bytes` -> `result: i32 (0), keys_blob: wstring`.
 - `2338 eEGS_ITEM_SPIRIT_CHANGE_REQ` -> `2339 eEGS_ITEM_SPIRIT_CHANGE_ACK` (`0x00780860`):
   `item_uid: i64, spirit_item_uid: i64` -> `result: i32 (0), spirit_uid: i64, items: tag 0x10 vector`.
+- `5351 eERC_REQUEST_TEACHING_REQ` -> `5352 eERC_REQUEST_TEACHING_ACK` (`0x0075C200`):
+  `target_uid: i64` -> `result: i32 (0), target_uid: i64, target_name: wstring`.
+- `5353 eERC_ACCEPT_REQUEST_TEACHING_REQ` -> `5354 eERC_ACCEPT_REQUEST_TEACHING_ACK` (`0x0075C430`):
+  `mentor_uid: i64` -> `result: i32 (0), accepted: bool, mentor_uid: i64, mentor_name: wstring`.
+- `5355 eERC_TEACHING_GET_INFO_NOT` (`0x007A5890`):
+  Teaching / mentoring status payload (Tag `0x1E` struct).
+- `5344 eERC_TREASURE_START_NOT` (`0x007722F0`) & `5345 eERC_TREASURE_END_NOT` (`0x0075BC00`):
+  Treasure instance round notifications.
+- `5346 eERC_CITADEL_REWARD_NOT` (`0x007833F0`):
+  Citadel round settlement: `result: i32 (0), tag 0x17 map, tag 0x10 items vector`.
+- `5362 eERC_GOLDGOBLIEN_APPEAR_NOT` (`0x007A6D10`):
+  Gold goblin spawns in dungeon: `goblin_id: i32, tag 0x10 items vector`.
+- `5363 eERC_GOLDGOBLIEN_ATTACK_REQ` -> `5364 eERC_GOLDGOBLIEN_ATTACK_ACK` (`0x00784A10`):
+  `goblin_id: i32, damage: i32` -> `result: i32 (0)`.
+- `5365 eERC_GOLDGOBLIEN_DEAD_REQ` -> `5366 eERC_GOLDGOBLIEN_DEAD_ACK` (`0x00784CA0`):
+  `goblin_id: i32` -> `result: i32 (0), goblin_id: i32, tag 0x10 items vector`.
+- `5367 eERC_GOLDGOBLIEN_DISAPPEAR_NOT`:
+  `goblin_id: i32`.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 

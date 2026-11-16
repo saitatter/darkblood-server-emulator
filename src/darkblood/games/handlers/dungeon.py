@@ -225,4 +225,20 @@ class DungeonHandlers:
         res_ack = PickUpItemResultAck(result=0, picker_uid=char_uid, item=None).encode()
         await self.transport.send_event(event(5068, res_ack), note=f'pick up item result ack (drop={req.drop_uid})')
 
+    async def on_5363(self, correlation, body):
+        # eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10).
+        from darkblood.games.network.messages import GoldGoblinAttackAck, GoldGoblinAttackReq
+        req = GoldGoblinAttackReq.decode(body)
+        self.transport.record('gold-goblin-attack-req', body, goblin_id=req.goblin_id, damage=req.damage)
+        ack = GoldGoblinAttackAck(result=0).encode()
+        await self.transport.send_event(event(5364, ack, correlation), note=f'gold goblin attack ack (goblin={req.goblin_id})')
+
+    async def on_5365(self, correlation, body):
+        # eERC_GOLDGOBLIEN_DEAD_REQ -> 5366 eERC_GOLDGOBLIEN_DEAD_ACK (0x00784CA0).
+        from darkblood.games.network.messages import GoldGoblinDeadAck, GoldGoblinDeadReq
+        req = GoldGoblinDeadReq.decode(body)
+        self.transport.record('gold-goblin-dead-req', body, goblin_id=req.goblin_id)
+        ack = GoldGoblinDeadAck(result=0, goblin_id=req.goblin_id, items=[]).encode()
+        await self.transport.send_event(event(5366, ack, correlation), note=f'gold goblin dead ack (goblin={req.goblin_id})')
+
 

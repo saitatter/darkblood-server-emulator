@@ -448,6 +448,46 @@ class WireMessagesTest(unittest.TestCase):
         ack_sp = messages.ItemSpiritChangeAck(result=0, spirit_uid=2, items=[]).encode()
         self.assertEqual(struct.unpack_from('<iq', ack_sp[:12]), (0, 2))
 
+    def test_mentoring_and_teaching_messages(self):
+        req_tr = messages.RequestTeachingReq.decode(struct.pack('<q', 12345))
+        self.assertEqual(req_tr.target_uid, 12345)
+        ack_tr = messages.RequestTeachingAck(result=0, target_uid=12345, target_name='Student').encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_tr[:12]), (0, 12345))
+
+        req_at = messages.AcceptRequestTeachingReq.decode(struct.pack('<q', 54321))
+        self.assertEqual(req_at.mentor_uid, 54321)
+        ack_at = messages.AcceptRequestTeachingAck(result=0, accepted=True, mentor_uid=54321, mentor_name='Master').encode()
+        self.assertEqual(struct.unpack_from('<i?q', ack_at[:13]), (0, True, 54321))
+
+        not_info = messages.TeachingGetInfoNot().encode()
+        self.assertEqual(not_info, b'\x1e\x00')
+
+    def test_citadel_and_gold_goblin_messages(self):
+        not_ts = messages.TreasureStartNot(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', not_ts)[0], 0)
+
+        not_te = messages.TreasureEndNot(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', not_te)[0], 0)
+
+        not_cit = messages.CitadelRewardNot(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', not_cit[:4])[0], 0)
+
+        not_ga = messages.GoldGoblinAppearNot(goblin_id=1).encode()
+        self.assertEqual(struct.unpack_from('<i', not_ga[:4])[0], 1)
+
+        req_atk = messages.GoldGoblinAttackReq.decode(struct.pack('<ii', 1, 500))
+        self.assertEqual((req_atk.goblin_id, req_atk.damage), (1, 500))
+        ack_atk = messages.GoldGoblinAttackAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_atk)[0], 0)
+
+        req_dead = messages.GoldGoblinDeadReq.decode(struct.pack('<i', 1))
+        self.assertEqual(req_dead.goblin_id, 1)
+        ack_dead = messages.GoldGoblinDeadAck(result=0, goblin_id=1, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<ii', ack_dead[:8]), (0, 1))
+
+        not_gd = messages.GoldGoblinDisappearNot(goblin_id=1).encode()
+        self.assertEqual(struct.unpack_from('<i', not_gd)[0], 1)
+
 
 
 

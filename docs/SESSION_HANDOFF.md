@@ -1,5 +1,24 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~21:00 (Mentoring, Teaching & Gold Goblin Encounter Events)
+
+1. Mentoring & Teaching System (Opcodes 5351 - 5357):
+   - Reverse engineered `0x0075C200` (`RequestTeachingAck`), `0x0075C430` (`AcceptRequestTeachingAck`), and `0x007A5890` (`TeachingGetInfoNot`).
+   - Wire serialization: `RequestTeachingReq/Ack` (i64 target_uid, wstring target_name), `AcceptRequestTeachingReq/Ack` (bool accepted, i64 mentor_uid, wstring mentor_name), and `TeachingGetInfoNot` (Tag 0x1E struct).
+   - Wired domain handlers `on_5351` and `on_5353` in `social.py`.
+   - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+2. Gold Goblin Encounter Events (Opcodes 5362 - 5367):
+   - Reverse engineered `0x007A6D10` (`GoldGoblinAppearNot`), `0x00784A10` (`GoldGoblinAttackAck`), and `0x00784CA0` (`GoldGoblinDeadAck`).
+   - Wire serialization: `GoldGoblinAppearNot` (i32 goblin_id, tag 0x10 items), `GoldGoblinAttackReq/Ack`, `GoldGoblinDeadReq/Ack`, and `GoldGoblinDisappearNot`.
+   - Wired domain handlers `on_5363` (attack goblin) and `on_5365` (kill goblin and reward items) in `dungeon.py`.
+   - Verified in `tests/test_dungeon_flow.py` and `tests/test_wire_messages.py`.
+3. Citadel & Treasure Notifications (Opcodes 5344 - 5346):
+   - Reverse engineered `0x007722F0` (`TreasureStartNot`), `0x0075BC00` (`TreasureEndNot`), and `0x007833F0` (`CitadelRewardNot`).
+   - Wire serialization: `TreasureStartNot`, `TreasureEndNot`, and `CitadelRewardNot` (Tag 0x17 map + Tag 0x10 items vector).
+   - Verified in `tests/test_wire_messages.py`.
+4. Test Suite:
+   - 64/64 unit and flow tests passing cleanly across all 11 test modules in ~1.48s.
+
 ## Update — 2026-11-16 ~20:45 (Character & Guild Renaming, Custom Keybindings & Spirit Weapons)
 
 1. Character & Guild Renaming (Opcodes 2310 - 2315):

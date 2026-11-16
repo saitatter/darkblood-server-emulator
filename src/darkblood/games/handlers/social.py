@@ -428,5 +428,21 @@ class SocialHandlers:
         ack = KeyboardSetCustomKeyAck(result=0, keys_blob=req.keys_blob).encode()
         await self.transport.send_event(event(2320, ack, correlation), note='keyboard set custom key ack')
 
+    async def on_5351(self, correlation, body):
+        # eERC_REQUEST_TEACHING_REQ -> 5352 eERC_REQUEST_TEACHING_ACK (0x0075C200).
+        from darkblood.games.network.messages import RequestTeachingAck, RequestTeachingReq
+        req = RequestTeachingReq.decode(body)
+        self.transport.record('request-teaching-req', body, target_uid=req.target_uid)
+        ack = RequestTeachingAck(result=0, target_uid=req.target_uid, target_name='Student').encode()
+        await self.transport.send_event(event(5352, ack, correlation), note=f'request teaching ack (target={req.target_uid})')
+
+    async def on_5353(self, correlation, body):
+        # eERC_ACCEPT_REQUEST_TEACHING_REQ -> 5354 eERC_ACCEPT_REQUEST_TEACHING_ACK (0x0075C430).
+        from darkblood.games.network.messages import AcceptRequestTeachingAck, AcceptRequestTeachingReq
+        req = AcceptRequestTeachingReq.decode(body)
+        self.transport.record('accept-request-teaching-req', body, mentor_uid=req.mentor_uid)
+        ack = AcceptRequestTeachingAck(result=0, accepted=True, mentor_uid=req.mentor_uid, mentor_name='Master').encode()
+        await self.transport.send_event(event(5354, ack, correlation), note=f'accept request teaching ack (mentor={req.mentor_uid})')
+
 
 

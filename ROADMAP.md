@@ -268,6 +268,11 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 5068 | `eERC_PICK_UP_ITEM_RESULT_ACK` | **Implemented** | Broadcast item picked up by player (`0x0078AD80`)|
 | 5114 | `eERC_GET_DROP_AR_NOT` | **Implemented** | Gold dropped by monster picked up (`0x00792700`)|
 | 5096 | `eERC_UPDATE_CHAR_INFO_NOT` | **Implemented** | Real-time gear and visual sync (`0x0078C990`) |
+| 5344 / 5345 | `eERC_TREASURE_START / END_NOT` | **Implemented** | Treasure dungeon instance rounds (`0x007722F0`) |
+| 5346 | `eERC_CITADEL_REWARD_NOT` | **Implemented** | Citadel instance stage rewards (`0x007833F0`) |
+| 5362 | `eERC_GOLDGOBLIEN_APPEAR_NOT` | **Implemented** | Gold Goblin dungeon encounter (`0x007A6D10`) |
+| 5363 / 5364 | `eERC_GOLDGOBLIEN_ATTACK_REQ/ACK` | **Implemented** | Attack Gold Goblin (`0x00784A10`) |
+| 5365 / 5366 | `eERC_GOLDGOBLIEN_DEAD_REQ/ACK` | **Implemented** | Defeat Gold Goblin and claim loot (`0x00784CA0`)|
 | 5060 / 5061 | `eERC_MONSTER_SPAWN_NOT` | Planned | Dynamic monster wave spawn |
 
 ### 6. Social, Friends, Guilds & Post (Opcodes 2128 - 2237, 2569 - 2595, 5040 - 5041)

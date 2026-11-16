@@ -194,6 +194,16 @@ class SocialFlowTest(ServerTestCase):
             _, ack2320 = await client.expect_event(2320)
             self.assertEqual(struct.unpack_from('<i', ack2320)[0], 0)
 
+            # 34. Request teaching / mentorship (5351 -> 5352)
+            client.send_event(5351, struct.pack('<q', 12345))
+            _, ack5352 = await client.expect_event(5352)
+            self.assertEqual(struct.unpack_from('<i', ack5352)[0], 0)
+
+            # 35. Accept request teaching (5353 -> 5354)
+            client.send_event(5353, struct.pack('<q', 54321))
+            _, ack5354 = await client.expect_event(5354)
+            self.assertEqual(struct.unpack_from('<i', ack5354)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 
