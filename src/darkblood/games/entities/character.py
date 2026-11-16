@@ -75,6 +75,11 @@ class Character:
     b73: bool = False
     b74: bool = False
     tutorial_cleared: bool = False
+    # Details +0x59 / +0x5B, copied by 0x0095A150 to player +0x7C / +0x7E:
+    # rebirth coins owned and daily rebirth coins already received (the
+    # daily-claim sender refuses when either is >= 3).
+    rebirth_coins: int = 3
+    daily_rebirth_recv: int = 0
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -113,7 +118,9 @@ class Character:
             b72=data.get('b72', False),
             b73=data.get('b73', False),
             b74=data.get('b74', False),
-            tutorial_cleared=data.get('tutorial_cleared', False)
+            tutorial_cleared=data.get('tutorial_cleared', False),
+            rebirth_coins=data.get('rebirth_coins', 3),
+            daily_rebirth_recv=data.get('daily_rebirth_recv', 0)
         )
 
     def to_dict(self) -> dict:
@@ -143,7 +150,9 @@ class Character:
             'b72': self.b72,
             'b73': self.b73,
             'b74': self.b74,
-            'tutorial_cleared': self.tutorial_cleared
+            'tutorial_cleared': self.tutorial_cleared,
+            'rebirth_coins': self.rebirth_coins,
+            'daily_rebirth_recv': self.daily_rebirth_recv
         }
 
     def encode_lobby_entry(self) -> bytes:
@@ -188,8 +197,10 @@ class Character:
         #    previous state -- the tutorial restarts after "skip".
         #  * player+0x80 selects the state after selection (0x006F88C0):
         #    0 -> ChangeState(eAS_Tutorial), nonzero -> eAS_SquarePlay.
+        #  * +0x59 / +0x5B -> player +0x7C rebirth coins / +0x7E daily coins received.
         b += struct.pack('<Q?HHHHII', layer_net_id(), bool(self.tutorial_cleared),
-                         0, 0, 0, 0, 0xffffffff, 0xffffffff)
+                         self.rebirth_coins & 0xFFFF, self.daily_rebirth_recv & 0xFFFF,
+                         0, 0, 0xffffffff, 0xffffffff)
         b += struct.pack('<f', 0.0)
         b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
         # 2 x 0xa49bb0 (untagged u16, u32, u32)

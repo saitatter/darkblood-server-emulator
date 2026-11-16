@@ -1,4 +1,5 @@
 import struct
+import time
 
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import WireError, event, read_varuint, varuint, wide_string
@@ -24,10 +25,14 @@ from darkblood.games.network.messages import (
     PartyAcceptInviteReq,
     PartyInviteAck,
     PartyInviteReq,
+    RebirthCoinChangeNot,
     RoomInfoListAck,
     SelectDungeonAck,
 )
 from darkblood.games.state import selected_character
+
+# The daily-claim sender refuses when owned or received coins reach 3.
+DAILY_REBIRTH_COINS = 3
 
 
 class DungeonHandlers:
@@ -139,34 +144,71 @@ class DungeonHandlers:
         except (struct.error, ValueError):
             pass
 
+    def _current_char(self):
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        return char
+
     async def on_5093(self, correlation, body):
-        # eERC_GAMEPLAY_DIE_CHAR_REQ (sender 0x780000.c:10409) -> 5094 eERC_GAMEPLAY_DIE_CHAR_ACK.
-        # Player died in gameplay. Notify client of death, current HP (0), and available rebirth coins.
-        try:
-            req = GameplayDieCharReq.decode(body)
-            char_id = selected_character.get('id', 0)
-            ack = GameplayDieCharAck(
-                result=0,
-                from_char_uid=req.from_char_uid,
-                to_char_uid=char_id,
-                bDie=req.bDie,
-                damage=req.damage,
-                cur_hp=req.cur_hp,
-                max_hp=req.max_hp if req.max_hp > 0 else 500,
-                die_count=1,
-                rebirth_coin=5
-            ).encode()
-            await self.transport.send_event(event(5094, ack, correlation),
-                                            note='gameplay die char ack')
-        except (struct.error, ValueError):
-            pass
+        # eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0) -> 5094 (0x0078F090).
+        # bDie = 1: echo the client's own UID so the handler opens the revive
+        # window (page 0x6B). bDie = 0: revive; spend one rebirth coin and
+        # report the remaining count in the trailing u16.
+        req = GameplayDieCharReq.decode(body)
+        char = self._current_char()
+        coins = 0
+        if char is not None:
+            coins = int(char.get('rebirth_coins', 3))
+            if not req.bDie and coins > 0:
+                coins -= 1
+                char['rebirth_coins'] = coins
+                self.store().save()
+        self.die_count = getattr(self, 'die_count', 0) + (1 if req.bDie else 0)
+        ack = GameplayDieCharAck(
+            result=0,
+            char_uid=req.char_uid,
+            other_uid=0,
+            bDie=req.bDie,
+            damage=req.damage,
+            cur_hp=req.cur_hp,
+            max_hp=req.max_hp,
+            die_count=self.die_count,
+            rebirth_coin=coins,
+        ).encode()
+        await self.transport.send_event(event(5094, ack, correlation),
+                                        note='gameplay die char ack (die=%d coins=%d)' % (req.bDie, coins))
 
     async def on_2448(self, correlation, body):
-        # eEGS_DAILY_REBIRTH_COIN_USE_REQ (0x00790000.c:10218) -> 2449 eEGS_DAILY_REBIRTH_COIN_USE_ACK.
-        # Revive character on screen using a rebirth coin.
-        ack = DailyRebirthCoinUseAck(result=0, daily_recv_cnt=1, pcbang_coin_remain=5).encode()
+        # eEGS_DAILY_REBIRTH_COIN_USE_REQ -> 2449 (0x0079DC70) + 2286 (0x007983B0).
+        # Daily claim of free rebirth coins: top the owned coins up to 3, count
+        # them as received today, then announce the new total with 2286.
+        req = DailyRebirthCoinUseReq.decode(body)
+        char = self._current_char()
+        if char is None:
+            await self.transport.send_event(event(2449, struct.pack('<I', 1), correlation),
+                                            note='daily rebirth coin fail (no char)')
+            return
+        today = time.strftime('%Y-%m-%d')
+        if char.get('daily_rebirth_day') != today:
+            char['daily_rebirth_day'] = today
+            char['daily_rebirth_recv'] = 0
+        coins = int(char.get('rebirth_coins', 3))
+        received = int(char.get('daily_rebirth_recv', 0))
+        granted = max(0, min(DAILY_REBIRTH_COINS - coins, DAILY_REBIRTH_COINS - received))
+        coins += granted
+        received += granted
+        char['rebirth_coins'] = coins
+        char['daily_rebirth_recv'] = received
+        self.store().save()
+        ack = DailyRebirthCoinUseAck(result=0, daily_recv_cnt=received, pcbang_coin_remain=0).encode()
         await self.transport.send_event(event(2449, ack, correlation),
-                                        note='daily rebirth coin use ack')
+                                        note='daily rebirth coin use ack (pcbang=%d +%d)' % (req.coin_type, granted))
+        await self.transport.send_event(event(2286, RebirthCoinChangeNot(result=0, coins=coins).encode()),
+                                        note='rebirth coin change not (%d)' % coins)
 
     async def on_5045(self, correlation, body):
         # eERC_BACK_TO_SQUARE_REQ (0x007A0000.c:8367) -> 5046 eERC_BACK_TO_SQUARE_ACK (0x007897F0).

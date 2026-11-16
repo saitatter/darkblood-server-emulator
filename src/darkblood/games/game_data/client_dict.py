@@ -249,3 +249,43 @@ def char_level_stat(char_class: int, level: int) -> dict:
         'mp': 50 + level * 20,
     }
 
+
+
+ITEM_EQUIP_FILES = ('item_equip1_15lv.lua', 'item_equip20_27lv.lua', 'item_equip30_37lv.lua',
+                    'item_equip40_47lv.lua', 'item_equip50_57lv.lua')
+DURABILITY_RE = re.compile(r'^ {4}Durability = ([\d.]+),?$')
+ITEM_ID_RE = re.compile(r'^ {4}ItemID = "([^"]+)",?$')
+
+
+@lru_cache(maxsize=None)
+def item_durabilities():
+    """Returns {item id: max Durability} from the item_equip*.lua dictionaries.
+
+    Keys are emitted sorted, so Durability precedes ItemID inside an entry.
+    The client stores the maximum as item prop +0xBE and treats an item whose
+    current durability (Item +0x07, f32) is <= 0 as broken (0x00A49920): broken
+    gear is skipped when equipment stats are summed (0x009D89B0).
+    """
+    out = {}
+    for name in ITEM_EQUIP_FILES:
+        path = data_root() / name
+        if not path.exists():
+            continue
+        durability = None
+        for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
+            if line.startswith('  {'):
+                durability = None
+                continue
+            m = DURABILITY_RE.match(line)
+            if m:
+                durability = float(m.group(1))
+                continue
+            m = ITEM_ID_RE.match(line)
+            if m and durability is not None:
+                out[m.group(1)] = durability
+    return out
+
+
+def item_max_durability(code: str):
+    """Max durability of an equipment item, or None when the table lacks it."""
+    return item_durabilities().get(code)

@@ -149,11 +149,15 @@ class ActiveWarFlagReq:
 
 @dataclass
 class GameplayDieCharReq:
-    """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (0x00780000.c:10409).
+    """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0, 21 bytes, no prefix).
 
-    Wire format: i64 from_char_uid + bool bDie + i32 damage + i32 cur_hp + i32 max_hp (21 bytes).
+    Wire format: u64 char_uid + bool bDie + u32 + u32 + u32 (0x00B353D0,
+    0x00B35630, 3 x 0x00B352B0). char_uid is the client's own UID: the 5094
+    handler compares the echoed value with 0x00946570. Observed live on death:
+    uid 0, bDie 1, three zero words. The u32 meanings are not recovered; the
+    5094 handler converts the first two to floats for 0x0055BEF0.
     """
-    from_char_uid: int = 0
+    char_uid: int = 0
     bDie: bool = True
     damage: int = 0
     cur_hp: int = 0
@@ -162,46 +166,53 @@ class GameplayDieCharReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GameplayDieCharReq':
         if len(data) >= 21:
-            from_uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?iii', data, 0)
-            return cls(from_char_uid=from_uid, bDie=bDie, damage=damage, cur_hp=cur_hp, max_hp=max_hp)
+            uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?III', data, 0)
+            return cls(char_uid=uid, bDie=bDie, damage=damage, cur_hp=cur_hp, max_hp=max_hp)
         return cls()
 
 @dataclass
 class GameplayDieCharAck:
-    """Opcode 5094: eERC_GAMEPLAY_DIE_CHAR_ACK (On_eERC_GAMEPLAY_DIE_CHAR_ACK 0x0078F090).
+    """Opcode 5094: eERC_GAMEPLAY_DIE_CHAR_ACK (handler 0x0078F090, assembly-checked).
 
-    Wire format:
-      i32 result (0)
-      i64 from_char_uid
-      i64 to_char_uid
+    Wire format after the u32 result (0x00A1EA20):
+      i64 char_uid   compared with the own UID (0x00946570)
+      i64 other_uid  (meaning not recovered; 0)
       bool bDie
-      i32 damage
-      i32 cur_hp
-      i32 max_hp
-      u16 die_count
-      (if bDie and to_char_uid == player_uid):
-      u16 sRebirthCoin
+      u32, u32, u32  (meanings not recovered; echoed from the request)
+      u16            (meaning not recovered)
+      u16 rebirth coins -- read only when bDie == 0 and char_uid is the own
+                     UID (the revive case).
+    With bDie set and char_uid == own UID the handler opens page 0x6B through
+    0x008FC100(1). The previous emulator layout put an attacker UID first,
+    so the client never matched its own UID and showed no revive window.
     """
     result: int = 0
-    from_char_uid: int = 0
-    to_char_uid: int = 0
+    char_uid: int = 0
+    other_uid: int = 0
     bDie: bool = True
     damage: int = 0
     cur_hp: int = 0
-    max_hp: int = 500
-    die_count: int = 1
-    rebirth_coin: int = 5
+    max_hp: int = 0
+    die_count: int = 0
+    rebirth_coin: int = 0
 
     def encode(self) -> bytes:
-        data = struct.pack('<iqq?iiiH', self.result, self.from_char_uid, self.to_char_uid,
-                           self.bDie, self.damage, self.cur_hp, self.max_hp, self.die_count)
-        if self.bDie:
-            data += struct.pack('<H', self.rebirth_coin)
+        data = struct.pack('<Iqq?IIIH', self.result, self.char_uid, self.other_uid, self.bDie,
+                           self.damage & 0xFFFFFFFF, self.cur_hp & 0xFFFFFFFF,
+                           self.max_hp & 0xFFFFFFFF, self.die_count & 0xFFFF)
+        if not self.bDie:
+            data += struct.pack('<H', self.rebirth_coin & 0xFFFF)
         return data
 
 @dataclass
 class DailyRebirthCoinUseReq:
-    """Opcode 2448: eEGS_DAILY_REBIRTH_COIN_USE_REQ. Client requests to revive with coin."""
+    """Opcode 2448: eEGS_DAILY_REBIRTH_COIN_USE_REQ (sender 0x0079D9xx): i32 prefix + bool.
+
+    A claim of free daily rebirth coins, not a revive. bool 0 is the daily
+    claim: the sender refuses locally when player +0x7E (received) >= 3
+    (UI_2659) or +0x7C (owned) >= 3 (UI_2646). bool 1 is a PC-bang variant.
+    Observed live: ffffff7f 00.
+    """
     prefix: int = 0x7FFFFFFF
     coin_type: int = 0
 
@@ -215,7 +226,9 @@ class DailyRebirthCoinUseReq:
 class DailyRebirthCoinUseAck:
     """Opcode 2449: eEGS_DAILY_REBIRTH_COIN_USE_ACK (On_eEGS_DAILY_REBIRTH_COIN_USE_ACK 0x0079DC70).
 
-    Wire format: i32 result (0 = success) + u16 sDailyRecvCnt + i32 nPCBangCoinRemain.
+    Wire format: u32 result (0 = success) + u16 -> player +0x7E (daily coins
+    received) + u32 (passed to page 0x12 0x0054A1E0; PC-bang value). The ack
+    does not change the owned coin count; 2286 does.
     """
     result: int = 0
     daily_recv_cnt: int = 1

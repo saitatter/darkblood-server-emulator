@@ -96,7 +96,11 @@ class CharacterStore:
 
 
 EQUIP_CONTAINER = 1  # item container treated as worn by the client (0x008354D0)
-INVENTORY_BAG_CONTAINER = 2
+# Container value 2 is reserved: 0x008354D0 drops every item whose container
+# is 2 without storing it, so a bag with id 2 never shows moved/added items
+# (live: unequipping into it left the client's slot empty and reusable).
+RESERVED_CONTAINER = 2
+INVENTORY_BAG_CONTAINER = 3
 DEFAULT_BAG_CODE = 'Ibaga0004'
 DEFAULT_BAG_CAPACITY = 5
 
@@ -107,7 +111,7 @@ def ensure_inventory(char):
     Characters created before inventory support have no 'bags'/'items'; they
     receive the client's default equipment for their job
     (DictItem:LoadDefaultEquipItem), worn in container 1. Live-verified: the
-    selected character renders with it. Container 2 provides an initial 5-cell
+    selected character renders with it. Container 3 provides an initial 5-cell
     Ibaga0004 bag in UI slot 0 so inventory items can be viewed and stored.
     Returns True if the record changed.
     """
@@ -123,8 +127,17 @@ def ensure_inventory(char):
         ]
         changed = True
     else:
-        # Migrate existing records that only had the equipment bag
         bags = char['bags']
+        # Migrate records whose first bag used the reserved container id 2.
+        if any(b.get('bag_id') == RESERVED_CONTAINER for b in bags):
+            for b in bags:
+                if b.get('bag_id') == RESERVED_CONTAINER:
+                    b['bag_id'] = INVENTORY_BAG_CONTAINER
+            for item in char.get('items', []):
+                if item.get('container') == RESERVED_CONTAINER:
+                    item['container'] = INVENTORY_BAG_CONTAINER
+            changed = True
+        # Migrate existing records that only had the equipment bag
         if not any(b.get('bag_id') == INVENTORY_BAG_CONTAINER for b in bags):
             bags.append({'bag_id': INVENTORY_BAG_CONTAINER, 'code': DEFAULT_BAG_CODE,
                          'b28': 0, 'b29': DEFAULT_BAG_CAPACITY, 'w2a': 0})

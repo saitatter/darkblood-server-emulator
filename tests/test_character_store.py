@@ -53,8 +53,8 @@ class CharacterStoreTest(unittest.TestCase):
         self.assertTrue(changed)
         self.assertIn('bags', char)
         self.assertIn('items', char)
-        # Bag container 2 has capacity 5
-        bag2 = next((b for b in char['bags'] if b.get('bag_id') == 2), None)
+        # Inventory bag uses container 3 (2 is ignored by 0x008354D0), capacity 5
+        bag2 = next((b for b in char['bags'] if b.get('bag_id') == 3), None)
         self.assertIsNotNone(bag2)
         self.assertEqual(bag2['b29'], 5)
         self.assertEqual(bag2['code'], 'Ibaga0004')

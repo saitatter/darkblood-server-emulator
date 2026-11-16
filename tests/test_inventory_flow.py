@@ -21,13 +21,13 @@ class InventoryFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             char['items'] = [
                 dict(code='AbodT1N', uid=1, container=1, slot=0, count=10),
-                dict(code='AbodT1N', uid=2, container=2, slot=1, count=5),
+                dict(code='AbodT1N', uid=2, container=3, slot=1, count=5),
             ]
             selected_character['id'] = char_id
             session.GameSession.store().save()
 
             # 1. Drag item (2036 -> 2037)
-            client.send_event(2036, struct.pack('<qqi', 1, 2, 0))
+            client.send_event(2036, struct.pack('<qqi', 1, 3, 0))
             _, ack2037 = await client.expect_event(2037)
             self.assertEqual(struct.unpack_from('<i', ack2037)[0], 0)
             self.assertEqual(ack2037[4], 0x10)  # tag 0x10 vector

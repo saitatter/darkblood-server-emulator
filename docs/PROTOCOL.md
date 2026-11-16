@@ -245,6 +245,22 @@ Headless flow checks the complete default body; live acceptance is pending.
    - +0x29 (b29): cell capacity (0x005509F0: BagSize = 5 for Ibaga0004). Setting 0 displayed zero cells.
    - +0x2A (w2a): UI bag slot index (0..4). UI slot 0 is 0.
 
+### Death, revive and rebirth coins (2026-11-16; static + headless)
+
+- 5093 request (`0x0078EDF0`, no prefix): `u64 own_uid, bool bDie, u32, u32, u32`.
+- 5094 ack (`0x0078F090`): `u32 result, i64 char_uid, i64 other, bool bDie, u32, u32, u32, u16`, plus `u16 rebirth_coins` only when `bDie == 0`
+  and `char_uid` is the player's own UID. When `bDie` is set and the UID is the player's own, the handler opens the revive page 0x6B.
+- 2448 request: `i32 prefix, bool pcbang`. Sent only while player `+0x7E < 3` and `+0x7C < 3`.
+- 2449 ack (`0x0079DC70`): `u32 result, u16 -> player +0x7E, u32` (page 0x12).
+- 2286 not (`0x007983B0`): `u32 result, u16 -> player +0x7C` (owned coins; a gain shows UI_2653).
+- 2007 details `+0x59`/`+0x5B` initialise player `+0x7C`/`+0x7E` (`0x0095A150`).
+
+### Item durability and reserved container 2 (2026-11-16; static)
+
+Item base field names come from `0x006741F0`: `+0` Amount, `+2` UpgStep, `+4` Quality, `+6` RCHold, `+7` Durability (f32).
+If durability is <= 0 while the prop's max (`+0xBE`) is > 0, the item is broken (`0x00A49920`), and `0x009D89B0` leaves it out of the stat sum.
+`0x008354D0` ignores items whose container is 2, so bag ids must avoid 2 (as well as 1, which is the equipment).
+
 ## 6. Instrumentation and continuation addresses
 
 | Address / slot | Role |

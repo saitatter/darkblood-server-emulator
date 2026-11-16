@@ -49,17 +49,25 @@ class DungeonFlowTest(ServerTestCase):
             _, ack2407 = await client.expect_event(2407)
             self.assertEqual(struct.unpack_from('<i', ack2407)[0], 0)
 
-            # 8. Gameplay death (5093 -> 5094)
-            client.send_event(5093, struct.pack('<q?iii', 0, True, 50, 0, 500))
+            # 8. Gameplay death (5093 -> 5094): live body is uid 0, die 1, 3 x u32.
+            client.send_event(5093, bytes.fromhex('000000000000000001000000000000000000000000'))
             _, ack5094 = await client.expect_event(5094)
-            res, from_uid, to_uid, bDie, dmg, hp, max_hp, die_cnt, coins = struct.unpack_from('<iqq?iiiHH', ack5094)
-            self.assertEqual((res, bDie, hp, max_hp, coins), (0, True, 0, 500, 5))
+            res, uid, other, bDie, a, b, c, cnt = struct.unpack_from('<Iqq?IIIH', ack5094)
+            self.assertEqual((res, uid, other, bDie), (0, 0, 0, True))
+            self.assertEqual(len(ack5094), 35)  # no coin u16 when bDie is set
 
-            # 9. Daily rebirth coin use (2448 -> 2449)
+            # 8b. Revive (bDie = 0) spends one coin; trailing u16 = coins left.
+            client.send_event(5093, struct.pack('<q?III', 0, False, 0, 0, 0))
+            _, ack5094 = await client.expect_event(5094)
+            self.assertEqual(struct.unpack_from('<?', ack5094, 20)[0], False)
+            self.assertEqual(struct.unpack_from('<H', ack5094, 35)[0], 2)
+
+            # 9. Daily rebirth coin claim (2448 -> 2449 + 2286): tops coins up to 3.
             client.send_event(2448, bytes.fromhex('ffffff7f00'))
             _, ack2449 = await client.expect_event(2449)
-            res, daily_cnt, pcbang = struct.unpack_from('<iHI', ack2449)
-            self.assertEqual((res, daily_cnt, pcbang), (0, 1, 5))
+            self.assertEqual(struct.unpack_from('<IHI', ack2449), (0, 1, 0))
+            _, not2286 = await client.expect_event(2286)
+            self.assertEqual(struct.unpack_from('<IH', not2286), (0, 3))
 
             # 10. Choice reward party rank (5090 -> 5091)
             client.send_event(5090, struct.pack('<ii', 0x7fffffff, 0))

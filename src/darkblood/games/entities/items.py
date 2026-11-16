@@ -27,7 +27,12 @@ class Item:
         (8 GetItemProp 0x009E5440 call sites read it), i64 +0xBF container
         (1 = equipped, 2 = skipped, otherwise a bag id looked up by
         0x00828600), u8 +0xC7 slot index in the container, J-wstring +0xC8.
-    Meanings of the base fields are not recovered; constructor defaults are sent.
+    Base field names come from the Lua item builder 0x006741F0: +0 Amount,
+    +2 UpgStep, +4 Quality, +6 RCHold, +7 Durability (f32). Durability must be
+    positive: 0x00A49920 reports gear with durability <= 0 as broken and
+    0x009D89B0 skips broken gear when summing equipment stats, so sending 0
+    left every weapon and armour piece without effect. The other base fields
+    keep the constructor defaults.
     """
     code: str
     uid: int
@@ -35,12 +40,22 @@ class Item:
     container: int = -1
     slot: int = 0
     count: int = 1
+    durability: float = None  # None -> the item's max Durability from the client tables
+
+    def current_durability(self) -> float:
+        if self.durability is not None:
+            return float(self.durability)
+        from darkblood.games.game_data.client_dict import item_max_durability
+        maximum = item_max_durability(self.code)
+        # Unknown items (tables absent, or non-equipment) get a positive value
+        # so equipment is never reported as broken.
+        return maximum if maximum is not None else 100.0
 
     def encode(self) -> bytes:
         # 0x00A4B250 x2 (+0x0C, +0x6B): varint count (max 2) of 10-byte
         # 0x00A49BB0 entries (u16, u32, u32); sent empty.
         b = varuint(0) + varuint(0)
-        b += struct.pack('<HHHf?H', self.count, 0xFFFF, 0xFFFF, 0.0, False, 0xFFFF)
+        b += struct.pack('<HHHf?H', self.count, 0xFFFF, 0xFFFF, self.current_durability(), False, 0xFFFF)
         b += b'\x10' + varuint(0) + b'\x10' + varuint(0)
         b += struct.pack('<Iqq', 0, 0, 0)
         b += struct.pack('<?', False) + b'\x10' + varuint(0)

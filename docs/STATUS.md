@@ -1,5 +1,32 @@
 # Research status and handoff
 
+## Dungeon damage, revive, daily coins, unequip — saita machine, 2026-11-16 (static + headless; live retest pending)
+
+Player report: very low damage to the first-dungeon boss; revive, daily rebirth coins and unequip did not work.
+Evidence is the wire log of the 20:24-20:38 session plus static reconstruction. None of the fixes has been retested live yet.
+
+1. Low damage: Item base +0x07 is f32 `Durability` (field names from the Lua item builder `0x006741F0`:
+   +0 Amount, +2 UpgStep, +4 Quality, +6 RCHold, +7 Durability). The emulator sent 0.0 for every item. `0x00A49920`
+   marks an item broken when prop +0xBE (max durability) > 0 and durability <= 0, and `0x009D89B0` skips broken
+   items when it sums equipment stats, so the weapon and armour gave no stats. The live `2143` durability report listed 0 for all 8 items.
+   Items now send the max `Durability` from `item_equip*.lua` (`client_dict.item_max_durability`), or 100.0 when the item is unknown.
+   UpgStep/Quality still send the constructor's 0xFFFF; their effect on stats is not checked.
+   Player +0x110..+0x118 (five u16, from details +0xBA..+0xC2) are bonus stat points added to the charstat base (`JUnit_Stat` vf38 `0x00845070`, 2110 handler `0x007743A0`). They are still sent as 0, which is correct for a new character.
+2. Revive: 5094 (`0x0078F090`, checked in the assembly) reads, after the u32 result, `i64 char_uid, i64 other, bool bDie, u32, u32, u32, u16`,
+   plus `u16 coins` only when bDie == 0 and char_uid == own UID. When bDie is set and the UID is the player's own, the handler opens page 0x6B (`0x008FC100(1)`).
+   The old ack put an attacker UID first, so the client never matched its own UID. The request (`0x0078EDF0`) is
+   `u64 uid, bool, 3 x u32` with no prefix; live uid = 0, because details +0x1C is 0. The ack now echoes that UID.
+   A revive (bDie = 0) spends a stored coin. Which request the revive button sends has not been observed yet.
+3. Daily coins: 2448 is a claim, not a revive. Its sender refuses locally when player +0x7E (coins received) or +0x7C (coins owned) is >= 3.
+   2449 = `u32 result, u16 -> +0x7E, u32` (PC-bang value). The owned coins change only through 2286 (`u32 result, u16 -> +0x7C`), which the
+   emulator never sent. Details +0x59/+0x5B (copied by `0x0095A150` to +0x7C/+0x7E) were 0. The emulator now stores `rebirth_coins`
+   (default 3) and `daily_rebirth_recv` (reset daily) and sends 2449 + 2286.
+4. Unequip: `0x008354D0` returns without storing any item whose container is 2. The inventory bag used id 2, so items dragged
+   into it were dropped by the client. Live: uid 7 was unequipped to bag 2 slot 0, and the client then picked slot 0 again for uid 4;
+   the server swapped them back into the equipment. The bag is now id 3, and `ensure_inventory` migrates stored bags/items from 2 to 3.
+
+Open: confirm all four live; find the revive-button request; check whether `2143` values are f32 before persisting durability.
+
 ## 1v1 Town Duels, Arena Matchmaking, Multi-Client World Presence & SQLite Backend — 2026-11-16 ~22:45
 
 * **1v1 PvP Town Duels & Arena Matchmaking (Opcodes 5097 - 5113, 2304 - 2309, 5138, 5269 - 5275, 2550 - 2553)**:

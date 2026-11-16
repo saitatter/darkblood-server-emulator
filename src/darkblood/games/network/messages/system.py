@@ -220,7 +220,11 @@ class PromotionNot:
 
 @dataclass
 class RebirthCoinChangeNot:
-    """Opcode 2286: eEGS_REBIRTH_COIN_CHANGE_NOT (0x007983B0)."""
+    """Opcode 2286: eEGS_REBIRTH_COIN_CHANGE_NOT (0x007983B0).
+
+    u32 result + u16 owned rebirth coins, stored at player +0x7C; a positive
+    difference shows UI_2653 ("received N coins").
+    """
     result: int = 0
     coins: int = 10
 
