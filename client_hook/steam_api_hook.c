@@ -388,16 +388,93 @@ typedef long (__stdcall *CreateDevice_t)(void* self, unsigned int Adapter, unsig
                                         void* pPresentationParameters, void** ppReturnedDeviceInterface);
 static CreateDevice_t orig_CreateDevice = NULL;
 
+/* Borderless fullscreen. The game's "Full Screen" option (JHoundOption +0x7C,
+ * i.e. "Window Mode" unchecked; RecreateDevice passes bWindow = !+0x7C to
+ * DXUTCreateDevice) normally asks D3D9 for an exclusive fullscreen device.
+ * Such requests are turned into a windowed device on a WS_POPUP window that
+ * covers the window's monitor, with the back buffer at the monitor's size.
+ * The parameters are changed in place, so DXUT's stored settings say
+ * "windowed" too. After creation, RecreateDevice compares the client rect
+ * with the requested size and recreates at the client size, which here is
+ * the monitor size (stable). Windowed mode is untouched. Create the file
+ * exclusive_fullscreen.txt next to the exe to keep exclusive fullscreen.
+ * D3DPRESENT_PARAMETERS (x86): +0 BackBufferWidth, +4 BackBufferHeight,
+ * +28 hDeviceWindow, +32 Windowed, +48 FullScreen_RefreshRateInHz. */
+typedef struct {
+    UINT BackBufferWidth, BackBufferHeight, BackBufferFormat, BackBufferCount;
+    UINT MultiSampleType; DWORD MultiSampleQuality; UINT SwapEffect;
+    HWND hDeviceWindow; BOOL Windowed; BOOL EnableAutoDepthStencil;
+    UINT AutoDepthStencilFormat; DWORD Flags; UINT FullScreen_RefreshRateInHz;
+    UINT PresentationInterval;
+} PresentParams;
+
+static HWND g_deviceWindow;
+static int g_borderless = -1;
+
+static int BorderlessEnabled(void) {
+    if (g_borderless < 0)
+        g_borderless = GetFileAttributesA("exclusive_fullscreen.txt") == INVALID_FILE_ATTRIBUTES;
+    return g_borderless;
+}
+
+static void ApplyBorderless(PresentParams* pp, HWND focus) {
+    HWND hwnd;
+    MONITORINFO mi;
+    int w, h;
+    if (!pp || pp->Windowed || !BorderlessEnabled()) return;
+    hwnd = pp->hDeviceWindow ? pp->hDeviceWindow : (focus ? focus : g_deviceWindow);
+    if (!hwnd) return;
+    g_deviceWindow = hwnd;
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoA(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &mi)) return;
+    w = mi.rcMonitor.right - mi.rcMonitor.left;
+    h = mi.rcMonitor.bottom - mi.rcMonitor.top;
+    RawLogFmt("[D3D9] borderless: fullscreen %ux%u -> windowed popup %dx%d", pp->BackBufferWidth, pp->BackBufferHeight, w, h);
+    SetWindowLongA(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+    SetWindowLongA(hwnd, GWL_EXSTYLE, GetWindowLongA(hwnd, GWL_EXSTYLE) & ~(WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME));
+    SetWindowPos(hwnd, HWND_NOTOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, w, h,
+                 SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    pp->Windowed = TRUE;
+    pp->FullScreen_RefreshRateInHz = 0;
+    pp->BackBufferWidth = w;
+    pp->BackBufferHeight = h;
+}
+
+typedef long (__stdcall *Reset_t)(void* self, void* pPresentationParameters);
+static Reset_t orig_Reset = NULL;
+
+static long __stdcall Hook_Reset(void* self, void* pPresentationParameters) {
+    ApplyBorderless((PresentParams*)pPresentationParameters, NULL);
+    return orig_Reset(self, pPresentationParameters);
+}
+
+static void HookDeviceReset(void* device) {
+    void** vtbl = *(void***)device;
+    DWORD protect;
+    if (orig_Reset || !vtbl) return;
+    if (VirtualProtect(&vtbl[16], sizeof(void*), PAGE_EXECUTE_READWRITE, &protect)) {
+        orig_Reset = (Reset_t)vtbl[16];   /* IDirect3DDevice9::Reset */
+        vtbl[16] = (void*)Hook_Reset;
+        VirtualProtect(&vtbl[16], sizeof(void*), protect, &protect);
+        RawLog("[D3D9] Hooked IDirect3DDevice9::Reset");
+    }
+}
+
 static long __stdcall Hook_CreateDevice(void* self, unsigned int Adapter, unsigned int DeviceType,
                                         void* hFocusWindow, unsigned long BehaviorFlags,
                                         void* pPresentationParameters, void** ppReturnedDeviceInterface) {
-    RawLogFmt("[D3D9] CreateDevice Adapter=%u Type=%u Flags=0x%08X Focus=%p",
-              Adapter, DeviceType, BehaviorFlags, hFocusWindow);
+    RawLogFmt("[D3D9] CreateDevice Adapter=%u Type=%u Flags=0x%08X Focus=%p Windowed=%d %ux%u",
+              Adapter, DeviceType, BehaviorFlags, hFocusWindow,
+              pPresentationParameters ? ((PresentParams*)pPresentationParameters)->Windowed : -1,
+              pPresentationParameters ? ((PresentParams*)pPresentationParameters)->BackBufferWidth : 0,
+              pPresentationParameters ? ((PresentParams*)pPresentationParameters)->BackBufferHeight : 0);
+    ApplyBorderless((PresentParams*)pPresentationParameters, (HWND)hFocusWindow);
 
     long hr = orig_CreateDevice(self, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
                                 pPresentationParameters, ppReturnedDeviceInterface);
     if (hr >= 0 && *ppReturnedDeviceInterface) {
         RawLogFmt("[D3D9] CreateDevice OK (Adapter %u): hr=0x%08X dev=%p", Adapter, hr, *ppReturnedDeviceInterface);
+        HookDeviceReset(*ppReturnedDeviceInterface);
         return hr;
     }
     RawLogFmt("[D3D9] CreateDevice failed (hr=0x%08X); trying Adapter 1...", hr);
@@ -447,6 +524,33 @@ static void* __stdcall Hook_Direct3DCreate9(unsigned int SDKVersion) {
         }
     }
     return pD3D;
+}
+
+/* Borderless install without patching d3d9.dll code: the inline
+ * Direct3DCreate9 hook was removed in 634b1e8 because it broke launching. A
+ * throw-away IDirect3D9 gives the vtable that all IDirect3D9 objects share;
+ * only its CreateDevice slot (16) is replaced, which is a data write. */
+static void InstallBorderlessHook(void) {
+    typedef void* (__stdcall *Create9_t)(unsigned int);
+    HMODULE d3d9;
+    Create9_t create;
+    void* d3d;
+    void** vtbl;
+    DWORD protect;
+    if (!BorderlessEnabled()) { RawLog("[D3D9] exclusive_fullscreen.txt present; borderless off"); return; }
+    d3d9 = LoadLibraryA("d3d9.dll");
+    create = d3d9 ? (Create9_t)GetProcAddress(d3d9, "Direct3DCreate9") : NULL;
+    d3d = create ? create(32) : NULL;   /* D3D_SDK_VERSION */
+    if (!d3d) { RawLog("[D3D9] borderless: no IDirect3D9; hook skipped"); return; }
+    vtbl = *(void***)d3d;
+    if (vtbl[16] != (void*)Hook_CreateDevice &&
+        VirtualProtect(&vtbl[16], sizeof(void*), PAGE_EXECUTE_READWRITE, &protect)) {
+        orig_CreateDevice = (CreateDevice_t)vtbl[16];
+        vtbl[16] = (void*)Hook_CreateDevice;
+        VirtualProtect(&vtbl[16], sizeof(void*), protect, &protect);
+        RawLog("[D3D9] borderless: CreateDevice vtable hook installed");
+    }
+    ((unsigned long (__stdcall*)(void*))vtbl[2])(d3d);   /* Release */
 }
 
 /* Return to the server list after a server disconnect instead of exiting.
@@ -680,6 +784,8 @@ static void InstallHooks() {
         orig_connect = (connect_t)InstallInlineHook((void*)GetProcAddress(hWs2, "connect"), (void*)Hook_connect);
     }
     RawLog("[INIT] Network hook setup complete");
+
+    InstallBorderlessHook();
 
     LoadBreakpoints();
 }

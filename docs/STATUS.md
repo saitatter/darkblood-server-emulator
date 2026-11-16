@@ -1,5 +1,16 @@
 # Research status and handoff
 
+## Borderless fullscreen — saita machine, 2026-11-16 ~21:55 (device level verified; visual check pending)
+
+The game's "Full Screen" setting ("Window Mode" unchecked; JHoundOption +0x7C, RecreateDevice passes `bWindow = !+0x7C`) now runs
+borderless. The shim replaces only `IDirect3D9::CreateDevice` (vtable slot 16, found through a throw-away IDirect3D9; no code patch in d3d9.dll;
+the old inline Direct3DCreate9 hook was removed in 634b1e8 because it broke launch) and `IDirect3DDevice9::Reset` (slot 16 of the device vtable).
+For an exclusive fullscreen request it sets `Windowed=TRUE`, sets the back buffer to the monitor size, and makes the window `WS_POPUP` covering its monitor.
+Windowed mode is unchanged. `exclusive_fullscreen.txt` next to the exe disables the conversion.
+Live log: the saved option requested `Windowed=0 2560x1440`, which became a windowed popup 2560x1440; the window style was `0x94000000`.
+The window rect read from PowerShell was 2474x1392, which is unexplained (DPI virtualization of the reader, or a later resize by the game). Confirm on screen.
+The live check was stopped early because the test window opened under the user's foreground apps on the primary monitor.
+
 ## Return to the server list after a disconnect — saita machine, 2026-11-16 ~21:45 (live-verified)
 
 Before this change, losing the server closed the client. `JUserClient::vf0c` (`0x007869A0`) sets `0x00F45204 = 1`,
