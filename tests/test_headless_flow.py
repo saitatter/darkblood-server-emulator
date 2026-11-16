@@ -190,6 +190,30 @@ class HeadlessFlowTest(unittest.TestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_quest_completion_persists(self):
+        quest = models.jhash('Q0001S01')
+        stamp = 'x'.encode('utf-16le')
+        req = game_wire.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Quester'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, first = await client.expect_event(2410)
+            client.send_event(2073, req, compressed=True)
+            await client.expect_event(2074)
+            client.send_event(2076, req, compressed=True)
+            await client.expect_event(2077)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, second = await client.expect_event(2410)
+            return first, second
+
+        first, second = self.run_async(self.with_server(scenario))
+        self.assertEqual(first, b'\x13\x80\x00')  # empty set, bWeekly false
+        self.assertEqual(second, b'\x13\x81' + struct.pack('<I', quest) + b'\x00')
+
     def test_thief_creation_and_selection(self):
         async def scenario(client):
             out = await lobby_flow(client)

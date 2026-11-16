@@ -18,6 +18,7 @@ from models import (
     layer_net_id,
     NpcFirstMeetAck,
     PostListAck,
+    QuestHistoryNot,
     QuestCompleteAck,
     QuestStartAck,
     RelayAddressNot,
@@ -280,6 +281,11 @@ class GameSession:
         ack = build_select_char_ack(char)
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)
+        # eEGS_QUEST_HISTORY_REFRESH_NOT (handler 0x76C1E0): restore the
+        # completed-quest set persisted by on_2076.
+        done = [int(q) for q in char.get('quests_done', [])]
+        await self.transport.send_event(event(2410, QuestHistoryNot(quest_ids=done).encode()),
+                                        note='quest history not (%d)' % len(done))
 
     async def on_2012(self, correlation, body):
         # eEGS_CREATE_CHARACTER_REQ -> eEGS_CREATE_CHARACTER_ACK, handler
@@ -368,8 +374,13 @@ class GameSession:
             quest_id = struct.unpack_from('<I', body, offset + length)[0]
         except (WireError, struct.error):
             pass
-        self.quest_uid = getattr(self, 'quest_uid', 0) + 1
-        ack = QuestStartAck(quest_id=quest_id, quest_uid=self.quest_uid).encode()
+        char = self.store().get(self.account, selected_character.get('id', 1))
+        active = char.setdefault('quests_active', {}) if char else {}
+        uid = active.get(str(quest_id)) or max([0] + list(active.values())) + 1
+        active[str(quest_id)] = uid
+        if char:
+            self.store().save()
+        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
 
@@ -406,6 +417,12 @@ class GameSession:
             pass
         char = self.store().get(self.account, selected_character.get('id', 1)) or {}
         total = Character.from_dict(char).u66 if char else Character().u66
+        if char:  # persist completion (sent back in 2410 at the next selection)
+            char.setdefault('quests_active', {}).pop(str(quest_id), None)
+            done = char.setdefault('quests_done', [])
+            if quest_id not in done:
+                done.append(quest_id)
+            self.store().save()
         ack = QuestCompleteAck(quest_id=quest_id, total=total).encode()
         await self.transport.send_event(event(2077, ack, correlation),
                                         note='quest complete ack (%08x)' % quest_id)

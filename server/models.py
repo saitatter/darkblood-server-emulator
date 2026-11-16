@@ -583,6 +583,23 @@ class CreateRoomAck:
 
 
 @dataclass
+class QuestHistoryNot:
+    """Opcode 2410: eEGS_QUEST_HISTORY_REFRESH_NOT (handler 0x0076C1E0).
+
+    Names from the read-failure message ("setQuestHistory >> bWeekly"): tag
+    0x13 set of i32 quest ids (jhash of 'Q....S..'), bool bWeekly.
+    """
+    quest_ids: list = field(default_factory=list)
+    weekly: bool = False
+
+    def encode(self) -> bytes:
+        body = b'\x13' + varuint(len(self.quest_ids))
+        for q in sorted(self.quest_ids):
+            body += struct.pack('<i', q - (1 << 32) if q >= 1 << 31 else q)
+        return body + struct.pack('<?', self.weekly)
+
+
+@dataclass
 class QuestCompleteAck:
     """Opcode 2077: eEGS_QUEST_COMPLETE_ACK (JAppPageTalkBox, case 0x659F00 -> 0x656870).
 
