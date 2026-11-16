@@ -135,22 +135,31 @@ class CommerceHandlers:
             await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (invalid container 2)')
             return
 
-        if req.to_container == EQUIPPED:
-            code = dragged.get('code', '')
-            if not (code.startswith('A') or code.startswith('W')):
-                ack = DragItemAck(result=1).encode()
-                await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (item not equippable)')
-                return
+        from darkblood.player_management.characters import fits_equip_slot
+        if req.to_container == EQUIPPED and not fits_equip_slot(dragged.get('code', ''), req.to_slot):
+            ack = DragItemAck(result=1).encode()
+            await self.transport.send_event(event(2037, ack, correlation),
+                                            note='drag item fail (item does not fit equip slot %d)' % req.to_slot)
+            return
 
         target = next((i for i in items if i.get('container') == req.to_container and i.get('slot') == req.to_slot), None)
         from darkblood.games.entities.items import Item
-        if target and target is not dragged:
-            if old_container == EQUIPPED:
-                code = target.get('code', '')
-                if not (code.startswith('A') or code.startswith('W')):
-                    ack = DragItemAck(result=1).encode()
-                    await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (target not equippable)')
-                    return
+        if target is dragged:
+            # Dropped on its own cell: nothing moves. Sending the usual empty
+            # record for the old cell would clear the item in the client
+            # (live 2026-11-17: a repeated drag emptied the bag cell).
+            ack = DragItemAck(result=0, items=[Item(owner=char.get('id', -1), **dragged)]).encode()
+            await self.transport.send_event(event(2037, ack, correlation), note='drag item ack (no move)')
+            return
+        if target:
+            # The displaced item takes the dragged item's old cell; an
+            # equipment cell must accept it (live: a necklace landed in the
+            # shoulder slot and shoulder pads in the glove slot).
+            if old_container == EQUIPPED and not fits_equip_slot(target.get('code', ''), old_slot):
+                ack = DragItemAck(result=1).encode()
+                await self.transport.send_event(event(2037, ack, correlation),
+                                                note='drag item fail (displaced item does not fit equip slot %d)' % old_slot)
+                return
             target['container'], target['slot'] = old_container, old_slot
             dragged['container'], dragged['slot'] = req.to_container, req.to_slot
             self.store().save()
@@ -257,15 +266,22 @@ class CommerceHandlers:
             ]
         else:
             # Equip action: move from bag to equipped slot
-            from darkblood.player_management.characters import equip_slot_for
+            from darkblood.player_management.characters import fits_equip_slot
             code = target_item.get('code', '')
             if req.equip_slot >= 0:
                 target_slot = req.equip_slot
             else:
+                # Right-click: the item's own slot (swapping out what is there);
+                # accessories take the first free of slots 7-12.
                 taken = {i.get('slot') for i in items if i.get('container') == EQUIPPED}
-                target_slot = equip_slot_for(code, taken)
-                if target_slot is None:
-                    target_slot = 0 if code.startswith('W') else 0
+                fitting = [s for s in range(14) if fits_equip_slot(code, s)]
+                free = [s for s in fitting if s not in taken]
+                target_slot = (free or fitting or [None])[0]
+            if target_slot is None or not fits_equip_slot(code, target_slot):
+                ack = EquipItemAck(result=1).encode()
+                await self.transport.send_event(event(2043, ack, correlation),
+                                                note='equip item fail (%s does not fit slot %s)' % (code, target_slot))
+                return
             previous_equipped = next((i for i in items if i.get('container') == EQUIPPED and i.get('slot') == target_slot), None)
             if previous_equipped and previous_equipped is not target_item:
                 previous_equipped['container'] = old_container

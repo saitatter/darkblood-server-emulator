@@ -120,6 +120,26 @@ def equip_slot_for(code, taken):
     return slot
 
 
+def fits_equip_slot(code, slot):
+    """Whether an item may sit in equipment slot `slot`.
+
+    Armour with a known prefix only fits its own slot; weapons fit the hands
+    (offhand items the left hand, others the right); other A* items
+    (accessories, prefixes not mapped yet) only fit slots 7-12
+    (cloak, necklace, earrings, rings).
+    """
+    part = ARMOR_SLOTS.get(code[:4])
+    if part is not None:
+        return slot == part
+    if code.startswith(OFFHAND_PREFIXES):
+        return slot == WEAPON_LEFT
+    if code.startswith('W'):
+        return slot == WEAPON_RIGHT
+    if code.startswith('A'):
+        return 7 <= slot <= 12
+    return False
+
+
 def next_item_uid(char):
     """Per-character item UID counter (UIDs only need to be unique per owner here)."""
     uid = int(char.get('next_item_uid', 1))
