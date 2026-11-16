@@ -20,6 +20,7 @@ The output is game data: keep it out of the public emulator repository.
 import argparse
 import io
 import shutil
+import subprocess
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -119,14 +120,46 @@ def build(data_dir, out, groups=None):
     return totals
 
 
+def decompile_lua(out, unluac, java='java'):
+    """Decompile every Lua 5.1 chunk under files/ into lua_src/ with unluac.
+
+    unluac (https://sourceforge.net/projects/unluac/) is a third-party jar the
+    user downloads; it is not part of this repository. Output is reconstructed
+    source: verify against lua_listing/ before relying on details.
+    """
+    files_root, src_root = out / 'files', out / 'lua_src'
+    done = failed = 0
+    for path in sorted(files_root.rglob('*.lua')):
+        with open(str(path), 'rb') as f:
+            if f.read(5) != b'\x1bLuaQ':
+                continue
+        rel = path.relative_to(files_root)
+        dest = src_root / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        proc = subprocess.run([java, '-jar', str(unluac), str(path)],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600)
+        if proc.returncode == 0 and proc.stdout:
+            dest.write_bytes(proc.stdout)
+            done += 1
+        else:
+            failed += 1
+            print('[!] unluac failed: %s: %s' % (rel, proc.stderr.decode(errors='replace')[:200]))
+    return dict(decompiled=done, failed=failed)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument('--data', required=True, type=Path, help='game Data directory')
+    ap.add_argument('--data', type=Path, help='game Data directory (omit to only decompile)')
     ap.add_argument('--out', required=True, type=Path, help='private workspace root')
     ap.add_argument('--only', nargs='*', help='archive groups, e.g. dict ui map')
+    ap.add_argument('--unluac', type=Path, help='unluac jar: also write lua_src/')
+    ap.add_argument('--java', default='java', help='java executable for unluac')
     a = ap.parse_args()
-    groups = {x.lower() for x in a.only} if a.only else None
-    print(build(a.data, a.out, groups))
+    if a.data:
+        groups = {x.lower() for x in a.only} if a.only else None
+        print(build(a.data, a.out, groups))
+    if a.unluac:
+        print(decompile_lua(a.out, a.unluac, a.java))
 
 
 if __name__ == '__main__':
