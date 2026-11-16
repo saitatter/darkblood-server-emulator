@@ -116,3 +116,9 @@ python tools/gamectl.py stop
   - Do not guess packet schemas. Extract handlers using Ghidra (`tools/decomp.ps1`) or REA.
   - Document disassembled/decompiled function virtual addresses (VAs) in docstrings.
   - Keep `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` updated as new milestones are unlocked.
+
+---
+
+## 6. Issues & Community Feedback
+- **Open to Everyone**: Anyone is welcome and encouraged to open GitHub Issues, submit bug reports, share network packet dumps, or request opcode investigations.
+- **Issue Templates**: Pre-configured templates are available in the repository (`Bug Report` and `Opcode Investigation`), and blank issues are enabled.
