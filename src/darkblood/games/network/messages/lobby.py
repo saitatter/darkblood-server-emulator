@@ -215,6 +215,20 @@ class DeleteCharacterAck:
         return struct.pack('<iqi', self.result, self.char_uid, self.complete_time)
 
 @dataclass
+class UndeleteCharacterAck:
+    """Opcode 2247: eEGS_UNDELETE_CHARACTER_ACK (handler 0x0075A8A0).
+
+    Wire format: i32 result + i64 char uid. Result 0 clears the pending
+    deletion of that slot (0x006F02E0 with flag 0, time 0).
+    Request 2246 (sent by 0x00796BA0) has the same body as 2014.
+    """
+    result: int = 0
+    char_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iq', self.result, self.char_uid)
+
+@dataclass
 class ArenaBackToSquareReq:
     """Opcode 5165: eERC_ARENA_BACK_TO_SQUARE_REQ."""
     @classmethod

@@ -1,6 +1,9 @@
 """Integration tests for lobby flow: server/channel lists, character management, selection."""
 import struct
+import time
 import unittest
+
+from darkblood.games.entities.character import Character
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
@@ -26,9 +29,29 @@ class LobbyFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<I', ack2007)[0], 0)
 
             # Character deletion
+            # Deletion is pending: the record stays until the delay ends.
             client.send_event(2014, struct.pack('<iq', 0x7fffffff, char_id))
             _, ack2015 = await client.expect_event(2015)
-            self.assertEqual(struct.unpack_from('<iqi', ack2015), (0, char_id, 0))
+            result, uid, done_at = struct.unpack_from('<iqi', ack2015)
+            self.assertEqual((result, uid), (0, char_id))
+            self.assertGreater(done_at, time.time())
+            store = session.GameSession.store()
+            self.assertEqual(store.get('OfflinePlayer', char_id)['delete_time'], done_at)
+            entry = Character.from_dict(store.get('OfflinePlayer', char_id))
+            self.assertEqual((entry.b5d, entry.u5e), (True, done_at))
+
+            # Cancel Delete (2246 -> 2247) clears it.
+            client.send_event(2246, struct.pack('<iq', 0x7fffffff, char_id))
+            _, ack2247 = await client.expect_event(2247)
+            self.assertEqual(struct.unpack_from('<iq', ack2247), (0, char_id))
+            self.assertNotIn('delete_time', store.get('OfflinePlayer', char_id))
+
+            # An expired deletion is purged when the list is requested.
+            store.get('OfflinePlayer', char_id)['delete_time'] = int(time.time()) - 1
+            store.save()
+            client.send_event(2008, b'')
+            await client.expect_event(2009)
+            self.assertIsNone(store.get('OfflinePlayer', char_id))
 
         self.run_async(self.with_server(scenario))
 

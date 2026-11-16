@@ -1,6 +1,7 @@
 """Frontend flow: server/channel lists, character list, creation and selection."""
 import datetime
 import struct
+import time
 
 from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character
@@ -15,8 +16,12 @@ from darkblood.games.network.messages import (
     QuestHistoryNot,
     RelayAddressNot,
     SelectCharacterAck,
+    UndeleteCharacterAck,
 )
 from darkblood.games.state import selected_character
+
+# Pending deletion delay in seconds (server choice; the client takes the time from 2015).
+CHAR_DELETE_DELAY = 24 * 3600
 
 
 def welcome():
@@ -126,6 +131,10 @@ class FrontendHandlers:
         levels, classes, and equipped gear previews.
         """
         from darkblood.player_management.characters import encode_character
+        now = int(time.time())
+        for char in self.store().characters(self.account):
+            if char.get('delete_time') and char['delete_time'] <= now:
+                self.store().delete(self.account, char['id'])
         chars = self.store().characters(self.account)
         ack = struct.pack('<I', 0) + b'\x10' + varuint(len(chars))
         for char in chars:
@@ -183,15 +192,42 @@ class FrontendHandlers:
     async def handle_delete_character(self, correlation: int, body: bytes):
         """Opcode 2014 (eEGS_DELETE_CHARACTER_REQ) -> 2015 (eEGS_DELETE_CHARACTER_ACK).
 
-        Client handler: 0x00758370.
-        Removes character record from the account store.
+        Client handler: 0x00758370. Sent by DeleteSelectedCharacter(true)
+        (0x006F1DD0 -> 0x007892D0) after the second confirmation box.
+        The client then marks the slot as pending deletion (0x006F02E0: +0x5D = 1,
+        +0x5E = complete_time) and offers "Cancel Delete" (2246).
+        The record is kept until the delay ends (purged by handle_get_char_list).
+        Hypothesis: complete_time is a Unix timestamp; its display is not confirmed.
         """
         req = DeleteCharacterReq.decode(body)
         self.transport.record('delete-character', body, char_uid=req.char_uid)
-        ok = self.store().delete(self.account, req.char_uid)
-        result = 0 if ok else 1
-        ack = DeleteCharacterAck(result=result, char_uid=req.char_uid, complete_time=0).encode()
-        await self.transport.send_event(event(2015, ack, correlation), note=f'delete character ack ({req.char_uid})')
+        char = self.store().get(self.account, req.char_uid)
+        complete_time = 0
+        if char:
+            if not char.get('delete_time'):
+                char['delete_time'] = int(time.time()) + CHAR_DELETE_DELAY
+                self.store().save()
+            complete_time = char['delete_time']
+        ack = DeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid,
+                                 complete_time=complete_time).encode()
+        await self.transport.send_event(event(2015, ack, correlation),
+                                        note=f'delete character ack ({req.char_uid}, done at {complete_time})')
+
+    async def handle_undelete_character(self, correlation: int, body: bytes):
+        """Opcode 2246 (eEGS_UNDELETE_CHARACTER_REQ) -> 2247 (eEGS_UNDELETE_CHARACTER_ACK).
+
+        Sent by UndeleteSelectedCharacter (0x006F1FE0 -> 0x00796BA0), body like
+        2014 (live: ffffff7f + i64 uid). Handler 0x0075A8A0 clears the slot's
+        pending deletion on result 0.
+        """
+        req = DeleteCharacterReq.decode(body)
+        char = self.store().get(self.account, req.char_uid)
+        if char:
+            char.pop('delete_time', None)
+            self.store().save()
+        ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid).encode()
+        await self.transport.send_event(event(2247, ack, correlation),
+                                        note=f'undelete character ack ({req.char_uid})')
 
     # Opcode backward-compatibility aliases
     on_2402 = handle_get_server_list
@@ -202,3 +238,4 @@ class FrontendHandlers:
     on_2006 = handle_select_character
     on_2012 = handle_create_character
     on_2014 = handle_delete_character
+    on_2246 = handle_undelete_character
