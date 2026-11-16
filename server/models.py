@@ -512,6 +512,24 @@ class GTargetListAck:
 
 
 @dataclass
+class StoreInfoAck:
+    """Opcode 2066: eEGS_GET_STORE_INFO_ACK (handler 0x007842C0).
+
+    Draft schema (tools/extract_schemas.py): u32 result, i32, tag 0x10 vector
+    of 32-byte structs (0x00A489D0), tag 0x10 vector of item structs
+    (0x0077CEB0 -> 0x00A53F50). The i32 is echoed from the request's NPC id
+    (assumption); both vectors are empty offline until store contents from
+    Data/Dict/storelist.lua are mapped.
+    """
+    result: int = 0
+    npc_id: int = 0
+
+    def encode(self) -> bytes:
+        npc = self.npc_id - (1 << 32) if self.npc_id >= 1 << 31 else self.npc_id
+        return struct.pack('<Ii', self.result, npc) + b'\x10' + varuint(0) + b'\x10' + varuint(0)
+
+
+@dataclass
 class CurrentCashAck:
     """Opcode 2370: eEGS_BILLING_GET_CURRENT_CASH_ACK (case in 0x004DCCC0 -> 0x004CFDF0).
 

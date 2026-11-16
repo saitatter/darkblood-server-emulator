@@ -19,6 +19,7 @@ from models import (
     RelayAddressNot,
     RouletteManagerInfoAck,
     SelectCharacterAck,
+    StoreInfoAck,
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
     TutorialQuestStartAck,
@@ -331,6 +332,13 @@ class GameSession:
         # -> eERC_GTARGET_LIST_ACK 5125: u32 result + empty 0x10 vector.
         await self.transport.send_event(event(5125, GTargetListAck().encode(), correlation),
                                         note='gtarget list ack')
+
+    async def on_2065(self, correlation, body):
+        # eEGS_GET_STORE_INFO_REQ (i32, u32 npc id; observed when talking to a
+        # shop NPC) -> eEGS_GET_STORE_INFO_ACK 2066: empty store.
+        npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
+        await self.transport.send_event(event(2066, StoreInfoAck(npc_id=npc_id).encode(), correlation),
+                                        note='store info ack (npc %08x)' % npc_id)
 
     async def on_2369(self, correlation, body):
         # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: u32 result + 12 raw bytes (zeros).
