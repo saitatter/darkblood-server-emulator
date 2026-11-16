@@ -8,6 +8,10 @@ from darkblood.games.network.messages import (
     AssignQuickslotReq,
     BuyItemAck,
     BuyItemReq,
+    BuyLifeWaterAck,
+    BuyLifeWaterReq,
+    ChangeBagNameAck,
+    ChangeBagNameReq,
     ChangeBagPropertyAck,
     ChangeBagPropertyReq,
     CharVerifyStatAck,
@@ -19,9 +23,13 @@ from darkblood.games.network.messages import (
     DeleteSkillSpeechReq,
     DragItemAck,
     DragItemReq,
+    DurabilityRepairAck,
+    DurabilityRepairReq,
     EquipItemAck,
     EquipItemReq,
     HttpNoticeCheckAck,
+    ItemUpgradeAck,
+    ItemUpgradeReq,
     LearnSkillAck,
     LearnSkillReq,
     ModifySkillSpeechAck,
@@ -39,6 +47,8 @@ from darkblood.games.network.messages import (
     SwitchQuickslotReq,
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
+    UpdateSkillLockedAck,
+    UpdateSkillLockedReq,
     UseItemAck,
     UseItemReq,
 )
@@ -397,6 +407,110 @@ class CommerceHandlers:
         ack = RepurchaseItemAck(result=1).encode()
         await self.transport.send_event(event(2072, ack, correlation),
                                         note=f'repurchase item ack (item={req.item_uid})')
+
+    async def on_2032(self, correlation, body):
+        # eEGS_CHANGE_BAG_NAME_REQ -> 2033 eEGS_CHANGE_BAG_NAME_ACK (0x007528B0).
+        req = ChangeBagNameReq.decode(body)
+        self.transport.record('change-bag-name-req', body, bag_uid=req.bag_uid, name=req.name)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            for b in char.get('bags', []):
+                if b.get('bag_id') == req.bag_uid:
+                    b['name'] = req.name
+                    break
+            self.store().save()
+        ack = ChangeBagNameAck(result=0, bag_uid=req.bag_uid, name=req.name).encode()
+        await self.transport.send_event(event(2033, ack, correlation),
+                                        note=f'change bag name ack (bag={req.bag_uid} name={req.name})')
+
+    async def on_2086(self, correlation, body):
+        # eEGS_BUY_LIFE_WATER_REQ (0x00780000.c:11036) -> 2087 eEGS_BUY_LIFE_WATER_ACK (0x0078FF90).
+        req = BuyLifeWaterReq.decode(body)
+        self.transport.record('buy-life-water-req', body, flag=req.flag)
+        char = None
+        gold = 0
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            gold = char.get('gold', 100000)
+        ack = BuyLifeWaterAck(result=0, flag=req.flag, remain_currency=gold).encode()
+        await self.transport.send_event(event(2087, ack, correlation),
+                                        note=f'buy life water ack (flag={req.flag})')
+
+    async def on_2115(self, correlation, body):
+        # eEGS_ITEM_UPGRADE_REQ (0x00790000.c:296) -> 2116 eEGS_ITEM_UPGRADE_ACK (0x007909C0).
+        req = ItemUpgradeReq.decode(body)
+        self.transport.record('item-upgrade-req', body, target=req.target_uid, catalyst=req.catalyst_uid, protect=req.protect_uid)
+        # Result 1: generic failure until item upgrade engine is connected
+        ack = ItemUpgradeAck(result=1).encode()
+        await self.transport.send_event(event(2116, ack, correlation),
+                                        note=f'item upgrade ack (target={req.target_uid})')
+
+    async def on_2117(self, correlation, body):
+        # eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390) -> 2118 eEGS_UPDATE_SKILL_LOCKED_ACK (0x00752C70).
+        req = UpdateSkillLockedReq.decode(body)
+        self.transport.record('update-skill-locked-req', body, skill=req.skill_index, locked=req.locked)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            locked = set(char.setdefault('locked_skills', []))
+            if req.locked:
+                locked.add(req.skill_index)
+            else:
+                locked.discard(req.skill_index)
+            char['locked_skills'] = sorted(list(locked))
+            self.store().save()
+        ack = UpdateSkillLockedAck(result=0, skill_index=req.skill_index, locked=req.locked).encode()
+        await self.transport.send_event(event(2118, ack, correlation),
+                                        note=f'update skill locked ack (skill={req.skill_index} locked={req.locked})')
+
+    async def on_2145(self, correlation, body):
+        # eEGS_DURABILITY_REPAIR_REQ (0x00790000.c:2123) -> 2146 eEGS_DURABILITY_REPAIR_ACK (0x007930D0).
+        req = DurabilityRepairReq.decode(body)
+        self.transport.record('durability-repair-req', body)
+        char = None
+        gold = 0
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            gold = char.get('gold', 100000)
+        ack = DurabilityRepairAck(result=0, remain_gold=gold).encode()
+        await self.transport.send_event(event(2146, ack, correlation),
+                                        note='durability repair ack (success, 0 items repaired)')
+
+    async def on_2121(self, correlation, body):
+        # eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80).
+        from darkblood.games.network.messages import ContractUpdateAck, ContractUpdateReq
+        req = ContractUpdateReq.decode(body)
+        self.transport.record('contract-update-req', body, contract_id=req.contract_id)
+        ack = ContractUpdateAck(result=0, contract_id=req.contract_id).encode()
+        await self.transport.send_event(event(2122, ack, correlation),
+                                        note=f'contract update ack (contract={req.contract_id})')
+
+    async def on_2143(self, correlation, body):
+        # eEGS_DURABILITY_CHANGE_REQ (0x00790000.c:2049) -> 2144 eEGS_DURABILITY_CHANGE_ACK (0x00774AE0).
+        from darkblood.games.network.messages import DurabilityChangeAck, DurabilityChangeReq
+        req = DurabilityChangeReq.decode(body)
+        self.transport.record('durability-change-req', body)
+        ack = DurabilityChangeAck(result=0).encode()
+        await self.transport.send_event(event(2144, ack, correlation), note='durability change ack')
+
+
 
 
 

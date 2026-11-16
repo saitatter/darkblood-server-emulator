@@ -101,6 +101,42 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2072 = await client.expect_event(2072)
             self.assertNotEqual(struct.unpack_from('<i', ack2072)[0], 0)
 
+            # 16. Change bag name (2032 -> 2033)
+            bname = 'Storage'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2032, struct.pack('<q', 2) + bname)
+            _, ack2033 = await client.expect_event(2033)
+            self.assertEqual(struct.unpack_from('<iq', ack2033), (0, 2))
+
+            # 17. Update skill locked (2117 -> 2118)
+            client.send_event(2117, struct.pack('<h?', 101, True))
+            _, ack2118 = await client.expect_event(2118)
+            self.assertEqual(struct.unpack_from('<ih?', ack2118), (0, 101, True))
+
+            # 18. Durability repair (2145 -> 2146)
+            client.send_event(2145, b'\x17\x80')
+            _, ack2146 = await client.expect_event(2146)
+            self.assertEqual(struct.unpack_from('<i', ack2146)[0], 0)
+
+            # 19. Item upgrade (2115 -> 2116)
+            client.send_event(2115, struct.pack('<qqq', 1, 2, 0))
+            _, ack2116 = await client.expect_event(2116)
+            self.assertNotEqual(struct.unpack_from('<i', ack2116)[0], 0)
+
+            # 20. Buy life water (2086 -> 2087)
+            client.send_event(2086, struct.pack('<?', True))
+            _, ack2087 = await client.expect_event(2087)
+            self.assertEqual(struct.unpack_from('<i?', ack2087), (0, True))
+
+            # 21. Contract update (2121 -> 2122)
+            client.send_event(2121, struct.pack('<i', 10))
+            _, ack2122 = await client.expect_event(2122)
+            self.assertEqual(struct.unpack_from('<ii', ack2122), (0, 10))
+
+            # 22. Durability change (2143 -> 2144)
+            client.send_event(2143, b'\x17\x80')
+            _, ack2144 = await client.expect_event(2144)
+            self.assertEqual(struct.unpack_from('<i', ack2144)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

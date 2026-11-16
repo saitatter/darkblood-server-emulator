@@ -1461,6 +1461,402 @@ class FriendListDeleteAck:
         return struct.pack('<iq', self.result, self.char_uid)
 
 
+@dataclass
+class ChangeBagNameReq:
+    """Opcode 2032: eEGS_CHANGE_BAG_NAME_REQ.
+
+    Wire format: i64 bag_uid + wide string bag_name.
+    """
+    bag_uid: int = 0
+    name: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeBagNameReq':
+        if len(data) < 8:
+            return cls()
+        bag_uid = struct.unpack_from('<q', data, 0)[0]
+        name = data[8:].decode('utf-16le', errors='replace').rstrip('\x00')
+        return cls(bag_uid=bag_uid, name=name)
+
+
+@dataclass
+class ChangeBagNameAck:
+    """Opcode 2033: eEGS_CHANGE_BAG_NAME_ACK (On_eEGS_CHANGE_BAG_NAME_ACK 0x007528B0).
+
+    Wire format: i32 result + i64 bag_uid + wide string bag_name.
+    """
+    result: int = 0
+    bag_uid: int = 0
+    name: str = ''
+
+    def encode(self) -> bytes:
+        raw_name = self.name.encode('utf-16le') + b'\x00\x00'
+        return struct.pack('<iq', self.result, self.bag_uid) + raw_name
+
+
+@dataclass
+class UpdateSkillLockedReq:
+    """Opcode 2117: eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390).
+
+    Wire format: i16 sKindNameIndex + bool bLocked.
+    """
+    skill_index: int = 0
+    locked: bool = False
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UpdateSkillLockedReq':
+        if len(data) >= 3:
+            skill_index, locked = struct.unpack_from('<h?', data, 0)
+            return cls(skill_index=skill_index, locked=locked)
+        return cls()
+
+
+@dataclass
+class UpdateSkillLockedAck:
+    """Opcode 2118: eEGS_UPDATE_SKILL_LOCKED_ACK (On_eEGS_UPDATE_SKILL_LOCKED_ACK 0x00752C70).
+
+    Wire format: i32 result + i16 sKindNameIndex + bool bLocked.
+    """
+    result: int = 0
+    skill_index: int = 0
+    locked: bool = False
+
+    def encode(self) -> bytes:
+        return struct.pack('<ih?', self.result, self.skill_index, self.locked)
+
+
+@dataclass
+class DurabilityRepairReq:
+    """Opcode 2145: eEGS_DURABILITY_REPAIR_REQ (0x00790000.c:2123).
+
+    Wire format: tag 0x17 map of items to repair.
+    """
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DurabilityRepairReq':
+        return cls(raw_payload=data)
+
+
+@dataclass
+class DurabilityRepairAck:
+    """Opcode 2146: eEGS_DURABILITY_REPAIR_ACK (On_eEGS_DURABILITY_REPAIR_ACK 0x007930D0).
+
+    Wire format: if result == 0: i32 result (0) + tag 0x17 map + i64 remain_gold.
+                 if result != 0: i32 result error code.
+    """
+    result: int = 0
+    remain_gold: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        # 0x17 = map tag, 0x80 = 0 elements
+        return struct.pack('<i', 0) + b'\x17\x80' + struct.pack('<q', self.remain_gold)
+
+
+@dataclass
+class ItemUpgradeReq:
+    """Opcode 2115: eEGS_ITEM_UPGRADE_REQ (0x00790000.c:296).
+
+    Wire format: i64 nTargetItemUID + i64 nCatalystItemUID + i64 nProtectItemUID.
+    """
+    target_uid: int = 0
+    catalyst_uid: int = 0
+    protect_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ItemUpgradeReq':
+        if len(data) >= 24:
+            t, c, p = struct.unpack_from('<qqq', data, 0)
+            return cls(target_uid=t, catalyst_uid=c, protect_uid=p)
+        return cls()
+
+
+@dataclass
+class ItemUpgradeAck:
+    """Opcode 2116: eEGS_ITEM_UPGRADE_ACK (On_eEGS_ITEM_UPGRADE_ACK 0x007909C0).
+
+    Wire format: i32 result (non-zero safely terminates without requiring complex inventory structs).
+    """
+    result: int = 1
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class BuyLifeWaterReq:
+    """Opcode 2086: eEGS_BUY_LIFE_WATER_REQ (0x00780000.c:11036).
+
+    Wire format: bool bLifeWater.
+    """
+    flag: bool = True
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'BuyLifeWaterReq':
+        if len(data) >= 1:
+            return cls(flag=bool(data[0]))
+        return cls()
+
+
+@dataclass
+class BuyLifeWaterAck:
+    """Opcode 2087: eEGS_BUY_LIFE_WATER_ACK (On_eEGS_BUY_LIFE_WATER_ACK 0x0078FF90).
+
+    Wire format: i32 result + bool flag + i64 remain_currency.
+    """
+    result: int = 0
+    flag: bool = True
+    remain_currency: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i?q', self.result, self.flag, self.remain_currency)
+
+
+@dataclass
+class UseSpeakerItemReq:
+    """Opcode 2128: eEGS_USE_SPEAKER_ITEM_REQ (0x00790000.c:1992).
+
+    Wire format: i64 speaker_uid + wide string message + i64 target_uid.
+    """
+    speaker_uid: int = 0
+    message: str = ''
+    target_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UseSpeakerItemReq':
+        if len(data) < 16:
+            return cls()
+        speaker_uid = struct.unpack_from('<q', data, 0)[0]
+        # target_uid is the last 8 bytes
+        target_uid = struct.unpack_from('<q', data, len(data) - 8)[0]
+        raw_msg = data[8:len(data) - 8]
+        message = raw_msg.decode('utf-16le', errors='replace').rstrip('\x00')
+        return cls(speaker_uid=speaker_uid, message=message, target_uid=target_uid)
+
+
+@dataclass
+class UseSpeakerItemAck:
+    """Opcode 2129: eEGS_USE_SPEAKER_ITEM_ACK (On_eEGS_USE_SPEAKER_ITEM_ACK 0x0077F320).
+
+    Wire format: i32 result + i64 speaker_uid + tag 0x10 vector (updated item).
+    """
+    result: int = 0
+    speaker_uid: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<iq', self.result, self.speaker_uid) + b'\x10\x80'
+
+
+@dataclass
+class GuildCreateReq:
+    """Opcode 2150 (eEGS_GUILD_CREATE_REQ) & 5121 (eERC_GUILD_CREATE_PROPOSAL_REQ).
+
+    Wire format: wide string strGuildName.
+    """
+    guild_name: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildCreateReq':
+        return cls(guild_name=data.decode('utf-16le', errors='replace').rstrip('\x00'))
+
+
+@dataclass
+class GuildCreateAck:
+    """Opcode 2151: eEGS_GUILD_CREATE_ACK (On_eEGS_GUILD_CREATE_ACK 0x00793720).
+
+    Wire format: i32 result + i64 nGuildUID + wide string strGuildName + i64 nRemainGold.
+    """
+    result: int = 0
+    guild_uid: int = 1
+    guild_name: str = ''
+    remain_gold: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        raw_name = self.guild_name.encode('utf-16le') + b'\x00\x00'
+        return struct.pack('<iq', self.result, self.guild_uid) + raw_name + struct.pack('<q', self.remain_gold)
+
+
+@dataclass
+class GuildCreateProposalAck:
+    """Opcode 5122: eERC_GUILD_CREATE_PROPOSAL_ACK (On_eERC_GUILD_CREATE_PROPOSAL_ACK 0x00759750).
+
+    Wire format: i32 result (0 = success).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class ContractUpdateReq:
+    """Opcode 2121: eEGS_CONTRACT_UPDATE_REQ.
+
+    Wire format: i32 nContractID.
+    """
+    contract_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ContractUpdateReq':
+        if len(data) >= 4:
+            return cls(contract_id=struct.unpack_from('<i', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class ContractUpdateAck:
+    """Opcode 2122: eEGS_CONTRACT_UPDATE_ACK (On_eEGS_CONTRACT_UPDATE_ACK 0x00752D80).
+
+    Wire format: i32 result + i32 nContractID.
+    """
+    result: int = 0
+    contract_id: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<ii', self.result, self.contract_id)
+
+
+@dataclass
+class FriendListUpdateReq:
+    """Opcode 2133: eEGS_FRIEND_LIST_UPDATE_REQ (0x00790000.c:1735).
+
+    Wire format: i64 friend_char_uid + wide string comment.
+    """
+    char_uid: int = 0
+    comment: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'FriendListUpdateReq':
+        if len(data) < 8:
+            return cls()
+        uid = struct.unpack_from('<q', data, 0)[0]
+        comment = data[8:].decode('utf-16le', errors='replace').rstrip('\x00')
+        return cls(char_uid=uid, comment=comment)
+
+
+@dataclass
+class FriendListUpdateAck:
+    """Opcode 2134: eEGS_FRIEND_LIST_UPDATE_ACK (On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80).
+
+    Wire format: i32 result + i64 friend_char_uid + wide string comment.
+    """
+    result: int = 0
+    char_uid: int = 0
+    comment: str = ''
+
+    def encode(self) -> bytes:
+        raw_comment = self.comment.encode('utf-16le') + b'\x00\x00'
+        return struct.pack('<iq', self.result, self.char_uid) + raw_comment
+
+
+@dataclass
+class DurabilityChangeReq:
+    """Opcode 2143: eEGS_DURABILITY_CHANGE_REQ (0x00790000.c:2049).
+
+    Wire format: tag 0x17 map.
+    """
+    raw_payload: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DurabilityChangeReq':
+        return cls(raw_payload=data)
+
+
+@dataclass
+class DurabilityChangeAck:
+    """Opcode 2144: eEGS_DURABILITY_CHANGE_ACK (On_eEGS_DURABILITY_CHANGE_ACK 0x00774AE0).
+
+    Wire format: i32 result + tag 0x10 vector of items.
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result) + b'\x10\x80'
+
+
+@dataclass
+class GuildPersonJoinReq:
+    """Opcode 2155: eEGS_GUILD_PERSON_JOIN_REQ (0x00790000.c:2837).
+
+    Wire format: i64 guild_uid.
+    """
+    guild_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildPersonJoinReq':
+        if len(data) >= 8:
+            return cls(guild_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class GuildPersonJoinAck:
+    """Opcode 2156: eEGS_GUILD_PERSON_JOIN_ACK (On_eEGS_GUILD_PERSON_JOIN_ACK 0x0075A220).
+
+    Wire format: i32 result.
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class GuildInviteReq:
+    """Opcode 2160: eEGS_GUILD_INVITE_REQ.
+
+    Wire format: wide string char_name.
+    """
+    char_name: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildInviteReq':
+        return cls(char_name=data.decode('utf-16le', errors='replace').rstrip('\x00'))
+
+
+@dataclass
+class GuildInviteAck:
+    """Opcode 2161: eEGS_GUILD_INVITE_ACK (On_eEGS_GUILD_INVITE_ACK 0x00759870).
+
+    Wire format: i32 result.
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class GuildPersonLeaveReq:
+    """Opcode 2162: eEGS_GUILD_PERSON_LEAVE_REQ (0x00790000.c:2761).
+
+    Wire format: empty.
+    """
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildPersonLeaveReq':
+        return cls()
+
+
+@dataclass
+class GuildPersonLeaveAck:
+    """Opcode 2163: eEGS_GUILD_PERSON_LEAVE_ACK (On_eEGS_GUILD_PERSON_LEAVE_ACK 0x00759CA0).
+
+    Wire format: i32 result.
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+
+
 
 
 

@@ -60,6 +60,45 @@ class SocialFlowTest(ServerTestCase):
             _, ack2136 = await client.expect_event(2136)
             self.assertEqual(struct.unpack_from('<iq', ack2136), (0, 123456))
 
+            # 10. Use speaker megaphone (2128 -> 2129)
+            spk_msg = 'Party at town!'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2128, struct.pack('<q', 888) + spk_msg + struct.pack('<q', 0))
+            _, ack2129 = await client.expect_event(2129)
+            self.assertEqual(struct.unpack_from('<iq', ack2129), (0, 888))
+
+            # 11. Guild create proposal (5121 -> 5122)
+            gname = 'Vanguard'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(5121, gname)
+            _, ack5122 = await client.expect_event(5122)
+            self.assertEqual(struct.unpack_from('<i', ack5122)[0], 0)
+
+            # 12. Guild create (2150 -> 2151)
+            client.send_event(2150, gname)
+            _, ack2151 = await client.expect_event(2151)
+            self.assertEqual(struct.unpack_from('<iq', ack2151), (0, 1001))
+
+            # 13. Friend list update memo (2133 -> 2134)
+            memo = 'Best ally'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2133, struct.pack('<q', 123456) + memo)
+            _, ack2134 = await client.expect_event(2134)
+            self.assertEqual(struct.unpack_from('<iq', ack2134), (0, 123456))
+
+            # 14. Guild invite (2160 -> 2161)
+            target = 'FriendHero'.encode('utf-16le') + b'\x00\x00'
+            client.send_event(2160, target)
+            _, ack2161 = await client.expect_event(2161)
+            self.assertEqual(struct.unpack_from('<i', ack2161)[0], 0)
+
+            # 15. Guild leave (2162 -> 2163)
+            client.send_event(2162, b'')
+            _, ack2163 = await client.expect_event(2163)
+            self.assertEqual(struct.unpack_from('<i', ack2163)[0], 0)
+
+            # 16. Guild person join (2155 -> 2156)
+            client.send_event(2155, struct.pack('<q', 2002))
+            _, ack2156 = await client.expect_event(2156)
+            self.assertEqual(struct.unpack_from('<i', ack2156)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

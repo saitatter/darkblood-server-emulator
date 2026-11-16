@@ -1,5 +1,25 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~19:15 (Guilds, Megaphone, Repairs, Upgrades, Bag Renaming, Contracts & Memos)
+
+Decompiled client handlers/senders and added full support:
+1. `2032 eEGS_CHANGE_BAG_NAME_REQ` -> `2033 eEGS_CHANGE_BAG_NAME_ACK` (`0x007528B0`): `<q` + wide string -> `<iq` + wide string. Persists custom bag tab names.
+2. `2117 eEGS_UPDATE_SKILL_LOCKED_REQ` -> `2118 eEGS_UPDATE_SKILL_LOCKED_ACK` (`0x00752C70`): `<h?` -> `<ih?`. Persists locked skill set.
+3. `2145 eEGS_DURABILITY_REPAIR_REQ` -> `2146 eEGS_DURABILITY_REPAIR_ACK` (`0x007930D0`): tag 0x17 map -> `<i` + `b'\x17\x80'` + `<q`. Updates gold and completes repairs.
+4. `2115 eEGS_ITEM_UPGRADE_REQ` -> `2116 eEGS_ITEM_UPGRADE_ACK` (`0x007909C0`): `<qqq` -> `<i` (result=1 rejection).
+5. `2086 eEGS_BUY_LIFE_WATER_REQ` -> `2087 eEGS_BUY_LIFE_WATER_ACK` (`0x0078FF90`): `<?` -> `<i?q`.
+6. `2128 eEGS_USE_SPEAKER_ITEM_REQ` -> `2129 eEGS_USE_SPEAKER_ITEM_ACK` (`0x0077F320`): `<q` + wide string + `<q` -> `<iq` + `b'\x10\x80'`.
+7. `5121 eERC_GUILD_CREATE_PROPOSAL_REQ` -> `5122 eERC_GUILD_CREATE_PROPOSAL_ACK` (`0x00759750`): wide string -> `<i`.
+8. `2150 eEGS_GUILD_CREATE_REQ` -> `2151 eEGS_GUILD_CREATE_ACK` (`0x00793720`): wide string -> `<iq` + wide string + `<q`.
+9. `2121 eEGS_CONTRACT_UPDATE_REQ` -> `2122 eEGS_CONTRACT_UPDATE_ACK` (`0x00752D80`): `<i` -> `<ii`.
+10. `2143 eEGS_DURABILITY_CHANGE_REQ` -> `2144 eEGS_DURABILITY_CHANGE_ACK` (`0x00774AE0`): tag 0x17 map -> `<i` + `b'\x10\x80'`.
+11. `2133 eEGS_FRIEND_LIST_UPDATE_REQ` -> `2134 eEGS_FRIEND_LIST_UPDATE_ACK` (`0x00752E80`): `<q` + wide string -> `<iq` + wide string.
+12. `2155 eEGS_GUILD_PERSON_JOIN_REQ` -> `2156 eEGS_GUILD_PERSON_JOIN_ACK` (`0x0075A220`): `<q` -> `<i`.
+13. `2160 eEGS_GUILD_INVITE_REQ` -> `2161 eEGS_GUILD_INVITE_ACK` (`0x00759870`): wide string -> `<i`.
+14. `2162 eEGS_GUILD_PERSON_LEAVE_REQ` -> `2163 eEGS_GUILD_PERSON_LEAVE_ACK` (`0x00759CA0`): empty -> `<i`.
+
+36/36 headless tests pass cleanly across all categories.
+
 ## Update — 2026-11-16 ~18:50 (Diagnostic Tooling, GitHub Issue Templates, Store & Social Opcodes)
 
 1. Diagnostic Export Tool & Issue Templates:

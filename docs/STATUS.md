@@ -1,5 +1,24 @@
 # Research status and handoff
 
+## Guilds, Megaphone, Repairs, Upgrades, Bag Renaming, Contracts & Memos — 2026-11-16 ~19:15
+
+* Decompiled and implemented wire schemas, domain handlers, and tests for 13 additional opcodes:
+  - `2032 eEGS_CHANGE_BAG_NAME_REQ` & `2033 eEGS_CHANGE_BAG_NAME_ACK`: `<q` (bag_uid) + wide string -> `<iq` + wide string, persisting custom bag tab labels on character. Handled in `on_2032`.
+  - `2117 eEGS_UPDATE_SKILL_LOCKED_REQ` & `2118 eEGS_UPDATE_SKILL_LOCKED_ACK`: `<h?` (sKindNameIndex, bLocked) -> `<ih?` (result, sKindNameIndex, bLocked), persisting locked skill set on character. Handled in `on_2117`.
+  - `2145 eEGS_DURABILITY_REPAIR_REQ` & `2146 eEGS_DURABILITY_REPAIR_ACK`: tag 0x17 map -> `<i` (result=0) + `b'\x17\x80'` (empty tag 0x17 map) + `<q` (remain_gold), updating player gold and completing gear durability repairs. Handled in `on_2145`.
+  - `2115 eEGS_ITEM_UPGRADE_REQ` & `2116 eEGS_ITEM_UPGRADE_ACK`: `<qqq` (target_item_uid, catalyst_uid, protect_uid) -> `<i` (result=1 rejection until upgrade recipes are wired). Handled in `on_2115`.
+  - `2086 eEGS_BUY_LIFE_WATER_REQ` & `2087 eEGS_BUY_LIFE_WATER_ACK`: `<?` (flag) -> `<i?q` (result, flag, remain_currency). Handled in `on_2086`.
+  - `2128 eEGS_USE_SPEAKER_ITEM_REQ` & `2129 eEGS_USE_SPEAKER_ITEM_ACK`: `<q` (speaker_uid) + wide string (megaphone message) + `<q` (target_uid) -> `<iq` + `b'\x10\x80'` (empty updated item vector). Handled in `on_2128`.
+  - `5121 eERC_GUILD_CREATE_PROPOSAL_REQ` & `5122 eERC_GUILD_CREATE_PROPOSAL_ACK`: wide string (guild_name) -> `<i` (result=0). Handled in `on_5121`.
+  - `2150 eEGS_GUILD_CREATE_REQ` & `2151 eEGS_GUILD_CREATE_ACK`: wide string (guild_name) -> `<iq` (result=0, guild_uid) + wide string (guild_name) + `<q` (remain_gold). Handled in `on_2150`.
+  - `2121 eEGS_CONTRACT_UPDATE_REQ` & `2122 eEGS_CONTRACT_UPDATE_ACK`: `<i` (contract_id) -> `<ii` (result, contract_id). Handled in `on_2121`.
+  - `2143 eEGS_DURABILITY_CHANGE_REQ` & `2144 eEGS_DURABILITY_CHANGE_ACK`: tag 0x17 map -> `<i` + `b'\x10\x80'` (empty item vector). Handled in `on_2143`.
+  - `2133 eEGS_FRIEND_LIST_UPDATE_REQ` & `2134 eEGS_FRIEND_LIST_UPDATE_ACK`: `<q` (friend_uid) + wide string (memo) -> `<iq` + wide string (memo). Handled in `on_2133`.
+  - `2155 eEGS_GUILD_PERSON_JOIN_REQ` & `2156 eEGS_GUILD_PERSON_JOIN_ACK`: `<q` (guild_uid) -> `<i` (result=0). Handled in `on_2155`.
+  - `2160 eEGS_GUILD_INVITE_REQ` & `2161 eEGS_GUILD_INVITE_ACK`: wide string (char_name) -> `<i` (result=0). Handled in `on_2160`.
+  - `2162 eEGS_GUILD_PERSON_LEAVE_REQ` & `2163 eEGS_GUILD_PERSON_LEAVE_ACK`: empty -> `<i` (result=0). Handled in `on_2162`.
+* 36/36 headless tests pass cleanly across all categories.
+
 ## Diagnostic Export Tooling & GitHub Issue Templates — 2026-11-16 ~18:50
 
 * Added GitHub Issue Templates under `.github/ISSUE_TEMPLATE/`:
