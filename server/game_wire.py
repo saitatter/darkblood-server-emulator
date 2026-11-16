@@ -7,8 +7,10 @@ from models import (
     ChannelSquare,
     Character,
     ClearTutorialAck,
+    CurrentCashAck,
     FriendListAck,
     GameServer,
+    GTargetListAck,
     GuildOrAttendanceAck,
     JoinSquareAck,
     NpcFirstMeetAck,
@@ -322,6 +324,17 @@ class GameSession:
         ack = BackToSquareAck(square_uid=SQUARES[0]['square_id']).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
+
+    async def on_5124(self, correlation, body):
+        # eERC_GTARGET_LIST_REQ (empty, fire-and-forget from SquarePlay 0x6F9AB9)
+        # -> eERC_GTARGET_LIST_ACK 5125: u32 result + empty 0x10 vector.
+        await self.transport.send_event(event(5125, GTargetListAck().encode(), correlation),
+                                        note='gtarget list ack')
+
+    async def on_2369(self, correlation, body):
+        # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: u32 result + 12 raw bytes (zeros).
+        await self.transport.send_event(event(2370, CurrentCashAck().encode(), correlation),
+                                        note='current cash ack')
 
     async def on_2346(self, correlation, body):
         # eEGS_TUTORIAL_QUEST_START_REQ -> eEGS_TUTORIAL_QUEST_START_ACK (2347), handler 0x6481E0:

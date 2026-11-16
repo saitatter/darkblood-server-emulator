@@ -134,6 +134,14 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(ack5046[20:22], b'\x10\x80')  # tag + varuint 0: empty vecTargetState
             self.assertEqual(len(ack5046), 22 + 1 + 8)
 
+            # Town requests (schemas from tools/extract_schemas.py)
+            client.send_event(5124)
+            _, ack5125 = await client.expect_event(5125)
+            self.assertEqual(ack5125, struct.pack('<I', 0) + b'\x10\x80')
+            client.send_event(2369)
+            _, ack2370 = await client.expect_event(2370)
+            self.assertEqual(ack2370, b'\x00' * 16)
+
             # NPC first meet 2094 -> 2095
             client.send_event(2094, struct.pack('<iI', 0x7fffffff, 0xeaec51bd))
             _, ack2095 = await client.expect_event(2095)

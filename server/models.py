@@ -494,6 +494,39 @@ class BackToSquareAck:
 
 
 @dataclass
+class GTargetListAck:
+    """Opcode 5125: eERC_GTARGET_LIST_ACK (case in dispatcher 0x00874550 -> 0x00873490).
+
+    Schema from tools/extract_schemas.py: u32 result, tag 0x10 vector of
+    struct 0x00A49B50 {i32, bool, bool} (same element type as 5046
+    vecTargetState). Field meanings not recovered; offline default is empty.
+    """
+    result: int = 0
+    targets: list = field(default_factory=list)  # (i32, bool, bool)
+
+    def encode(self) -> bytes:
+        body = struct.pack('<I', self.result) + b'\x10' + varuint(len(self.targets))
+        for value, a, b in self.targets:
+            body += struct.pack('<i??', value, a, b)
+        return body
+
+
+@dataclass
+class CurrentCashAck:
+    """Opcode 2370: eEGS_BILLING_GET_CURRENT_CASH_ACK (case in 0x004DCCC0 -> 0x004CFDF0).
+
+    u32 result, then an implicit struct 0x00AC82A0 read as 12 raw bytes.
+    The split of those bytes (cash amounts?) is not recovered; zeros offline.
+    """
+    result: int = 0
+    raw: bytes = b'\x00' * 12
+
+    def encode(self) -> bytes:
+        assert len(self.raw) == 12
+        return struct.pack('<I', self.result) + self.raw
+
+
+@dataclass
 class TutorialQuestStartAck:
     """Opcode 2347: eEGS_TUTORIAL_QUEST_START_ACK response.
 

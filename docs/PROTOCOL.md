@@ -292,6 +292,34 @@ Following character selection and relay attachment, the client interacts with tu
 
 All responses are modeled as Python dataclasses in `server/models.py` and validated by automated end-to-end tests in `tests/test_headless_flow.py`.
 
+## Protocol map tooling (2026-11-16, saitatter machine)
+
+- `server/data/opcodes.tsv`: 1,458 names with no gaps in any block, from the
+  client's name map `0x00F49CF8` (`tools/extract_opcodes.py`). Earlier
+  extractions missed every opcode containing a `0x0A` byte (e.g. 2594/2595
+  `eEGS_HTTPNOTICE_CHECK_REQ/ACK`, 2712/2713 Steam billing) and 2007.
+- `server/data/opcode_pairs.tsv`: the client's own request→response map
+  `0x00F49CE8` (491 pairs). Cross pairs are real: cheat requests answer with
+  the normal ACK, and every regional authenticate request (Steam 5386, CYOU,
+  WAYI, ...) answers with 5020.
+- `server/data/opcode_flags.tsv`: map `0x00F49D04`, values 0/16/17/33/41/64/129;
+  meaning not recovered.
+- `tools/opcode_xrefs.py` → `research/opcode_xrefs.tsv`: per opcode, client
+  senders (push + event constructor `0x00408C60`/`0x007AEE00`), switch
+  dispatchers, and registered handlers (`call 0x0075F080` registrations plus
+  the runtime map). 620 of 910 ACK/NOT opcodes have a receiver.
+- `tools/extract_schemas.py` → `research/schemas.txt`: draft read schemas for
+  298 registered handlers and 37 dispatcher cases, from the JSerBuffer reader
+  calls (type codes 0..10 = i8,u8,i16,u16,i32,u32,i64,u64,f32,f64,bool;
+  `0x0B` wstring, `0x0C` string, `0x1B` varint, `0x0E` raw bytes). Validated on
+  5046: it reproduces the hand-recovered schema and adds the `vecTargetState`
+  element `{i32, bool, bool}`. Tag `0x1E` is implicit on the wire. Loops and
+  branches are flattened; confirm before use.
+
+Implemented from these drafts (headless-tested): 5124 → 5125
+`eERC_GTARGET_LIST_ACK` (result + empty vector of `{i32,bool,bool}`), 2369 →
+2370 `eEGS_BILLING_GET_CURRENT_CASH_ACK` (result + 12 raw bytes, zero).
+
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 
 App-state enum (registered at `0x00705CD0` as `eAS_* = %d`): 0 SelectChar,
