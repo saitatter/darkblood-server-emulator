@@ -21,6 +21,8 @@
    - `2214 eEGS_GUILD_ALL_SKILL_INIT_REQ` & `2215 eEGS_GUILD_ALL_SKILL_INIT_ACK` (`0x00752D80`): empty -> `<ii`. Resets guild skills.
 4. Test Suite:
    - 48/48 unit and flow tests passing across 11 test modules.
+5. Roadmap Overhaul:
+   - Updated `ROADMAP.md` with full milestones P0 through P9, complete categorized opcode roadmap (Combat, Dungeons, Inventory, Commerce, Quests, Guilds, Social, Post, Arena/PvP), live client graphics verification checklist, headless test matrix, modular refactoring roadmap, and future GM/Admin & Web dashboard tools.
 
 ## Update — 2026-11-16 ~19:30 (Milestone P1: Transport & Serialization Hardening, Roadmap Update)
 

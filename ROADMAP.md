@@ -1,127 +1,387 @@
-# Roadmap — Dark Blood offline
+# Roadmap — Dark Blood Offline Server Emulator
 
-Updated **November 16, 2026** (second session).
+Updated **November 16, 2026**.
 
-Final objective: launch without the original services, establish a local session, persist a character, enter a map, and verify offline gameplay.
+Final objective: launch without the original services, establish a local session, persist character and world state, enter maps/dungeons, and provide full offline singleplayer and LAN multiplayer gameplay.
 
-## Latest local verification ? Cristian, 2026-11-16
+---
 
-See [session handoff](docs/SESSION_HANDOFF.md). Selection ACK parsing and mailbox
-continuation were reproduced, but world entry is not verified. The concrete
-blocker is Proud::Exception 14 (Unknown Internet address) during connection
-validation at 0x00B54B40, followed by the 30-second selection wait timeout.
+## Current Milestones Overview
 
-- [x] Correct implicit struct tags, trailer u8, absent lookup sentinels and result prefix.
-- [x] Add empty mailbox ACK 2220 and handle the exercised SteamUser slot 16.
-- [x] Capture the post-selection C++ exception without swallowing it.
-- [x] Trace the endpoint: 2007 connects `JP2PClient` to the relay buffer filled by 5134 (`0x0075AAE0`), not by `0x00A48A90`.
-- [x] Send 5134 (127.0.0.1:9401) after 5029 and run a relay listener; selection wait completes.
-- [x] Town rendered with the character and an NPC dialogue that advances with Space (saitatter machine).
-- [x] Answer 2131 friend list and 2569; recover the relay server's application protocol (PIDL JoinGroup/JoinGroupACK).
-- [x] Answer 2082 clear tutorial -> 2083 (triggers Scene 9 Town), 2346 tutorial quest start -> 2347, 2390 roulette -> 2391.
-- [x] Headless/automated tests: protocol-level client replay without the graphics window (`tests/test_headless_flow.py`).
-- [x] Explain the skip-tutorial loop: SquarePlay can-enter rejected `nJoinLayerNetID = 0`; send `jhash("Act1") << 32 | 1` (static + headless).
-- [x] Live: tutorial-cleared character enters SquarePlay; offline ISteamUserStats fixes the town-entry crash.
-- [ ] Live-verify skip with a fresh character; answer 5124, 2594, 2216, 2369, 2712, 2024.
-- [x] Correct JPK decryption (header flag `0x226`, whole blob); byte-identical repacker; private client-data workspace.
-- [ ] Load one edited JPK entry in the client (crc field semantics unknown).
-- [x] Live: movement, map change (5030/5031), NPC store window (2066), quest accept/complete (2074/2077).
-- [x] Headless: 2010/2011 room list and 5001/5002 create room (singleplay).
-- [x] Correct 5014 start-game string/container framing from the client reader (static + headless).
-- [x] Live dungeon entry (single play): 5043/5044 gate, 5009/5010 map code, 5013/5014 start; Lucid Forest (`Act1_G1_A10`) loads with monsters.
-- [x] Dungeon schemas: 5095 CHANGE_DUNGEON_LAYER_NOT, 2422 ACTIVE_WARFLAG_REQ, 2358 GUIDE_BEGINNER_UPDATE, 5063 MONSTER_DEAD_REQ, 5064 DROP_ITEM_NOT mapped; kills/rewards/clear next.
-- [x] Active quests restored at selection (2007 map 0xA3E450); quest gold/EXP rewards from DictQuest (live: EXP bar, Ar gold).
-- [x] Default equipment worn from DictItem:LoadDefaultEquipItem (2007 bag/item vectors; live).
-- [x] Bag cells: recovered +0x28 tab filter, +0x29 capacity, +0x2A UI slot, bag_id high dword from client (0x00827D80, 0x005509F0, 0x00551310); container 2 added.
-- [x] Inventory & combat schemas: 2036/2037 drag item (slot swapping & persistence), 2028 close bag, 2406/2407 stat verify, 5093/5094 death notification, 2448/2449 rebirth coin revive.
-- [x] Dungeon clear, return to town & equipment: 5045/5046 back to square, 5090/5091 card reward pick, 2038/2039 use item/potion, 2042/2043 equip gear, 2044/2045 assign quickslot.
+| Milestone | Scope | Status | Notes |
+|---|---|---|---|
+| **P0: Enter the World** | Handshake, Auth, Lobby, Selection, Town entry | **Verified** | Town rendered, character visible, movement confirmed |
+| **P1: Transport & Serialization** | ProudNet framing, JSerBuffer, crypto, compression | **Verified** | Full regression test suite (`test_transport.py`), 11 tests |
+| **P2: Lobby & Account** | Character list, create, delete, versioned persistence | **Verified** | Name validation, persistent JSON store, default gear |
+| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **In Progress (~85%)** | 85 opcodes implemented; live dungeon verified |
+| **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~75%)** | Validated decoder, store/quest/stat tables parsed |
+| **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~80%)** | Clean headless test runner, process cleanup |
+| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **Planned** | Relay PIDL JoinGroup verified; multi-client next |
+| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, auction | **Planned** | Shop buy/sell wired; mailbox reading/send next |
+| **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **Planned** | Guild banking/notice/level wired; arena next |
+| **P9: Refactoring & C# Migration** | Modularity, async DB, MHServerEmu alignment | **Planned** | Granular test suite done; storage abstraction next |
 
-- [ ] Level-up on EXP overflow (charstat.lua UPExp), mission counters, package items (CPkg...).
-- [ ] Verify NPC interaction and persistence across sessions before claiming gameplay.
+---
 
-## Current milestones
+## Detailed Milestone Progress
 
-| Milestone | Status |
-| --- | --- |
-| Client startup / minimal Steam support | Verified |
-| IPv4 TCP redirect to localhost:9400 | Verified |
-| ProudNet handshake with real key exchange (5/6/7) | Verified; client messages decrypt with valid CRC |
-| Welcome 5020, DB list 2403 | Verified |
-| Title → Server List → Channel List | Verified on screen |
-| Character list / creation (persisted) | Verified on screen |
-| Select character → enter map (2006/2007 + relay 5134) | Town rendered; square play verified |
-| Movement, combat, persistence of progress | Verified in headless flows & live dungeon sessions |
-| Control tooling (`gamectl`, MCP server) | Implemented |
-
-## P0 — Enter the world
-
+### P0 — Enter the World
 - [x] Explain why 2402 was never sent (missing session key; strong encryption mode 1).
 - [x] Implement ProudNet RSA/AES key exchange and decrypt type 0x26.
 - [x] Recover and answer 2403, 2002, 2022, 5029, 2009, 2013.
 - [x] Recover struct `0x00A40760` and vector `0x004B9210` for opcode 2007 (handler `0x007AA4B0`); implement the response.
-- [x] Observe the client's next requests after 2007 (map loading, possibly a new connection or square/room join) and answer them.
-- [x] Identify level/location fields shown on character select.
+- [x] Observe client requests after 2007 and connect `JP2PClient` via relay 5134.
+- [x] Identify level, class, and location fields shown on character selection screen.
+- [x] Live town entry verified with rendered graphics and controllable character.
 
-Acceptance: the selected character loads into a map and is visible and controllable.
+### P1 — Reproducible Transport and Serialization
+- [x] Test ProudNet signed scalar boundaries (1, 2, 4, 8 bytes), invalid widths, truncation, and frame limits (`tests/test_transport.py`).
+- [x] Add regression fixture for first captured frame (`13 57 01 05 30 0F 00 00 40`).
+- [x] Implement bounded `JSerBufferReader` supporting varuints, strings, wide strings, and vectors (`core.serialization.jser`).
+- [x] Implement zlib payload compression with 4-byte uncompressed size prefix.
+- [x] Distinguish ProudNet control messages (0x05, 0x06, 0x07, 0x08, 0x0B), RMIs, and application events (0x02).
+- [ ] Investigate `0x1D` control message and determine official ACK semantics (current `0x1F` reply is experimental).
+- [ ] Implement optional server-to-client encryption (symmetric AES) if enabled by client settings.
+- [ ] Evaluate UDP route for fast position synchronization (`JP2PClient` type 0x27).
 
-## P1 — Reproducible transport and serialization
-
-- [x] Test ProudNet signed scalar boundaries, invalid widths, truncation, fragmented/coalesced TCP frames, and invalid sizes (`tests/test_transport.py`).
-- [x] Add a regression fixture for `13 57 01 05 30 0F 00 00 40`.
-- [x] Implement a bounded JSerBuffer/JEvent reader: inverted terminal bit, UTF-16, empty bodies, and compression (`JSerBufferReader` in `core.serialization.jser`).
-- [x] Distinguish ProudNet control messages, RMIs, and application events in logs.
-- [x] Preserve small capture fixtures without personal information (`tests/test_transport.py`).
-- [ ] Identify `0x1D`; its current `0x1F` response is experimental.
-- [x] Negotiation 5/6 is required for game requests; ServerSettings, RSA and AES envelopes recovered.
-- [ ] Decide whether server → client messages should be encrypted.
-- [x] Establish a verified TCP-only route before implementing full UDP/P2P.
-
-Acceptance: repeated clean client launches follow the same documented sequence without arbitrary delays or guessed packets.
-
-## P2 — Initialization, authentication, and lobby
-
-- [ ] Identify the semantics of every field in message 5020; current values are test defaults.
+### P2 — Initialization, Authentication, and Lobby
 - [x] Recover bootstrap, server/channel list, and authentication operations from the application dispatcher.
-- [x] Implement a local account and explicit session states.
-- [x] Recover addresses and ports for subsequent connections.
-- [x] Implement character listing and creation using the client's parsers.
-- [x] Simple versioned local persistence (`data/characters.json`); reset = delete the file.
+- [x] Implement local account session states (`OfflinePlayer`) and credentials handling.
+- [x] Implement character listing, creation, and deletion with case-insensitive name validation.
+- [x] Implement versioned local character persistence (`data/characters.json`).
+- [ ] Decode remaining unknown flags in opcode 5020 (welcome message; current fields use safe defaults).
+- [ ] Add multiple account support and profile switching.
 
-Acceptance: the client displays a local server/channel, creates and selects a character, and retains it after restart.
+### P3 — Map Entry, Dungeons, Combat & Economy
+- [x] Recover lobby-to-square/zone transfers, map IDs, and relay handshake (port 9401).
+- [x] Implement spawn coordinates, player movement, and heartbeat responses.
+- [x] Implement dungeon lifecycle: gate selection (5043/5044), map code resolution (5009/5010), and dungeon start (5013/5014).
+- [x] Implement dungeon layers (5095 `CHANGE_DUNGEON_LAYER_NOT`) and active warflags (2422).
+- [x] Implement combat events: monster death (5063), item drops (5064), player death (5093), and rebirth coin revive (2448/2449).
+- [x] Implement dungeon completion: card reward choice (5090/5091) and return to town (5045/5046).
+- [x] Implement level-up & SP progression on EXP overflow using `Data/Dict/charstat.lua` tables with 5087 (`LevelUpNot`) and 5086 (`ChangeExpNot`).
+- [x] Implement shop transactions: buy item (2067/2068), sell item (2069/2070), and repurchase (2071/2072) with gold & inventory persistence.
+- [x] Implement inventory operations: bag slot drag-and-drop (2036/2037), equip item (2042/2043), use consumable (2038/2039), discard item (2040/2041), bag swapping (2030/2031), bag renaming (2032/2033), and tab filters (2048/2049).
+- [x] Implement skill management: learn skill (2050/2051), lock skill (2117/2118), and custom speech shout (2053/2054, 2055/2056).
+- [x] Implement guild economy: money deposit (2179/2180), money withdraw (2181/2182), level up (2183/2184), notice modify/delete (2185/2186, 2188/2189), and skill init (2214/2215).
+- [ ] Implement monster AI aggro and damage calculation algorithms from client property tables.
+- [ ] Implement item enhancement/refining system (2115/2116 `ITEM_UPGRADE_REQ/ACK`) with success/break rates.
+- [ ] Implement package item unpacking (`CPkg...` item extraction into sub-items).
 
-## P3 — Map entry and minimum gameplay
+### P4 — Assets and Configuration
+- [x] Reverse engineer JPK archive format: 0x226 header flag, custom inverse cipher, and directory headers.
+- [x] Implement byte-identical JPK repacker and CLI extraction tools (`tools/jpk_tool.py`).
+- [x] Parse `Data/Dict/questlist.lua` for quest objectives, dialogue, and gold/EXP/item rewards.
+- [x] Parse `Data/Dict/storelist.lua` for NPC shop inventories and stock limits.
+- [x] Parse `Data/Dict/charstat.lua` for per-class base stats, HP/MP curves, and level-up requirements.
+- [x] Parse `Data/Dict/maplist.lua` for square definitions, dungeon layers, and spawn coordinates.
+- [ ] Parse monster attributes and drop rate tables (`Data/Dict/monsterlist.lua` or binary properties).
+- [ ] Parse skill damage formulas and cooldown definitions (`Data/Dict/skilllist.lua`).
+- [ ] Investigate `DarkbloodKR.ini` configuration flags and client customization toggles.
 
-- [x] Recover lobby-to-square/zone transfers and real map IDs.
-- [x] Implement spawn, coordinates, movement, and heartbeats.
-- [x] Implement the minimum inventory/equipment state required by the client.
-- [x] Wire store economy transactions: buy item (2067/2068), sell item (2069/2070), and repurchase (2071/2072) with balance/inventory persistence.
-- [x] Recover guild economy and progression: money deposit/withdraw (2179/2180, 2181/2182), level up (2183/2184), notice modify/delete (2185/2186, 2188/2189), and all skill init (2214/2215).
-- [x] Implement level-up & SP progression on EXP overflow using `charstat.lua` tables with 5087 (`LevelUpNot`) and 5086 (`ChangeExpNot`).
-- [x] Recover combat synchronization, monsters, and dungeon transitions.
-- [x] Implement damage, death/revival, loot, and persistent progress.
-- [ ] Verify actual movement and a combat cycle in the client.
+### P5 — Stability, Launcher & Tooling
+- [x] Replace dummy Steam placeholders with robust proxy implementations (`SteamUser`, `SteamFriends`, `SteamUserStats`).
+- [x] Fix compilation issues under MSVC with independent build environment detection (`build_shim.bat`).
+- [x] Implement supervisor CLI (`tools/gamectl.py`) with client hash verification and clean process isolation.
+- [x] Implement MCP automation server (`tools/mcp_server.py`) for AI agent control and live telemetry.
+- [x] Add GitHub Issue templates (`bug_report.yml`, `opcode_investigation.yml`) and diagnostic exporter (`tools/export_diagnostics.py`).
+- [ ] Implement automatic test-client staging (clean copy of game folder without touching original install).
+- [ ] Verify complete network isolation: hook `WSAConnect`, `ConnectEx`, IPv6 sockets, and UDP ports.
+- [ ] Automated release build pipeline producing single-binary / portable launcher zip.
 
-Acceptance: a character enters a map, moves, and completes a minimum gameplay loop with saved state.
+---
 
-## P4 — Assets and configuration
+## New Milestones
 
-- [x] Repair and validate JPK decryption; existing extracted XML is malformed.
-- [x] Validate the key/algorithm against multiple parseable files rather than a guessed XML header.
-- [x] Recover the actual algorithm from the client and distinguish encryption/compression layers.
-- [ ] Investigate `DarkbloodKR.ini`, server configuration, and map/class/item tables.
-- [x] Harden the extractor against EOF, invalid varints, sizes/offsets, path traversal, and decompression errors.
-- [x] Extract needed assets selectively after validating the decoder.
+### P6 — Multiplayer, Party & P2P Relay Synchronization
+- [ ] **Multi-client Square Synchronization**:
+  - Broadcast player position, rotation, and animation state to nearby players in the same square/layer.
+  - Handle player join notification (`5021 eERC_USER_JOIN_SQUARE_NOT`) and player leave notification (`5022 eERC_USER_LEAVE_SQUARE_NOT`).
+  - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
+- [ ] **Party System**:
+  - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`).
+  - Party join, leave, and kick (`2102 eEGS_PARTY_JOIN_REQ`, `2104 eEGS_PARTY_LEAVE_REQ`, `2106 eEGS_PARTY_KICK_REQ`).
+  - Master delegation and loot distribution settings (free-for-all, round-robin, leader-only).
+- [ ] **Co-op Dungeon Instances**:
+  - Synchronize party dungeon entry so all party members enter the same dungeon instance.
+  - Synchronize monster health, damage numbers, and boss cinematic triggers across party members.
+  - Shared party rank calculation and card reward selection at dungeon finish.
 
-## P5 — Stability and launcher
+### P7 — Complete Economy, Trade & Mail System
+- [ ] **Player-to-Player Direct Trade**:
+  - Trade request and invitation (`2057 eEGS_TRADE_REQ` / `2058 eEGS_TRADE_ACK`).
+  - Trade window synchronization: adding items, entering gold, locking trade, and dual confirmation.
+  - Transaction atomicity: swap items and gold between characters with rollback on disconnection.
+- [ ] **Mailbox System (Post Office)**:
+  - Mail listing (`2219 eEGS_POST_LIST_REQ` / `2220 eEGS_POST_LIST_ACK`).
+  - Read mail, claim attached gold/items (`2221 eEGS_POST_ITEM_RECEIVE_REQ` / `2222 ACK`).
+  - Send mail with gold and item attachments to offline/online characters (`2223 eEGS_POST_SEND_REQ` / `2224 ACK`).
+  - Mail expiration, return to sender, and deletion (`2225 eEGS_POST_DELETE_REQ` / `2226 ACK`).
+- [ ] **Personal Shop**:
+  - Opening personal stall in town (`2078 eEGS_PERSONALSHOP_OPEN_REQ` / `2079 ACK`).
+  - Setting stall title, price per item, and browsing stalls of other players.
+  - Buying items directly from player stalls with real-time tax and gold updates.
+- [ ] **Auction House / Market**:
+  - Search market listings with filters (item type, rarity, level requirement, price).
+  - Register item for bidding or instant buyout; fee calculation and deposit.
 
-- [x] Replace Steam pointer `1` placeholders with correct interfaces for exercised methods; verify x86 ABI and struct returns.
-- [ ] Implement callbacks/tickets required by the observed local flow.
-- [x] Remove dead termination-hook code and make diagnostics optional.
-- [x] Fix builds: MSVC detection, working-directory independence, failure propagation, and stale-DLL prevention.
-- [x] Session control with hash verification and owned-process shutdown (`tools/gamectl.py`, MCP `tools/mcp_server.py`).
-- [ ] Test-copy preparation and shim build/deploy in the launcher.
-- [ ] Investigate WSAConnect/ConnectEx/IPv6/UDP and additional outbound connections.
-- [x] Separate or archive the speculative Auth/Lobby prototype (`legacy/speculative_prototype/`).
-- [ ] Test from a clean checkout and clean local state without the original services.
+### P8 — Guild Warfare, Sieges & Arena PvP
+- [ ] **Guild Management Expansion**:
+  - Member grade and permissions management (Master, Officer, Veteran, Member).
+  - Guild shared warehouse / storage (`GUILD_STORAGE_OPEN_REQ`, `GUILD_STORAGE_IN/OUT_REQ`).
+  - Guild level-up perks and guild skill tree progression.
+- [ ] **PvP Duels & Arena**:
+  - 1v1 duel challenge in town / square (`DUEL_REQ` / `DUEL_ACK`).
+  - Arena room creation, spectator slots, and match start (`ARENA_ROOM_CREATE_REQ`).
+  - Round timer, score tracking, death/respawn in arena, and match settlement.
+  - Ladder ranking calculation and season leaderboards.
+- [ ] **Guild War & Castle Siege**:
+  - War declaration between guilds.
+  - Scheduled siege warfare instances with gate destruction and flag capture objectives.
 
-Final acceptance: installation, launch, gameplay, saving, and shutdown are reproducible, documented, and verified.
+### P9 — Architecture Refactoring & C# Migration Preparation
+- [ ] **Modularize Message Schemas**:
+  - Split monolithic `src/darkblood/games/network/messages.py` into domain-specific packages:
+    - `darkblood.games.network.messages.lobby`
+    - `darkblood.games.network.messages.commerce`
+    - `darkblood.games.network.messages.combat`
+    - `darkblood.games.network.messages.dungeon`
+    - `darkblood.games.network.messages.social`
+    - `darkblood.games.network.messages.guild`
+- [ ] **Database & Storage Abstraction**:
+  - Introduce `ICharacterStore` interface with abstract async methods.
+  - Implement SQLite backend (`data/darkblood.db`) for high reliability and SQL querying.
+  - Implement export/import tool between JSON and SQLite.
+- [ ] **Domain Entity Decoupling**:
+  - Decouple low-level ProudNet transport session from high-level `PlayerCharacter` and `WorldInstance`.
+  - Introduce an event-driven `GameWorldManager` managing player entities, square instances, and dungeon instances.
+- [ ] **C# Port Specification (MHServerEmu Alignment)**:
+  - Document all packet schemas in C# record / struct format with endianness attributes.
+  - Define C# interface contracts matching `DarkBloodServer` architecture.
+
+---
+
+## Subsystem Opcode Reference & Implementation Status
+
+Below is the structured roadmap of client opcodes, categorized by gameplay subsystem.
+
+### 1. Authentication, Lobby & Account (Opcodes 2001 - 2023, 2402 - 2405, 5020, 5028)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 5020 | `eERC_WELCOME_NOT` | **Implemented** | Initial session handshake & client settings |
+| 2402 / 2403 | `eEGS_DB_LIST_REQ / ACK` | **Implemented** | Server list dialog (`0x00783CD0`) |
+| 2001 / 2002 | `eEGS_CHANNEL_LIST_REQ / ACK` | **Implemented** | Channel selection list (`0x00783F40`) |
+| 2021 / 2022 | `eEGS_AUTHENTICATE_REQ / ACK` | **Implemented** | User account authentication (`0x007841C0`) |
+| 5028 / 5029 | `eERC_VERSION_REQ / ACK` | **Implemented** | Client version check (`0x00784400`) |
+| 5134 | `eERC_SQUARE_RELAY_ANNOUNCE` | **Implemented** | Relay server endpoint (127.0.0.1:9401) |
+| 2008 / 2009 | `eEGS_CHAR_LIST_REQ / ACK` | **Implemented** | Character selection list (`0x00784860`) |
+| 2012 / 2013 | `eEGS_CREATE_CHARACTER_REQ / ACK` | **Implemented** | Character creation (`0x00784AC0`) |
+| 2014 / 2015 | `eEGS_DELETE_CHARACTER_REQ / ACK` | **Implemented** | Character deletion (`0x00758370`) |
+| 2006 / 2007 | `eEGS_SELECT_CHAR_REQ / ACK` | **Implemented** | Character select & world entry payload (`0x007AA4B0`) |
+| 2016 / 2017 | `eEGS_CHANGE_CHAR_SLOT_REQ / ACK` | Planned | Reordering characters in selection menu |
+
+### 2. Inventory, Items & Bag Management (Opcodes 2028 - 2049, 2115 - 2118, 2143 - 2146)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 2028 | `eEGS_CLOSE_BAG_REQ` | **Implemented** | Fire-and-forget bag window closed |
+| 2030 / 2031 | `eEGS_SWITCH_BAG_REQ / ACK` | **Implemented** | Bag container slot swap (`0x00557680`) |
+| 2032 / 2033 | `eEGS_CHANGE_BAG_NAME_REQ / ACK` | **Implemented** | Rename bag tab (`0x007528B0`) |
+| 2036 / 2037 | `eEGS_DRAG_ITEM_REQ / ACK` | **Implemented** | Drag item across inventory slots (`0x0077DF60`) |
+| 2038 / 2039 | `eEGS_USE_ITEM_REQ / ACK` | **Implemented** | Consume potion / food / buff (`0x0077D4C0`) |
+| 2040 / 2041 | `eEGS_DELETE_ITEM_REQ / ACK` | **Implemented** | Discard item from inventory (`0x00557420`) |
+| 2042 / 2043 | `eEGS_EQUIP_ITEM_REQ / ACK` | **Implemented** | Equip weapon / armor / accessory (`0x007AE940`) |
+| 2044 / 2045 | `eEGS_ASSIGN_QUICKSLOT_REQ / ACK` | **Implemented** | Map item/skill to quickslot (`0x0078C4A0`) |
+| 2046 / 2047 | `eEGS_SWITCH_QUICKSLOT_REQ / ACK` | **Implemented** | Reorder quickslot buttons (`0x0078C790`) |
+| 2048 / 2049 | `eEGS_CHANGE_BAG_PROPERTY_REQ / ACK` | **Implemented** | Bag category filter settings (`0x00774040`) |
+| 2115 / 2116 | `eEGS_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Equipment reinforcement & upgrading (`0x007909C0`) |
+| 2117 / 2118 | `eEGS_UPDATE_SKILL_LOCKED_REQ / ACK` | **Implemented** | Lock skill from accidental use (`0x00752C70`) |
+| 2143 / 2144 | `eEGS_DURABILITY_CHANGE_REQ / ACK` | **Implemented** | Item durability wear update (`0x00774AE0`) |
+| 2145 / 2146 | `eEGS_DURABILITY_REPAIR_REQ / ACK` | **Implemented** | Blacksmith durability repair (`0x007930D0`) |
+| 2050 / 2051 | `eEGS_LEARN_SKILL_REQ / ACK` | **Implemented** | Skill tree progression & level (`0x0078DB90`) |
+| 2053 / 2054 | `eEGS_MODIFY_SKILL_SPEECH_REQ / ACK` | **Implemented** | Custom skill shout text (`0x0078E090`) |
+| 2055 / 2056 | `eEGS_DELETE_SKILL_SPEECH_REQ / ACK` | **Implemented** | Clear skill shout text (`0x0078E270`) |
+| 2108 / 2109 | `eEGS_ITEM_DISASSEMBLE_REQ / ACK` | Planned | Salvage items into crafting materials |
+| 2110 / 2111 | `eEGS_ITEM_SOCKET_INSERT_REQ / ACK` | Planned | Insert jewel / gem into socket |
+| 2112 / 2113 | `eEGS_ITEM_SOCKET_REMOVE_REQ / ACK` | Planned | Extract jewel from socket |
+
+### 3. Economy, Stores & Trade (Opcodes 2065 - 2087)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 2065 / 2066 | `eEGS_GET_STORE_INFO_REQ / ACK` | **Implemented** | Fetch NPC store item list (`0x007842C0`) |
+| 2067 / 2068 | `eEGS_BUY_ITEM_REQ / ACK` | **Implemented** | Buy items from store with gold (`0x0077E2F0`) |
+| 2069 / 2070 | `eEGS_SELL_ITEM_REQ / ACK` | **Implemented** | Sell items to vendor for gold (`0x0077E8E0`) |
+| 2071 / 2072 | `eEGS_REPURCHASE_ITEM_REQ / ACK` | **Implemented** | Repurchase sold items tab (`0x0077EC30`) |
+| 2078 / 2079 | `eEGS_PERSONALSHOP_OPEN_REQ / ACK` | Planned | Open personal shop stall in town |
+| 2080 / 2081 | `eEGS_PERSONALSHOP_BUY_REQ / ACK` | Planned | Purchase from player's personal stall |
+| 2086 / 2087 | `eEGS_BUY_LIFE_WATER_REQ / ACK` | **Implemented** | Purchase life water resurrection item (`0x0078FF90`) |
+| 2057 / 2058 | `eEGS_TRADE_REQ / ACK` | Planned | Direct player-to-player trade invite |
+| 2059 / 2060 | `eEGS_TRADE_ADD_ITEM_REQ / ACK` | Planned | Place item into trade window |
+| 2061 / 2062 | `eEGS_TRADE_LOCK_REQ / ACK` | Planned | Lock trade window |
+| 2063 / 2064 | `eEGS_TRADE_CONFIRM_REQ / ACK` | Planned | Final confirm trade execution |
+
+### 4. Quests, Tutorial & Dialogue (Opcodes 2073 - 2095, 2346 - 2358, 2410)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 2073 / 2074 | `eEGS_QUEST_ACCEPT_REQ / ACK` | **Implemented** | Start quest (`0x0076BA00`) |
+| 2076 / 2077 | `eEGS_QUEST_COMPLETE_REQ / ACK` | **Implemented** | Turn in quest, gold/EXP/items (`0x00656870`) |
+| 2082 / 2083 | `eEGS_CLEAR_TUTORIAL_REQ / ACK` | **Implemented** | Complete tutorial, enter Act 1 (`0x006E5CE0`) |
+| 2084 / 2085 | `eEGS_CHECK_TUTORIAL_REQ / ACK` | **Implemented** | Tutorial status query |
+| 2094 / 2095 | `eEGS_NPC_FIRST_MEET_REQ / ACK` | **Implemented** | NPC introductory dialogue (`0x00762E40`) |
+| 2346 / 2347 | `eEGS_TUTORIAL_QUEST_START_REQ / ACK` | **Implemented** | Tutorial quest chain init (`0x006481E0`) |
+| 2358 | `eEGS_GUIDE_BEGINNER_UPDATE_REQ` | **Implemented** | Beginner guide tooltip completion (`0x0079A3B0`) |
+| 2410 | `eEGS_QUEST_HISTORY_REFRESH_NOT` | **Implemented** | Restores completed quest log (`0x0076C1E0`) |
+| 2075 | `eEGS_QUEST_GIVEUP_REQ` | Planned | Abandon active quest |
+
+### 5. Dungeon, Monsters & Combat (Opcodes 5001 - 5095, 2422, 2448)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 5001 / 5002 | `eERC_CREATE_ROOM_REQ / ACK` | **Implemented** | Create dungeon instance room (`0x00788320`) |
+| 5009 / 5010 | `eERC_CHANGE_MAPCODE_REQ / ACK` | **Implemented** | Select dungeon stage map code (`0x006D4A00`) |
+| 5013 / 5014 | `eERC_START_GAME_REQ / ACK` | **Implemented** | Launch dungeon session (`0x00788640`) |
+| 5030 / 5031 | `eERC_USER_MOVE_NOT` | **Implemented** | Position and movement synchronization |
+| 5043 / 5044 | `eERC_CHANGE_DUNGEON_GATE_REQ / ACK`| **Implemented** | Dungeon gate selection (`0x007894F0`) |
+| 5045 / 5046 | `eERC_BACK_TO_SQUARE_REQ / ACK` | **Implemented** | Leave dungeon, return to town (`0x007897F0`) |
+| 5063 | `eERC_MONSTER_DEAD_REQ` | **Implemented** | Monster killed event (`0x0078A690`) |
+| 5064 | `eERC_DROP_ITEM_NOT` | **Implemented** | Monster loot dropped on ground (`0x00784D10`) |
+| 5086 | `eERC_CHANGE_EXP_NOT` | **Implemented** | EXP bar update notification (`0x007775F0`) |
+| 5087 | `eERC_LEVEL_UP_NOT` | **Implemented** | Level-up animation and stat boost (`0x0078CCF0`) |
+| 5090 / 5091 | `eERC_CHOICE_REWARD_PARTYRANK_REQ/ACK`| **Implemented** | End-of-dungeon reward card pick (`0x0078D660`)|
+| 5093 / 5094 | `eERC_CHAR_DEAD_NOT / ACK` | **Implemented** | Player character death event (`0x0078D9C0`) |
+| 5095 | `eERC_CHANGE_DUNGEON_LAYER_NOT` | **Implemented** | Enter next dungeon layer/sub-area (`0x007900B0`)|
+| 2422 | `eEGS_ACTIVE_WARFLAG_REQ` | **Implemented** | Active war flag state update (`0x0079C300`) |
+| 2448 / 2449 | `eEGS_REBIRTH_COIN_REVIVE_REQ / ACK`| **Implemented** | Revive in dungeon using coin (`0x00795450`) |
+| 5060 / 5061 | `eERC_MONSTER_SPAWN_NOT` | Planned | Dynamic monster wave spawn |
+| 5065 / 5066 | `eERC_LOOT_PICKUP_REQ / ACK` | Planned | Pick up dropped loot from ground |
+
+### 6. Social, Friends, Guilds & Post (Opcodes 2128 - 2226, 2569 - 2595)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 2128 / 2129 | `eEGS_USE_SPEAKER_ITEM_REQ / ACK` | **Implemented** | Megaphone world shout message (`0x0077F320`) |
+| 2131 / 2132 | `eEGS_FRIEND_LIST_REQ / ACK` | **Implemented** | Request friends list (`0x00752110`) |
+| 2133 / 2134 | `eEGS_FRIEND_LIST_UPDATE_REQ / ACK` | **Implemented** | Update friend memo (`0x00752E80`) |
+| 2135 / 2136 | `eEGS_FRIEND_LIST_DELETE_REQ / ACK` | **Implemented** | Remove friend from list (`0x00759560`) |
+| 2139 / 2140 | `eEGS_FRIEND_LIST_ADD_REQ / ACK` | **Implemented** | Send friend request (`0x007591A0`) |
+| 5121 / 5122 | `eERC_GUILD_CREATE_PROPOSAL_REQ/ACK`| **Implemented** | Guild name availability check (`0x00759750`) |
+| 2150 / 2151 | `eEGS_GUILD_CREATE_REQ / ACK` | **Implemented** | Register new guild (`0x00793720`) |
+| 2155 / 2156 | `eEGS_GUILD_PERSON_JOIN_REQ / ACK` | **Implemented** | Accept guild member join (`0x0075A220`) |
+| 2160 / 2161 | `eEGS_GUILD_INVITE_REQ / ACK` | **Implemented** | Invite character to guild (`0x00759870`) |
+| 2162 / 2163 | `eEGS_GUILD_PERSON_LEAVE_REQ / ACK` | **Implemented** | Leave current guild (`0x00759CA0`) |
+| 2179 / 2180 | `eEGS_GUILD_MONEY_IN_REQ / ACK` | **Implemented** | Deposit gold into guild bank (`0x00794250`) |
+| 2181 / 2182 | `eEGS_GUILD_MONEY_OUT_REQ / ACK` | **Implemented** | Withdraw gold from guild bank (`0x00794470`) |
+| 2183 / 2184 | `eEGS_GUILD_LEVEL_UP_REQ / ACK` | **Implemented** | Upgrade guild level (`0x00753380`) |
+| 2185 / 2186 | `eEGS_GUILD_NOTICE_MODIFY_REQ / ACK` | **Implemented** | Set guild announcement (`0x0075A120`) |
+| 2188 / 2189 | `eEGS_GUILD_NOTICE_DELETE_REQ / ACK` | **Implemented** | Delete guild announcement (`0x0074B830`) |
+| 2214 / 2215 | `eEGS_GUILD_ALL_SKILL_INIT_REQ / ACK` | **Implemented** | Reset guild skill tree (`0x00752D80`) |
+| 2219 / 2220 | `eEGS_POST_LIST_REQ / ACK` | **Implemented** | Open mailbox mail list (`0x00753BE0`) |
+| 2221 / 2222 | `eEGS_POST_ITEM_RECEIVE_REQ / ACK` | Planned | Claim attachments from mail |
+| 2223 / 2224 | `eEGS_POST_SEND_REQ / ACK` | Planned | Compose and send mail |
+| 2225 / 2226 | `eEGS_POST_DELETE_REQ / ACK` | Planned | Delete mail message |
+| 2569 / 2570 | `eEGS_ATTENDANCE_CHECK_REQ / ACK` | **Implemented** | Daily attendance reward check |
+| 2594 / 2595 | `eEGS_HTTPNOTICE_CHECK_REQ / ACK` | **Implemented** | Web event notice check (`0x005A5110`) |
+
+---
+
+## Rigorous Verification & Testing Strategy
+
+### 1. Headless Continuous Integration Matrix
+All emulator functions must execute headless through `python -m unittest discover -s tests -v`:
+- `test_character_store.py`: CRUD, case-insensitive duplicate prevention, inventory initialization.
+- `test_transport.py`: Scalar boundaries, fragmented/coalesced TCP frames, varuint limits, zlib compression.
+- `test_wire_messages.py`: Unit encode/decode matching disassembled client schemas for all opcodes.
+- `test_lobby_flow.py`: Full login, server list, channel list, character list, creation, deletion, selection.
+- `test_inventory_flow.py`: Drag, equip, consume, bag switch, bag rename, quickslots, skill learn, buy, sell, repurchase.
+- `test_dungeon_flow.py`: Gate select, map code, dungeon start, layer switch, combat, dead/revive, card rewards, back to square.
+- `test_quest_flow.py`: Quest acceptance, reward calculation, level-up progression, SP boost, active tracker restore.
+- `test_social_flow.py`: Mailbox, friends, guild creation, guild bank deposit/withdraw, guild level up, notice edit/delete, skills reset.
+- `test_relay_flow.py`: Relay server PIDL handshake, group join isolation.
+- `test_jpk.py`: Archive unpacking, byte-identical repack, key cipher verification.
+- `test_hashing.py`: Client DJB2 hashing parity.
+
+### 2. Live Client Graphics & UI Verification Matrix
+Manual and automated client execution checklist (`tools/gamectl.py enter-lobby` / `live test`):
+- [x] Initial splash screen, intro video skip, server selection popup.
+- [x] Channel selection dialog and ping display.
+- [x] Character creation: Warrior, Knight, Hunter, Mage, Thief, Fighter, WHunter models display with starting gear.
+- [x] Character selection: 3D character preview, level display, location display.
+- [x] Town entry: Act 1 town 3D geometry renders, character controllable via WASD/arrow keys.
+- [x] NPC Dialogue: talk box appears, advances dialogue with Space key.
+- [x] Store Window: talking to shop NPC opens store UI with item tabs.
+- [ ] Store Transactions: buying potion decrements gold UI, adds item icon in bag cell; selling removes icon and updates gold UI.
+- [ ] Equipment Window: pressing 'I'/'E' shows worn gear; dragging weapon to slot equips with character mesh update.
+- [ ] Skill Window: pressing 'K' shows skill tree; spending SP increases skill level and enables skill on hotbar.
+- [ ] Dungeon Entry: walking into dungeon gate loads dungeon map (`Act1_G1_A10`), spawns monsters with health bars.
+- [ ] Combat Animation: attacking monster plays hit sound, displays floating damage numbers, triggers monster death animation.
+- [ ] Level-Up Fanfare: EXP bar reaches 100%, plays level-up visual fanfare, displays "Level Up!" text, increments character level display.
+- [ ] Card Reward UI: completing dungeon displays 4 face-down cards, clicking a card flips it and grants selected reward item.
+- [ ] Return to Town: portal returns player back to town square seamlessly.
+
+### 3. Boundary, Network Fuzzing & Malformed Packet Tests
+- Fuzz JSerBuffer with malformed varuint terminal bits (missing terminal bit 7, oversized streams).
+- Fuzz scalar reader with invalid width bytes (0, 3, 5, 255).
+- Send out-of-order packets (e.g. gameplay packet before authentication) to verify graceful disconnection rather than server crash.
+- Flood TCP stream with truncated frames to ensure memory buffers do not leak or grow unbounded.
+
+### 4. Multi-Client Concurrency Tests
+- Simulate 10 simultaneous headless clients performing login, character select, and town movements in parallel.
+- Verify thread safety of character data storage (`data/characters.json` or SQLite).
+- Assert that broadcast events (e.g. megaphone 2128 or town movement 5030) are delivered to all connected clients without deadlocks.
+
+---
+
+## Architecture Refactoring & Clean Code Plan
+
+### 1. Splitting `messages.py` into Domain Packages
+Currently, `src/darkblood/games/network/messages.py` exceeds 2000 lines of code. It will be refactored into:
+- `src/darkblood/games/network/messages/`
+  - `__init__.py` (re-exports for backwards compatibility)
+  - `base.py` (common dataclass utilities, tag constants, `ItemDropEntry`)
+  - `lobby.py` (GameServer, Channel, Character, CreateChar, DeleteChar, SelectChar)
+  - `commerce.py` (StoreInfo, BuyItem, SellItem, Repurchase, ItemUpgrade, LifeWater, Bags)
+  - `combat.py` (MonsterDead, DropItem, CharDead, RebirthCoin, LevelUp, ChangeExp)
+  - `dungeon.py` (Room, DungeonGate, MapCode, StartGame, DungeonLayer, WarFlag, CardReward, BackToSquare)
+  - `social.py` (FriendList, Mail, Speaker, Attendance, HttpNotice)
+  - `guild.py` (GuildCreate, GuildJoin, GuildLeave, GuildMoney, GuildLevel, GuildNotice, GuildSkill)
+
+### 2. Asynchronous Storage Layer Abstraction
+- Replace direct JSON file writes with an abstract storage repository:
+  ```python
+  class ICharacterRepository(ABC):
+      async def get_character(self, account: str, char_id: int) -> Optional[Character]: ...
+      async def save_character(self, account: str, character: Character) -> None: ...
+      async def delete_character(self, account: str, char_id: int) -> bool: ...
+      async def list_characters(self, account: str) -> List[Character]: ...
+  ```
+- Implement two backends:
+  - `JsonCharacterRepository`: backward-compatible file storage.
+  - `SqliteCharacterRepository`: production ACID-compliant local database.
+
+### 3. Server Core & Session Decoupling
+- Separate raw socket IO handling from game business logic.
+- Extract `GameWorld`:
+  - Keeps track of spatial grid partitioning for player movement broadcasting.
+  - Manages active dungeon instances and instance cleanup on exit.
+
+---
+
+## Future Improvements & Quality-of-Life Tools
+
+1. **Integrated Web Dashboard & Live Packet Inspector**:
+   - Lightweight built-in local web dashboard on `http://127.0.0.1:9405`.
+   - Real-time display of connected clients, active maps, character stats, and live decoded event logs.
+   - Interactive character editor: edit level, gold, add items, reset quests.
+
+2. **In-Game GM Commands & Console**:
+   - Chat commands executed by typing in town or dungeon chat:
+     - `/gold <amount>`: adds gold immediately.
+     - `/levelup <levels>`: increments character level and awards SP.
+     - `/item <item_code> <count>`: grants items directly into inventory.
+     - `/teleport <map_code>`: moves character to specified map/square.
+     - `/clearquest <quest_id>`: sets quest as completed.
+     - `/spawn <monster_id>`: spawns monster at current coordinates.
+
+3. **Asset Pipeline & Modding Toolkit**:
+   - Automated GUI / CLI tool to browse, unpack, modify, and repack client JPK archives.
+   - Translation / localization support: extract and replace client dialogue strings in `questlist.lua`.
+
+4. **Port to C# / .NET 8 (MHServerEmu Architecture)**:
+   - Once all opcode schemas and game formulas are stabilized in Python, port cleanly to high-performance C# server architecture matching MHServerEmu.
