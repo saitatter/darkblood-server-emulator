@@ -1,5 +1,30 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~12:00 (Cristian live test)
+
+The user authorized exclusive game control. Started the updated local server
+and client using gamectl; selected existing Mage `lindic` (id 2), preserving
+both existing characters. Live-verified on this machine: 2006/2007 selection,
+relay handshake/JoinGroupACK, mailbox/friends/block-list replies, and the Mage
+tutorial rendered at Library/Laboratory of Magician's Top. Client remained
+connected and emitted 2353 monster-death notifications; no C++ exception or
+access violation was logged. This is tutorial behavior, not dungeon entry.
+
+Esc displayed the End tutorial dialog, but the attempted OK click and Enter
+did not produce 2082. Character movement/attacks continued between inputs.
+Asked whether the user was also controlling the game, and stopped further UI
+input pending clarification. Do not assume skip succeeded. The skill's native
+Computer Use pipe was unavailable; gamectl was the fallback. Its combined
+physical/PostMessage input may need investigation if the user confirms no input.
+
+Server/client are LEFT RUNNING (`logs/session.json` tracks owned processes;
+verify current PIDs before touching them). Local captures: `research/resume-ui.png`
+(latest tutorial combat), `research/resume-start.png`; wire/hook logs contain
+the run from ~11:54. Additional static output `research/dungeon-flow.c` confirms
+0x6E5C80 selects 0x78F950 (2082 sender) or 0x7AC380 based on app-page +0xC4;
+the latter branch's behavior was not recovered. Next: settle exclusive control,
+verify tutorial exit, reach town, then exercise room creation/start.
+
 ## Update — 2026-11-16 (Cristian resume, dungeon start serializer)
 
 Pulled/rebased `origin main`: already at `cbcc82e`. Upstream already implements

@@ -2,6 +2,13 @@
 
 ## Latest resume verification — Cristian, 2026-11-16
 
+Local live test (~11:54–12:00): existing Mage `lindic` selected successfully
+and rendered its tutorial. Relay JoinGroupACK and mailbox/friend replies were
+exercised; 2353 monster-death notifications arrived and no crash was logged.
+Attempted tutorial exit did not emit 2082. Further UI input was stopped because
+movement/attacks continued between commands; user-control clarification pending.
+Town/skip/dungeon acceptance remains unverified in this local run.
+
 `origin main` was already current at `cbcc82e`; upstream includes room list and
 creation responses, store dict loading, quest persistence/history and waypoints.
 Rebuilt/deployed the latest shim locally and verified the client executable hash.
