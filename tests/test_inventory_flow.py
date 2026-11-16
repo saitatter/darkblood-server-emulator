@@ -137,6 +137,46 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2144 = await client.expect_event(2144)
             self.assertEqual(struct.unpack_from('<i', ack2144)[0], 0)
 
+            # 23. Request trade (5069 -> 5070)
+            client.send_event(5069, struct.pack('<q', 777))
+            _, ack5070 = await client.expect_event(5070)
+            self.assertEqual(struct.unpack_from('<iq', ack5070[:12]), (0, 777))
+
+            # 24. Accept request trade (5071 -> 5072)
+            client.send_event(5071, struct.pack('<q', 777))
+            _, ack5072 = await client.expect_event(5072)
+            self.assertEqual(struct.unpack_from('<iq', ack5072[:12]), (0, 777))
+
+            # 25. Insert trade item (5075 -> 5076)
+            client.send_event(5075, struct.pack('<qi', 1, 0))
+            _, ack5076 = await client.expect_event(5076)
+            self.assertEqual(struct.unpack_from('<i', ack5076)[0], 0)
+
+            # 26. Delete trade item (5077 -> 5078)
+            client.send_event(5077, struct.pack('<q', 1))
+            _, ack5078 = await client.expect_event(5078)
+            self.assertEqual(struct.unpack_from('<i', ack5078)[0], 0)
+
+            # 27. Update trade gold (5079 -> 5080)
+            client.send_event(5079, struct.pack('<q', 2500))
+            _, ack5080 = await client.expect_event(5080)
+            self.assertEqual(struct.unpack_from('<i', ack5080)[0], 0)
+
+            # 28. Accept trade (5081 -> 5082)
+            client.send_event(5081, b'')
+            _, ack5082 = await client.expect_event(5082)
+            self.assertEqual(struct.unpack_from('<i', ack5082)[0], 0)
+
+            # 29. Finally accept trade (5083 -> 5084)
+            client.send_event(5083, b'')
+            _, ack5084 = await client.expect_event(5084)
+            self.assertEqual(struct.unpack_from('<i', ack5084)[0], 0)
+
+            # 30. Cancel trade (5073 -> 5074)
+            client.send_event(5073, b'')
+            _, ack5074 = await client.expect_event(5074)
+            self.assertEqual(struct.unpack_from('<i', ack5074)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

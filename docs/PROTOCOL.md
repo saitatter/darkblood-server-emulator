@@ -438,6 +438,42 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `char_name: wstring` -> `result: i32` (0xCE player offline / not found).
 - `2135 eEGS_FRIEND_LIST_DELETE_REQ` (`0x00790000.c:1824`) -> `2136 eEGS_FRIEND_LIST_DELETE_ACK` (`0x00759560`):
   `char_uid: i64` -> `result: i32, char_uid: i64`.
+- `2221 eEGS_POST_SEND_REQ` (`0x00795D70`) -> `2222 eEGS_POST_SEND_ACK` (`0x00795F40`):
+  Sends mail: `result: i32 (0), items: tag 0x10 vector`.
+- `2223 eEGS_POST_READ_REQ` (`0x007963C0`) -> `2224 eEGS_POST_READ_ACK` (`0x0075A660`):
+  `mail_uid: i64` -> `result: i32 (0), mail_uid: i64`.
+- `2225 eEGS_POST_GET_APPEND_ITEM_REQ` (`0x0079664C`) -> `2226 eEGS_POST_GET_APPEND_ITEM_ACK` (`0x0077F8E0`):
+  `mail_uid: i64` -> `result: i32 (0), mail_uid: i64, gold: i64, items: tag 0x10 vector`.
+- `2236 eEGS_POST_DELETE_REQ` (`0x007964EC`) -> `2237 eEGS_POST_DELETE_ACK` (`0x007715F0`):
+  `mail_uids: tag 0x10 vector` -> `result: i32 (0), mail_uids: tag 0x10 vector`.
+- `5069 eERC_REQUEST_TRADE_REQ` -> `5070 eERC_REQUEST_TRADE_ACK` (`0x00770E50`):
+  `target_uid: i64` -> `result: i32 (0), target_uid: i64, target_name: wstring`.
+- `5071 eERC_ACCEPT_REQUEST_TRADE_REQ` -> `5072 eERC_ACCEPT_REQUEST_TRADE_ACK` (`0x007587B0`):
+  `source_uid: i64` -> `result: i32 (0), source_uid: i64, target_uid: i64`.
+- `5073 eERC_CANCEL_TRADE_REQ` -> `5074 eERC_CANCEL_TRADE_ACK` (`0x0077DE00`):
+  empty -> `result: i32 (0), items: tag 0x10 vector`.
+- `5075 eERC_INSERT_TRADE_ITEM_REQ` -> `5076 eERC_INSERT_TRADE_ITEM_ACK` (`0x0077D980`):
+  `item_uid: i64, slot: i32` -> `result: i32 (0), items: tag 0x10 vector`.
+- `5077 eERC_DELETE_TRADE_ITEM_REQ` -> `5078 eERC_DELETE_TRADE_ITEM_ACK` (`0x0077DBB0`):
+  `item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
+- `5079 eERC_UPDATE_TRADE_AR_REQ` -> `5080 eERC_UPDATE_TRADE_AR_ACK` (`0x00758940`):
+  `gold: i64` -> `result: i32 (0), char_uid: i64, gold: i64`.
+- `5081 eERC_ACCEPT_TRADE_REQ` -> `5082 eERC_ACCEPT_TRADE_ACK` (`0x0078EB40`):
+  empty -> `result: i32 (0), char_uid: i64, accepted: bool`.
+- `5083 eERC_FINALLY_ACCEPT_TRADE_REQ` -> `5084 eERC_FINALLY_ACCEPT_TRADE_ACK`:
+  empty -> `result: i32 (0)`.
+- `5049 eERC_INVITE_REQ` -> `5050 eERC_INVITE_ACK` (`0x00758700`):
+  `target_uid: i64` -> `result: i32 (0)`.
+- `5054 eERC_ACCEPT_INVITE_REQ` -> `5055 eERC_ACCEPT_INVITE_ACK`:
+  `host_uid: i64` -> `result: i32 (0)`.
+- `5015 eERC_CHANGE_TEAM_REQ` -> `5016 eERC_CHANGE_TEAM_ACK`:
+  `team_id: i32` -> `result: i32 (0), team_id: i32`.
+- `5040 eERC_CHAT_REQ` (`0x007AC5E0`) -> `5041 eERC_CHAT_ACK` (`0x007AC890`):
+  Tag `0x1E` chat struct (`channel: u8, sender: wstring, target: wstring, message: wstring`). Intercepts GM console commands (`/gold`, `/levelup`, `/sp`, `/item`).
+- `2078 eEGS_QUEST_GIVEUP_REQ` -> `2079 eEGS_QUEST_GIVEUP_ACK` (`0x006223B0`):
+  `quest_id: u32` -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
+- `2080 eEGS_QUEST_FAIL_REQ` -> `2081 eEGS_QUEST_FAIL_ACK` (`0x006223B0`):
+  `quest_id: u32` -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 

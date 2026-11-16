@@ -284,5 +284,113 @@ class SocialHandlers:
         await self.transport.send_event(event(2215, ack, correlation),
                                         note='guild all skill init ack')
 
+    async def on_2221(self, correlation, body):
+        # eEGS_POST_SEND_REQ (0x00795D70) -> 2222 eEGS_POST_SEND_ACK (0x00795F40).
+        from darkblood.games.network.messages import PostSendAck, PostSendReq
+        req = PostSendReq.decode(body)
+        self.transport.record('post-send-req', body)
+        ack = PostSendAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(2222, ack, correlation), note='post send ack')
+
+    async def on_2223(self, correlation, body):
+        # eEGS_POST_READ_REQ (0x007963C0) -> 2224 eEGS_POST_READ_ACK (0x0075A660).
+        from darkblood.games.network.messages import PostReadAck, PostReadReq
+        req = PostReadReq.decode(body)
+        self.transport.record('post-read-req', body, mail_uid=req.mail_uid)
+        ack = PostReadAck(result=0, mail_uid=req.mail_uid).encode()
+        await self.transport.send_event(event(2224, ack, correlation), note=f'post read ack (uid={req.mail_uid})')
+
+    async def on_2225(self, correlation, body):
+        # eEGS_POST_GET_APPEND_ITEM_REQ (0x0079664C) -> 2226 eEGS_POST_GET_APPEND_ITEM_ACK (0x0077F8E0).
+        from darkblood.games.network.messages import PostGetAppendItemAck, PostGetAppendItemReq
+        from darkblood.games.state import selected_character
+        req = PostGetAppendItemReq.decode(body)
+        self.transport.record('post-get-append-item-req', body, mail_uid=req.mail_uid)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        char_gold = char.get('gold', 0) if char else 0
+        ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=char_gold, items=[]).encode()
+        await self.transport.send_event(event(2226, ack, correlation),
+                                        note=f'post get append item ack (uid={req.mail_uid})')
+
+    async def on_2236(self, correlation, body):
+        # eEGS_POST_DELETE_REQ (0x007964EC) -> 2237 eEGS_POST_DELETE_ACK (0x007715F0).
+        from darkblood.games.network.messages import PostDeleteAck, PostDeleteReq
+        req = PostDeleteReq.decode(body)
+        self.transport.record('post-delete-req', body, mail_uids=req.mail_uids)
+        ack = PostDeleteAck(result=0, mail_uids=req.mail_uids).encode()
+        await self.transport.send_event(event(2237, ack, correlation),
+                                        note=f'post delete ack (count={len(req.mail_uids)})')
+
+    async def on_5040(self, correlation, body):
+        # eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890).
+        from darkblood.games.network.messages import ChatAck, ChatReq, LevelUpNot, ChangeExpNot
+        from darkblood.games.state import selected_character
+        req = ChatReq.decode(body)
+        msg = req.message.strip()
+        self.transport.record('chat-req', body, message=msg)
+
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+
+        char_name = char.get('name', 'Player') if char else 'Player'
+        system_reply = None
+
+        # In-Game GM Console Commands
+        if msg.startswith('/'):
+            parts = msg.split()
+            cmd = parts[0].lower()
+            if cmd == '/gold' and len(parts) > 1 and char:
+                try:
+                    amount = int(parts[1])
+                    char['gold'] = char.get('gold', 0) + amount
+                    char['u66'] = char['gold']
+                    self.store().save()
+                    system_reply = f'[GM] Added {amount} gold. Balance: {char["gold"]}'
+                except ValueError:
+                    system_reply = '[GM] Usage: /gold <amount>'
+            elif cmd == '/levelup' and char:
+                levels = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+                char['level'] = min(60, char.get('level', 1) + levels)
+                char['sp'] = char.get('sp', 0) + (3 * levels)
+                self.store().save()
+                lvl_ack = LevelUpNot(
+                    char_uid=char.get('id', 1),
+                    new_level=char['level'],
+                    max_hp=char.get('max_hp', 1000),
+                    max_mp=char.get('max_mp', 500),
+                    flag=True
+                ).encode()
+                await self.transport.send_event(event(5087, lvl_ack), note=f'gm levelup not (level={char["level"]})')
+                system_reply = f'[GM] Leveled up by {levels}. Current level: {char["level"]}, SP: {char["sp"]}'
+            elif cmd == '/sp' and len(parts) > 1 and char:
+                try:
+                    sp_amt = int(parts[1])
+                    char['sp'] = char.get('sp', 0) + sp_amt
+                    self.store().save()
+                    system_reply = f'[GM] Added {sp_amt} SP. Total SP: {char["sp"]}'
+                except ValueError:
+                    system_reply = '[GM] Usage: /sp <amount>'
+            elif cmd == '/item' and len(parts) > 1 and char:
+                from darkblood.player_management.characters import add_reward_items
+                icode = parts[1]
+                icnt = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+                add_reward_items(char, [(icode, icnt)])
+                self.store().save()
+                system_reply = f'[GM] Granted {icnt}x {icode}'
+
+        reply_msg = system_reply if system_reply else msg
+        sender = 'System' if system_reply else char_name
+        ack = ChatAck(result=0, channel=req.channel, sender=sender, message=reply_msg).encode()
+        await self.transport.send_event(event(5041, ack, correlation), note=f'chat ack ({reply_msg})')
+
 
 

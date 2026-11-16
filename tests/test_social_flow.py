@@ -130,6 +130,52 @@ class SocialFlowTest(ServerTestCase):
             _, ack2215 = await client.expect_event(2215)
             self.assertEqual(struct.unpack_from('<i', ack2215)[0], 0)
 
+            # 23. Mailbox send (2221 -> 2222)
+            client.send_event(2221, b'')
+            _, ack2222 = await client.expect_event(2222)
+            self.assertEqual(struct.unpack_from('<i', ack2222)[0], 0)
+
+            # 24. Mailbox read (2223 -> 2224)
+            client.send_event(2223, struct.pack('<q', 888))
+            _, ack2224 = await client.expect_event(2224)
+            self.assertEqual(struct.unpack_from('<iq', ack2224), (0, 888))
+
+            # 25. Mailbox get append item (2225 -> 2226)
+            client.send_event(2225, struct.pack('<q', 888))
+            _, ack2226 = await client.expect_event(2226)
+            self.assertEqual(struct.unpack_from('<iq', ack2226[:12]), (0, 888))
+
+            # 26. Mailbox delete (2236 -> 2237)
+            client.send_event(2236, struct.pack('<q', 888))
+            _, ack2237 = await client.expect_event(2237)
+            self.assertEqual(struct.unpack_from('<i', ack2237)[0], 0)
+
+            # 27. Chat message (5040 -> 5041)
+            chat_bytes = b'\x00' + 'Hello from test'.encode('utf-16le')
+            client.send_event(5040, chat_bytes)
+            _, ack5041 = await client.expect_event(5041)
+            self.assertEqual(struct.unpack_from('<iB', ack5041[:5]), (0, 0))
+
+            # 28. Chat GM command /gold
+            gm_gold = b'\x00' + '/gold 5000'.encode('utf-16le')
+            client.send_event(5040, gm_gold)
+            _, ack_gold = await client.expect_event(5041)
+            self.assertEqual(struct.unpack_from('<iB', ack_gold[:5]), (0, 0))
+
+            # 29. Chat GM command /levelup (triggers 5087 LevelUpNot followed by 5041 ChatAck)
+            gm_lvl = b'\x00' + '/levelup 2'.encode('utf-16le')
+            client.send_event(5040, gm_lvl)
+            _, not5087 = await client.expect_event(5087)
+            self.assertGreater(len(not5087), 0)
+            _, ack_lvl = await client.expect_event(5041)
+            self.assertEqual(struct.unpack_from('<iB', ack_lvl[:5]), (0, 0))
+
+            # 30. Chat GM command /sp
+            gm_sp = b'\x00' + '/sp 10'.encode('utf-16le')
+            client.send_event(5040, gm_sp)
+            _, ack_sp = await client.expect_event(5041)
+            self.assertEqual(struct.unpack_from('<iB', ack_sp[:5]), (0, 0))
+
         self.run_async(self.with_server(scenario))
 
 

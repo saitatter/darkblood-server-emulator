@@ -2077,6 +2077,467 @@ class GuildAllSkillInitAck:
         return struct.pack('<ii', self.result, self.param)
 
 
+# --- Mailbox Opcodes (2221 - 2237) ---
+@dataclass
+class PostSendReq:
+    """Opcode 2221: eEGS_POST_SEND_REQ (0x00795D70)."""
+    recipient: str = ''
+    title: str = ''
+    gold: int = 0
+    extra: int = 0
+    items: list = field(default_factory=list)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PostSendReq':
+        return cls()
+
+
+@dataclass
+class PostSendAck:
+    """Opcode 2222: eEGS_POST_SEND_ACK (0x00795F40)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class PostReadReq:
+    """Opcode 2223: eEGS_POST_READ_REQ (0x007963C0)."""
+    mail_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PostReadReq':
+        if len(data) >= 8:
+            return cls(mail_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class PostReadAck:
+    """Opcode 2224: eEGS_POST_READ_ACK (0x0075A660)."""
+    result: int = 0
+    mail_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iq', self.result, self.mail_uid)
+
+
+@dataclass
+class PostGetAppendItemReq:
+    """Opcode 2225: eEGS_POST_GET_APPEND_ITEM_REQ (0x0079664C)."""
+    mail_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PostGetAppendItemReq':
+        if len(data) >= 8:
+            return cls(mail_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class PostGetAppendItemAck:
+    """Opcode 2226: eEGS_POST_GET_APPEND_ITEM_ACK (0x0077F8E0)."""
+    result: int = 0
+    mail_uid: int = 0
+    gold: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<iqq', self.result, self.mail_uid, self.gold)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class PostDeleteReq:
+    """Opcode 2236: eEGS_POST_DELETE_REQ (0x007964EC)."""
+    mail_uids: list = field(default_factory=list)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PostDeleteReq':
+        uids = []
+        if len(data) >= 2 and data[0] == 0x10:
+            count, offset = read_varuint(data, 1)
+            for _ in range(count):
+                if offset + 8 <= len(data):
+                    uids.append(struct.unpack_from('<q', data, offset)[0])
+                    offset += 8
+        elif len(data) >= 8:
+            uids.append(struct.unpack_from('<q', data, 0)[0])
+        return cls(mail_uids=uids)
+
+
+@dataclass
+class PostDeleteAck:
+    """Opcode 2237: eEGS_POST_DELETE_ACK (0x007715F0)."""
+    result: int = 0
+    mail_uids: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.mail_uids))
+                + struct.pack(f'<{len(self.mail_uids)}q', *self.mail_uids))
+
+
+# --- Trade Opcodes (5069 - 5085) ---
+@dataclass
+class RequestTradeReq:
+    """Opcode 5069: eERC_REQUEST_TRADE_REQ."""
+    target_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RequestTradeReq':
+        if len(data) >= 8:
+            return cls(target_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class RequestTradeAck:
+    """Opcode 5070: eERC_REQUEST_TRADE_ACK (0x00770E50)."""
+    result: int = 0
+    target_uid: int = 0
+    target_name: str = ''
+
+    def encode(self) -> bytes:
+        return (struct.pack('<iq', self.result, self.target_uid)
+                + wide_string(self.target_name)
+                + b'\x00\x00')
+
+
+@dataclass
+class AcceptRequestTradeReq:
+    """Opcode 5071: eERC_ACCEPT_REQUEST_TRADE_REQ."""
+    source_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AcceptRequestTradeReq':
+        if len(data) >= 8:
+            return cls(source_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class AcceptRequestTradeAck:
+    """Opcode 5072: eERC_ACCEPT_REQUEST_TRADE_ACK (0x007587B0)."""
+    result: int = 0
+    source_uid: int = 0
+    target_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iqq', self.result, self.source_uid, self.target_uid)
+
+
+@dataclass
+class CancelTradeReq:
+    """Opcode 5073: eERC_CANCEL_TRADE_REQ."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'CancelTradeReq':
+        return cls()
+
+
+@dataclass
+class CancelTradeAck:
+    """Opcode 5074: eERC_CANCEL_TRADE_ACK (0x0077DE00)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class InsertTradeItemReq:
+    """Opcode 5075: eERC_INSERT_TRADE_ITEM_REQ."""
+    item_uid: int = 0
+    slot: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'InsertTradeItemReq':
+        if len(data) >= 12:
+            uid, slot = struct.unpack_from('<qi', data, 0)
+            return cls(item_uid=uid, slot=slot)
+        return cls()
+
+
+@dataclass
+class InsertTradeItemAck:
+    """Opcode 5076: eERC_INSERT_TRADE_ITEM_ACK (0x0077D980)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class DeleteTradeItemReq:
+    """Opcode 5077: eERC_DELETE_TRADE_ITEM_REQ."""
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DeleteTradeItemReq':
+        if len(data) >= 8:
+            return cls(item_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class DeleteTradeItemAck:
+    """Opcode 5078: eERC_DELETE_TRADE_ITEM_ACK (0x0077DBB0)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class UpdateTradeArReq:
+    """Opcode 5079: eERC_UPDATE_TRADE_AR_REQ."""
+    gold: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UpdateTradeArReq':
+        if len(data) >= 8:
+            return cls(gold=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class UpdateTradeArAck:
+    """Opcode 5080: eERC_UPDATE_TRADE_AR_ACK (0x00758940)."""
+    result: int = 0
+    char_uid: int = 0
+    gold: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iqq', self.result, self.char_uid, self.gold)
+
+
+@dataclass
+class AcceptTradeReq:
+    """Opcode 5081: eERC_ACCEPT_TRADE_REQ."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'AcceptTradeReq':
+        return cls()
+
+
+@dataclass
+class AcceptTradeAck:
+    """Opcode 5082: eERC_ACCEPT_TRADE_ACK (0x0078EB40)."""
+    result: int = 0
+    char_uid: int = 0
+    accepted: bool = True
+
+    def encode(self) -> bytes:
+        return struct.pack('<iq?', self.result, self.char_uid, self.accepted)
+
+
+@dataclass
+class FinallyAcceptTradeReq:
+    """Opcode 5083: eERC_FINALLY_ACCEPT_TRADE_REQ."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'FinallyAcceptTradeReq':
+        return cls()
+
+
+@dataclass
+class FinallyAcceptTradeAck:
+    """Opcode 5084: eERC_FINALLY_ACCEPT_TRADE_ACK."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+# --- Party & Team Opcodes (5049 - 5055, 5015 - 5016) ---
+@dataclass
+class PartyInviteReq:
+    """Opcode 5049: eERC_INVITE_REQ."""
+    target_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PartyInviteReq':
+        if len(data) >= 8:
+            return cls(target_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class PartyInviteAck:
+    """Opcode 5050: eERC_INVITE_ACK (0x00758700)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class PartyAcceptInviteReq:
+    """Opcode 5054: eERC_ACCEPT_INVITE_REQ."""
+    host_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PartyAcceptInviteReq':
+        if len(data) >= 8:
+            return cls(host_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class PartyAcceptInviteAck:
+    """Opcode 5055: eERC_ACCEPT_INVITE_ACK."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+
+
+@dataclass
+class ChangeTeamReq:
+    """Opcode 5015: eERC_CHANGE_TEAM_REQ."""
+    team_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeTeamReq':
+        if len(data) >= 4:
+            return cls(team_id=struct.unpack_from('<i', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class ChangeTeamAck:
+    """Opcode 5016: eERC_CHANGE_TEAM_ACK."""
+    result: int = 0
+    team_id: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<ii', self.result, self.team_id)
+
+
+# --- Chat & In-Game Communication (5040 - 5041) ---
+@dataclass
+class ChatReq:
+    """Opcode 5040: eERC_CHAT_REQ (0x007AC5E0)."""
+    channel: int = 0
+    sender: str = ''
+    target: str = ''
+    message: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChatReq':
+        if not data:
+            return cls()
+        offset = 0
+        if data[0] == 0x1E:
+            offset = 1
+        ch = data[offset] if offset < len(data) else 0
+        offset += 1
+
+        def get_wstr(buf, off):
+            if off >= len(buf):
+                return '', off
+            try:
+                length, noff = read_varuint(buf, off)
+                val = buf[noff:noff + length].decode('utf-16le', errors='ignore')
+                return val, noff + length
+            except Exception:
+                return '', off
+
+        sender, offset = get_wstr(data, offset)
+        target, offset = get_wstr(data, offset)
+        message, offset = get_wstr(data, offset)
+
+        if not message:
+            raw = data[1:]
+            if len(raw) % 2 != 0:
+                raw = raw[:-1]
+            try:
+                text = raw.decode('utf-16le', errors='ignore').strip('\x00')
+                if text:
+                    message = text
+            except Exception:
+                pass
+        return cls(channel=ch, sender=sender, target=target, message=message)
+
+
+@dataclass
+class ChatAck:
+    """Opcode 5041: eERC_CHAT_ACK (0x007AC890)."""
+    result: int = 0
+    channel: int = 0
+    sender: str = 'System'
+    target: str = ''
+    message: str = ''
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        data = (struct.pack('<iB', 0, self.channel)
+                + wide_string(self.sender)
+                + wide_string(self.target)
+                + wide_string(self.message)
+                + b'\x1e\x00'
+                + struct.pack('<iqqqi', 0, 0, 0, 0, 0))
+        return data
+
+
+# --- Quest Giveup & Fail Opcodes (2078 - 2081) ---
+@dataclass
+class QuestGiveupReq:
+    """Opcode 2078: eEGS_QUEST_GIVEUP_REQ."""
+    quest_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'QuestGiveupReq':
+        if len(data) >= 4:
+            return cls(quest_id=struct.unpack_from('<I', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class QuestGiveupAck:
+    """Opcode 2079: eEGS_QUEST_GIVEUP_ACK (0x006223B0)."""
+    result: int = 0
+    quest_id: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iI', self.result, self.quest_id) + b'\x1e\x10\x80'
+
+
+@dataclass
+class QuestFailReq:
+    """Opcode 2080: eEGS_QUEST_FAIL_REQ."""
+    quest_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'QuestFailReq':
+        if len(data) >= 4:
+            return cls(quest_id=struct.unpack_from('<I', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class QuestFailAck:
+    """Opcode 2081: eEGS_QUEST_FAIL_ACK (0x006223B0)."""
+    result: int = 0
+    quest_id: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iI', self.result, self.quest_id) + b'\x1e\x10\x80'
+
+
 
 
 

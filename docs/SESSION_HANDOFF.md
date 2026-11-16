@@ -1,5 +1,31 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~20:10 (Mailbox, P2P Trade, Party Invites, GM Console Commands & Quest State)
+
+1. Mailbox System (Opcodes 2221 - 2237):
+   - Reverse engineered `0x00795D70` (`PostSendReq`), `0x00795F40` (`PostSendAck`), `0x007963C0` (`PostReadReq`), `0x0075A660` (`PostReadAck`), `0x0079664C` (`PostGetAppendItemReq`), `0x0077F8E0` (`PostGetAppendItemAck`), `0x007964EC` (`PostDeleteReq`), and `0x007715F0` (`PostDeleteAck`).
+   - Implemented wire serialization and domain handlers `on_2221`, `on_2223`, `on_2225`, and `on_2236` in `social.py`.
+   - Verified send, read, claim item/gold, and delete in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+2. P2P Direct Trade (Opcodes 5069 - 5084):
+   - Reverse engineered `0x00770E50` (`RequestTradeAck`), `0x007587B0` (`AcceptRequestTradeAck`), `0x0077DE00` (`CancelTradeAck`), `0x0077D980` (`InsertTradeItemAck`), `0x0077DBB0` (`DeleteTradeItemAck`), `0x00758940` (`UpdateTradeArAck`), and `0x0078EB40` (`AcceptTradeAck`).
+   - Implemented wire serialization and domain handlers `on_5069`, `on_5071`, `on_5073`, `on_5075`, `on_5077`, `on_5079`, `on_5081`, and `on_5083` in `commerce.py`.
+   - Verified trade lifecycle in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
+3. Party & Team System (Opcodes 5049 - 5055, 5015 - 5016):
+   - Reverse engineered `0x00758700` (`PartyInviteAck`), party acceptance (`PartyAcceptInviteAck`), and team changes (`ChangeTeamAck`).
+   - Implemented wire serialization and domain handlers `on_5049`, `on_5054`, and `on_5015` in `dungeon.py`.
+   - Verified in `tests/test_dungeon_flow.py` and `tests/test_wire_messages.py`.
+4. Chat & In-Game GM Console Commands (Opcodes 5040 - 5041):
+   - Reverse engineered `0x007AC5E0` (`ChatReq`) and `0x007AC890` (`ChatAck`) using Tag `0x1E` message struct.
+   - Handled GM console commands `/gold <amount>`, `/levelup [n]`, `/sp <amount>`, and `/item <code> [count]` directly from chat bar.
+   - Verified normal chat and all GM commands in `tests/test_social_flow.py`.
+5. Quest Giveup & Fail Handling (Opcodes 2078 - 2081):
+   - Reverse engineered `0x006223B0` (`QuestGiveupAck` / `QuestFailAck`).
+   - Implemented wire serialization and domain handlers `on_2078` and `on_2080` in `quests.py`, removing active quests from character storage.
+   - Verified in `tests/test_quest_flow.py` and `tests/test_wire_messages.py`.
+6. Test Suite:
+   - 54/54 unit and flow tests passing cleanly across all 11 test modules.
+
+
 ## Update — 2026-11-16 ~19:50 (Level-Up Progression, Store Economy & Guild Banking)
 
 1. Level-Up & SP Progression on EXP Overflow:

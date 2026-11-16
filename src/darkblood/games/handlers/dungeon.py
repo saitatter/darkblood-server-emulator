@@ -8,6 +8,8 @@ from darkblood.games.network.messages import (
     BackToSquareAck,
     ChangeDungeonLayerNot,
     ChangeMapCodeAck,
+    ChangeTeamAck,
+    ChangeTeamReq,
     ChoiceRewardPartyRankAck,
     ChoiceRewardPartyRankReq,
     CreateRoomAck,
@@ -18,6 +20,10 @@ from darkblood.games.network.messages import (
     GameplayDieCharReq,
     GuideBeginnerUpdateReq,
     MonsterDeadReq,
+    PartyAcceptInviteAck,
+    PartyAcceptInviteReq,
+    PartyInviteAck,
+    PartyInviteReq,
     RoomInfoListAck,
     SelectDungeonAck,
 )
@@ -186,5 +192,26 @@ class DungeonHandlers:
         ).encode()
         await self.transport.send_event(event(5091, ack, correlation),
                                         note='choice reward partyrank ack (card=%d)' % req.card_index)
+
+    async def on_5049(self, correlation, body):
+        # eERC_INVITE_REQ -> 5050 eERC_INVITE_ACK (0x00758700).
+        req = PartyInviteReq.decode(body)
+        self.transport.record('party-invite-req', body, target_uid=req.target_uid)
+        ack = PartyInviteAck(result=0).encode()
+        await self.transport.send_event(event(5050, ack, correlation), note=f'party invite ack (target={req.target_uid})')
+
+    async def on_5054(self, correlation, body):
+        # eERC_ACCEPT_INVITE_REQ -> 5055 eERC_ACCEPT_INVITE_ACK.
+        req = PartyAcceptInviteReq.decode(body)
+        self.transport.record('party-accept-invite-req', body, host_uid=req.host_uid)
+        ack = PartyAcceptInviteAck(result=0).encode()
+        await self.transport.send_event(event(5055, ack, correlation), note=f'party accept invite ack (host={req.host_uid})')
+
+    async def on_5015(self, correlation, body):
+        # eERC_CHANGE_TEAM_REQ -> 5016 eERC_CHANGE_TEAM_ACK.
+        req = ChangeTeamReq.decode(body)
+        self.transport.record('change-team-req', body, team_id=req.team_id)
+        ack = ChangeTeamAck(result=0, team_id=req.team_id).encode()
+        await self.transport.send_event(event(5016, ack, correlation), note=f'change team ack (team={req.team_id})')
 
 

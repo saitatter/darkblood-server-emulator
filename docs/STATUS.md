@@ -1,5 +1,31 @@
 # Research status and handoff
 
+## Mailbox, P2P Trade, Party Invites, GM Console Commands & Quest State — 2026-11-16 ~20:10
+
+* **Mailbox System (Opcodes 2221 - 2237)**:
+  - Reverse engineered `0x00795D70` (`PostSendReq`), `0x00795F40` (`PostSendAck`), `0x007963C0` (`PostReadReq`), `0x0075A660` (`PostReadAck`), `0x0079664C` (`PostGetAppendItemReq`), `0x0077F8E0` (`PostGetAppendItemAck`), `0x007964EC` (`PostDeleteReq`), and `0x007715F0` (`PostDeleteAck`).
+  - Implemented wire serialization and domain handlers `on_2221`, `on_2223`, `on_2225`, and `on_2236` in `social.py`.
+  - Added support for reading mail, claiming attached items and gold, and batch deleting letters.
+* **P2P Direct Trade Lifecycle (Opcodes 5069 - 5084)**:
+  - Reverse engineered `0x00770E50` (`RequestTradeAck`), `0x007587B0` (`AcceptRequestTradeAck`), `0x0077DE00` (`CancelTradeAck`), `0x0077D980` (`InsertTradeItemAck`), `0x0077DBB0` (`DeleteTradeItemAck`), `0x00758940` (`UpdateTradeArAck`), and `0x0078EB40` (`AcceptTradeAck`).
+  - Implemented wire serialization and domain handlers `on_5069`, `on_5071`, `on_5073`, `on_5075`, `on_5077`, `on_5079`, `on_5081`, and `on_5083` in `commerce.py`.
+  - Supports trading invitations, gold staging, item staging/unstaging, mutual trade acceptance, and trade cancellations.
+* **Party & Team Management (Opcodes 5049 - 5055, 5015 - 5016)**:
+  - Reverse engineered `0x00758700` (`PartyInviteAck`), party acceptance (`PartyAcceptInviteAck`), and team changes (`ChangeTeamAck`).
+  - Implemented wire serialization and domain handlers `on_5049`, `on_5054`, and `on_5015` in `dungeon.py`.
+* **Chat & In-Game GM Console Commands (Opcodes 5040 - 5041)**:
+  - Reverse engineered `0x007AC5E0` (`ChatReq`) and `0x007AC890` (`ChatAck`) using Tag `0x1E` message struct.
+  - Implemented wire serialization and domain handler `on_5040` in `social.py` supporting regular chat broadcasting and in-game GM commands:
+    - `/gold <amount>`: Instantly adds gold to character balance and syncs character state.
+    - `/levelup [n]`: Levels up character by `n` levels, grants 3 SP per level, calculates HP/MP, emits `5087 eERC_LEVEL_UP_NOT`, and replies in chat.
+    - `/sp <amount>`: Grants bonus skill points for testing skill trees.
+    - `/item <item_code> [count]`: Grants items directly into character bags via `add_reward_items`.
+* **Quest Giveup & Fail Handling (Opcodes 2078 - 2081)**:
+  - Reverse engineered `0x006223B0` (`QuestGiveupAck` / `QuestFailAck`).
+  - Implemented wire serialization and domain handlers `on_2078` and `on_2080` in `quests.py`, removing active quests from character storage and sending confirmation ACKs.
+* **54/54 unit and flow tests passing cleanly** across all 11 test modules.
+
+
 ## Level-Up Progression, Store Economy & Guild Banking — 2026-11-16 ~19:50
 
 * **Level-Up & SP Progression on EXP Overflow**:

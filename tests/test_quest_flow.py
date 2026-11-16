@@ -121,6 +121,44 @@ class QuestFlowTest(ServerTestCase):
         self.assertGreater(warrior_lv10['upexp'], warrior_lv1['upexp'])
         self.assertGreater(warrior_lv10['hp'], warrior_lv1['hp'])
 
+    def test_quest_giveup_and_fail(self):
+        quest1 = hashing.jhash('Q0003S01')
+        quest2 = hashing.jhash('Q0004S01')
+        stamp = 'x'.encode('utf-16le')
+        req1 = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest1, -1)
+        req2 = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest2, -1)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('QuestQuitter'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            # Accept quest 1 and quest 2
+            client.send_event(2073, req1, compressed=True)
+            await client.expect_event(2074)
+            client.send_event(2073, req2, compressed=True)
+            await client.expect_event(2074)
+
+            # Give up quest 1 (2078 -> 2079)
+            client.send_event(2078, struct.pack('<I', quest1))
+            _, ack2079 = await client.expect_event(2079)
+            self.assertEqual(struct.unpack_from('<iI', ack2079[:8]), (0, quest1))
+
+            # Fail quest 2 (2080 -> 2081)
+            client.send_event(2080, struct.pack('<I', quest2))
+            _, ack2081 = await client.expect_event(2081)
+            self.assertEqual(struct.unpack_from('<iI', ack2081[:8]), (0, quest2))
+            return char_id
+
+        char_id = self.run_async(self.with_server(scenario))
+        char = session.GameSession.store().get('OfflinePlayer', char_id)
+        active = char.get('quests_active', {})
+        self.assertNotIn(str(quest1), active)
+        self.assertNotIn(str(quest2), active)
+
 
 if __name__ == '__main__':
     unittest.main()

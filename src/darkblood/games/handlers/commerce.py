@@ -587,6 +587,73 @@ class CommerceHandlers:
         ack = DurabilityChangeAck(result=0).encode()
         await self.transport.send_event(event(2144, ack, correlation), note='durability change ack')
 
+    async def on_5069(self, correlation, body):
+        # eERC_REQUEST_TRADE_REQ -> 5070 eERC_REQUEST_TRADE_ACK (0x00770E50).
+        from darkblood.games.network.messages import RequestTradeAck, RequestTradeReq
+        req = RequestTradeReq.decode(body)
+        self.transport.record('trade-request-req', body, target=req.target_uid)
+        ack = RequestTradeAck(result=0, target_uid=req.target_uid, target_name='Partner').encode()
+        await self.transport.send_event(event(5070, ack, correlation), note=f'trade request ack (target={req.target_uid})')
+
+    async def on_5071(self, correlation, body):
+        # eERC_ACCEPT_REQUEST_TRADE_REQ -> 5072 eERC_ACCEPT_REQUEST_TRADE_ACK (0x007587B0).
+        from darkblood.games.network.messages import AcceptRequestTradeAck, AcceptRequestTradeReq
+        from darkblood.games.state import selected_character
+        req = AcceptRequestTradeReq.decode(body)
+        self.transport.record('trade-accept-request-req', body, source=req.source_uid)
+        my_uid = selected_character.get('id', 1)
+        ack = AcceptRequestTradeAck(result=0, source_uid=req.source_uid, target_uid=my_uid).encode()
+        await self.transport.send_event(event(5072, ack, correlation), note='trade accept request ack')
+
+    async def on_5073(self, correlation, body):
+        # eERC_CANCEL_TRADE_REQ -> 5074 eERC_CANCEL_TRADE_ACK (0x0077DE00).
+        from darkblood.games.network.messages import CancelTradeAck
+        self.transport.record('trade-cancel-req', body)
+        ack = CancelTradeAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(5074, ack, correlation), note='trade cancel ack')
+
+    async def on_5075(self, correlation, body):
+        # eERC_INSERT_TRADE_ITEM_REQ -> 5076 eERC_INSERT_TRADE_ITEM_ACK (0x0077D980).
+        from darkblood.games.network.messages import InsertTradeItemAck, InsertTradeItemReq
+        req = InsertTradeItemReq.decode(body)
+        self.transport.record('trade-insert-item-req', body, item_uid=req.item_uid, slot=req.slot)
+        ack = InsertTradeItemAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(5076, ack, correlation), note=f'trade insert item ack (item={req.item_uid})')
+
+    async def on_5077(self, correlation, body):
+        # eERC_DELETE_TRADE_ITEM_REQ -> 5078 eERC_DELETE_TRADE_ITEM_ACK (0x0077DBB0).
+        from darkblood.games.network.messages import DeleteTradeItemAck, DeleteTradeItemReq
+        req = DeleteTradeItemReq.decode(body)
+        self.transport.record('trade-delete-item-req', body, item_uid=req.item_uid)
+        ack = DeleteTradeItemAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(5078, ack, correlation), note=f'trade delete item ack (item={req.item_uid})')
+
+    async def on_5079(self, correlation, body):
+        # eERC_UPDATE_TRADE_AR_REQ -> 5080 eERC_UPDATE_TRADE_AR_ACK (0x00758940).
+        from darkblood.games.network.messages import UpdateTradeArAck, UpdateTradeArReq
+        from darkblood.games.state import selected_character
+        req = UpdateTradeArReq.decode(body)
+        self.transport.record('trade-update-ar-req', body, gold=req.gold)
+        my_uid = selected_character.get('id', 1)
+        ack = UpdateTradeArAck(result=0, char_uid=my_uid, gold=req.gold).encode()
+        await self.transport.send_event(event(5080, ack, correlation), note=f'trade update ar ack (gold={req.gold})')
+
+    async def on_5081(self, correlation, body):
+        # eERC_ACCEPT_TRADE_REQ -> 5082 eERC_ACCEPT_TRADE_ACK (0x0078EB40).
+        from darkblood.games.network.messages import AcceptTradeAck
+        from darkblood.games.state import selected_character
+        self.transport.record('trade-accept-req', body)
+        my_uid = selected_character.get('id', 1)
+        ack = AcceptTradeAck(result=0, char_uid=my_uid, accepted=True).encode()
+        await self.transport.send_event(event(5082, ack, correlation), note='trade accept ack')
+
+    async def on_5083(self, correlation, body):
+        # eERC_FINALLY_ACCEPT_TRADE_REQ -> 5084 eERC_FINALLY_ACCEPT_TRADE_ACK.
+        from darkblood.games.network.messages import FinallyAcceptTradeAck
+        self.transport.record('trade-finally-accept-req', body)
+        ack = FinallyAcceptTradeAck(result=0).encode()
+        await self.transport.send_event(event(5084, ack, correlation), note='trade finally accept ack')
+
 
 
 

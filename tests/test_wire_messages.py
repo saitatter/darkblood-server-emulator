@@ -282,6 +282,103 @@ class WireMessagesTest(unittest.TestCase):
         ack_gsi = messages.GuildAllSkillInitAck(result=0, param=0).encode()
         self.assertEqual(struct.unpack_from('<ii', ack_gsi), (0, 0))
 
+    def test_mailbox_messages(self):
+        req_send = messages.PostSendReq.decode(b'')
+        self.assertIsNotNone(req_send)
+        ack_send = messages.PostSendAck(result=0, items=[]).encode()
+        self.assertEqual(ack_send[:5], b'\x00\x00\x00\x00\x10')
+
+        req_read = messages.PostReadReq.decode(struct.pack('<q', 12345))
+        self.assertEqual(req_read.mail_uid, 12345)
+        ack_read = messages.PostReadAck(result=0, mail_uid=12345).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_read), (0, 12345))
+
+        req_item = messages.PostGetAppendItemReq.decode(struct.pack('<q', 54321))
+        self.assertEqual(req_item.mail_uid, 54321)
+        ack_item = messages.PostGetAppendItemAck(result=0, mail_uid=54321, gold=500, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<iqq', ack_item[:20]), (0, 54321, 500))
+
+        del_payload = b'\x10' + jser.varuint(2) + struct.pack('<qq', 101, 102)
+        req_del = messages.PostDeleteReq.decode(del_payload)
+        self.assertEqual(req_del.mail_uids, [101, 102])
+        ack_del = messages.PostDeleteAck(result=0, mail_uids=[101, 102]).encode()
+        self.assertEqual(ack_del[:5], b'\x00\x00\x00\x00\x10')
+
+    def test_trade_messages(self):
+        req_tr = messages.RequestTradeReq.decode(struct.pack('<q', 8888))
+        self.assertEqual(req_tr.target_uid, 8888)
+        ack_tr = messages.RequestTradeAck(result=0, target_uid=8888, target_name='Partner').encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_tr[:12]), (0, 8888))
+
+        req_art = messages.AcceptRequestTradeReq.decode(struct.pack('<q', 7777))
+        self.assertEqual(req_art.source_uid, 7777)
+        ack_art = messages.AcceptRequestTradeAck(result=0, source_uid=7777, target_uid=8888).encode()
+        self.assertEqual(struct.unpack_from('<iqq', ack_art), (0, 7777, 8888))
+
+        req_ct = messages.CancelTradeReq.decode(b'')
+        self.assertIsNotNone(req_ct)
+        ack_ct = messages.CancelTradeAck(result=0, items=[]).encode()
+        self.assertEqual(ack_ct[:5], b'\x00\x00\x00\x00\x10')
+
+        req_iti = messages.InsertTradeItemReq.decode(struct.pack('<qi', 9999, 1))
+        self.assertEqual((req_iti.item_uid, req_iti.slot), (9999, 1))
+        ack_iti = messages.InsertTradeItemAck(result=0, items=[]).encode()
+        self.assertEqual(ack_iti[:5], b'\x00\x00\x00\x00\x10')
+
+        req_dti = messages.DeleteTradeItemReq.decode(struct.pack('<q', 9999))
+        self.assertEqual(req_dti.item_uid, 9999)
+        ack_dti = messages.DeleteTradeItemAck(result=0, items=[]).encode()
+        self.assertEqual(ack_dti[:5], b'\x00\x00\x00\x00\x10')
+
+        req_uta = messages.UpdateTradeArReq.decode(struct.pack('<q', 50000))
+        self.assertEqual(req_uta.gold, 50000)
+        ack_uta = messages.UpdateTradeArAck(result=0, char_uid=1, gold=50000).encode()
+        self.assertEqual(struct.unpack_from('<iqq', ack_uta), (0, 1, 50000))
+
+        req_at = messages.AcceptTradeReq.decode(b'')
+        self.assertIsNotNone(req_at)
+        ack_at = messages.AcceptTradeAck(result=0, char_uid=1, accepted=True).encode()
+        self.assertEqual(struct.unpack_from('<iq?', ack_at), (0, 1, True))
+
+        req_fat = messages.FinallyAcceptTradeReq.decode(b'')
+        self.assertIsNotNone(req_fat)
+        ack_fat = messages.FinallyAcceptTradeAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_fat), (0,))
+
+    def test_party_and_team_messages(self):
+        req_pi = messages.PartyInviteReq.decode(struct.pack('<q', 5555))
+        self.assertEqual(req_pi.target_uid, 5555)
+        ack_pi = messages.PartyInviteAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_pi), (0,))
+
+        req_pa = messages.PartyAcceptInviteReq.decode(struct.pack('<q', 4444))
+        self.assertEqual(req_pa.host_uid, 4444)
+        ack_pa = messages.PartyAcceptInviteAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_pa), (0,))
+
+        req_ct = messages.ChangeTeamReq.decode(struct.pack('<i', 2))
+        self.assertEqual(req_ct.team_id, 2)
+        ack_ct = messages.ChangeTeamAck(result=0, team_id=2).encode()
+        self.assertEqual(struct.unpack_from('<ii', ack_ct), (0, 2))
+
+    def test_chat_messages(self):
+        msg_raw = b'\x00' + 'Hello world'.encode('utf-16le')
+        req_chat = messages.ChatReq.decode(msg_raw)
+        self.assertEqual(req_chat.channel, 0)
+        ack_chat = messages.ChatAck(result=0, channel=0, sender='Tester', message='Hello world').encode()
+        self.assertEqual(struct.unpack_from('<iB', ack_chat[:5]), (0, 0))
+
+    def test_quest_giveup_fail_messages(self):
+        req_gu = messages.QuestGiveupReq.decode(struct.pack('<I', 0x12345678))
+        self.assertEqual(req_gu.quest_id, 0x12345678)
+        ack_gu = messages.QuestGiveupAck(result=0, quest_id=0x12345678).encode()
+        self.assertEqual(struct.unpack_from('<iI', ack_gu[:8]), (0, 0x12345678))
+
+        req_fl = messages.QuestFailReq.decode(struct.pack('<I', 0x87654321))
+        self.assertEqual(req_fl.quest_id, 0x87654321)
+        ack_fl = messages.QuestFailAck(result=0, quest_id=0x87654321).encode()
+        self.assertEqual(struct.unpack_from('<iI', ack_fl[:8]), (0, 0x87654321))
+
 
 
 

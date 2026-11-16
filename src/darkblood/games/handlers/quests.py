@@ -4,7 +4,15 @@ from darkblood.core.serialization.jser import WireError, event, read_varuint
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 from darkblood.games.missions.quests import ActiveQuest
-from darkblood.games.network.messages import QuestCompleteAck, QuestStartAck, TutorialQuestStartAck
+from darkblood.games.network.messages import (
+    QuestCompleteAck,
+    QuestFailAck,
+    QuestFailReq,
+    QuestGiveupAck,
+    QuestGiveupReq,
+    QuestStartAck,
+    TutorialQuestStartAck,
+)
 from darkblood.games.state import selected_character
 
 
@@ -111,3 +119,31 @@ class QuestHandlers:
         # u32 result (0 = success).
         ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
+
+    async def on_2078(self, correlation, body):
+        # eEGS_QUEST_GIVEUP_REQ -> 2079 eEGS_QUEST_GIVEUP_ACK (0x006223B0).
+        req = QuestGiveupReq.decode(body)
+        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char and str(req.quest_id) in char.get('quests_active', {}):
+            del char['quests_active'][str(req.quest_id)]
+            self.store().save()
+        self.transport.record('quest-giveup', body, quest_id=req.quest_id)
+        ack = QuestGiveupAck(result=0, quest_id=req.quest_id).encode()
+        await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
+
+    async def on_2080(self, correlation, body):
+        # eEGS_QUEST_FAIL_REQ -> 2081 eEGS_QUEST_FAIL_ACK (0x006223B0).
+        req = QuestFailReq.decode(body)
+        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char and str(req.quest_id) in char.get('quests_active', {}):
+            del char['quests_active'][str(req.quest_id)]
+            self.store().save()
+        self.transport.record('quest-fail', body, quest_id=req.quest_id)
+        ack = QuestFailAck(result=0, quest_id=req.quest_id).encode()
+        await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
