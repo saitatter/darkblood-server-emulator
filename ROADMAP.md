@@ -17,9 +17,9 @@ Final objective: launch without the original services, establish a local session
 | **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~75%)** | Validated decoder, store/quest/stat tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~80%)** | Clean headless test runner, process cleanup |
 | **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **Planned** | Relay PIDL JoinGroup verified; multi-client next |
-| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, auction | **Planned** | Shop buy/sell wired; mailbox reading/send next |
-| **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **Planned** | Guild banking/notice/level wired; arena next |
-| **P9: Refactoring & C# Migration** | Modularity, async DB, MHServerEmu alignment | **Planned** | Granular test suite done; storage abstraction next |
+| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, auction | **Verified** | Full trade flow, mailbox reading/send, storage depot wired |
+| **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~85%)** | Guild banking/notice/level/grades wired; arena rooms next |
+| **P9: Refactoring & Tools Dashboard** | Modular messages, GM dashboard, semantic architecture | **Verified** | Monolith split into 10 domains; GM web dashboard added; 105 tests |
 
 ---
 
@@ -167,14 +167,27 @@ Final objective: launch without the original services, establish a local session
   - Scheduled siege warfare instances with gate destruction and flag capture objectives.
 
 ### P9 — Architecture Refactoring & C# Migration Preparation
-- [ ] **Modularize Message Schemas**:
-  - Split monolithic `src/darkblood/games/network/messages.py` into domain-specific packages:
+- [x] **Modularize Message Schemas**:
+  - Split monolithic `src/darkblood/games/network/messages.py` into 10 domain-specific modules:
     - `darkblood.games.network.messages.lobby`
+    - `darkblood.games.network.messages.inventory`
+    - `darkblood.games.network.messages.skills`
     - `darkblood.games.network.messages.commerce`
-    - `darkblood.games.network.messages.combat`
+    - `darkblood.games.network.messages.quests`
     - `darkblood.games.network.messages.dungeon`
     - `darkblood.games.network.messages.social`
     - `darkblood.games.network.messages.guild`
+    - `darkblood.games.network.messages.events`
+    - `darkblood.games.network.messages.system`
+  - Re-exported all 247 dataclasses in `messages/__init__.py` with 100% backward compatibility.
+- [x] **Standalone GM & Server Web Dashboard**:
+  - Built `tools/dashboard.py` (port 9494) providing live telemetry for port 9400 & 9401.
+  - Interactive web UI for character inspection, level/stat modification, and opcode reference browser.
+- [x] **Semantic Handler Architecture & Docstrings**:
+  - Replaced raw opcode identifiers with semantic method names (`handle_*`) across all handler domains.
+  - Added opcode backward-compatibility aliases and rich reverse-engineering docstrings.
+- [x] **Granular Unit Testing**:
+  - Unbundled multi-opcode tests in `tests/test_wire_messages.py` into 105 dedicated unit tests.
 - [x] **Database & Storage Abstraction**:
   - Introduce `ICharacterStore` interface with abstract async methods.
   - Implement SQLite backend (`data/darkblood.db`) for high reliability and SQL querying (`src/darkblood/player_management/store.py`).

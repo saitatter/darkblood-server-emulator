@@ -1,3 +1,4 @@
+"""Quest start/complete, failure, abandon, and tutorial quest handlers."""
 import struct
 
 from darkblood.core.serialization.jser import WireError, event, read_varuint
@@ -5,6 +6,8 @@ from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.network.messages import (
+    ChangeExpNot,
+    LevelUpNot,
     QuestCompleteAck,
     QuestFailAck,
     QuestFailReq,
@@ -19,10 +22,13 @@ from darkblood.games.state import selected_character
 class QuestHandlers:
     """Quest start/complete and tutorial quests."""
 
-    async def on_2073(self, correlation, body):
-        # eEGS_QUEST_START_REQ (zlib body; observed: wstring, u32 quest id =
-        # jhash('Q0001S01'), ...) -> eEGS_QUEST_START_ACK 2074, case in
-        # JAppPageTalkBox dispatcher 0x659F00 -> 0x659790.
+    async def handle_quest_start(self, correlation: int, body: bytes):
+        """Opcode 2073 (eEGS_QUEST_START_REQ) -> 2074 (eEGS_QUEST_START_ACK).
+
+        Client dispatcher: 0x00659F00 -> 0x00659790.
+        Decodes target quest ID hash, assigns new active quest UID, initializes
+        objective counters, and persists in character's active quest list.
+        """
         quest_id = 0
         try:
             length, offset = read_varuint(body, 0)
@@ -44,10 +50,14 @@ class QuestHandlers:
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
 
-    async def on_2076(self, correlation, body):
-        # eEGS_QUEST_COMPLETE_REQ (same observed prefix as 2073: wstring, u32
-        # quest id, i32 selected reward index, -1 = none) -> 2077. Rewards come
-        # from the client's DictQuest tables (client_dict.quest_rewards).
+    async def handle_quest_complete(self, correlation: int, body: bytes):
+        """Opcode 2076 (eEGS_QUEST_COMPLETE_REQ) -> 2077 (eEGS_QUEST_COMPLETE_ACK).
+
+        Client handler: 0x0065A1A0.
+        Calculates quest rewards (experience, gold, game points, reward items) from client
+        dictionaries, applies level-up progression if EXP threshold reached, moves quest
+        from active to completed set, and saves state.
+        """
         quest_id, select = 0, -1
         try:
             length, offset = read_varuint(body, 0)
@@ -61,7 +71,7 @@ class QuestHandlers:
         if already:
             exp = gold = gp = 0
         total = (Character.from_dict(char).u66 if char else Character().u66) + gold
-        if char:  # persist completion (sent back in 2410 at the next selection)
+        if char:
             char.setdefault('quests_active', {}).pop(str(quest_id), None)
             done = char.setdefault('quests_done', [])
             if quest_id not in done:
@@ -69,7 +79,6 @@ class QuestHandlers:
             char['u66'] = total
             char['gold'] = total
             from darkblood.games.game_data.client_dict import char_level_stat
-            from darkblood.games.network.messages import ChangeExpNot, LevelUpNot
             char_class = char.get('class', 1)
             level = char.get('level', 1)
             char_exp = char.get('exp', 0) + exp
@@ -114,14 +123,21 @@ class QuestHandlers:
         await self.transport.send_event(event(2077, ack, correlation),
                                         note='quest complete ack (%08x)' % quest_id)
 
-    async def on_2346(self, correlation, body):
-        # eEGS_TUTORIAL_QUEST_START_REQ -> eEGS_TUTORIAL_QUEST_START_ACK (2347), handler 0x6481E0:
-        # u32 result (0 = success).
+    async def handle_tutorial_quest_start(self, correlation: int, body: bytes):
+        """Opcode 2346 (eEGS_TUTORIAL_QUEST_START_REQ) -> 2347 (eEGS_TUTORIAL_QUEST_START_ACK).
+
+        Client handler: 0x006481E0.
+        Acknowledge starting introductory tutorial quest series.
+        """
         ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
 
-    async def on_2078(self, correlation, body):
-        # eEGS_QUEST_GIVEUP_REQ -> 2079 eEGS_QUEST_GIVEUP_ACK (0x006223B0).
+    async def handle_quest_giveup(self, correlation: int, body: bytes):
+        """Opcode 2078 (eEGS_QUEST_GIVEUP_REQ) -> 2079 (eEGS_QUEST_GIVEUP_ACK).
+
+        Client handler: 0x006223B0.
+        Removes active quest from character's tracked log upon abandonment.
+        """
         req = QuestGiveupReq.decode(body)
         char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
         if not char:
@@ -134,8 +150,12 @@ class QuestHandlers:
         ack = QuestGiveupAck(result=0, quest_id=req.quest_id).encode()
         await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
 
-    async def on_2080(self, correlation, body):
-        # eEGS_QUEST_FAIL_REQ -> 2081 eEGS_QUEST_FAIL_ACK (0x006223B0).
+    async def handle_quest_fail(self, correlation: int, body: bytes):
+        """Opcode 2080 (eEGS_QUEST_FAIL_REQ) -> 2081 (eEGS_QUEST_FAIL_ACK).
+
+        Client handler: 0x006223B0.
+        Processes quest objective expiration or failure condition.
+        """
         req = QuestFailReq.decode(body)
         char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
         if not char:
@@ -147,3 +167,10 @@ class QuestHandlers:
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
         ack = QuestFailAck(result=0, quest_id=req.quest_id).encode()
         await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
+
+    # Opcode backward-compatibility aliases
+    on_2073 = handle_quest_start
+    on_2076 = handle_quest_complete
+    on_2346 = handle_tutorial_quest_start
+    on_2078 = handle_quest_giveup
+    on_2080 = handle_quest_fail

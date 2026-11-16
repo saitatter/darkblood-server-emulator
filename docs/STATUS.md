@@ -1,5 +1,32 @@
 # Research status and handoff
 
+## Modular Messages, GM Web Dashboard & Semantic Handlers Architecture — 2026-11-16 ~22:00
+
+* **Modular Domain Package Architecture (`src/darkblood/games/network/messages/`)**:
+  - Deconstructed monolithic `messages.py` (110 KB, 247 dataclasses) into clean symmetric domain modules:
+    - `lobby.py`: Server list, square channels, character select, delete, relay address, back to square.
+    - `inventory.py`: Bag management, equip, use, drop, repair, upgrade, enchant, zam sockets, spirit weapon, stack splitting, expiration.
+    - `skills.py`: Skill learning, quickslots, lock status, speech bubbles, skill book consumption, AP gain.
+    - `commerce.py`: NPC merchants (buy, sell, repurchase), player-to-player trade, personal storage depot currency save/load.
+    - `quests.py`: Quest start, progress, rewards, tutorial quests, abandon, fail, beginner guide.
+    - `dungeon.py`: Party room creation, dungeon selection, map codes, layer changes, combat lifecycle, rebirth coins, loot drops.
+    - `social.py`: Friend list, chat channels, party invitations, team change, mailbox (send, read, claim, return, delete), inspection.
+    - `guild.py`: Guild creation, invite, join, leave, banking in/out, level up, notices, grade delegation, guild skills.
+    - `events.py`: Mentoring / teaching, gold goblin attack/dead/disappear, citadel reward, treasure hunt, roulette, pet taming.
+    - `system.py`: HTTP notices, play options, custom keybindings, name changing, stat verification, second password PIN, titles, achievements.
+  - Re-exported all dataclasses in `messages/__init__.py` providing 100% backward compatibility for all existing code.
+* **Standalone GM & Server Web Dashboard (`tools/dashboard.py`)**:
+  - Zero-dependency web tool running on `http://127.0.0.1:9494`.
+  - Real-time live TCP socket probes for Game Server (9400) and Relay Server (9401) with response latency measurements.
+  - Interactive Character Explorer: lists accounts, character levels, classes, items, and quests. Allows GM level editing, tutorial reset, and deletion.
+  - Searchable Opcode Browser: index of all 1,400+ opcodes with hex representation, domain prefix filtering, and implementation status.
+* **Semantic Handler Architecture**:
+  - Replaced raw opcode method names with descriptive semantic functions (`handle_buy_item`, `handle_select_character`, `handle_clear_tutorial`, etc.).
+  - Added backward-compatible `on_<opcode>` aliases and rich reverse-engineering docstrings with client handler addresses and packet layout.
+* **Granular Unit Tests**:
+  - Expanded and unbundled multi-opcode tests in `tests/test_wire_messages.py` into dedicated individual unit tests.
+  - **105/105 tests passing cleanly** across all test suites in ~1.36s.
+
 ## Guild Banking, Level Up, Item Splitting & Storage Depot — 2026-11-16 ~21:30
 
 * **Guild Banking, Grade & Level-Up System (Opcodes 2157 - 2158, 2164 - 2165, 2179 - 2186, 2205)**:

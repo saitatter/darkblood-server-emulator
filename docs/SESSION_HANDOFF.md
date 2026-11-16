@@ -1,5 +1,23 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~22:00 (Modular Messages, GM Web Dashboard & Semantic Handlers Architecture)
+
+1. Modular Domain Package Architecture (`src/darkblood/games/network/messages/`):
+   - Successfully deconstructed monolithic `messages.py` (110 KB, 247 dataclasses) into clean domain packages matching client architecture:
+     - `lobby.py`, `inventory.py`, `skills.py`, `commerce.py`, `quests.py`, `dungeon.py`, `social.py`, `guild.py`, `events.py`, `system.py`.
+   - Maintained 100% backward compatibility via `__init__.py` re-exports (`from darkblood.games.network.messages import *`).
+2. Standalone GM & Server Web Dashboard (`tools/dashboard.py`):
+   - Zero-dependency web dashboard on `http://127.0.0.1:9494`.
+   - Real-time socket health probes for Game Server (9400) and Relay Server (9401) with millisecond latency measurement.
+   - Interactive character explorer and editor: view character data from `data/characters.json` / SQLite, modify levels (1-60), clear tutorial flags, and delete characters.
+   - Opcode reference directory: instant search and domain filtering for all 1,400+ Dark Blood opcodes.
+3. Semantic Handler Architecture:
+   - Replaced raw opcode identifiers with descriptive semantic method names (`handle_buy_item`, `handle_clear_tutorial`, `handle_select_character`, etc.).
+   - Attached backward-compatible `on_<opcode>` aliases and detailed reverse-engineering docstrings with memory offsets and wire structures.
+4. Granular Unit Testing:
+   - Expanded bundled multi-opcode tests in `tests/test_wire_messages.py` into distinct, granular unit tests.
+   - **105/105 tests passing cleanly** across all 11 test modules in ~1.36s.
+
 ## Update — 2026-11-16 ~21:30 (Guild Banking, Level Up, Item Splitting & Storage Depot)
 
 1. Guild Banking, Grade & Level-Up System (Opcodes 2157 - 2158, 2164 - 2165, 2179 - 2186, 2205):
