@@ -1,5 +1,14 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 06:12 (sixth session, live results)
+
+Tutorial fix live-verified: "Thief1" entered SquarePlay. New shim with offline
+ISteamUserStats fixed the follow-up crash at 0x0092CF06; ~2 min in town
+without exceptions. Next: answer 5124, 2594, 2216, 2369, 2712, 2024 (schemas
+not yet recovered), verify movement, test skip with a fresh character, and
+dump protector stubs from an elevated prompt (the game requires admin).
+Full Ghidra project: research/ghidra-full, pseudocode research/decompiled.
+
 ## Update — saitatter machine, 2026-11-16 ~06:00 (sixth session)
 
 User report: "skip tutorial" restarted the tutorial. Cause found statically

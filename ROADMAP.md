@@ -21,7 +21,8 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Answer 2082 clear tutorial -> 2083 (triggers Scene 9 Town), 2346 tutorial quest start -> 2347, 2390 roulette -> 2391.
 - [x] Headless/automated tests: protocol-level client replay without the graphics window (`tests/test_headless_flow.py`).
 - [x] Explain the skip-tutorial loop: SquarePlay can-enter rejected `nJoinLayerNetID = 0`; send `jhash("Act1") << 32 | 1` (static + headless).
-- [ ] Live-verify skip tutorial → SquarePlay, then answer the town's next requests.
+- [x] Live: tutorial-cleared character enters SquarePlay; offline ISteamUserStats fixes the town-entry crash.
+- [ ] Live-verify skip with a fresh character; answer 5124, 2594, 2216, 2369, 2712, 2024.
 - [x] Correct JPK decryption (header flag `0x226`, whole blob); byte-identical repacker; private client-data workspace.
 - [ ] Load one edited JPK entry in the client (crc field semantics unknown).
 - [ ] Verify movement (click/keys), NPC interaction and persistence before claiming gameplay.

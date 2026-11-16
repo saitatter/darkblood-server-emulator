@@ -13,7 +13,16 @@ Updated **November 16, 2026** (second session). Offline gameplay is not availabl
    UTF-16LE, `0x00B3AD70`; `Act1` from `maplist.lua` `DictMap:LoadSquare`).
    Details `+0x9C` is confirmed as the flag that picks Tutorial vs SquarePlay
    after selection (`0x006F88C0`). 5046 `BACK_TO_SQUARE_ACK` schema recovered.
-   See PROTOCOL.md §7. Headless tests pass; **live confirmation pending.**
+   See PROTOCOL.md §7. **Live-verified 06:08:** "Thief1" (tutorial cleared)
+   entered SquarePlay. Entering then crashed at `0x0092CF06`:
+   `JSteamMgr::FindLeaderboards` (`0x0092CE00`, called at `0x007004E5`) used the
+   placeholder `SteamUserStats()` pointer 1. The shim now provides an offline
+   ISteamUserStats (v011 slot order); with it the client ran ~2 minutes in town
+   without exceptions until closed by the user. Unanswered town requests seen:
+   5124 `eERC_GTARGET_LIST_REQ`, 2594 (no name in opcodes.tsv), 2216
+   `eEGS_PLAY_OPTION_UPDATE_REQ` (zlib body), 2369
+   `eEGS_BILLING_GET_CURRENT_CASH_REQ`, 2712, 2024. 5124 and 2594 are sent
+   fire-and-forget from SquarePlay (`0x006F9AB9`, `0x007002BD`).
 2. **JPK encryption rule corrected.** Header byte `0x226` marks an encrypted
    archive and the cipher covers every entry blob, not only XML/Lua. Older
    extractions of encrypted archives (e.g. `research/all_extracted`) contain

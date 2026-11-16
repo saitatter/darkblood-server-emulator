@@ -89,6 +89,14 @@ opcode handler names (`On_<opcode>`; 59 opcodes are missing from
 in the Ghidra GUI for navigation; `research/decompiled/*.c` and
 `functions.tsv` are greppable pseudocode.
 
+First run: auto-analysis 457 s; ApplySymbols named 5,208 functions and 1,184
+labels; ExportDecompiled produced 32,219 of 32,225 functions (39 MB).
+
+Handler registrations also occur outside the connect-time map: pattern
+`mov eax, handler ... mov edx, opcode ... call 0x0075F080` (138 found by byte
+scan). The game runs elevated (`requireAdministrator` in the manifest), so
+`tools/dump_stubs.py` must run from an elevated prompt.
+
 Known limit: calls written as `nop; call 0x600xxxxx` go to protector-allocated
 stubs outside the image (no DLL is based there), replacing the original
 `call [IAT]` thunks. They show as `func_0x600xxxxx` until a live process dump of
