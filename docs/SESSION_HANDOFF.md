@@ -1,5 +1,22 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~18:15 (Skill training, character deletion, item discard, bag & quickslot switching, notices)
+
+Decompiled client handlers/senders and added full support:
+1. `2014 eEGS_DELETE_CHARACTER_REQ` (0x00780000.c:6618: i64 char_uid) -> `2015 eEGS_DELETE_CHARACTER_ACK` (0x00758370: i32 result + i64 char_uid + i32 complete_time=0). Added `CharacterStore.delete()` and handled in `on_2014`.
+2. `2040 eEGS_DELETE_ITEM_REQ` (0x00550000.c:769: i64 item_uid + i32 amount) -> `2041 eEGS_DELETE_ITEM_ACK` (0x00557420: i32 result + i64 item_uid + i32 del_amount). Decrements or removes items from inventory and persists. Handled in `on_2040`.
+3. `2030 eEGS_SWITCH_BAG_REQ` (0x00550000.c:626: u16 from_index + u16 to_index) -> `2031 eEGS_SWITCH_BAG_ACK` (0x00557680: i32 result + u16 from + u16 to). Swaps bags and persists. Handled in `on_2030`.
+4. `2046 eEGS_SWITCH_QUCIKSLOT_REQ` (0x00780000.c:8591: u8 slot_type + u8 from_slot + u8 to_slot) -> `2047 eEGS_SWITCH_QUCIKSLOT_ACK` (0x0078C790: i32 result + u8 type + u8 from + u8 to). Handled in `on_2046`.
+5. `2050 eEGS_LEARN_SKILL_REQ` (0x00780000.c:9504: u16 sKindNameIndex + u8 ucLevel) -> `2051 eEGS_LEARN_SKILL_ACK` (0x0078DBE0: i32 result + u16 sKindNameIndex + u8 ucLevel + i32 nRemainSP + i64 nRemainGold). Persists learned skills on character. Handled in `on_2050`.
+6. `2594 eEGS_HTTPNOTICE_CHECK_REQ` -> `2595 eEGS_HTTPNOTICE_CHECK_ACK` (0x005A5110: i32 result + bool bWatch=False). Handled in `on_2594`.
+7. `2216 eEGS_PLAY_OPTION_UPDATE_REQ` (0x00790000.c:3729: i64 char_uid + tag 0x1E struct). Fire-and-forget, handled in `on_2216`.
+8. `2024 eEGS_GET_INVITELIST_REQ` (0x007A0000.c:7840) -> `2025 eEGS_GET_INVITELIST_ACK` (0x006A2E10: i32 result + tag 0x10 empty vector). Handled in `on_2024`.
+9. `5087 eERC_LEVEL_UP_NOT` (0x0078CCF0): tag 0x1E + tag 0x0D (varuint 0) + i64 char_uid + u8 level + i32 hp + i32 mp + bool flag.
+10. `5086 eERC_CHANGE_EXP_NOT` (0x0078D170): i32 nExpTotal + tag 0x1E jGainExp (8 x i32 + 1 x f32).
+11. Updated `Item` model with `count: int = 1`, correctly packed at +0 offset.
+
+17/17 headless tests pass.
+
 ## Update — 2026-11-16 ~17:45 (Dungeon clear reward, back-to-square, use item, equip & quickslot schemas implemented)
 
 Decompiled client handlers/senders and added full support:

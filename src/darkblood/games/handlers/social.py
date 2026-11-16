@@ -36,3 +36,9 @@ class SocialHandlers:
     async def on_0(self, correlation, body):
         # Application-level keepalive heartbeat sent by client periodically.
         pass
+
+    async def on_2024(self, correlation, body):
+        # eEGS_GET_INVITELIST_REQ -> 2025 eEGS_GET_INVITELIST_ACK (0x006A2E10).
+        from darkblood.games.network.messages import GetInviteListAck
+        ack = GetInviteListAck().encode()
+        await self.transport.send_event(event(2025, ack, correlation), note='invite list ack')

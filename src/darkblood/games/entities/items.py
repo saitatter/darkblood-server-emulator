@@ -34,12 +34,13 @@ class Item:
     owner: int = -1
     container: int = -1
     slot: int = 0
+    count: int = 1
 
     def encode(self) -> bytes:
         # 0x00A4B250 x2 (+0x0C, +0x6B): varint count (max 2) of 10-byte
         # 0x00A49BB0 entries (u16, u32, u32); sent empty.
         b = varuint(0) + varuint(0)
-        b += struct.pack('<HHHf?H', 0xFFFF, 0xFFFF, 0xFFFF, 0.0, False, 0xFFFF)
+        b += struct.pack('<HHHf?H', self.count, 0xFFFF, 0xFFFF, 0.0, False, 0xFFFF)
         b += b'\x10' + varuint(0) + b'\x10' + varuint(0)
         b += struct.pack('<Iqq', 0, 0, 0)
         b += struct.pack('<?', False) + b'\x10' + varuint(0)

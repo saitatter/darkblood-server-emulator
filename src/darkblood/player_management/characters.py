@@ -71,6 +71,16 @@ class CharacterStore:
                 return c
         return None
 
+    def delete(self, account, char_id):
+        with self.lock:
+            chars = self.data['accounts'].get(account, [])
+            for i, c in enumerate(chars):
+                if c['id'] == char_id:
+                    del chars[i]
+                    self.save()
+                    return True
+            return False
+
     def create(self, account, request):
         with self.lock:
             chars = self.data['accounts'].setdefault(account, [])

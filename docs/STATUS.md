@@ -1,5 +1,19 @@
 # Research status and handoff
 
+## Skills, Character deletion, Item management, Bag & Quickslots — 2026-11-16 ~18:15
+
+* 2014 eEGS_DELETE_CHARACTER_REQ & 2015 eEGS_DELETE_CHARACTER_ACK: Wire schema i64 char_uid -> i32 result + i64 char_uid + i32 complete_time=0. CharacterStore.delete() persists account character removals.
+* 2040 eEGS_DELETE_ITEM_REQ & 2041 eEGS_DELETE_ITEM_ACK: i64 item_uid + i32 amount -> i32 result + i64 item_uid + i32 del_amount. Inventory item deletion and stack decrementing persisted to store.
+* 2030 eEGS_SWITCH_BAG_REQ & 2031 eEGS_SWITCH_BAG_ACK: u16 from + u16 to -> i32 result + u16 from + u16 to. Bag reordering persisted.
+* 2046 eEGS_SWITCH_QUCIKSLOT_REQ & 2047 eEGS_SWITCH_QUCIKSLOT_ACK: u8 type + u8 from + u8 to -> i32 result + echoes slot payload.
+* 2050 eEGS_LEARN_SKILL_REQ & 2051 eEGS_LEARN_SKILL_ACK: u16 sKindNameIndex + u8 ucLevel -> i32 result + u16 index + u8 level + i32 remain_sp + i64 remain_gold. Character skill points and learned levels persisted.
+* 2594 eEGS_HTTPNOTICE_CHECK_REQ & 2595 eEGS_HTTPNOTICE_CHECK_ACK: i32 result + bool bWatch=False.
+* 2216 eEGS_PLAY_OPTION_UPDATE_REQ: i64 char_uid + tag 0x1E struct recorded and consumed.
+* 2024 eEGS_GET_INVITELIST_REQ & 2025 eEGS_GET_INVITELIST_ACK: i32 result + tag 0x10 empty user vector.
+* 5087 eERC_LEVEL_UP_NOT & 5086 eERC_CHANGE_EXP_NOT: wire structures mapped from 0x0078CCF0 / 0x0078D170.
+* Item entity updated with item count/amount at +0 offset.
+* 17/17 headless tests pass.
+
 ## Dungeon schemas & Bag cell display resolved — 2026-11-16 ~17:15
 
 * 5095 eERC_CHANGE_DUNGEON_LAYER_NOT: payload decoded as i32 0x7FFFFFFF + i64 layer_net_id = (jhash(map_code) << 32) | layer_id. For Lucid Forest Entrance (Act1_G1_A10), jhash is 0x32ADCD46 and layer is 4 (fffff7f 04000000 46cdad32). Sent by JAppStateGamePlay::Initialize (0x006C0000.c:10234 via 0x0087D1F0 -> 0x007900B0). Handled in on_5095.

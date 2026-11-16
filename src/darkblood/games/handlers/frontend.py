@@ -136,3 +136,13 @@ class FrontendHandlers:
         else:
             ack = struct.pack('<I', 0) + encode_character(char) + struct.pack('<B', 0)
         await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
+
+    async def on_2014(self, correlation, body):
+        # eEGS_DELETE_CHARACTER_REQ -> eEGS_DELETE_CHARACTER_ACK (2015), handler 0x758370
+        from darkblood.games.network.messages import DeleteCharacterReq, DeleteCharacterAck
+        req = DeleteCharacterReq.decode(body)
+        self.transport.record('delete-character', body, char_uid=req.char_uid)
+        ok = self.store().delete(self.account, req.char_uid)
+        result = 0 if ok else 1
+        ack = DeleteCharacterAck(result=result, char_uid=req.char_uid, complete_time=0).encode()
+        await self.transport.send_event(event(2015, ack, correlation), note=f'delete character ack ({req.char_uid})')

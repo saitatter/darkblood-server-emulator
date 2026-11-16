@@ -265,7 +265,10 @@ class HeadlessFlowTest(unittest.TestCase):
             chars = session.GameSession.store().characters('OfflinePlayer')
             if chars:
                 char = chars[0]
-                char['items'] = [dict(code='AbodT1N', uid=1, container=1, slot=0)]
+                char['items'] = [
+                    dict(code='AbodT1N', uid=1, container=1, slot=0, count=10),
+                    dict(code='AbodT1N', uid=2, container=2, slot=1, count=5),
+                ]
                 selected_character['id'] = char['id']
                 session.GameSession.store().save()
 
@@ -294,6 +297,48 @@ class HeadlessFlowTest(unittest.TestCase):
             client.send_event(2038, struct.pack('<qi', 1, 1))
             _, ack2039 = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039)[0], 0)
+
+            # 2040: eEGS_DELETE_ITEM_REQ -> 2041
+            client.send_event(2040, struct.pack('<qi', 2, 2))
+            _, ack2041 = await client.expect_event(2041)
+            self.assertEqual(struct.unpack_from('<iqi', ack2041), (0, 2, 2))
+
+            # 2030: eEGS_SWITCH_BAG_REQ -> 2031
+            client.send_event(2030, struct.pack('<HH', 0, 1))
+            _, ack2031 = await client.expect_event(2031)
+            self.assertEqual(struct.unpack_from('<iHH', ack2031), (0, 0, 1))
+
+            # 2046: eEGS_SWITCH_QUCIKSLOT_REQ -> 2047
+            client.send_event(2046, struct.pack('<BBB', 0, 0, 1))
+            _, ack2047 = await client.expect_event(2047)
+            self.assertEqual(struct.unpack_from('<iBBB', ack2047), (0, 0, 0, 1))
+
+            # 2594: eEGS_HTTPNOTICE_CHECK_REQ -> 2595
+            client.send_event(2594, b'')
+            _, ack2595 = await client.expect_event(2595)
+            self.assertEqual(struct.unpack_from('<i?', ack2595), (0, False))
+
+            # 2216: eEGS_PLAY_OPTION_UPDATE_REQ (fire and forget)
+            client.send_event(2216, struct.pack('<q', char['id']) + b'\x1e\x00')
+
+            # 2024: eEGS_GET_INVITELIST_REQ -> 2025
+            client.send_event(2024, b'\x1e\x00')
+            _, ack2025 = await client.expect_event(2025)
+            self.assertEqual(struct.unpack_from('<i', ack2025)[0], 0)
+            self.assertEqual(ack2025[4:], b'\x10\x80')
+
+            # 2014: eEGS_DELETE_CHARACTER_REQ -> 2015
+            dummy_char = session.GameSession.store().create('OfflinePlayer', dict(name='DummyToDelete', char_class=1))
+            client.send_event(2014, struct.pack('<q', dummy_char['id']))
+            _, ack2015 = await client.expect_event(2015)
+            self.assertEqual(struct.unpack_from('<iqi', ack2015), (0, dummy_char['id'], 0))
+
+            # 2050: eEGS_LEARN_SKILL_REQ -> 2051
+            client.send_event(2050, struct.pack('<HB', 101, 2))
+            _, ack2051 = await client.expect_event(2051)
+            self.assertEqual(struct.unpack_from('<iHBiq', ack2051)[:3], (0, 101, 2))
+
+
 
 
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
@@ -401,6 +446,24 @@ class HeadlessFlowTest(unittest.TestCase):
         self.assertNotIn(entry, first)
         # The 0xA3E450 map now carries one entry; everything else is unchanged.
         self.assertEqual(second.replace(b'\x17\x81' + entry, b'\x17\x80', 1), first)
+
+    def test_exp_and_levelup_not_encodings(self):
+        from darkblood.games.network.messages import LevelUpNot, ChangeExpNot
+        lvl = LevelUpNot(char_uid=12345, new_level=5, max_hp=1200, max_mp=600, flag=True)
+        encoded_lvl = lvl.encode()
+        self.assertEqual(encoded_lvl[0], 0x1e)
+        self.assertEqual(encoded_lvl[1:3], b'\r\x80')
+        uid, nlvl, hp, mp, flag = struct.unpack_from('<qBii?', encoded_lvl, 3)
+        self.assertEqual((uid, nlvl, hp, mp, flag), (12345, 5, 1200, 600, True))
+
+        exp = ChangeExpNot(exp_total=5000, exp_details=(100, 200, 0, 0, 0, 0, 0, 0, 1.5))
+        encoded_exp = exp.encode()
+        self.assertEqual(struct.unpack_from('<i', encoded_exp, 0)[0], 5000)
+        self.assertEqual(encoded_exp[4], 0x1e)
+        details = struct.unpack_from('<iiiiiiiif', encoded_exp, 5)
+        self.assertEqual(details[:2], (100, 200))
+        self.assertAlmostEqual(details[8], 1.5)
+
 
     def test_thief_creation_and_selection(self):
         async def scenario(client):

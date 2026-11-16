@@ -9,12 +9,22 @@ from darkblood.games.network.messages import (
     CharVerifyStatAck,
     CloseBagReq,
     CurrentCashAck,
+    DeleteItemAck,
+    DeleteItemReq,
     DragItemAck,
     DragItemReq,
     EquipItemAck,
     EquipItemReq,
+    HttpNoticeCheckAck,
+    LearnSkillAck,
+    LearnSkillReq,
+    PlayOptionUpdateReq,
     RouletteManagerInfoAck,
     StoreInfoAck,
+    SwitchBagAck,
+    SwitchBagReq,
+    SwitchQuickslotAck,
+    SwitchQuickslotReq,
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
     UseItemAck,
@@ -210,5 +220,95 @@ class CommerceHandlers:
                                  ref_id=req.ref_id, ref_uid=req.ref_uid).encode()
         await self.transport.send_event(event(2045, ack, correlation),
                                         note='assign quickslot ack (slot=%d ref=%08x)' % (req.slot_num, req.ref_id))
+
+    async def on_2040(self, correlation, body):
+        # eEGS_DELETE_ITEM_REQ (0x00550000.c:769) -> 2041 eEGS_DELETE_ITEM_ACK (0x00557420).
+        req = DeleteItemReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if not char:
+            ack = DeleteItemAck(result=1, item_uid=req.item_uid, del_amount=0).encode()
+            await self.transport.send_event(event(2041, ack, correlation), note='delete item fail (no char)')
+            return
+        items = char.get('items', [])
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target:
+            ack = DeleteItemAck(result=1, item_uid=req.item_uid, del_amount=0).encode()
+            await self.transport.send_event(event(2041, ack, correlation), note='delete item fail (not found)')
+            return
+        current_count = target.get('count', 1)
+        del_amount = min(req.amount if req.amount > 0 else 1, current_count)
+        if current_count <= del_amount:
+            items.remove(target)
+        else:
+            target['count'] = current_count - del_amount
+        self.store().save()
+        ack = DeleteItemAck(result=0, item_uid=req.item_uid, del_amount=del_amount).encode()
+        await self.transport.send_event(event(2041, ack, correlation),
+                                        note=f'delete item ack (uid={req.item_uid} amount={del_amount})')
+
+    async def on_2030(self, correlation, body):
+        # eEGS_SWITCH_BAG_REQ (0x00550000.c:626) -> 2031 eEGS_SWITCH_BAG_ACK (0x00557680).
+        req = SwitchBagReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        if char:
+            bags = char.get('bags', [])
+            if req.from_index < len(bags) and req.to_index < len(bags):
+                bags[req.from_index], bags[req.to_index] = bags[req.to_index], bags[req.from_index]
+                self.store().save()
+        ack = SwitchBagAck(result=0, from_index=req.from_index, to_index=req.to_index).encode()
+        await self.transport.send_event(event(2031, ack, correlation),
+                                        note=f'switch bag ack ({req.from_index} <-> {req.to_index})')
+
+    async def on_2046(self, correlation, body):
+        # eEGS_SWITCH_QUCIKSLOT_REQ (0x00780000.c:8591) -> 2047 eEGS_SWITCH_QUCIKSLOT_ACK (0x0078C790).
+        req = SwitchQuickslotReq.decode(body)
+        ack = SwitchQuickslotAck(result=0, slot_type=req.slot_type,
+                                 from_slot=req.from_slot, to_slot=req.to_slot).encode()
+        await self.transport.send_event(event(2047, ack, correlation),
+                                        note=f'switch quickslot ack ({req.from_slot} -> {req.to_slot})')
+
+    async def on_2594(self, correlation, body):
+        # eEGS_HTTPNOTICE_CHECK_REQ -> 2595 eEGS_HTTPNOTICE_CHECK_ACK (0x005A5110).
+        ack = HttpNoticeCheckAck(result=0, watch=False).encode()
+        await self.transport.send_event(event(2595, ack, correlation), note='http notice check ack')
+
+    async def on_2216(self, correlation, body):
+        # eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729) - fire and forget.
+        req = PlayOptionUpdateReq.decode(body)
+        self.transport.record('play-option-update', body, char_uid=req.char_uid)
+
+    async def on_2050(self, correlation, body):
+        # eEGS_LEARN_SKILL_REQ (0x00780000.c:9504) -> 2051 eEGS_LEARN_SKILL_ACK (0x0078DBE0).
+        req = LearnSkillReq.decode(body)
+        char = None
+        if 'id' in selected_character:
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        remain_sp = 100
+        remain_gold = 10000
+        if char:
+            skills = char.setdefault('skills', {})
+            skills[str(req.skill_index)] = req.level
+            self.store().save()
+            remain_gold = char.get('gold', 10000)
+            remain_sp = char.get('sp', 100)
+        ack = LearnSkillAck(result=0, skill_index=req.skill_index, level=req.level,
+                            remain_sp=remain_sp, remain_gold=remain_gold).encode()
+        await self.transport.send_event(event(2051, ack, correlation),
+                                        note=f'learn skill ack (skill={req.skill_index} lvl={req.level})')
+
+
 
 

@@ -139,6 +139,24 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | Dungeon entrance (walk into town exit) | 2010 → 5001 `_singleplay` → 5043 `eERC_SELECT_DUNGEON_REQ` (i32, J-wstring gate id `Act1_G1`) | 5044 `eERC_SELECT_DUNGEON_ACK` | `0x007702E0`: u32 result, `0x17` map, `0x13` set, untagged J-wstring gate id (looked up by `0x006B2C00`, "Invalidation in m_pjGateProp" if unknown), `0x13` set. Then app state → dungeon gate (world map table) | Verified live: Gnogue Haram gate map shown |
 | Click dungeon on gate map | 5009 `eERC_CHANGE_MAPCODE_REQ` (i32, J-wstring map code `Act1_G1_A10`, bool) | 5010 `eERC_CHANGE_MAPCODE_ACK` | No JUserClient handler; JAppStateDungeonGate vf20 → `0x006D4A00` (app state 8): u32 result, untagged J-wstring map code, bool (meaning unknown; echoed) | Verified live |
 | Start game | 5013 `eERC_START_GAME_REQ` (i32, J-wstring map code) | 5014 `eERC_START_GAME_ACK` | `0x007880A0`: u32 result, u16, u32, untagged J-wstring **map code**, 3 × `0x17` map, `0x10` vector (`0x004B94C0`). An empty code crashed: `0x0098E630` returns NULL and `0x00788539` reads `+0x28` | Verified live: Lucid Forest Entrance loaded, monsters spawned, character moves |
+| Character deletion | 2014 `eEGS_DELETE_CHARACTER_REQ` (i64 char_uid) | 2015 `eEGS_DELETE_CHARACTER_ACK` | `0x00758370`: i32 result, i64 char_uid, i32 complete_time (0 = instant) | Verified |
+| Bag reorder | 2030 `eEGS_SWITCH_BAG_REQ` (u16 from, u16 to) | 2031 `eEGS_SWITCH_BAG_ACK` | `0x00557680`: i32 result, u16 from, u16 to | Verified |
+| Inventory drag | 2036 `eEGS_DRAG_ITEM_REQ` (i64 uid, i64 container, i32 slot) | 2037 `eEGS_DRAG_ITEM_ACK` | `0x0077F570`: i32 result, tag `0x10` vector of Item structs | Verified |
+| Use item | 2038 `eEGS_USE_ITEM_REQ` (i64 uid, i32 count) | 2039 `eEGS_USE_ITEM_ACK` | `0x0077D4C0`: i32 result, tag `0x10` vector, i32 item_id, i32 use_count | Verified |
+| Delete item | 2040 `eEGS_DELETE_ITEM_REQ` (i64 uid, i32 count) | 2041 `eEGS_DELETE_ITEM_ACK` | `0x00557420`: i32 result, i64 uid, i32 del_amount | Verified |
+| Equip item | 2042 `eEGS_EQUIP_ITEM_REQ` (i64 uid, i32 slot) | 2043 `eEGS_EQUIP_ITEM_ACK` | `0x007AE940`: i32 result, tag `0x10` vector of items | Verified |
+| Quickslot assign | 2044 `eEGS_ASSIGN_QUICKSLOT_REQ` (u8 type, u8 slot, i32 ref_id, i64 ref_uid) | 2045 `eEGS_ASSIGN_QUICKSLOT_ACK` | `0x0078C4A0`: i32 result, echoes slot/ref parameters | Verified |
+| Quickslot switch | 2046 `eEGS_SWITCH_QUCIKSLOT_REQ` (u8 type, u8 from, u8 to) | 2047 `eEGS_SWITCH_QUCIKSLOT_ACK` | `0x0078C790`: i32 result, u8 type, u8 from, u8 to | Verified |
+| Learn skill | 2050 `eEGS_LEARN_SKILL_REQ` (u16 skill_index, u8 level) | 2051 `eEGS_LEARN_SKILL_ACK` | `0x0078DBE0`: i32 result, u16 skill_index, u8 level, i32 remain_sp, i64 remain_gold | Verified |
+| Http notice check | 2594 `eEGS_HTTPNOTICE_CHECK_REQ` | 2595 `eEGS_HTTPNOTICE_CHECK_ACK` | `0x005A5110`: i32 result, bool bWatch | Verified |
+| Play option update | 2216 `eEGS_PLAY_OPTION_UPDATE_REQ` (i64 char_uid, tag `0x1E` struct) | — | Fire-and-forget; consumed by server | Verified |
+| Invite list | 2024 `eEGS_GET_INVITELIST_REQ` | 2025 `eEGS_GET_INVITELIST_ACK` | `0x006A2E10`: i32 result, tag `0x10` empty vector | Verified |
+| Return to square | 5045 `eERC_BACK_TO_SQUARE_REQ` | 5046 `eERC_BACK_TO_SQUARE_ACK` | `0x007897F0`: i32 result, i64 square_uid, i64 layer_net_id, tag `0x10` vector, bool use_waypoint, i64 cur_area | Verified |
+| Dungeon rank reward | 5090 `eERC_CHOICE_REWARD_PARTYRANK_REQ` (i32 prefix, i32 card) | 5091 `eERC_CHOICE_REWARD_PARTYRANK_ACK` | `0x0078D660`: i32 result, i64 char_uid, tag `0x1E` 12-byte item reward, i32 box_type, i32 box_cost | Verified |
+| Player death | 5093 `eERC_GAMEPLAY_DIE_CHAR_REQ` | 5094 `eERC_GAMEPLAY_DIE_CHAR_ACK` | `0x0078F090`: i32 result, i64 from, i64 to, bool bDie, i32 dmg, i32 cur_hp, i32 max_hp, u16 die_cnt, u16 coins | Verified |
+| Daily rebirth coin | 2448 `eEGS_DAILY_REBIRTH_COIN_USE_REQ` | 2449 `eEGS_DAILY_REBIRTH_COIN_USE_ACK` | `0x0079DC70`: i32 result, u16 daily_count, i32 remain_pcbang | Verified |
+| Level up notification | — | 5087 `eERC_LEVEL_UP_NOT` | `0x0078CCF0`: tag `0x1E` + tag `0x0D` (count 0) + i64 char_uid + u8 level + i32 hp + i32 mp + bool flag | Verified |
+| Exp notification | — | 5086 `eERC_CHANGE_EXP_NOT` | `0x0078D170`: i32 nExpTotal + tag `0x1E` jGainExp (8 x i32 + 1 x f32) | Verified |
 
 Create request (observed): `i32 0x7FFFFFFF, u8 class, wstr name, u32 face, u32 hair, 5 × u8 body sliders (head, arms, chest, torso, legs), u8`.
 

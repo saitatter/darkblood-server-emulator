@@ -969,3 +969,263 @@ class EquipItemAck:
                 + b''.join(item.encode() for item in self.items))
 
 
+@dataclass
+class DeleteCharacterReq:
+    """Opcode 2014: eEGS_DELETE_CHARACTER_REQ (0x00780000.c:6618).
+
+    Wire format: i64 nDelCharUID (8 bytes).
+    """
+    char_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DeleteCharacterReq':
+        if len(data) >= 8:
+            return cls(char_uid=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class DeleteCharacterAck:
+    """Opcode 2015: eEGS_DELETE_CHARACTER_ACK (On_eEGS_DELETE_CHARACTER_ACK 0x00758370).
+
+    Wire format: i32 result + i64 nDelCharUID + i32 nUserDelCompleteTime (0 = instant).
+    """
+    result: int = 0
+    char_uid: int = 0
+    complete_time: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iqi', self.result, self.char_uid, self.complete_time)
+
+
+@dataclass
+class DeleteItemReq:
+    """Opcode 2040: eEGS_DELETE_ITEM_REQ (0x00550000.c:769).
+
+    Wire format: i64 nItemUID + i32 nAmount (12 bytes).
+    """
+    item_uid: int = 0
+    amount: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DeleteItemReq':
+        if len(data) >= 12:
+            uid, amt = struct.unpack_from('<qi', data, 0)
+            return cls(item_uid=uid, amount=amt)
+        return cls()
+
+
+@dataclass
+class DeleteItemAck:
+    """Opcode 2041: eEGS_DELETE_ITEM_ACK (0x00557420).
+
+    Wire format: i32 result + i64 nDeletedItemUID + i32 nDelAmount.
+    """
+    result: int = 0
+    item_uid: int = 0
+    del_amount: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iqi', self.result, self.item_uid, self.del_amount)
+
+
+@dataclass
+class SwitchBagReq:
+    """Opcode 2030: eEGS_SWITCH_BAG_REQ (0x00550000.c:626).
+
+    Wire format: u16 sIndexFrom + u16 sIndexTo (4 bytes).
+    """
+    from_index: int = 0
+    to_index: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SwitchBagReq':
+        if len(data) >= 4:
+            f, t = struct.unpack_from('<HH', data, 0)
+            return cls(from_index=f, to_index=t)
+        return cls()
+
+
+@dataclass
+class SwitchBagAck:
+    """Opcode 2031: eEGS_SWITCH_BAG_ACK (0x00557680).
+
+    Wire format: i32 result + u16 sIndexFrom + u16 sIndexTo.
+    """
+    result: int = 0
+    from_index: int = 0
+    to_index: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iHH', self.result, self.from_index, self.to_index)
+
+
+@dataclass
+class SwitchQuickslotReq:
+    """Opcode 2046: eEGS_SWITCH_QUCIKSLOT_REQ (0x00780000.c:8591).
+
+    Wire format: u8 ucType + u8 ucSlotNumFrom + u8 ucSlotNumTo (3 bytes).
+    """
+    slot_type: int = 0
+    from_slot: int = 0
+    to_slot: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SwitchQuickslotReq':
+        if len(data) >= 3:
+            t, f, to = struct.unpack_from('<BBB', data, 0)
+            return cls(slot_type=t, from_slot=f, to_slot=to)
+        return cls()
+
+
+@dataclass
+class SwitchQuickslotAck:
+    """Opcode 2047: eEGS_SWITCH_QUCIKSLOT_ACK (On_eEGS_SWITCH_QUCIKSLOT_ACK 0x0078C790).
+
+    Wire format: i32 result + u8 ucType + u8 ucSlotNumFrom + u8 ucSlotNumTo.
+    """
+    result: int = 0
+    slot_type: int = 0
+    from_slot: int = 0
+    to_slot: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<iBBB', self.result, self.slot_type, self.from_slot, self.to_slot)
+
+
+@dataclass
+class HttpNoticeCheckReq:
+    """Opcode 2594: eEGS_HTTPNOTICE_CHECK_REQ."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'HttpNoticeCheckReq':
+        return cls()
+
+
+@dataclass
+class HttpNoticeCheckAck:
+    """Opcode 2595: eEGS_HTTPNOTICE_CHECK_ACK (0x005A5110).
+
+    Wire format: i32 result + bool bWatch.
+    """
+    result: int = 0
+    watch: bool = False
+
+    def encode(self) -> bytes:
+        return struct.pack('<i?', self.result, self.watch)
+
+
+@dataclass
+class PlayOptionUpdateReq:
+    """Opcode 2216: eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729).
+
+    Wire format: i64 char_uid + tag 0x1E struct (raw).
+    """
+    char_uid: int = 0
+    raw: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PlayOptionUpdateReq':
+        if len(data) >= 8:
+            uid = struct.unpack_from('<q', data, 0)[0]
+            return cls(char_uid=uid, raw=data[8:])
+        return cls()
+
+
+@dataclass
+class GetInviteListReq:
+    """Opcode 2024: eEGS_GET_INVITELIST_REQ (0x007A0000.c:7840)."""
+    raw: bytes = b''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GetInviteListReq':
+        return cls(raw=data)
+
+
+@dataclass
+class GetInviteListAck:
+    """Opcode 2025: eEGS_GET_INVITELIST_ACK (0x006A2E10).
+
+    Wire format: i32 result + tag 0x10 vector of UserEntry (empty: b'\\x10\\x80').
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result) + b'\x10' + varuint(0)
+
+
+@dataclass
+class LevelUpNot:
+    """Opcode 5087: eERC_LEVEL_UP_NOT (On_eERC_LEVEL_UP_NOT 0x0078CCF0).
+
+    Wire format:
+      tag 0x1E
+        tag 0x0D + varuint(0) (empty stats array via 0x00A48D50)
+        i64 char_uid
+        u8 new_level
+        i32 max_hp
+        i32 max_mp
+        bool flag
+    """
+    char_uid: int = 0
+    new_level: int = 1
+    max_hp: int = 1000
+    max_mp: int = 500
+    flag: bool = True
+
+    def encode(self) -> bytes:
+        inner = (b'\r' + varuint(0)
+                 + struct.pack('<qBii?', self.char_uid, self.new_level, self.max_hp, self.max_mp, self.flag))
+        return b'\x1e' + inner
+
+
+@dataclass
+class ChangeExpNot:
+    """Opcode 5086: eERC_CHANGE_EXP_NOT (On_eERC_CHANGE_EXP_NOT 0x0078D170).
+
+    Wire format:
+      i32 nExpTotal
+      tag 0x1E jGainExp: 8 x i32 + 1 x float (36 bytes).
+    """
+    exp_total: int = 0
+    exp_details: tuple = (0, 0, 0, 0, 0, 0, 0, 0, 0.0)
+
+    def encode(self) -> bytes:
+        inner = struct.pack('<iiiiiiiif', *self.exp_details)
+        return struct.pack('<i', self.exp_total) + b'\x1e' + inner
+
+
+@dataclass
+class LearnSkillReq:
+    """Opcode 2050: eEGS_LEARN_SKILL_REQ (0x00780000.c:9504).
+
+    Wire format: u16 sKindNameIndex + u8 ucLevel (3 bytes).
+    """
+    skill_index: int = 0
+    level: int = 1
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'LearnSkillReq':
+        if len(data) >= 3:
+            sidx, lvl = struct.unpack_from('<HB', data, 0)
+            return cls(skill_index=sidx, level=lvl)
+        return cls()
+
+
+@dataclass
+class LearnSkillAck:
+    """Opcode 2051: eEGS_LEARN_SKILL_ACK (On_eEGS_LEARN_SKILL_ACK 0x0078DBE0).
+
+    Wire format: i32 result + u16 sKindNameIndex + u8 ucLevel + i32 nRemainSP + i64 nRemainGold.
+    """
+    result: int = 0
+    skill_index: int = 0
+    level: int = 1
+    remain_sp: int = 100
+    remain_gold: int = 10000
+
+    def encode(self) -> bytes:
+        return struct.pack('<iHBiq', self.result, self.skill_index, self.level, self.remain_sp, self.remain_gold)
+
+
+
+
