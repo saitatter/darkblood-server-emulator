@@ -65,3 +65,22 @@ Full Ghidra analysis through REA produced retained Evidence. The initial artific
 `tools/FocusedDecompile.java` provides faster targeted analysis using `-noanalysis`, requested function seeds, limited callee discovery, and return-based stack-purge metadata. Its output may contain incorrect signatures, merged function bodies, and inaccurate stack variables. Check important details against assembly and live observations.
 
 The client contains ProudNet networking and its own JSerBuffer/JEvent serialization. The initial Auth/Lobby prototype did not implement those real formats. The actual accepted sequence and the remaining `2403` initialization wait are documented in [PROTOCOL.md](PROTOCOL.md) and [ROADMAP.md](../ROADMAP.md).
+
+## SteamUser slot 16 crash (local 2026-11-16 verification)
+
+A selection-continuation failure reached `0x007869A0`; its final call at
+`0x00786B28` uses vtable offset +0x40 with one stack argument. The import
+slot `0x00C48EA8` in the local mapped image resolved to shim `SteamUser`
+(export RVA 0x2009 in that build), not an internal game interface. The
+three-entry mock vtable had no slot 16, causing an invalid indirect target
+(observed C0000005, return address 0x00786B2A).
+
+The shim now reserves 17 entries and supplies a diagnostic offline no-op
+for the observed slot 16 call. Its exact Steam method name/semantics remain
+unconfirmed; slots 3..15 remain unsupported NULL entries. MSVC object
+disassembly confirms one stack argument is removed (`ret 4`). The updated
+shim logged slot 16 argument 32 during local execution; the client remained
+alive afterward with no new exception in that run. This fixes the observed
+invalid call, not the upstream connection/scene failure that reaches this
+cleanup path. Full Steam compatibility and playable world entry remain
+unverified. Binary outputs and crash images stay local.

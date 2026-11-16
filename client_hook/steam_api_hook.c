@@ -433,7 +433,19 @@ static void* __fastcall UserSteamID(void* self, void* unused, unsigned __int64* 
     *out=0x0110000100000001ULL; return out;
 }
 static const char* __fastcall PersonaName(void* self, void* unused) { return "OfflinePlayer"; }
-static void* user_vtable[] = { UserHandle, UserLoggedOn, UserSteamID };
+/* Client 0x786B1B..0x786B28 calls SteamUser vtable +0x40 with one
+ * stack argument. Preserve the x86 thiscall stack cleanup via fastcall.
+ * This offline stub does not implement the remaining SteamUser methods. */
+static void __fastcall UserSlot16(void* self, void* unused, unsigned int value) {
+    (void)self; (void)unused;
+    RawLogFmt("[STEAM] SteamUser slot 16 (%u), offline no-op", value);
+}
+static void* user_vtable[] = {
+    UserHandle, UserLoggedOn, UserSteamID,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL, NULL, NULL,
+    UserSlot16
+};
 static void* friends_vtable[] = { PersonaName };
 static void** user_interface = user_vtable;
 static void** friends_interface = friends_vtable;
