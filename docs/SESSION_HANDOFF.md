@@ -15,7 +15,10 @@
 - Server implementation:
   - Added `QuestUpdateNot` dataclass in `src/darkblood/games/network/messages/quests.py`.
   - Implemented `handle_tutorial_monster_dead` in `src/darkblood/games/handlers/square.py` to match template hashes to objective 0 or 1, increment active quest counters, persist them in SQLite `char['quests_active']`, and send opcode 2075 (`eEGS_QUEST_UPDATE_NOT`).
-  - Wire format bug fix: `QuestStartAck` (opcode 2074) at `0x006598AF` requires tag `0x1e` before `jInfo` (18 bytes). Without `0x1e`, `FUN_00b35010(0x1e)` failed and aborted `On_eEGS_QUEST_START_ACK` before `0x00A60960`, meaning `Q0882S01` was never inserted into `_JQuestMgrClient()->m_mapActiveQuest`! When 2075 arrived, `_JQuestMgrClient()->UpdateInstance` at `0x00A5EBE0` couldn't find the quest in `m_mapActiveQuest` and failed with "Invalidation in _JQuestMgrClient()->UpdateInstance(vecInfo)". Added tag `0x1e` to `QuestStartAck`, `QuestCompleteAck` (`0x00A55B93`), and `ActiveQuest.encode_entry` (`0x00A1F0CC`).
+  - Wire tag 0x1e investigation & fix:
+    - In `FUN_00b35010(tag)`: tags `tag - 0x0F > 0x0B` (i.e. outside `0x0F..0x1A`, such as `0x1E`) jump to `0x00B3504B` and return `al = 1` immediately without reading any byte from the stream!
+    - Tag `0x1E` is a stub/disabled tag check in `JSerBuffer` and does NOT appear on the wire before `jInfo` or `ActiveQuest`. Injecting `0x1E` in `afc9807` corrupted `ActiveQuest` by shifting the payload by 1 byte, causing `0x00A1FD37` (`0x00A209B0` -> `0x00A1FD30`) to corrupt the stack frame and crash when logging in characters with active quests (such as Warrior3).
+    - Removed `0x1E` from `ActiveQuest.encode_entry()`, `QuestStartAck.encode()`, and `QuestCompleteAck.encode()`.
   - When both objectives reach 2/2, the client's `IsFinishEnableQuest` triggers ready status and allows completing `Q0882S01` with NPC `0mok01n2` (`PQ0882S01f1` -> `SQ0882S01c1` -> `On_Tutorial_Exit(true)`).
   - Headless test coverage in `tests/test_tutorial_flow.py` and `tests/test_quest_flow.py`. All 118 unit tests pass.
 

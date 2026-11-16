@@ -25,7 +25,7 @@ class QuestStartAck:
     def encode(self) -> bytes:
         qid = self.quest_id - (1 << 32) if self.quest_id >= 1 << 31 else self.quest_id
         info = struct.pack('<iHiii', -1, 0xFFFF, -1, -1, -1)
-        return struct.pack('<Iiq', self.result, qid, self.quest_uid) + b'\x1e' + info + b'\x10' + varuint(0)
+        return struct.pack('<Iiq', self.result, qid, self.quest_uid) + info + b'\x10' + varuint(0)
 
 @dataclass
 class QuestUpdateNot:
@@ -93,7 +93,7 @@ class QuestCompleteAck:
     def encode(self) -> bytes:
         qid = self.quest_id - (1 << 32) if self.quest_id >= 1 << 31 else self.quest_id
         info = struct.pack('<iHiii', -1, 0xFFFF, -1, -1, -1)
-        return (struct.pack('<Iii', self.result, qid, 0) + b'\x1e' + info + struct.pack('<iq', 0, self.total)
+        return (struct.pack('<Iii', self.result, qid, 0) + info + struct.pack('<iq', 0, self.total)
                 + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
                 + b'\x17' + varuint(0)
                 + struct.pack('<ii', self.exp, self.gp))
