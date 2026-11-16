@@ -10,8 +10,21 @@ from darkblood.games.network.messages import (
     ClearTutorialAck,
     GTargetListAck,
     NpcFirstMeetAck,
+    QuestUpdateNot,
 )
 from darkblood.games.state import selected_character
+
+# Tutorial quest Q0882S01 (0x34c58e7c) objective mappings:
+# Objective 0: QM788 (Wild Hog / ResourceNum 71, TargetValue = 2)
+# Objective 1: QM789 (Black Hog / ResourceNum 72, TargetValue = 2)
+TUTORIAL_HOG_OBJECTIVES = {
+    # 71 Wild Hog variants (16npi4, etc.)
+    0x5b3fec1c: 0, 0x5b3fec3d: 0, 0x5b42aa43: 0, 0x172c8965: 0, 0x1b371aa7: 0, 0x1f41abe9: 0,
+    # 72 Black Hog variants (17bpi9, etc.)
+    0x96926131: 1, 0x2f15f1e8: 1, 0x98e78a14: 1, 0x5b3fec7f: 1, 0x96951f9a: 1, 0x2f18b051: 1,
+    0x98ea487d: 1, 0x04168f5d: 1, 0x0821209f: 1, 0x0c2bb1e1: 1, 0xf6ceaeaa: 1, 0x27c20c2c: 1,
+}
+TUTORIAL_QUEST_ID = 0x34c58e7c
 
 
 class SquareHandlers:
@@ -50,8 +63,50 @@ class SquareHandlers:
         pass
 
     async def handle_tutorial_monster_dead(self, correlation: int, body: bytes):
-        """Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT): Notification only."""
-        pass
+        """Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT).
+
+        Client dispatcher: 0x00809eb0 (ReportDeathToServer) -> 0x00799e60.
+        Body: 4-byte prefix 0x7FFFFFFF + u32 monster template hash.
+        Updates active tutorial quest Q0882S01 objective kill counters and
+        broadcasts opcode 2075 (eEGS_QUEST_UPDATE_NOT) to advance quest status.
+        """
+        if len(body) >= 8 and body[:4] == b'\xff\xff\xff\x7f':
+            monster_hash = struct.unpack_from('<I', body, 4)[0]
+        elif len(body) >= 4:
+            monster_hash = struct.unpack_from('<I', body, 0)[0]
+        else:
+            return
+
+        if monster_hash not in TUTORIAL_HOG_OBJECTIVES:
+            return
+
+        obj_idx = TUTORIAL_HOG_OBJECTIVES[monster_hash]
+        char_id = selected_character.get('id', 1)
+        char = self.store().get(self.account, char_id)
+        if not char:
+            return
+
+        active = char.setdefault('quests_active', {})
+        q_key = str(TUTORIAL_QUEST_ID)
+        if q_key not in active:
+            uid = max([0] + [q.get('uid', 0) for q in active.values() if isinstance(q, dict)]) + 1
+            active[q_key] = dict(uid=uid, tracked=True, counters=[0, 0])
+
+        q_record = active[q_key]
+        counters = q_record.setdefault('counters', [0, 0])
+        while len(counters) < 2:
+            counters.append(0)
+
+        target = 2
+        if counters[obj_idx] < target:
+            counters[obj_idx] += 1
+            self.store().save()
+
+            update = QuestUpdateNot(updates=[(TUTORIAL_QUEST_ID, obj_idx, counters[obj_idx])]).encode()
+            await self.transport.send_event(
+                event(2075, update),
+                note=f'quest update not (Q0882S01 obj={obj_idx} count={counters[obj_idx]}/{target})'
+            )
 
     async def handle_npc_first_meet(self, correlation: int, body: bytes):
         """Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK).

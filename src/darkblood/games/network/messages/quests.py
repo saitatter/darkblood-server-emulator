@@ -28,6 +28,25 @@ class QuestStartAck:
         return struct.pack('<Iiq', self.result, qid, self.quest_uid) + info + b'\x10' + varuint(0)
 
 @dataclass
+class QuestUpdateNot:
+    """Opcode 2075: eEGS_QUEST_UPDATE_NOT (JAppPageQuestDlg::On_eEGS_QUEST_UPDATE_NOT, 0x0061c7e0).
+
+    Wire format: tag 0x10 vector of quest objective updates.
+    Each element: tag 0x1e (struct) + 12 bytes:
+      i32 quest_id (jhash, e.g. jhash('Q0882S01'))
+      i32 objective_index (0-based)
+      i32 count (current progress / kill count)
+    """
+    updates: list = field(default_factory=list)  # [(quest_id, objective_index, count)]
+
+    def encode(self) -> bytes:
+        body = b'\x10' + varuint(len(self.updates))
+        for qid, obj_idx, count in self.updates:
+            q_signed = qid - (1 << 32) if qid >= 1 << 31 else qid
+            body += b'\x1e' + struct.pack('<iii', q_signed, obj_idx, count)
+        return body
+
+@dataclass
 class QuestHistoryNot:
     """Opcode 2410: eEGS_QUEST_HISTORY_REFRESH_NOT (handler 0x0076C1E0).
 

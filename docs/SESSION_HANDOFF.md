@@ -1,4 +1,22 @@
-# Session handoff — 2026-11-16 (Cristian machine)
+# Session handoff — 2026-11-17 (saita machine)
+
+## Tutorial monster kills & quest progress — saita machine, 2026-11-17 (verified via tests & live log analysis)
+
+- Problem reported: "vezi ca la tutorial tot nu a progresat cand am omorat hogs si lback hogs"
+- Client investigation:
+  - When tutorial monsters die in AppState 9 (Tutorial), `0x00809eb0` (`ReportDeathToServer`) calls `0x00799e60` (`JUserClient::TutorialMonsterDead`), which sends opcode 2353 (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) with the monster template hash (`0x1b371aa7` for `16npi4` Wild Hog, `0x0c2bb1e1` for `17bpi9` Black Hog).
+  - The server handler `handle_tutorial_monster_dead` (opcode 2353) was previously a stub (`pass`).
+  - Dark Blood quest system updates objectives via opcode 2075 (`eEGS_QUEST_UPDATE_NOT`), handled by `0x0061c7e0` (`JAppPageQuestDlg::On_eEGS_QUEST_UPDATE_NOT`).
+  - Opcode 2075 wire schema: vector (tag `0x10`) of 12-byte structs (tag `0x1e`):
+    `i32 quest_id` (jhash), `i32 objective_index` (0-based), `i32 count` (current kill progress).
+  - Quest `Q0882S01` (`0x34c58e7c`) objectives:
+    - Objective 0: `QM788` (ResourceNum 71, Wild Hog `16npi4`, TargetValue = 2)
+    - Objective 1: `QM789` (ResourceNum 72, Black Hog `17bpi9`, TargetValue = 2)
+- Server implementation:
+  - Added `QuestUpdateNot` dataclass in `src/darkblood/games/network/messages/quests.py`.
+  - Implemented `handle_tutorial_monster_dead` in `src/darkblood/games/handlers/square.py` to match template hashes to objective 0 or 1, increment active quest counters, persist them in SQLite `char['quests_active']`, and send opcode 2075 (`eEGS_QUEST_UPDATE_NOT`).
+  - When both objectives reach 2/2, the client's `IsFinishEnableQuest` triggers ready status and allows completing `Q0882S01` with NPC `0mok01n2` (`PQ0882S01f1` -> `SQ0882S01c1` -> `On_Tutorial_Exit(true)`).
+  - Headless test coverage in `tests/test_tutorial_flow.py` verifies both 2353 kills, 2075 updates, quest completion, and tutorial exit. All 118 unit tests pass.
 
 ## Character select, deletion, server list, cash — saita machine, 2026-11-16 ~23:20 (static + headless; live retest pending)
 

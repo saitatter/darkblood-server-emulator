@@ -53,7 +53,8 @@ class QuestHandlers:
             return quests[str(quest_id)].uid
         uid = max([0] + [q.uid for q in quests.values()]) + 1
         tracked = sum(q.tracked for q in quests.values()) < 5  # 0x00A60960
-        active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=[])
+        counters = [0, 0] if quest_id == 0x34c58e7c else []
+        active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=counters)
         if char:
             self.store().save()
         return uid
