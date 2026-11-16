@@ -2,6 +2,16 @@
 
 Updated **November 16, 2026** (second session). Offline gameplay is not available yet; the client now reaches character creation and selection against the local server.
 
+## Latest local handoff ? 2026-11-16
+
+[SESSION_HANDOFF.md](SESSION_HANDOFF.md) records the current machine setup and
+resume instructions. Local world entry is **not verified**. The last test captured
+a Proud::Exception with error 14, "Unknown Internet address", at a connection
+validation path in 0x00B54B40. Earlier world-transition claims below are historical
+collaborator notes and must not be treated as a reproduction on this machine.
+The next target is endpoint reader 0x00A48A90 and the 2007 connection fields.
+All owned final-test processes were stopped; generated artifacts remain local.
+
 ## Verified in the second session
 
 1. The send blocker was encryption: game requests use ProudNet strong encryption (RmiContext `0x00F2C410`, mode 1) and `0x00B76050` aborted at `0x00B76515` because the shortened handshake never established a session key.

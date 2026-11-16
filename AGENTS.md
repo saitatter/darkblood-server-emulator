@@ -2,6 +2,11 @@
 
 ## Start here
 
+Read `docs/SESSION_HANDOFF.md` first for the latest local setup, user preferences,
+verified findings and next investigation target. Update that handoff before ending
+each session, along with roadmap/status and relevant evidence notes, then push.
+
+
 Read `README.md`, `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` before resuming implementation. Last update: 2026-11-16, second session (key exchange through character creation).
 
 Write and maintain all project documentation in English, as explicitly requested by the user.

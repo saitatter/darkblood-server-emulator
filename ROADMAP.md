@@ -4,6 +4,20 @@ Updated **November 16, 2026** (second session).
 
 Final objective: launch without the original services, establish a local session, persist a character, enter a map, and verify offline gameplay.
 
+## Latest local verification ? Cristian, 2026-11-16
+
+See [session handoff](docs/SESSION_HANDOFF.md). Selection ACK parsing and mailbox
+continuation were reproduced, but world entry is not verified. The concrete
+blocker is Proud::Exception 14 (Unknown Internet address) during connection
+validation at 0x00B54B40, followed by the 30-second selection wait timeout.
+
+- [x] Correct implicit struct tags, trailer u8, absent lookup sentinels and result prefix.
+- [x] Add empty mailbox ACK 2220 and handle the exercised SteamUser slot 16.
+- [x] Capture the post-selection C++ exception without swallowing it.
+- [ ] Recover endpoint reader 0x00A48A90 and trace connection parameters into 2007.
+- [ ] Supply a client-derived valid local endpoint and verify completion of the selection wait.
+- [ ] Observe a loaded map and working controls before claiming gameplay.
+
 ## Current milestones
 
 | Milestone | Status |
