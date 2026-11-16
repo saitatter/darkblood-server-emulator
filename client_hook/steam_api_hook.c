@@ -449,23 +449,6 @@ static void* __stdcall Hook_Direct3DCreate9(unsigned int SDKVersion) {
     return pD3D;
 }
 
-typedef int (WINAPI *MessageBoxA_t)(HWND, LPCSTR, LPCSTR, UINT);
-static MessageBoxA_t orig_MessageBoxA = NULL;
-static int WINAPI Hook_MessageBoxA(HWND hwnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType) {
-    RawLogFmt("[MSGBOX-A] Caption='%s' Text='%s'", lpCaption ? lpCaption : "", lpText ? lpText : "");
-    return orig_MessageBoxA ? orig_MessageBoxA(hwnd, lpText, lpCaption, uType) : IDOK;
-}
-
-typedef int (WINAPI *MessageBoxW_t)(HWND, LPCWSTR, LPCWSTR, UINT);
-static MessageBoxW_t orig_MessageBoxW = NULL;
-static int WINAPI Hook_MessageBoxW(HWND hwnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType) {
-    char cap[256] = {0}; char txt[512] = {0};
-    if (lpCaption) WideCharToMultiByte(CP_ACP, 0, lpCaption, -1, cap, sizeof(cap)-1, NULL, NULL);
-    if (lpText) WideCharToMultiByte(CP_ACP, 0, lpText, -1, txt, sizeof(txt)-1, NULL, NULL);
-    RawLogFmt("[MSGBOX-W] Caption='%s' Text='%s'", cap, txt);
-    return orig_MessageBoxW ? orig_MessageBoxW(hwnd, lpText, lpCaption, uType) : IDOK;
-}
-
 static void InstallHooks() {
     if(orig_connect) return;
     BYTE* call=(BYTE*)0x0096b091;
@@ -500,14 +483,6 @@ static void InstallHooks() {
         orig_connect = (connect_t)InstallInlineHook((void*)GetProcAddress(hWs2, "connect"), (void*)Hook_connect);
     }
     RawLog("[INIT] Network hook setup complete");
-
-    HMODULE hUser32 = GetModuleHandleA("user32.dll");
-    if (hUser32) {
-        void* pMsgA = (void*)GetProcAddress(hUser32, "MessageBoxA");
-        if (pMsgA) orig_MessageBoxA = (MessageBoxA_t)InstallInlineHook(pMsgA, (void*)Hook_MessageBoxA);
-        void* pMsgW = (void*)GetProcAddress(hUser32, "MessageBoxW");
-        if (pMsgW) orig_MessageBoxW = (MessageBoxW_t)InstallInlineHook(pMsgW, (void*)Hook_MessageBoxW);
-    }
 
     HMODULE hD3D9 = LoadLibraryA("d3d9.dll");
     if (hD3D9) {

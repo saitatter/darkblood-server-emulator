@@ -255,3 +255,40 @@ was logged. This is an application shutdown path, not proof that mailbox
 parsing failed. The next investigation should identify the UI/error event
 that invokes `0x00757750` and capture the shutdown message. Static outputs
 are local `research/event-result.c` and `research/dispatch-failure.c`.
+
+## 5. Square Relay Architecture & Relay PIDL
+
+Upon character selection (2006/2007), the client attempts to establish a P2P/relay
+connection (`JP2PClient::Connect`, `0x007AAD98` / `0x00956C80`).
+If unconfigured, this triggers ProudNet error 14 ("Unknown Internet address") at `0x00B54B40`.
+
+### Square Relay Announcement (Opcode 5134)
+- **Opcode**: `5134` (`eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT`)
+- **Handler**: `0x0075AAE0` -> Reader `0x00A48910`
+- **Format**: 6 raw bytes: 4-byte IPv4 in network byte order (`127.0.0.1`) + 2-byte little-endian port (`9401`).
+- The emulator announces `127.0.0.1:9401` immediately following opcode `5029` (`eERC_JOIN_SQUARE_ACK`).
+
+### Relay PIDL Protocol (Port 9401)
+The relay service uses game-defined ProudNet RMI messages rather than standard JEvents:
+- **JoinGroup (RMI 1001)**: Client → Server (`0x00956420`/`0x00956500`).
+  Parameters: group type (`u32`), group identifiers.
+- **JoinGroupACK (RMI 3001)**: Server → Client (`0x009567A0`).
+  - Prefix: ProudNet RMI magic `0x0003` + `u16` RMI ID (`3001`).
+  - Body: `u32` group host ID (`0x10000`) + ProudNet scalar byte-length + JSerBuffer vector (tag `0x10`) of member entries (tag `0x0F` + `u64` character UID + `u32` host ID).
+
+## 6. Town & Tutorial Flow (Decompiled & Implemented)
+
+Following character selection and relay attachment, the client interacts with tutorial and town systems:
+
+| Request Opcode | Handler | Response Opcode | Binary Layout & Behavior |
+| --- | --- | --- | --- |
+| `2131` (`eEGS_FRIEND_LIST_REQUEST_REQ`) | `0x007712E0` | `2132` (`eEGS_FRIEND_LIST_REQUEST_ACK`) | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
+| `2569` | `0x00772160` | `2570` | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
+| `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) | `0x0077EEB0` | `2083` (`eEGS_CLEAR_TUTORIAL_ACK`) | `u32 result` (0) + tag `0x10` vector (`\x10\x00` empty vector). **Triggers Scene 9 (Town Scene)** via `0x006DBFA0(9)`! |
+| `2346` (`eEGS_TUTORIAL_QUEST_START_REQ`) | `0x006481E0` | `2347` (`eEGS_TUTORIAL_QUEST_START_ACK`) | `u32 result` (0) |
+| `2390` (`eEGS_ROULETTE_MANAGER_INFO_REQ`) | `0x006CC6B0` | `2391` (`eEGS_ROULETTE_MANAGER_INFO_ACK`) | `u32 result` (0) + untagged 21 zero bytes (`0x00A48B80`) |
+| `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) | Sender `0x00799E60` | None | Notification sent on tutorial mob defeat |
+| `2352` (`eEGS_IP_ADDRESS_NOT`) | Sender `0x00930` | None | Notification broadcasting client network IP |
+
+All responses are modeled as Python dataclasses in `server/models.py` and validated by automated end-to-end tests in `tests/test_headless_flow.py`.
+

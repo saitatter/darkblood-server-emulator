@@ -2,7 +2,22 @@
 import datetime
 import struct
 
-from models import ChannelSquare, Character, GameServer, SelectCharacterAck, varuint, wide_string
+from models import (
+    ChannelSquare,
+    Character,
+    ClearTutorialAck,
+    FriendListAck,
+    GameServer,
+    GuildOrAttendanceAck,
+    JoinSquareAck,
+    PostListAck,
+    RelayAddressNot,
+    RouletteManagerInfoAck,
+    SelectCharacterAck,
+    TutorialQuestStartAck,
+    varuint,
+    wide_string,
+)
 
 
 def varuint(value):
@@ -205,13 +220,13 @@ class GameSession:
         # handler 0x757AD0: u32 result, u64 (stored at window+0xB0; assumed
         # to be the joined square id).
         square_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
-        await self.transport.send_event(event(5029, struct.pack('<IQ', 0, square_id), correlation),
+        await self.transport.send_event(event(5029, JoinSquareAck(result=0, square_id=square_id).encode(), correlation),
                                         note='join square ack')
         # eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT, handler 0x75AAE0: no result
         # word; implicit 0x1E struct = 6 raw bytes (0xA48910). Without it the
         # relay buffer stays zero and 2007's JP2PClient::Connect (0x7AAD98)
         # throws Proud error 14 "Unknown Internet address" in 0xB54B40.
-        await self.transport.send_event(event(5134, relay_address()),
+        await self.transport.send_event(event(5134, RelayAddressNot(port=RELAY_PORT).encode()),
                                         note='relay address not')
 
     async def on_2008(self, correlation, body):
@@ -260,40 +275,39 @@ class GameSession:
         # eEGS_POST_REQUEST_LIST_ACK (2220), handler 0x7AEF70:
         # result, two tagged maps, u32 unread count, bool notification flag.
         # Empty mailbox is a local offline default; notification stays false.
-        ack = (struct.pack('<I', 0) + b'\x17' + varuint(0)
-               + b'\x17' + varuint(0) + struct.pack('<I?', 0, False))
+        ack = PostListAck().encode()
         await self.transport.send_event(event(2220, ack, correlation),
                                         note='empty post list ack')
 
     async def on_2131(self, correlation, body):
         # eEGS_FRIEND_LIST_REQUEST_REQ -> eEGS_FRIEND_LIST_REQUEST_ACK (2132), handler 0x7712E0:
         # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
-        ack = struct.pack('<I', 0) + b'\x17' + varuint(0)
+        ack = FriendListAck().encode()
         await self.transport.send_event(event(2132, ack, correlation), note='friend list ack')
 
     async def on_2569(self, correlation, body):
         # Opcode 2569 -> 2570 ACK, handler 0x772160:
         # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
-        ack = struct.pack('<I', 0) + b'\x17' + varuint(0)
+        ack = GuildOrAttendanceAck().encode()
         await self.transport.send_event(event(2570, ack, correlation), note='opcode 2570 ack')
 
     async def on_2082(self, correlation, body):
         # eEGS_CLEAR_TUTORIAL_REQ -> eEGS_CLEAR_TUTORIAL_ACK (2083), handler 0x77EEB0:
         # u32 result (0), tag 0x10 vector (0x4B9210). Empty vector is b'\x10\x00'.
         # Triggers scene transition 9 (Town Scene) via 0x6DBFA0!
-        ack = struct.pack('<I', 0) + b'\x10' + varuint(0)
+        ack = ClearTutorialAck().encode()
         await self.transport.send_event(event(2083, ack, correlation), note='clear tutorial ack')
 
     async def on_2346(self, correlation, body):
         # eEGS_TUTORIAL_QUEST_START_REQ -> eEGS_TUTORIAL_QUEST_START_ACK (2347), handler 0x6481E0:
         # u32 result (0 = success).
-        ack = struct.pack('<I', 0)
+        ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
 
     async def on_2390(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0:
         # u32 result (0), untagged 21 bytes (0xA48B80).
-        ack = struct.pack('<I', 0) + (b'\x00' * 21)
+        ack = RouletteManagerInfoAck().encode()
         await self.transport.send_event(event(2391, ack, correlation), note='roulette manager info ack')
 
     async def on_2353(self, correlation, body):

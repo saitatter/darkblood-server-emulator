@@ -1,16 +1,19 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
-## Update — saitatter machine, 2026-11-16 03:30
+## Update — saitatter machine, 2026-11-16 03:55
 
 The "Unknown Internet address" blocker below is RESOLVED. The endpoint was the
 square relay address filled by 5134 (`0x0075AAE0`), not the 18-byte `0x00A48A90`
 block. The server sends 5134 = 127.0.0.1:9401 after 5029, and `run_bootstrap.py`
-runs a handshake-only relay listener on 9401. Town loaded and the NPC dialogue
-advanced with Space. Next: 2131 / 2569 responses, relay protocol, movement
-verification, and headless protocol tests (the user asked to avoid launching the
-graphics window for every test). Uncommitted `tools/gamectl.py` select-character
-and `client_hook/steam_api_hook.c` edits on this machine belong to another agent
-(agy/Gemini) and were used but not committed.
+runs a handshake-only relay listener on 9401 with Relay PIDL JoinGroup/JoinGroupACK.
+Town loaded and the NPC dialogue advanced with Space.
+All subsequent opcodes (2131 friend list, 2569, 2082 clear tutorial -> 2083 town
+transition, 2346 quest start -> 2347, 2390 roulette -> 2391, and notifications
+2352/2353) have been decompiled, modeled with high-level dataclasses in
+`server/models.py`, implemented in `server/game_wire.py`, and verified with
+automated headless tests in `tests/test_headless_flow.py` (3/3 passing in ~0.6s).
+Direct3D 9 multi-adapter fallback hook has been compiled into `client_hook/steam_api.dll`
+and deployed to `research/client/steam_api.dll`. Server is running in background.
 
 ## Read this first
 

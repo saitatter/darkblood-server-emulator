@@ -34,6 +34,28 @@ All owned final-test processes were stopped; generated artifacts remain local.
 
 Screenshots of each stage are kept locally in `research/` (`shot8.png` server list, `g7.png` channel list, `g10.png` empty character select, `g11.png` creation, `g13.png` created character).
 
+## Fourth session findings & achievements (2026-11-16)
+
+1. **Square Relay Server & JoinGroup Protocol:**
+   - Identified ProudNet error 14 resolution: `5134` (`eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT`) announces relay server at `127.0.0.1:9401`.
+   - Reverse engineered Relay PIDL RMI 1001 (`JoinGroup`) and implemented RMI 3001 (`JoinGroupACK`) with group host ID `0x10000` and member assignment.
+2. **Decompiled Tutorial & Town Opcode Suite:**
+   - Opcode `2131` -> `2132` (`eEGS_FRIEND_LIST_REQUEST_ACK`, handler `0x007712E0`): `struct.pack('<I', 0) + b'\x17\x00'`.
+   - Opcode `2569` -> `2570` (handler `0x00772160`): `struct.pack('<I', 0) + b'\x17\x00'`.
+   - Opcode `2082` -> `2083` (`eEGS_CLEAR_TUTORIAL_ACK`, handler `0x0077EEB0`): `struct.pack('<I', 0) + b'\x10\x00'`. Triggers `0x006DBFA0(9)` to transition to Town Scene.
+   - Opcode `2346` -> `2347` (`eEGS_TUTORIAL_QUEST_START_ACK`, handler `0x006481E0`): `struct.pack('<I', 0)`.
+   - Opcode `2390` -> `2391` (`eEGS_ROULETTE_MANAGER_INFO_ACK`, handler `0x006CC6B0`): `struct.pack('<I', 0) + (b'\x00' * 21)`.
+   - Opcode `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) & `2352` (`eEGS_IP_ADDRESS_NOT`): client notifications mapped and recognized.
+3. **High-Level Domain Models (`server/models.py`):**
+   - Implemented dataclasses for `JoinSquareAck`, `RelayAddressNot`, `PostListAck`, `FriendListAck`, `GuildOrAttendanceAck`, `ClearTutorialAck`, `TutorialQuestStartAck`, `RouletteManagerInfoAck`, and `RelayJoinGroupAck`.
+   - Refactored `server/game_wire.py` to use domain models directly, maintaining human-readable code.
+4. **Direct3D 9 Multi-Adapter Hook (`client_hook/steam_api_hook.c`):**
+   - Intercepted `Direct3DCreate9` and `IDirect3D9::CreateDevice`.
+   - Added automatic adapter fallback for headless/virtual display systems (Parsec Adapter 0 fallback to Adapter 1 or Reference Rasterizer `d3dref9.dll`).
+5. **Headless Test Suite (`tests/test_headless_flow.py`):**
+   - Added automated headless tests for character selection, relay handshake, and all town/tutorial opcodes.
+   - 100% test pass rate in 0.6s without opening game windows.
+
 ## Third session findings & achievements (2026-11-16)
 
 1. **Character Selection (2006 → 2007):** Recovered the complete 651-byte binary schema for `eEGS_SELECT_CHAR_ACK` (`0x007AA4B0` / reader `0x00A40760`). Modeled with high-level dataclasses in `server/models.py` (`GameServer`, `ChannelSquare`, `CharacterClass`, `CharacterVisuals`, `Character`, `SelectCharacterAck`).

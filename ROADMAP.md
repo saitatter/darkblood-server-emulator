@@ -17,9 +17,10 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Trace the endpoint: 2007 connects `JP2PClient` to the relay buffer filled by 5134 (`0x0075AAE0`), not by `0x00A48A90`.
 - [x] Send 5134 (127.0.0.1:9401) after 5029 and run a relay listener; selection wait completes.
 - [x] Town rendered with the character and an NPC dialogue that advances with Space (saitatter machine).
-- [ ] Answer 2131 friend list and 2569; recover the relay server's application protocol.
+- [x] Answer 2131 friend list and 2569; recover the relay server's application protocol (PIDL JoinGroup/JoinGroupACK).
+- [x] Answer 2082 clear tutorial -> 2083 (triggers Scene 9 Town), 2346 tutorial quest start -> 2347, 2390 roulette -> 2391.
+- [x] Headless/automated tests: protocol-level client replay without the graphics window (`tests/test_headless_flow.py`).
 - [ ] Verify movement (click/keys), NPC interaction and persistence before claiming gameplay.
-- [ ] Headless/automated tests: protocol-level client replay without the graphics window.
 
 ## Current milestones
 

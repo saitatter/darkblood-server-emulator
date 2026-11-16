@@ -327,3 +327,134 @@ class SelectCharacterAck:
         # Vector 0x004B9210
         p += b'\x10' + varuint(0)
         return bytes(p)
+
+
+@dataclass
+class JoinSquareAck:
+    """Opcode 5029: eERC_JOIN_SQUARE_ACK response.
+
+    Binary schema: Reader 0x00757AD0.
+    u32 result (0 = success) + u64 square_id.
+    """
+    result: int = 0
+    square_id: int = 1
+
+    def encode(self) -> bytes:
+        return struct.pack('<IQ', self.result, self.square_id)
+
+
+@dataclass
+class RelayAddressNot:
+    """Opcode 5134: eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT notification.
+
+    Binary schema: Reader 0x0075AAE0.
+    Implicit 0x1E struct = 6 raw bytes (0xA48910): IPv4 network order + u16 LE port.
+    """
+    ip: str = "127.0.0.1"
+    port: int = 9401
+
+    def encode(self) -> bytes:
+        octets = [int(x) for x in self.ip.split('.')]
+        return bytes(octets) + struct.pack('<H', self.port)
+
+
+@dataclass
+class PostListAck:
+    """Opcode 2220: eEGS_POST_REQUEST_LIST_ACK response.
+
+    Binary schema: Reader 0x007AEF70.
+    u32 result (0), 2x tag 0x17 map (0x7680E0), u32 unread_count, bool notify.
+    """
+    result: int = 0
+    unread_count: int = 0
+    notify: bool = False
+
+    def encode(self) -> bytes:
+        return (struct.pack('<I', self.result)
+                + b'\x17' + varuint(0)
+                + b'\x17' + varuint(0)
+                + struct.pack('<I?', self.unread_count, self.notify))
+
+
+@dataclass
+class FriendListAck:
+    """Opcode 2132: eEGS_FRIEND_LIST_REQUEST_ACK response.
+
+    Binary schema: Reader 0x007712E0.
+    u32 result (0 = success) + tag 0x17 map (0x76AE20).
+    """
+    result: int = 0
+    friends: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + b'\x17' + varuint(len(self.friends))
+
+
+@dataclass
+class GuildOrAttendanceAck:
+    """Opcode 2570: ACK response to opcode 2569.
+
+    Binary schema: Reader 0x00772160.
+    u32 result (0 = success) + tag 0x17 map (0x76AE20).
+    """
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + b'\x17' + varuint(len(self.items))
+
+
+@dataclass
+class ClearTutorialAck:
+    """Opcode 2083: eEGS_CLEAR_TUTORIAL_ACK response.
+
+    Binary schema: Reader 0x0077EEB0.
+    u32 result (0 = success) + tag 0x10 vector (0x4B9210).
+    Transitions the client into Town Scene (Scene 9) via 0x006DBFA0(9).
+    """
+    result: int = 0
+    elements: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.elements))
+
+
+@dataclass
+class TutorialQuestStartAck:
+    """Opcode 2347: eEGS_TUTORIAL_QUEST_START_ACK response.
+
+    Binary schema: Reader 0x006481E0.
+    u32 result (0 = success).
+    """
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result)
+
+
+@dataclass
+class RouletteManagerInfoAck:
+    """Opcode 2391: eEGS_ROULETTE_MANAGER_INFO_ACK response.
+
+    Binary schema: Reader 0x006CC6B0.
+    u32 result (0 = success) + untagged 21 bytes (0xA48B80).
+    """
+    result: int = 0
+    payload: bytes = field(default_factory=lambda: b'\x00' * 21)
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + self.payload
+
+
+@dataclass
+class RelayJoinGroupAck:
+    """ProudNet Relay RMI 3001: JoinGroupACK.
+
+    Binary schema: Relay PIDL RMI 3001.
+    Magic 0x0003 + u16 rmi_id (3001) + u32 group_host_id.
+    """
+    group_host_id: int = 0x10000
+
+    def encode(self) -> bytes:
+        return b'\x00\x03' + struct.pack('<HI', 3001, self.group_host_id)
+
