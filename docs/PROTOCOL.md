@@ -195,3 +195,24 @@ world-details substructure, not the complete 2007 record or world entry.
 The client still stays at character selection; remaining fields of reader
 `0x00A40760` need tracing. Local diagnostics: `research/raw-read.c`,
 `research/select-fields.c`, and the latest client hook log (not published).
+
+### Selection defaults and mailbox continuation (local pass)
+
+Complete 2007 parsing was observed at `0x007AA5B5` and `0x007AA629`
+with AL=1; execution reached success-path site `0x007AA6D7`. The prior
+selection failure therefore occurred after parsing. Assembly at
+`0x007AAA00`/`0x007AAA37` and constructor `0x00485810` identify world
+details offsets +A6/+AA as signed lookup inputs initialized to -1. Sending
+zero invokes `0x00A90540`; absence of a matching entry takes the failure
+branch. Preserve the client defaults `0xFFFFFFFF` for the empty state.
+Their domain meaning is not yet established.
+
+With those defaults the local client emitted 2219
+`eEGS_POST_REQUEST_LIST_REQ` (body `ffffff7f00`). ACK 2220 handler
+`0x007AEF70` reads u32 result, two 0x17 maps, u32 count, bool notification.
+The server now encodes an empty mailbox and echoes correlation. This ACK
+was checked structurally, but has not yet been accepted in a live client
+test. The observed client run exited with access violation C0000005 at
+8EC5997B after requesting 2219; this does not establish a cause or a stable
+code address. The mapped crash image and hook log remain local. World
+entry remains unverified on this machine.

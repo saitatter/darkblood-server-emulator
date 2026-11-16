@@ -219,7 +219,9 @@ class Character:
         b += struct.pack('<HHHH', 0, 0, 0, 0)
         # Sub-struct 0xa488f0: untagged 24 bytes
         b += (b'\x00' * 24)
-        b += struct.pack('<Q?HHHHII', 0, False, 0, 0, 0, 0, 0, 0)
+        # Constructor 0x485810 initializes +A6/+AA to -1. Zero triggers
+        # lookups through 0xA90540 and rejects selection for this empty state.
+        b += struct.pack('<Q?HHHHII', 0, False, 0, 0, 0, 0, 0xffffffff, 0xffffffff)
         b += struct.pack('<f', 0.0)
         b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
         # 2 x 0xa49bb0 (untagged u16, u32, u32)

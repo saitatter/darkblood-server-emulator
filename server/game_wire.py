@@ -202,6 +202,15 @@ class GameSession:
             ack = struct.pack('<I', 0) + encode_character(char) + struct.pack('<B', 0)
         await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
 
+    async def on_2219(self, correlation, body):
+        # eEGS_POST_REQUEST_LIST_ACK (2220), handler 0x7AEF70:
+        # result, two tagged maps, u32 unread count, bool notification flag.
+        # Empty mailbox is a local offline default; notification stays false.
+        ack = (struct.pack('<I', 0) + b'\x17' + varuint(0)
+               + b'\x17' + varuint(0) + struct.pack('<I?', 0, False))
+        await self.transport.send_event(event(2220, ack, correlation),
+                                        note='empty post list ack')
+
     async def on_5030(self, correlation, body):
         # eERC_JOIN_LAYER_REQ (i32, u64 layer id) -> eERC_JOIN_LAYER_ACK (5031), handler 0x787A70:
         # u32 result (0), u64 layer_id, u64 instance_id (1), u8 tag (0 = absent)
