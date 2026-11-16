@@ -1,0 +1,84 @@
+"""End-to-end server tests driven by the headless client (no game window).
+
+    python -m unittest discover -s tests -v
+"""
+import asyncio
+import os
+import struct
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TMP = tempfile.TemporaryDirectory()
+os.environ['DARKBLOOD_DATA'] = TMP.name  # must be set before characters is imported
+sys.path.insert(0, str(ROOT / 'server'))
+sys.path.insert(0, str(ROOT / 'tools'))
+
+from bootstrap_server import BootstrapServer  # noqa: E402
+import game_wire  # noqa: E402
+from headless_client import HeadlessClient, lobby_flow  # noqa: E402
+
+
+def wide(text):
+    raw = text.encode('utf-16le')
+    return game_wire.varuint(len(raw)) + raw
+
+
+def create_request(name, char_class=1):
+    # Observed 2012 layout: i32, u8 class, wstr, u32 face, u32 hair, 5 x u8, u8.
+    return (struct.pack('<iB', 0x7fffffff, char_class) + wide(name)
+            + struct.pack('<II', 1, 1) + bytes([50] * 5) + b'\x00')
+
+
+class HeadlessFlowTest(unittest.TestCase):
+    def run_async(self, coro):
+        return asyncio.run(asyncio.wait_for(coro, 30))
+
+    async def with_server(self, scenario, role='game'):
+        server = BootstrapServer(port=0, role=role,
+                                 log_path=Path(TMP.name) / 'wire.jsonl',
+                                 key_path=Path(TMP.name) / 'rsa.key')
+        await server.start()
+        port = server.server.sockets[0].getsockname()[1]
+        client = HeadlessClient(port=port)
+        try:
+            return await scenario(client)
+        finally:
+            await client.close()
+            server.server.close()
+            await server.server.wait_closed()
+
+    def test_lobby_and_selection(self):
+        async def scenario(client):
+            out = await lobby_flow(client)
+            client.send_event(2012, create_request('Headless'))
+            _, created = await client.expect_event(2013)
+            self.assertEqual(struct.unpack_from('<I', created)[0], 0)
+            char_id = struct.unpack_from('<Q', created, 4)[0]  # character starts with u64 id
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, out[2007] = await client.expect_event(2007)
+            return out
+
+        out = self.run_async(self.with_server(scenario))
+        for opcode in (2403, 2002, 2022, 5029, 2009, 2007):
+            self.assertEqual(struct.unpack_from('<I', out[opcode])[0], 0, opcode)
+        # 5134: 6 raw bytes, IPv4 network order + u16 LE port (verified live).
+        self.assertEqual(out[5134], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
+
+    def test_relay_handshake_without_welcome(self):
+        async def scenario(client):
+            await client.connect()
+            client.send_event(2131)
+            try:
+                payload = await asyncio.wait_for(client.expect(0x02), 0.5)
+            except asyncio.TimeoutError:
+                payload = None
+            return payload
+
+        self.assertIsNone(self.run_async(self.with_server(scenario, role='relay')))
+
+
+if __name__ == '__main__':
+    unittest.main()

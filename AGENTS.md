@@ -76,7 +76,7 @@ Until the server emulator implementation is complete:
 
 - SteamUser implements only three initial slots; SteamFriends only the first slot. Other interfaces still return invalid placeholder `1`, and many export signatures/callbacks are incomplete.
 - Server → client messages are unencrypted; fast encryption (0x27) and UDP are not implemented. Control reply `0x1D -> 0x1F` is exploratory.
-- No automatic test suite yet. Native builds and bounded live-client tests were performed.
+- Headless tests: `python -m unittest discover -s tests -v` drives the server with `tools/headless_client.py` (real handshake, encrypted events, no game window). Run them first; launch the client only to verify that it parses a changed response. The user asked to avoid opening the graphics window for every test.
 - `docs/CRYPTO_KEYS.md` is provisional. Existing extracted XML is malformed; do not treat it as plaintext or mass-extract using an unverified key.
 - Keep game binaries, dumps, generated DLLs, captures, and unrelated user files out of Git. Keep reproducible source and concise evidence notes.
 

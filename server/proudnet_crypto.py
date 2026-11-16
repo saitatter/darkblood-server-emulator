@@ -16,6 +16,7 @@ import hashlib
 import os
 import struct
 import zlib
+from pathlib import Path
 
 # --------------------------------------------------------------- AES (FIPS-197)
 _SBOX = [0] * 256
@@ -185,7 +186,7 @@ class RSAKey:
     @classmethod
     def load_or_create(cls, path, bits=1024):
         try:
-            n, e, d = (int(x, 16) for x in open(path).read().split())
+            n, e, d = (int(x, 16) for x in Path(path).read_text().split())
             return cls(n, e, d)
         except (OSError, ValueError):
             key = cls.generate(bits)

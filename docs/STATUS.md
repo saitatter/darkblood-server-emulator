@@ -111,6 +111,17 @@ The cropped splash screenshot is preserved locally as `research/splash-local.png
 
 Verified environment: Windows x64, Python 3.8, MSVC 2022 x86, Ghidra 12.1.4, JDK 21.0.9, REA CLI 6.7.0. The server and tools use only the Python standard library.
 
+### Headless tests (no game window)
+
+```powershell
+python -m unittest discover -s tests -v          # server end-to-end, ~1 s
+python tools\headless_client.py --port 9400 --select 1   # against a running server
+```
+
+`tools/headless_client.py` performs the client side of the handshake (RSA-OAEP-SHA1
+session key, AES envelopes, type 0x26 mode 1 with the u16 counter) and replays the
+observed lobby requests. It checks the server, not the real client's parsers.
+
 ### Driving the game
 
 `tools/gamectl.py` (CLI) and `tools/mcp_server.py` (MCP stdio server, registered in `.mcp.json`) start/stop the server and client, take screenshots, send keys/clicks, skip the intro, walk to character select, and decode the wire log with opcode names:
