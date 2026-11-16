@@ -1,19 +1,5 @@
 # Session handoff — 2026-11-17 (saita machine)
 
-## Reconnect stall after 5028 + equip prefix — saita machine, 2026-11-17 ~01:55 (static + headless; live retest pending)
-
-- 2042 equip: the live body is `ffffff7f` + i64 uid + i32 slot (-1). The decoder read the uid at offset 0, so every equip/unequip
-  answered "not found". Fixed (prefix skipped when present).
-- Reconnect stall (seen twice: from the tutorial and from the world): after the shim's reconnect, 5028 -> 5029 + 5134 arrived but the
-  client never sent 2008 and dropped the connection ~33 s later. `JAppPageSelectChannel::SelectChannel` (decompiled/00630000.c ~10200)
-  reads the local user UID via `0x00946570` (JNetUserMgr singleton `0x00F2EE90`, +0x78). If it is -1 it waits for 5029, sends 2008 and
-  waits for 2009; otherwise (character still loaded: in-game channel change) it sends nothing more and waits for 5031
-  (eERC_JOIN_LAYER_ACK, `0x00787A70`), then fades back in (`0x0062D540`, `0x008BCA10`). The reconnect hook keeps the local user.
-  Server: if a session sends 5028 without 2008 within 1 s, it sends 5031 and restores the character (process-wide selection, else
-  the account's first). Hypothesis: the client resumes the world. Live check pending; reading the process memory from outside is
-  denied (OpenProcess error 5), so the UID value itself was not observed.
-- 2358 (guide beginner update) has no client handler for 2359; the server records it without replying. Guide ids are not persisted.
-
 ## 2075 quest progress fix — saita machine, 2026-11-17 ~01:35 (static + headless; live retest pending)
 
 - Report: tutorial still did not progress after killing the hogs. The hook log showed 2075 arriving as `10 81 1E 7C 8E C5 34 ...`.
