@@ -13,6 +13,7 @@ from models import (
     GTargetListAck,
     GuildOrAttendanceAck,
     JoinSquareAck,
+    layer_net_id,
     NpcFirstMeetAck,
     PostListAck,
     RelayAddressNot,
@@ -377,10 +378,13 @@ class GameSession:
         pass
 
     async def on_5030(self, correlation, body):
-        # eERC_JOIN_LAYER_REQ (i32, u64 layer id) -> eERC_JOIN_LAYER_ACK (5031), handler 0x787A70:
-        # u32 result (0), u64 layer_id, u64 instance_id (1), u8 tag (0 = absent)
-        layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
-        ack = struct.pack('<IQQB', 0, layer_id, 1, 0)
+        # eERC_JOIN_LAYER_REQ (i32, u64 nJoinLayerNetID, u8) -> eERC_JOIN_LAYER_ACK
+        # (5031), handler 0x787A70. Read order (tools/extract_schemas.py) matches
+        # 5046: u32 result, u64, u64, tag 0x10 vector {i32,bool,bool}, bool, u64.
+        # The former `u8 0` after the two u64 failed the 0x10 tag check, so the
+        # client kept resending 5030 (observed live: layer jhash('Act1') << 32).
+        layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
+        ack = BackToSquareAck(square_uid=SQUARES[0]['square_id'], layer_net_id=layer_id).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
 

@@ -134,6 +134,13 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(ack5046[20:22], b'\x10\x80')  # tag + varuint 0: empty vecTargetState
             self.assertEqual(len(ack5046), 22 + 1 + 8)
 
+            # Join layer 5030 -> 5031: observed request i32, u64 layer, u8
+            layer = models.jhash('Act1') << 32
+            client.send_event(5030, struct.pack('<iQB', 0x7fffffff, layer, 0))
+            _, ack5031 = await client.expect_event(5031)
+            self.assertEqual(struct.unpack_from('<IQQ', ack5031), (0, 1, layer))
+            self.assertEqual(ack5031[20:22], b'\x10\x80')  # vector tag, not u8 0
+
             # Town requests (schemas from tools/extract_schemas.py)
             client.send_event(5124)
             _, ack5125 = await client.expect_event(5125)
