@@ -78,6 +78,10 @@ Final objective: launch without the original services, establish a local session
 - [ ] Parse monster attributes and drop rate tables (`Data/Dict/monsterlist.lua` or binary properties).
 - [ ] Parse skill damage formulas and cooldown definitions (`Data/Dict/skilllist.lua`).
 - [ ] Investigate `DarkbloodKR.ini` configuration flags and client customization toggles.
+- [ ] Optional: fix the shipped English UI text in `Data/localization_st/ui_st.dat` (UTF-16, `ID<TAB>text` lines), on a separate
+  copy of the archive only, never through the `research/client/Data` junction to the original install. Known
+  mistranslations: `UI_504` "Item" heads the channel list's Category column (`page_selectchannel.xml`); `UI_1213`
+  "Character" (singular) heads the server list's character count column (`page_selectserver.xml`). Deferred by the user (2026-11-16).
 
 ### P5 — Stability, Launcher & Tooling
 - [x] Replace dummy Steam placeholders with robust proxy implementations (`SteamUser`, `SteamFriends`, `SteamUserStats`).
