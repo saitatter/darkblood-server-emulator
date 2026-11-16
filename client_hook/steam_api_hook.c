@@ -484,15 +484,6 @@ static void InstallHooks() {
     }
     RawLog("[INIT] Network hook setup complete");
 
-    HMODULE hD3D9 = LoadLibraryA("d3d9.dll");
-    if (hD3D9) {
-        void* pCreate = (void*)GetProcAddress(hD3D9, "Direct3DCreate9");
-        if (pCreate) {
-            orig_Direct3DCreate9 = (Direct3DCreate9_t)InstallInlineHook(pCreate, (void*)Hook_Direct3DCreate9);
-            RawLogFmt("[INIT] Direct3DCreate9 hooked: %p", orig_Direct3DCreate9);
-        }
-    }
-
     LoadBreakpoints();
 }
 
