@@ -182,3 +182,16 @@ tags remain present. Static output is retained locally in
 Local live validation reached character selection (2008/2009), but Enter did
 not emit request 2006 during that run. Acceptance of the corrected 2007 and
 world entry remain unverified on this machine.
+
+### World-details trailer correction (local live verification)
+
+The end of reader `0x00A52630` consumes `bool +1C9`, `u8 +1CA`,
+`u16 +1CB`, `bool +1CD`, `bool +1CE`, then a J-wstring. The serializer
+previously omitted the u8. After adding it, a local 2006/2007 exchange
+reached return site `0x00A52BBF` with reader success byte 1 and cursor
+`0x15D` (349), matching the 10-byte record prefix plus 339-byte
+world-details payload for the local Tester character. This verifies the
+world-details substructure, not the complete 2007 record or world entry.
+The client still stays at character selection; remaining fields of reader
+`0x00A40760` need tracing. Local diagnostics: `research/raw-read.c`,
+`research/select-fields.c`, and the latest client hook log (not published).

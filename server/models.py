@@ -243,7 +243,8 @@ class Character:
         b += b'\x10' + varuint(0)
         b += struct.pack('<?HH', False, 0, 0)
         b += struct.pack('<f', 0.0)
-        b += struct.pack('<?H??', False, 0, False, False)
+        # Reader 0xA52630: bool +1C9, u8 +1CA, u16 +1CB, bool +1CD/+1CE.
+        b += struct.pack('<?BH??', False, 0, 0, False, False)
         b += wide_string('')
         return bytes(b)
 
