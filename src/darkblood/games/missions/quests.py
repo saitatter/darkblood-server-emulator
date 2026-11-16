@@ -25,7 +25,7 @@ class ActiveQuest:
 
     def encode_entry(self) -> bytes:
         qid = _i32(self.quest_id)
-        out = b'\x0f' + struct.pack('<i', qid)
+        out = b'\x0f' + struct.pack('<i', qid) + b'\x1e'
         out += struct.pack('<qqi?', self.uid, self.start_time, qid, self.tracked)
         counters = list(self.counters)[:5]
         out += varuint(len(counters)) + b''.join(struct.pack('<i', c) for c in counters)

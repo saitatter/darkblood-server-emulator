@@ -74,8 +74,8 @@ class QuestFlowTest(ServerTestCase):
 
         char_id, ack = self.run_async(self.with_server(scenario))
         # jAck +0x1E gold total: default 21 + RewardGold 774; item vector holds Ibaga0004.
-        self.assertEqual(struct.unpack_from('<q', ack, 4 + 0x1E)[0], 21 + 774)
-        self.assertEqual(ack[4 + 0x26:4 + 0x28], b'\x10\x81')
+        self.assertEqual(struct.unpack_from('<q', ack, 4 + 1 + 0x1E)[0], 21 + 774)
+        self.assertEqual(ack[4 + 1 + 0x26:4 + 1 + 0x28], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<ii', ack, len(ack) - 8), (150, 0))  # EXP, GP
         char = session.GameSession.store().get('OfflinePlayer', char_id)
         self.assertEqual(char['level'], 2)
@@ -88,7 +88,7 @@ class QuestFlowTest(ServerTestCase):
         quest = hashing.jhash('Q0002S01')
         stamp = 'x'.encode('utf-16le')
         req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
-        entry = (b'\x0f' + struct.pack('<I', quest) + struct.pack('<qqI?', 1, 0, quest, True)
+        entry = (b'\x0f' + struct.pack('<I', quest) + b'\x1e' + struct.pack('<qqI?', 1, 0, quest, True)
                  + jser.varuint(0))
 
         async def scenario(client):
