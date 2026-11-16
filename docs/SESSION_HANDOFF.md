@@ -185,6 +185,14 @@ All game binaries, dumps, captures, generated DLLs and research remain ignored.
 
 ## Cleanup and background sync
 
+Cristian resume update (2026-11-16): the user reported a recurring brief
+PowerShell window. The sync task was a likely cause (10-minute interactive
+PowerShell launches, despite `-WindowStyle Hidden`). Its action now uses local
+`research/venv/Scripts/pythonw.exe` with `research/automation/sync_hidden.pyw`;
+the wrapper invokes the unchanged sync script with `CREATE_NO_WINDOW` and
+redirected standard streams. Original task XML is backed up locally at
+`research/automation/task-before-hidden-launcher.xml`. The schedule is preserved.
+
 Last owned client/server test processes were stopped. Verify fresh status before
 starting; never reuse recorded PIDs. sample.txt enables bounded 5s sampling;
 bp.txt has diagnostic breakpoints. Inspect these before another test.
