@@ -87,6 +87,8 @@ static connect_t orig_connect = NULL;
 
 static void* orig_join = NULL;
 static void* orig_user_message = NULL;
+static volatile LONG g_selectionObserved;
+static volatile LONG g_selectionThrows;
 static int __cdecl TraceWelcome(void* reader,void* result) {
     int ok=((int (__cdecl *)(void*,void*))0x00a519a0)(reader,result);
     DWORD* buffer=*((DWORD**)reader+1);
@@ -94,6 +96,9 @@ static int __cdecl TraceWelcome(void* reader,void* result) {
     return ok;
 }
 static void __cdecl TraceUserEnter(const unsigned char* data,int size) {
+    DWORD opcode;
+    if (size >= 4 && data && SafeRead((DWORD)data, &opcode, sizeof(opcode)) && opcode == 2007)
+        InterlockedExchange(&g_selectionObserved, 1);
     RawLogFmt("[PROUD] OnReceiveUserMessage bytes=%d data=%p",size,data);
     if(data && size>0) {
         char line[200]; int len=0;
@@ -323,6 +328,28 @@ LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
     DWORD code = pExceptionInfo->ExceptionRecord->ExceptionCode;
     BYTE* addr = (BYTE*)pExceptionInfo->ExceptionRecord->ExceptionAddress;
     if (HandleBreakpoint(pExceptionInfo)) return EXCEPTION_CONTINUE_EXECUTION;
+
+    /* Observe first-chance C++ throws after selection without swallowing them.
+     * Bound output and use SafeRead: this must not hide the original failure. */
+    if (code == 0xE06D7363 && g_selectionObserved && !g_inSafeRead &&
+        InterlockedIncrement(&g_selectionThrows) <= 16) {
+        CONTEXT* c = pExceptionInfo->ContextRecord;
+        EXCEPTION_RECORD* record = pExceptionInfo->ExceptionRecord;
+        DWORD stack[128];
+        RawLogFmt("[CXX selection] eip=%08X esp=%08X object=%08X info=%08X",
+            c->Eip, c->Esp,
+            record->NumberParameters > 1 ? (DWORD)record->ExceptionInformation[1] : 0,
+            record->NumberParameters > 2 ? (DWORD)record->ExceptionInformation[2] : 0);
+        if (SafeRead(c->Esp, stack, sizeof(stack))) {
+            int found = 0;
+            for (int i = 0; i < 128 && found < 24; i++) {
+                if (stack[i] >= 0x00401000 && stack[i] < 0x00C40000) {
+                    RawLogFmt("[CXX frame] stack+%X=%08X", i * 4, stack[i]);
+                    found++;
+                }
+            }
+        }
+    }
 
     if((code==EXCEPTION_ACCESS_VIOLATION || code==EXCEPTION_ILLEGAL_INSTRUCTION) && !g_inSafeRead) {
         CONTEXT* c=pExceptionInfo->ContextRecord;

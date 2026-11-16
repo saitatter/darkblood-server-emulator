@@ -84,3 +84,24 @@ alive afterward with no new exception in that run. This fixes the observed
 invalid call, not the upstream connection/scene failure that reaches this
 cleanup path. Full Steam compatibility and playable world entry remain
 unverified. Binary outputs and crash images stay local.
+
+## Selection wait timeout and exception diagnostics
+
+Local main-thread samples after selection contain `0x0094E253` and
+`0x006F8997`. Decompilation and assembly identify caller `0x006F8960`
+requesting character selection then waiting on opcode 0x7D7 (2007) through
+`0x0094E1F0`. The latter pumps events until field +0x60 becomes -1 and
+invokes `0x00757750(0)` after 30000 ms. This explains a shutdown without
+a new access violation. `0x009443A0` completes a matching wait and is
+called at dispatcher `0x0078747F`, after the event handler returns.
+
+The next hypothesis is that a C++ exception or another early exit prevents
+handler completion; successful parsing does not establish successful handler
+completion. A diagnostic in the shim logs up to 16 first-chance C++ throws
+after a 2007 message, with at most 24 candidate game-code stack words each.
+These are raw stack candidates, not an unwound call trace. It preserves
+normal exception handling. The diagnostic build compiles with MSVC x86;
+runtime reproduction with this new build is still pending. The working DLL
+is not replaced while the user is running the client. Static outputs are
+retained locally in `research/main-wait.c`, `research/ack-wait-end.c`,
+`research/dispatch-wait.c` and `research/wait-completion.c`.
