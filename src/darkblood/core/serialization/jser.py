@@ -64,11 +64,20 @@ def parse_event(data, decompress=True):
     compressed = bool(data[offset])
     body = data[offset + 1:offset + 1 + size]
     if compressed and decompress:
-        # Client form: flag 1 + 4-byte uncompressed size + zlib compressed stream
-        try:
-            body = zlib.decompress(body[4:])
-        except Exception:
-            body = zlib.decompress(body)
+        # Client form: flag 1 + 4-byte uncompressed size + zlib compressed stream.
+        # Note: Some client events (e.g. 2203) set compressed=True with plain raw bodies.
+        if len(body) > 6 and body[4] == 0x78:
+            try:
+                inflated = zlib.decompress(body[4:])
+                if len(inflated) == struct.unpack_from('<I', body)[0]:
+                    body = inflated
+            except Exception:
+                pass
+        else:
+            try:
+                body = zlib.decompress(body)
+            except Exception:
+                pass
     return opcode, correlation, compressed, body
 
 
