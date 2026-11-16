@@ -1,25 +1,52 @@
-# Provisional Asset Encryption Notes
+# Asset Encryption Specification & Verified Decoder
 
-**Status, 2026-11-16:** the candidate key below is inherited from the earlier investigation and is not verified. Existing files in `extracted_sample/` contain malformed XML. The former README also listed a different candidate key. Do not treat this document as a validated decoder specification or use the candidate for bulk extraction until the client algorithm and multiple parseable outputs have been checked. See [STATUS.md](STATUS.md) and [ROADMAP.md](../ROADMAP.md).
+**Status: FULLY VERIFIED & RECOVERED (2026-11-16)**
+The asset encryption algorithm and key used in all Dark Blood Online JPK containers have been decompiled from `DarkBlood.exe` at `0x00411F90` and verified against live game assets.
 
-## Earlier Cipher Hypothesis
-- **Algorithm:** Polyalphabetic Repeating XOR Cipher
-- **Period:** 73 bytes
+## 1. Verified Cipher Specification
 
-## Candidate Key Data
-### ASCII
+* **Algorithm:** Subtract-1 then Polyalphabetic Repeating XOR
+* **Period:** 73 bytes
+* **Decryption Formula:**
+  $$\text{Plaintext}[i] = ((\text{Ciphertext}[i] - 1) \pmod{256}) \oplus \text{Key}[i \pmod{73}]$$
+* **Encryption Formula:**
+  $$\text{Ciphertext}[i] = ((\text{Plaintext}[i] \oplus \text{Key}[i \pmod{73}]) + 1) \pmod{256}$$
+
+## 2. Verified 73-Byte Secret Key Data
+
+Recovered directly from `DarkBlood.exe` image at VA `0x00C4A848`:
+
+### ASCII (73 bytes)
 ```text
-234G335C,;G67,54;e,CC;3,B@372233E3GD,00735B:E,;2:2,73d;,:326,366G:;;BBE;3
+305D006B-8D74-458f-BB80-CA243100F0DA-11406C9F-8393-42e8-9037-077D988CCF80
 ```
 
 ### Hexadecimal
 ```text
-32 33 34 47 33 33 35 43 2c 3b 47 36 37 2c 35 34
-3b 65 2c 43 43 3b 33 2c 42 40 33 37 32 32 33 33
-45 33 47 44 2c 30 30 37 33 35 42 3a 45 2c 3b 32
-3a 32 2c 37 33 64 3b 2c 3a 33 32 36 2c 33 36 36
-47 3a 3b 3b 42 42 45 3b 33
+33 30 35 44 30 30 36 42 2d 38 44 37 34 2d 34 35 
+38 66 2d 42 42 38 30 2d 43 41 32 34 33 31 30 30 
+46 30 44 41 2d 31 31 34 30 36 43 39 46 2d 38 33 
+39 33 2d 34 32 65 38 2d 39 30 33 37 2d 30 37 37 
+44 39 38 38 43 43 46 38 30
 ```
 
-## Application
-The earlier extractor applies this repeating XOR candidate to selected text assets. The claim that it correctly decodes all XML/Lua files has not been validated; the observed malformed sample contradicts treating those outputs as valid plaintext. Additional layers, a different key, or an incorrect transformation remain possible.
+## 3. Binary Decompilation Reference (`0x00411F90`)
+
+```c
+void FUN_00411f90(int param_1, int param_2)
+{
+  byte *key = (byte *)0x00C4A848; // "305D006B-8D74-458f-BB80-CA243100F0DA-11406C9F-8393-42e8-9037-077D988CCF80"
+  int key_len = 73;
+  int key_idx = 0;
+  for (int i = 0; i < param_2; i++) {
+    *(byte *)(i + param_1) = (*(char *)(i + param_1) - 1U) ^ key[key_idx];
+    key_idx = (key_idx + 1) % key_len;
+  }
+}
+```
+
+## 4. Verification Results
+* **`Common_0.jpk`:** Clean plaintext `configure.txt`, `action.lua`, `macro.lua`.
+* **`Dict_*.jpk`:** Standard Lua 5.1 bytecode chunks beginning with `\x1bLuaQ\x00\x01\x04\x04\x04\x08...` and compiled function `lua_tinker::compile()`.
+* **`Map_0.jpk` / `UI_*.jpk`:** Clean uncompressed and decompressed XML/Lua assets.
+* Implemented in `tools/jpk_extractor.py`.

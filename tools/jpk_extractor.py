@@ -40,7 +40,8 @@ def extract_jpk(jpk_path: str, output_dir: str, decrypt: bool = True):
     with open(jpk_path, 'rb') as f:
         magic = f.read(8)
         if magic != b'J\x00P\x00K\x00\x00\x00':
-            print(f"[!] Warning: Magic mismatch: {magic}")
+            print(f"[!] Skipping non-JPK: {jpk_path} (magic={magic})")
+            return
 
         f.seek(0x218)
         head_size, = struct.unpack('<I', f.read(4))

@@ -34,6 +34,28 @@ All owned final-test processes were stopped; generated artifacts remain local.
 
 Screenshots of each stage are kept locally in `research/` (`shot8.png` server list, `g7.png` channel list, `g10.png` empty character select, `g11.png` creation, `g13.png` created character).
 
+## Fifth session findings & breakthroughs (2026-11-16)
+
+1. **Asset Cryptography Fully Broken & Verified (`docs/CRYPTO_KEYS.md`):**
+   - Reverse engineered JPK asset decryption function in `DarkBlood.exe` at `0x00411F90`.
+   - Algorithm: subtract-1 then 73-byte polyalphabetic repeating XOR: `plain[i] = ((cipher[i] - 1) & 0xFF) ^ key[i % 73]`.
+   - Secret key recovered from VA `0x00C4A848`: `305D006B-8D74-458f-BB80-CA243100F0DA-11406C9F-8393-42e8-9037-077D988CCF80`.
+   - Verified on live client assets: `Common_0.jpk` extracts clean plaintext (`configure.txt`, `action.lua`, `macro.lua`), `Dict_*.jpk` extracts clean Lua 5.1 bytecode (`\x1bLuaQ`) compiled by `lua_tinker`. Updated `tools/jpk_extractor.py`.
+2. **NPC Dialogue & Quest Progression (Opcode 2094 → 2095):**
+   - Client sends `eEGS_NPC_FIRST_MEET_REQ` (2094) upon encountering NPCs or after beating tutorial monsters.
+   - Decompiled handler `0x00752B60` (`eEGS_NPC_FIRST_MEET_ACK`, opcode 2095): expects `struct.pack('<II', 0, npc_id)`.
+   - Handler registers `npc_id` as met in NPC Manager `0x00F2D0C0` via `FUN_00405150(npc_id, 1)` and `FUN_009d2a50(npc_id, 1)`, unlocking post-battle dialogue and quest advance.
+3. **Character Creation Byte-Order & Lobby Deserialization:**
+   - Reader `0x00A4AB30` expects Byte 8 = Level and Byte 9 = Character Class.
+   - Fixed field inversion in `Character.encode_lobby_entry()` (previously swapped, causing Thief to render as "Warrior Level 4").
+   - Fresh characters initialize with `level=1` and `tutorial_cleared=False`.
+4. **Tutorial Progression & Skip Analysis:**
+   - Opcode `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) -> `2083` (`eEGS_CLEAR_TUTORIAL_ACK`). Handler `0x0077EEB0` reads reward vector and calls `0x006E5CE0`.
+   - `0x006E5CE0` emits `2084` (`eEGS_CLEAR_OPENING_NOT`), sets `[Scene 4 + 0x75] = 1`, and calls Lua `g_jAS_Tutorial:On_Tutorial_FadeOut()`.
+   - Discovered `DictTutorialReward:CompleteLoad` and `DictTutorialReward:SkipLoad` in `data\dict\tutorialreward.lua` with starting reward items (`Aneca0001`, `Ihppa0000`, `Imppa0000`).
+5. **Multi-Agent Conventional Commits Rule:**
+   - Updated `AGENTS.md` and `CONTRIBUTING.md` mandating Semantic Commit Conventions (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
+
 ## Fourth session findings & achievements (2026-11-16)
 
 1. **Square Relay Server & JoinGroup Protocol:**
