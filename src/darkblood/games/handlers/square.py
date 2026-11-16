@@ -114,6 +114,26 @@ class SquareHandlers:
         await self.transport.send_event(event(2345, ack, correlation),
                                         note='waypoint insert ack (%016x)' % layer)
 
+    async def handle_leave_layer(self, correlation: int, body: bytes):
+        """Opcode 5037 (eERC_LEAVE_LAYER_REQ) -> 5038 (eERC_LEAVE_LAYER_ACK).
+
+        Sent by the in-game menu's "Select Character": OnBtn_SelectChar
+        (0x00564490) opens MB_Square_To_SelChar, whose OnOK runs
+        SquareToSelChar (0x006FB360). That sends 5037 (0x007ADA30), waits
+        for 5038, then sends 2008 (0x00788DA0) and waits for 2009 before it
+        switches to character select. Without 5038 the client timed out and
+        dropped the connection (live, 2026-11-16 22:43).
+
+        Client handler 0x007895C0 reads only the u32 result (0x00A1EA20(0));
+        0 continues, any other value opens an error box. The player leaves
+        the town, so it is removed from the world presence list.
+        """
+        if self.active_char_id:
+            from darkblood.games.world import GameWorldManager
+            GameWorldManager.get().unregister_player(self.active_char_id)
+        await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
+                                        note='leave layer ack')
+
     # Opcode backward-compatibility aliases
     on_2082 = handle_clear_tutorial
     on_2084 = handle_clear_opening
@@ -122,5 +142,6 @@ class SquareHandlers:
     on_5045 = handle_back_to_square
     on_5124 = handle_get_gtarget_list
     on_5030 = handle_join_layer
+    on_5037 = handle_leave_layer
     on_2016 = handle_enter_maptool
     on_2344 = handle_waypoint_insert
