@@ -32,7 +32,9 @@ class QuestUpdateNot:
     """Opcode 2075: eEGS_QUEST_UPDATE_NOT (JAppPageQuestDlg::On_eEGS_QUEST_UPDATE_NOT, 0x0061c7e0).
 
     Wire format: tag 0x10 vector of quest objective updates.
-    Each element: tag 0x1e (struct) + 12 bytes:
+    Each element is 12 raw bytes. The element reader 0x00529010 checks tag
+    0x1e, but JSerBuffer's tag check 0x00B35010 reads nothing for tags outside
+    0x0F..0x1A, so no tag byte is sent:
       i32 quest_id (jhash, e.g. jhash('Q0882S01'))
       i32 objective_index (0-based)
       i32 count (current progress / kill count)
@@ -43,7 +45,7 @@ class QuestUpdateNot:
         body = b'\x10' + varuint(len(self.updates))
         for qid, obj_idx, count in self.updates:
             q_signed = qid - (1 << 32) if qid >= 1 << 31 else qid
-            body += b'\x1e' + struct.pack('<iii', q_signed, obj_idx, count)
+            body += struct.pack('<iii', q_signed, obj_idx, count)
         return body
 
 @dataclass

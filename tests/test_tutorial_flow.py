@@ -38,28 +38,28 @@ class TutorialFlowTest(ServerTestCase):
             # Kill Wild Hog (16npi4, 0x1b371aa7) -> Objective 0
             client.send_event(2353, struct.pack('<iI', 0x7FFFFFFF, 0x1b371aa7))
             _, not2075 = await client.expect_event(2075)
-            # Tag 0x10, varuint(1) (0x81), tag 0x1e, struct <iii
+            # Tag 0x10, varuint(1) (0x81), then 12 raw bytes <iii (no 0x1e byte)
             self.assertEqual(not2075[0:2], b'\x10\x81')
-            self.assertEqual(not2075[2], 0x1e)
-            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 3)
+            self.assertEqual(len(not2075), 14)
+            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 2)
             self.assertEqual((q_up, obj_idx, count), (quest, 0, 1))
 
             # Kill second Wild Hog -> Objective 0 count 2 (completed)
             client.send_event(2353, struct.pack('<iI', 0x7FFFFFFF, 0x1b371aa7))
             _, not2075 = await client.expect_event(2075)
-            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 3)
+            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 2)
             self.assertEqual((q_up, obj_idx, count), (quest, 0, 2))
 
             # Kill Black Hog (17bpi9, 0x0c2bb1e1) -> Objective 1
             client.send_event(2353, struct.pack('<iI', 0x7FFFFFFF, 0x0c2bb1e1))
             _, not2075 = await client.expect_event(2075)
-            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 3)
+            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 2)
             self.assertEqual((q_up, obj_idx, count), (quest, 1, 1))
 
             # Kill second Black Hog -> Objective 1 count 2 (completed)
             client.send_event(2353, struct.pack('<iI', 0x7FFFFFFF, 0x0c2bb1e1))
             _, not2075 = await client.expect_event(2075)
-            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 3)
+            q_up, obj_idx, count = struct.unpack_from('<iii', not2075, 2)
             self.assertEqual((q_up, obj_idx, count), (quest, 1, 2))
 
             char = session.GameSession.store().get('OfflinePlayer', char_id)

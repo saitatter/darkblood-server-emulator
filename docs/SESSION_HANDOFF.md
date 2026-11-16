@@ -1,5 +1,14 @@
 # Session handoff — 2026-11-17 (saita machine)
 
+## 2075 quest progress fix — saita machine, 2026-11-17 ~01:35 (static + headless; live retest pending)
+
+- Report: tutorial still did not progress after killing the hogs. The hook log showed 2075 arriving as `10 81 1E 7C 8E C5 34 ...`.
+- 6a50d1b removed `0x1E` from ActiveQuest/2074/2077 but not from 2075. The 2075 element reader `0x00529010` calls the tag check
+  `0x00B35010(0x1E)`, which reads nothing (tags outside 0x0F..0x1A), so the client read quest id `0xC58E7C1E` and never matched Q0882S01.
+- Fixed: 2075 elements are 12 raw bytes. Tests updated; 118 pass.
+- Open: many other encoders still emit a literal `0x1E` byte (arena 5099/5272, level/exp, buy, 2079/2081 giveup/fail, world spawn).
+  Each needs its reader checked: if it uses `0x00B35010(0x1E)`, the byte is wrong.
+
 ## Tutorial monster kills & quest progress — saita machine, 2026-11-17 (verified via tests & live log analysis)
 
 - Problem reported: "vezi ca la tutorial tot nu a progresat cand am omorat hogs si lback hogs"
