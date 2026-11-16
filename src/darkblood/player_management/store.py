@@ -95,7 +95,20 @@ class SqliteCharacterStore(ICharacterStore):
         self.db_path = Path(db_path or DATA / 'darkblood.db')
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock = threading.Lock()
+        self._cache = {}  # (account, char_id) -> dict
         self._init_db()
+        self._auto_import_if_empty()
+
+    def _auto_import_if_empty(self):
+        """Auto-migrate legacy characters.json if sqlite database is brand new."""
+        json_path = DATA / 'characters.json'
+        if json_path.exists():
+            with self.lock, self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute('SELECT COUNT(*) FROM characters')
+                count = cur.fetchone()[0]
+                if count == 0:
+                    self.import_from_json(json_path)
 
     def _get_connection(self):
         conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
@@ -139,15 +152,34 @@ class SqliteCharacterStore(ICharacterStore):
     def characters(self, account: str) -> list:
         with self.lock, self._get_connection() as conn:
             cur = conn.cursor()
-            cur.execute('SELECT data_json FROM characters WHERE account = ? ORDER BY id', (account,))
-            return [json.loads(r['data_json']) for r in cur.fetchall()]
+            cur.execute('SELECT id, data_json FROM characters WHERE account = ? ORDER BY id', (account,))
+            rows = cur.fetchall()
+            result = []
+            for r in rows:
+                char_id = r['id']
+                key = (account, char_id)
+                if key in self._cache:
+                    result.append(self._cache[key])
+                else:
+                    char_dict = json.loads(r['data_json'])
+                    self._cache[key] = char_dict
+                    result.append(char_dict)
+            return result
 
     def get(self, account: str, char_id: int):
-        with self.lock, self._get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute('SELECT data_json FROM characters WHERE account = ? AND id = ?', (account, char_id))
-            row = cur.fetchone()
-            return json.loads(row['data_json']) if row else None
+        with self.lock:
+            key = (account, char_id)
+            if key in self._cache:
+                return self._cache[key]
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute('SELECT data_json FROM characters WHERE account = ? AND id = ?', (account, char_id))
+                row = cur.fetchone()
+                if row:
+                    char_dict = json.loads(row['data_json'])
+                    self._cache[key] = char_dict
+                    return char_dict
+                return None
 
     def create(self, account: str, request: dict):
         with self.lock, self._get_connection() as conn:
@@ -164,18 +196,26 @@ class SqliteCharacterStore(ICharacterStore):
                 (char_id, account, name, char.get('char_class', 1), char.get('level', 1), json.dumps(char))
             )
             conn.commit()
+            self._cache[(account, char_id)] = char
             return char
 
     def delete(self, account: str, char_id: int) -> bool:
         with self.lock, self._get_connection() as conn:
+            self._cache.pop((account, char_id), None)
             cur = conn.cursor()
             cur.execute('DELETE FROM characters WHERE account = ? AND id = ?', (account, char_id))
             conn.commit()
             return cur.rowcount > 0
 
     def save(self):
-        """In SQLite each operation is committed atomically."""
-        pass
+        """Persist all active cached character changes to SQLite atomically."""
+        with self.lock, self._get_connection() as conn:
+            for (account, char_id), char in list(self._cache.items()):
+                conn.execute(
+                    'UPDATE characters SET name = ?, char_class = ?, level = ?, data_json = ? WHERE account = ? AND id = ?',
+                    (char.get('name', ''), char.get('char_class', 1), char.get('level', 1), json.dumps(char), account, char_id)
+                )
+            conn.commit()
 
     def update(self, account: str, char: dict):
         """Update serialized record of a character."""
@@ -183,6 +223,7 @@ class SqliteCharacterStore(ICharacterStore):
             char_id = char.get('id')
             if not char_id:
                 return
+            self._cache[(account, char_id)] = char
             conn.execute(
                 'UPDATE characters SET name = ?, char_class = ?, level = ?, data_json = ? WHERE account = ? AND id = ?',
                 (char.get('name', ''), char.get('char_class', 1), char.get('level', 1), json.dumps(char), account, char_id)

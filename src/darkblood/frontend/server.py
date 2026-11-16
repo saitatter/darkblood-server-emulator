@@ -92,6 +92,11 @@ class Session:
             logger.info('%s closed: %r', self.peer, exc)
         finally:
             self.record('disconnect')
+            if hasattr(self, 'app') and hasattr(self.app, 'on_disconnect'):
+                try:
+                    await self.app.on_disconnect()
+                except Exception as exc:
+                    logger.debug('Error in session on_disconnect: %s', exc)
             self.writer.close()
             try:
                 await self.writer.wait_closed()

@@ -9,3 +9,4 @@ from .social import *
 from .guild import *
 from .events import *
 from .system import *
+from .arena import *

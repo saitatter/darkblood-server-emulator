@@ -1,5 +1,34 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~22:45 (1v1 Town Duels, Arena Matchmaking, Multi-Client World Presence & SQLite Backend)
+
+1. 1v1 PvP Town Duels & Arena Matchmaking (Opcodes 5097 - 5113, 2304 - 2309, 5138, 5269 - 5275, 2550 - 2553):
+   - Reverse engineered binary packet schemas from client dispatchers in `research/schemas.txt`:
+     - `0x006C0A10`: `DuelRequestAck` (5101) - challenge request with opponent info.
+     - `0x006CBE60` / `0x006CCDF0`: `DuelStartAck` (5098) & `DuelStartNot` (5099) - begins duel session with 36-byte state struct.
+     - `0x006CC6B0`: `DuelResultAck` (5106) - confirms victory/defeat banner.
+     - `0x006B4120`: `DuelRefuseAck` (5113) - notifies challenger of decline.
+     - `0x004B67F0` / `0x004B96D0` / `0x004B4680`: `ArenaSquareListAck` (2305), `ArenaGetRoomListAck` (2307), `ArenaGetInviteListAck` (2309).
+     - `0x0049BEF0` / `0x0049C4B0` / `0x00490100`: `ArenaTeamCreateAck` (5270), `ArenaTeamJoinAck` (5272), `ArenaTeamLeaveAck` (5275).
+     - `0x00499DC0` / `0x00492A10`: `LeagueSeasonArenaGetRankAck` (2551), `LeagueSeasonArenaGetMyRankAck` (2553).
+   - Implemented `ArenaHandlers` in `src/darkblood/games/handlers/arena.py` with 12 semantic handler methods and opcode aliases.
+   - Added wire dataclasses in `src/darkblood/games/network/messages/arena.py`.
+   - Verified with comprehensive lifecycle scenario in `tests/test_arena_flow.py`.
+2. Multi-Client World Presence & Mutual Spawns (`GameWorldManager` & Opcode 5096 `UpdateCharInfoNot`):
+   - Implemented singleton `GameWorldManager` in `src/darkblood/games/world.py`:
+     - Tracks active players across town square channels and instanced sub-districts.
+     - Automated mutual player spawning via Opcode 5096 (`eERC_UPDATE_CHAR_INFO_NOT` / struct `0x00A52630` `FUN_00a52630`).
+     - Broadcaster delivers visual models of existing town inhabitants to newcomers and announces newcomer 3D appearances to existing occupants.
+     - Automatic cleanup on disconnect via `Session.run` finally block and `GameSession.on_disconnect`.
+   - Verified with dual-client live interaction in `tests/test_world_flow.py`.
+3. SQLite Primary Backend Integration (`data/darkblood.db`):
+   - Switched `GameSession.store()` runtime character store from JSON to `SqliteCharacterStore`.
+   - Added in-memory character caching with atomic `save()` synchronization.
+   - Added automated migration on first run if database is empty and `characters.json` exists.
+   - Linked `tools/dashboard.py` directly to `SqliteCharacterStore`.
+4. Test Suite Verification:
+   - **114/114 tests passing cleanly** across all unit and headless flow test suites in ~1.71s.
+
 ## Update — 2026-11-16 ~22:00 (Modular Messages, GM Web Dashboard & Semantic Handlers Architecture)
 
 1. Modular Domain Package Architecture (`src/darkblood/games/network/messages/`):

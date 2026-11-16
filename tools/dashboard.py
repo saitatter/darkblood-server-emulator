@@ -23,7 +23,8 @@ if str(REPO_ROOT) not in sys.path:
 if str(REPO_ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / 'src'))
 
-from darkblood.player_management.characters import CharacterStore, ensure_inventory
+from darkblood.player_management.characters import ensure_inventory
+from darkblood.player_management.store import SqliteCharacterStore
 
 
 CLASS_NAMES = {
@@ -109,7 +110,7 @@ def load_opcodes_tsv() -> list:
 class DashboardHandler(BaseHTTPRequestHandler):
     """HTTP Request Handler for Dashboard API and Frontend."""
 
-    store = CharacterStore()
+    store = SqliteCharacterStore()
     opcodes_cache = load_opcodes_tsv()
 
     def do_GET(self):

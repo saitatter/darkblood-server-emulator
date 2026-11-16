@@ -156,19 +156,20 @@ Final objective: launch without the original services, establish a local session
   - Item duration & deletion sync (`2321 eEGS_ITEM_REMAIN_TIME_NOT` `0x0077AED0`, `2322 eEGS_ITEM_DELETE_NOT` `0x00774DD0`).
   - Real-time inventory refresh (`2092 eEGS_INVENTORY_UPDATED_NOT` `0x0077F070`).
   - AP gain, dungeon penalty & random box feedback (`2109 eEGS_INSERT_AP_NOT` `0x00790480`, `2085 eEGS_CHANGE_DUNGEON_PENALTY_NOT` `0x0078FA70`, `2196 eEGS_RANDOMBOX_RESULT_ITEM_NOT` `0x0075A2E0`).
-- [ ] **PvP Duels & Arena**:
-  - 1v1 duel challenge in town / square (`DUEL_REQ` / `DUEL_ACK`).
-  - Arena room creation, spectator slots, and match start (`ARENA_ROOM_CREATE_REQ`).
+- [x] **PvP Duels & Arena**:
+  - 1v1 duel challenge in town / square (`5100/5101 eERC_DUEL_REQUEST` `0x006C0A10`, `5097/5098 eERC_DUEL_START` `0x006CBE60`, `5099 eERC_DUEL_START_NOT` `0x006CCDF0`, `5105/5106 eERC_DUEL_RESULT` `0x006CC6B0`, `5108 eERC_DUEL_GIVEUP_NOT`, `5112/5113 eERC_DUEL_REFUSE` `0x006B4120`).
+  - Arena channels, rooms and matchmaking (`2304/2305 eEGS_ARENA_SQUARELIST` `0x004B67F0`, `2306/2307 eEGS_ARENA_GET_ROOMLIST` `0x004B96D0`, `2308/2309 eEGS_ARENA_GET_INVITELIST` `0x004B4680`, `5138 eERC_ARENA_JOIN_SQUARE_ACK`).
+  - Arena teams management (`5269/5270 eERC_ARENA_TEAM_CREATE` `0x0049BEF0`, `5271/5272 eERC_ARENA_TEAM_JOIN` `0x0049C4B0`, `5274/5275 eERC_ARENA_TEAM_LEAVE` `0x00490100`).
+  - Arena rankings & ladder leaderboards (`2550/2551 eEGS_LEAGUE_SEASON_ARENA_GET_RANK` `0x00499DC0`, `2552/2553 eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK` `0x00492A10`).
   - Arena SP item consumption (`2709/2710 eEGS_USE_ARENA_SP_ITEM_REQ/ACK` `0x007A7CA0`) and square return (`5165/5166 eERC_ARENA_BACK_TO_SQUARE_ACK` `0x00758550`).
-  - Round timer, score tracking, death/respawn in arena, and match settlement.
-  - Ladder ranking calculation and season leaderboards.
+  - Verified by dedicated unit & headless flow tests (`test_arena_flow.py`).
 - [ ] **Guild War & Castle Siege**:
   - War declaration between guilds.
   - Scheduled siege warfare instances with gate destruction and flag capture objectives.
 
 ### P9 — Architecture Refactoring & C# Migration Preparation
 - [x] **Modularize Message Schemas**:
-  - Split monolithic `src/darkblood/games/network/messages.py` into 10 domain-specific modules:
+  - Split monolithic `src/darkblood/games/network/messages.py` into 11 domain-specific modules:
     - `darkblood.games.network.messages.lobby`
     - `darkblood.games.network.messages.inventory`
     - `darkblood.games.network.messages.skills`
@@ -179,22 +180,25 @@ Final objective: launch without the original services, establish a local session
     - `darkblood.games.network.messages.guild`
     - `darkblood.games.network.messages.events`
     - `darkblood.games.network.messages.system`
-  - Re-exported all 247 dataclasses in `messages/__init__.py` with 100% backward compatibility.
+    - `darkblood.games.network.messages.arena`
+  - Re-exported all dataclasses in `messages/__init__.py` with 100% backward compatibility.
 - [x] **Standalone GM & Server Web Dashboard**:
   - Built `tools/dashboard.py` (port 9494) providing live telemetry for port 9400 & 9401.
   - Interactive web UI for character inspection, level/stat modification, and opcode reference browser.
+  - Integrated `SqliteCharacterStore` with dashboard.
 - [x] **Semantic Handler Architecture & Docstrings**:
   - Replaced raw opcode identifiers with semantic method names (`handle_*`) across all handler domains.
   - Added opcode backward-compatibility aliases and rich reverse-engineering docstrings.
 - [x] **Granular Unit Testing**:
-  - Unbundled multi-opcode tests in `tests/test_wire_messages.py` into 105 dedicated unit tests.
+  - Unbundled multi-opcode tests in `tests/test_wire_messages.py` into 114 dedicated unit tests (100% passing).
 - [x] **Database & Storage Abstraction**:
   - Introduce `ICharacterStore` interface with abstract async methods.
   - Implement SQLite backend (`data/darkblood.db`) for high reliability and SQL querying (`src/darkblood/player_management/store.py`).
   - Implement export/import tool between JSON and SQLite (`import_from_json`, `export_to_json`).
-- [ ] **Domain Entity Decoupling**:
-  - Decouple low-level ProudNet transport session from high-level `PlayerCharacter` and `WorldInstance`.
-  - Introduce an event-driven `GameWorldManager` managing player entities, square instances, and dungeon instances.
+  - Switched `GameSession.store()` runtime store to `SqliteCharacterStore` with auto-migration from `characters.json` and ACID commit guarantees.
+- [x] **Domain Entity Decoupling & Multi-client World Management**:
+  - Introduced `GameWorldManager` managing player presence, square instances, and mutual character spawns via Opcode 5096 (`UpdateCharInfoNot`).
+  - Automated mutual spawning between players entering square channels (`test_world_flow.py`).
 - [ ] **C# Port Specification (MHServerEmu Alignment)**:
   - Document all packet schemas in C# record / struct format with endianness attributes.
   - Define C# interface contracts matching `DarkBloodServer` architecture.

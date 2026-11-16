@@ -3,6 +3,7 @@ import struct
 import zlib
 
 from darkblood.core.serialization.jser import WireError, parse_event
+from darkblood.games.handlers.arena import ArenaHandlers
 from darkblood.games.handlers.commerce import CommerceHandlers
 from darkblood.games.handlers.dungeon import DungeonHandlers
 from darkblood.games.handlers.frontend import FrontendHandlers, welcome
@@ -12,7 +13,7 @@ from darkblood.games.handlers.square import SquareHandlers
 
 
 class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHandlers,
-                  QuestHandlers, DungeonHandlers):
+                  QuestHandlers, DungeonHandlers, ArenaHandlers):
     """Application layer: JEvent dispatch to ``on_<opcode>`` handlers.
 
     Handlers live in darkblood.games.handlers, one mixin per game domain.
@@ -22,11 +23,17 @@ class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHand
     def __init__(self, transport):
         self.transport = transport
         self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
+        self.active_char_id = None
 
     async def on_connected(self):
         if getattr(self.transport.server, 'role', 'game') != 'game':
             return
         await self.transport.send_event(welcome(), note='welcome 5020')
+
+    async def on_disconnect(self):
+        if self.active_char_id:
+            from darkblood.games.world import GameWorldManager
+            GameWorldManager.get().unregister_player(self.active_char_id)
 
     async def on_user_message(self, data):
         try:
@@ -60,6 +67,6 @@ class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHand
     @classmethod
     def store(cls):
         if cls._store is None:
-            from darkblood.player_management.characters import CharacterStore
-            cls._store = CharacterStore()
+            from darkblood.player_management.store import SqliteCharacterStore
+            cls._store = SqliteCharacterStore()
         return cls._store

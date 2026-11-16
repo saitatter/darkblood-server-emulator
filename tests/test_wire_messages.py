@@ -657,6 +657,90 @@ class WireMessagesTest(unittest.TestCase):
         not_rbox = messages.RandomboxResultItemNot(result=0, item_code=5001, count=3, is_jackpot=True).encode()
         self.assertEqual(struct.unpack_from('<iih?', not_rbox), (0, 5001, 3, True))
 
+    def test_duel_request_and_ack(self):
+        req = messages.DuelRequestReq.decode(struct.pack('<q', 12345))
+        self.assertEqual(req.target_uid, 12345)
+        ack = messages.DuelRequestAck(result=0, target_uid=12345, target_name="Knight", char_class=2, level=30).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack[:12]), (0, 12345))
+        self.assertIn('Knight'.encode('utf-16le'), ack)
+
+    def test_duel_start_and_notifications(self):
+        req = messages.DuelStartReq.decode(struct.pack('<q', 67890))
+        self.assertEqual(req.opponent_uid, 67890)
+        ack = messages.DuelStartAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack[:4]), (0,))
+        not_start = messages.DuelStartNot().encode()
+        self.assertEqual(len(not_start), 37)  # tag 0x1e + 36 bytes
+
+    def test_duel_result_and_giveup(self):
+        req = messages.DuelResultReq.decode(struct.pack('<qq', 101, 202))
+        self.assertEqual(req.winner_uid, 101)
+        self.assertEqual(req.loser_uid, 202)
+        ack = messages.DuelResultAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack[:4]), (0,))
+        not_giveup = messages.DuelGiveupNot(surrender_char_uid=202).encode()
+        self.assertEqual(struct.unpack_from('<q', not_giveup), (202,))
+
+    def test_duel_refuse(self):
+        req = messages.DuelRefuseReq.decode(struct.pack('<q', 555))
+        self.assertEqual(req.challenger_uid, 555)
+        ack = messages.DuelRefuseAck(result=0, target_uid=555, target_name="Rival", char_class=3, level=25).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack[:12]), (0, 555))
+        self.assertIn('Rival'.encode('utf-16le'), ack)
+
+    def test_arena_square_and_room_lists(self):
+        req_sq = messages.ArenaSquareListReq.decode(struct.pack('<i', 1))
+        self.assertEqual(req_sq.server_key, 1)
+        ack_sq = messages.ArenaSquareListAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_sq[:4]), (0,))
+
+        req_room = messages.ArenaGetRoomListReq.decode(struct.pack('<i', 0))
+        self.assertEqual(req_room.page, 0)
+        ack_room = messages.ArenaGetRoomListAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_room[:4]), (0,))
+
+        req_inv = messages.ArenaGetInviteListReq.decode(b'')
+        self.assertIsInstance(req_inv, messages.ArenaGetInviteListReq)
+        ack_inv = messages.ArenaGetInviteListAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_inv[:4]), (0,))
+
+    def test_arena_teams_lifecycle(self):
+        # Create team
+        encoded_name = 'PvP Champions'.encode('utf-16le')
+        name_bytes = jser.varuint(len(encoded_name)) + encoded_name + struct.pack('<h', 1)
+        req_create = messages.ArenaTeamCreateReq.decode(name_bytes)
+        self.assertEqual(req_create.team_type, 1)
+        self.assertEqual(req_create.team_name, 'PvP Champions')
+        ack_create = messages.ArenaTeamCreateAck(
+            result=0, team_id=77, team_type=1, score=1500, member_count=3,
+            team_name='PvP Champions', leader_name='Warlord', notice='Recruiting gladiators'
+        ).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_create[:4]), (0,))
+        self.assertIn('PvP Champions'.encode('utf-16le'), ack_create)
+
+        # Join team
+        req_join = messages.ArenaTeamJoinReq.decode(struct.pack('<q', 77))
+        self.assertEqual(req_join.team_id, 77)
+        ack_join = messages.ArenaTeamJoinAck(result=0, team_id=77).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_join[:4]), (0,))
+
+        # Leave team
+        req_leave = messages.ArenaTeamLeaveReq.decode(b'')
+        self.assertIsInstance(req_leave, messages.ArenaTeamLeaveReq)
+        ack_leave = messages.ArenaTeamLeaveAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_leave[:4]), (0,))
+
+    def test_league_season_arena_ranks(self):
+        req_rank = messages.LeagueSeasonArenaGetRankReq.decode(struct.pack('<i', 2026))
+        self.assertEqual(req_rank.season_id, 2026)
+        ack_rank = messages.LeagueSeasonArenaGetRankAck(result=0, season_id=2026).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_rank[:4]), (0,))
+
+        req_my_rank = messages.LeagueSeasonArenaGetMyRankReq.decode(struct.pack('<i', 2026))
+        self.assertEqual(req_my_rank.season_id, 2026)
+        ack_my_rank = messages.LeagueSeasonArenaGetMyRankAck(result=0, my_rank=1).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_my_rank[:4]), (0,))
+
 
 
 

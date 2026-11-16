@@ -107,6 +107,16 @@ class FrontendHandlers:
             event(5134, RelayAddressNot(port=RELAY_PORT).encode()),
             note='relay address not'
         )
+        # Register in GameWorldManager only if a character has already been selected
+        if self.active_char_id:
+            try:
+                from darkblood.games.world import GameWorldManager
+                char = self.store().get(self.account, self.active_char_id)
+                if char:
+                    player = GameWorldManager.get().register_player(self, self.active_char_id, char, square_id=square_id)
+                    await GameWorldManager.get().broadcast_player_spawn(player)
+            except Exception:
+                pass
 
     async def handle_get_char_list(self, correlation: int, body: bytes):
         """Opcode 2008 (eEGS_GET_CHARLIST_REQ) -> 2009 (eEGS_GET_CHARLIST_ACK).
@@ -134,6 +144,7 @@ class FrontendHandlers:
         """
         char_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
         selected_character['id'] = char_id
+        self.active_char_id = char_id
         char = self.store().get(self.account, char_id)
         if not char:
             chars = self.store().characters(self.account)
@@ -147,6 +158,13 @@ class FrontendHandlers:
         done = [int(q) for q in char.get('quests_done', [])]
         await self.transport.send_event(event(2410, QuestHistoryNot(quest_ids=done).encode()),
                                         note='quest history not (%d)' % len(done))
+        # Register in GameWorldManager and broadcast mutual character spawns
+        try:
+            from darkblood.games.world import GameWorldManager
+            player = GameWorldManager.get().register_player(self, char_id, char, square_id=1)
+            await GameWorldManager.get().broadcast_player_spawn(player)
+        except Exception:
+            pass
 
     async def handle_create_character(self, correlation: int, body: bytes):
         """Opcode 2012 (eEGS_CREATE_CHARACTER_REQ) -> 2013 (eEGS_CREATE_CHARACTER_ACK).
