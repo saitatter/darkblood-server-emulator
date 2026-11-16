@@ -367,6 +367,15 @@ class GameSession:
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
 
+    async def on_2119(self, correlation, body):
+        # eEGS_ALARM_UPDATE_REQ (observed: i32 0x7FFFFFFF, i16, tag 0x10
+        # vector<i32>) -> eEGS_ALARM_UPDATE_ACK 2120 (handler 0x771150):
+        # u32 result, i16, tag 0x10 vector<i32> (0x4D6E60). Echo the
+        # requested settings so the client keeps what it asked for.
+        rest = body[4:] if len(body) >= 7 else b'\x00\x00\x10\x80'
+        await self.transport.send_event(event(2120, struct.pack('<I', 0) + rest, correlation),
+                                        note='alarm update ack')
+
     async def on_2369(self, correlation, body):
         # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: u32 result + 12 raw bytes (zeros).
         await self.transport.send_event(event(2370, CurrentCashAck().encode(), correlation),
