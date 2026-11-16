@@ -537,8 +537,10 @@ Screenshots of each stage are kept locally in `research/` (`shot8.png` server li
    - Enhanced `tools/gamectl.py` to traverse all desktops via `EnumDesktopsW` and `EnumDesktopWindows`, attaching via `SetThreadDesktop`.
    - Enhanced input delivery using `AttachThreadInput`, `BringWindowToTop`, `SetForegroundWindow`, and dual `mouse_event`/`keybd_event` + `PostMessageW` routing.
 5. **Collaborator Setup & Recurring Sync:**
-   - Granted direct write/push access on `main` to `CristianVita` (`cri999sti@gmail.com`).
-   - Created [CONTRIBUTING.md](../CONTRIBUTING.md) and established a mandatory 10-minute sync rule for all agents.
+   - Granted repository collaborator status to `CristianVita` (`cri999sti@gmail.com`) and `mauvalefotos@gmail.com`.
+   - Branch protection enabled on `main` (`allow_force_pushes: false`, required PR reviews: 1, `enforce_admins: false` allowing owner `saitatter` administrative privileges).
+   - Contributors submit changes via feature branches and Pull Requests (PRs); force pushes are blocked.
+   - Updated [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md) mandating Semantic Commit Conventions and the 10-minute sync cycle.
 
 ## Immediate blocker
 

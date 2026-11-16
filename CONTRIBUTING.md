@@ -47,9 +47,14 @@ The goal of this project is to create an open-source, local offline server emula
 ### Continuous 10-Minute Synchronization Rule
 To ensure seamless collaboration between human developers and autonomous AI agents:
 1. **Pull Regularly**: Every agent and developer must pull remote changes (`git pull --rebase origin main`) at least once every **10 minutes**.
-2. **Push Discoveries**: Do not keep discoveries local. Once an opcode schema, hook, or server handler is verified, commit it to `main` with a clear commit message and push (`git push origin main`).
+2. **Push Discoveries**: Do not keep discoveries local. Once an opcode schema, hook, or server handler is verified, commit it to `main` with a clear commit message and push.
 3. **Semantic Commit Messages**: Always use the Semantic Commit Name Convention / Conventional Commits format (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
-4. **Push Permissions**: Direct push access on `main` is granted to authorized contributors (including `CristianVita` / `cri999sti@gmail.com`).
+4. **Contributors & Branch Protection**:
+   - Recognized project contributors include repository owner `saitatter`, `CristianVita` (`cri999sti@gmail.com`), and `mauvalefotos@gmail.com`.
+   - Branch protection is strictly enforced on `main`.
+   - Force pushing (`git push --force`) to `main` is completely disabled for contributors.
+   - Contributors must develop in feature branches and open Pull Requests (PRs) targeting `main`.
+   - Only the repository owner (`saitatter`) holds direct administrative push and override privileges.
 5. **Clean Git State**: Never push binary assets, large memory dumps, game client files (`Data/`), or files in `research/` or `logs/`. Only source code, tests, schemas, and markdown documentation belong on `main`.
 
 ---

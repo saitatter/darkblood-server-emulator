@@ -69,9 +69,9 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 ## Mandatory Agent Collaboration & Synchronization Rule
 
 Until the server emulator implementation is complete:
-- **10-Minute Git Sync Cycle**: Every AI agent operating on this repository must check for remote changes every **10 minutes** (`git pull --rebase origin main`), integrate upstream changes, and immediately push its own verified discoveries and code changes to `origin main` (`git push origin main`).
+- **10-Minute Git Sync Cycle**: Every AI agent operating on this repository must check for remote changes every **10 minutes** (`git pull --rebase origin main`), integrate upstream changes, and push its verified discoveries and code changes to `origin main` (`git push origin main`).
 - **Semantic Commit Name Convention**: All git commits MUST strictly use the Semantic Commit / Conventional Commits format (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, etc.) with an optional scope and a clear imperative description (e.g. `fix(lobby): swap character level and class byte order in lobby entry`, `feat(wire): add opcode 2082 clear tutorial handler`, `docs(agents): mandate semantic commit convention`).
-- **Direct Push Access**: Direct push access on `main` is granted to repository collaborators, including `CristianVita` (`cri999sti@gmail.com`).
+- **Contributors & Branch Protection**: Recognized project contributors include repository owner `saitatter`, `CristianVita` (`cri999sti@gmail.com`), and `mauvalefotos@gmail.com`. Branch protection is active on `main`: force pushes (`git push --force`) are strictly prohibited for contributors. Contributors must contribute via feature branches and Pull Requests (PRs), with only the owner (`saitatter`) holding direct administrative override privileges.
 - **Never Overwrite or Lose Progress**: Always rebase cleanly, verify tests with `gamectl`, and never perform destructive resets. Keep documentation in English and keep all evidence updated.
 
 ## Known gaps
