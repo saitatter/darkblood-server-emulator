@@ -294,9 +294,20 @@ class GameSession:
     async def on_2082(self, correlation, body):
         # eEGS_CLEAR_TUTORIAL_REQ -> eEGS_CLEAR_TUTORIAL_ACK (2083), handler 0x77EEB0:
         # u32 result (0), tag 0x10 vector (0x4B9210). Empty vector is b'\x10\x00'.
-        # Triggers scene transition 9 (Town Scene) via 0x6DBFA0!
+        # Persist tutorial completion in character storage so tutorial is skipped.
+        char_id = selected_character.get('id', 1)
+        char = self.store().get(self.account, char_id)
+        if char:
+            char['tutorial_cleared'] = True
+            self.store().save()
         ack = ClearTutorialAck().encode()
         await self.transport.send_event(event(2083, ack, correlation), note='clear tutorial ack')
+
+    async def on_5045(self, correlation, body):
+        # eERC_BACK_TO_SQUARE_REQ -> eERC_BACK_TO_SQUARE_ACK (5046), handler 0x7897F0:
+        # u32 result (0 = success)
+        await self.transport.send_event(event(5046, struct.pack('<I', 0), correlation),
+                                        note='back to square ack')
 
     async def on_2346(self, correlation, body):
         # eEGS_TUTORIAL_QUEST_START_REQ -> eEGS_TUTORIAL_QUEST_START_ACK (2347), handler 0x6481E0:

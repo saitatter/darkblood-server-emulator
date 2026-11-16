@@ -124,6 +124,7 @@ class Character:
     b72: bool = False
     b73: bool = False
     b74: bool = False
+    tutorial_cleared: bool = True
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -155,7 +156,8 @@ class Character:
             u6e=data.get('u6e', 15),
             b72=data.get('b72', False),
             b73=data.get('b73', False),
-            b74=data.get('b74', False)
+            b74=data.get('b74', False),
+            tutorial_cleared=data.get('tutorial_cleared', True)
         )
 
     def to_dict(self) -> dict:
@@ -184,7 +186,8 @@ class Character:
             'u6e': self.u6e,
             'b72': self.b72,
             'b73': self.b73,
-            'b74': self.b74
+            'b74': self.b74,
+            'tutorial_cleared': self.tutorial_cleared
         }
 
     def encode_lobby_entry(self) -> bytes:
@@ -220,9 +223,9 @@ class Character:
         b += struct.pack('<HHHH', 0, 0, 0, 0)
         # Sub-struct 0xa488f0: untagged 24 bytes
         b += (b'\x00' * 24)
-        # Constructor 0x485810 initializes +A6/+AA to -1. Zero triggers
-        # lookups through 0xA90540 and rejects selection for this empty state.
-        b += struct.pack('<Q?HHHHII', 0, False, 0, 0, 0, 0, 0xffffffff, 0xffffffff)
+        # Offset +0x9c in Reader 0x00A52630 is the tutorial-cleared flag (checked by 0x007081F0).
+        # When True, the client skips/completes tutorial and enters eAS_SquarePlay (Town).
+        b += struct.pack('<Q?HHHHII', 0, bool(self.tutorial_cleared), 0, 0, 0, 0, 0xffffffff, 0xffffffff)
         b += struct.pack('<f', 0.0)
         b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
         # 2 x 0xa49bb0 (untagged u16, u32, u32)
