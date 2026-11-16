@@ -6,6 +6,9 @@
 - 6a50d1b removed `0x1E` from ActiveQuest/2074/2077 but not from 2075. The 2075 element reader `0x00529010` calls the tag check
   `0x00B35010(0x1E)`, which reads nothing (tags outside 0x0F..0x1A), so the client read quest id `0xC58E7C1E` and never matched Q0882S01.
 - Fixed: 2075 elements are 12 raw bytes. Tests updated; 118 pass.
+- Retest 01:38 still showed no progress: the server sent no 2075 at all. The stored counters were already [2, 2] from the broken run,
+  and the kill handler only sends while a counter is below its target. 2346 (tutorial map trigger, replayed on every entry) now
+  resets the stored counters to 0, matching the client (2074 carries no progress). Regression case added to test_tutorial_flow.
 - Open: many other encoders still emit a literal `0x1E` byte (arena 5099/5272, level/exp, buy, 2079/2081 giveup/fail, world spawn).
   Each needs its reader checked: if it uses `0x00B35010(0x1E)`, the byte is wrong.
 

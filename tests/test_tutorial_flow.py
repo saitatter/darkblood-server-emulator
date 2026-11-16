@@ -65,6 +65,18 @@ class TutorialFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(char['quests_active'][str(quest)]['counters'], [2, 2])
 
+            # Replaying the tutorial map sends 2346 again: counters restart at 0
+            # and kills produce 2075 again (stale 2/2 used to suppress them).
+            client.send_event(2346, TUTORIAL_QUEST_START)
+            await client.expect_event(2347)
+            await client.expect_event(2074)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertEqual(char['quests_active'][str(quest)]['counters'], [0, 0])
+            for obj, hog in ((0, 0x1b371aa7), (0, 0x1b371aa7), (1, 0x0c2bb1e1), (1, 0x0c2bb1e1)):
+                client.send_event(2353, struct.pack('<iI', 0x7FFFFFFF, hog))
+                _, not2075 = await client.expect_event(2075)
+                self.assertEqual(struct.unpack_from('<iii', not2075, 2)[:2], (quest, obj))
+
             # Complete quest Q0882S01 via opcode 2076
             from darkblood.core.serialization.jser import wide_string
             client.send_event(2076, wide_string('') + struct.pack('<Ii', quest, -1))

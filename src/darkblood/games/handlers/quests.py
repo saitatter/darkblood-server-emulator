@@ -146,6 +146,14 @@ class QuestHandlers:
         """
         quest_id = _quest_id_after_tag(body)
         uid = self._activate_quest(quest_id)
+        # The tutorial map replays from the start and 2074 carries no progress,
+        # so the client's counters begin at 0. Reset the stored ones to match;
+        # otherwise counters left at 2/2 by an earlier run suppress every 2075.
+        char = self.store().get(self.account, selected_character.get('id', 1))
+        record = char.get('quests_active', {}).get(str(quest_id)) if char else None
+        if record and record.get('counters'):
+            record['counters'] = [0] * len(record['counters'])
+            self.store().save()
         ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
         start = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
