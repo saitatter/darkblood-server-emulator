@@ -34,11 +34,13 @@ class LobbyFlowTest(ServerTestCase):
             _, ack2015 = await client.expect_event(2015)
             result, uid, done_at = struct.unpack_from('<iqi', ack2015)
             self.assertEqual((result, uid), (0, char_id))
-            self.assertGreater(done_at, time.time())
+            # Seconds left (duration formatter 0x0074F1D0), two days.
+            self.assertTrue(2 * 86400 - 5 <= done_at <= 2 * 86400)
             store = session.GameSession.store()
-            self.assertEqual(store.get('OfflinePlayer', char_id)['delete_time'], done_at)
+            self.assertGreater(store.get('OfflinePlayer', char_id)['delete_time'], time.time())
             entry = Character.from_dict(store.get('OfflinePlayer', char_id))
-            self.assertEqual((entry.b5d, entry.u5e), (True, done_at))
+            self.assertTrue(entry.b5d)
+            self.assertTrue(2 * 86400 - 5 <= entry.u5e <= 2 * 86400)
 
             # Cancel Delete (2246 -> 2247) clears it.
             client.send_event(2246, struct.pack('<iq', 0x7fffffff, char_id))

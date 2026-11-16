@@ -39,6 +39,12 @@ class CharacterClass(IntEnum):
     WHUNTER = 6
 
 
+
+def delete_seconds_left(delete_time: int) -> int:
+    """Seconds until a pending deletion completes (never negative)."""
+    import time
+    return max(0, int(delete_time) - int(time.time()))
+
 @dataclass
 class CharacterVisuals:
     """Cosmetic and appearance parameters for a character."""
@@ -108,10 +114,13 @@ class Character:
             u37=data.get('u37', 17),
             s49=tuple(data.get('s49', (23, 25, 27))),
             s53=tuple(data.get('s53', (29, 31, 33))),
-            # +0x5D / +0x5E: pending deletion flag and completion time
-            # (0x006F02E0 sets both from 2015 / clears them on 2247).
+            # +0x5D / +0x5E: pending deletion flag and seconds left
+            # (0x006F02E0 sets both from 2015 / clears them on 2247; the
+            # list shows +0x5E through the duration formatter 0x0074F1D0
+            # as "Deleted in %s"). Stored as an absolute Unix time.
             b5d=bool(data.get('delete_time')),
-            u5e=data.get('delete_time') or data.get('u5e', 9),
+            u5e=(delete_seconds_left(data['delete_time']) if data.get('delete_time')
+                 else data.get('u5e', 9)),
             u3f=data.get('u3f', 19),
             u47=data.get('u47', 11),
             u62=data.get('u62', 13),

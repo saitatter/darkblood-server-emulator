@@ -4,7 +4,7 @@ import struct
 import time
 
 from darkblood.core.serialization.jser import event, varuint, wide_string
-from darkblood.games.entities.character import Character
+from darkblood.games.entities.character import Character, delete_seconds_left
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.frontend.relay import RELAY_PORT
@@ -20,8 +20,9 @@ from darkblood.games.network.messages import (
 )
 from darkblood.games.state import selected_character
 
-# Pending deletion delay in seconds (server choice; the client takes the time from 2015).
-CHAR_DELETE_DELAY = 24 * 3600
+# Pending deletion delay: the client's own text says characters are held for
+# 2 days (UI_PUB_006). The client receives the seconds left, not a date.
+CHAR_DELETE_DELAY = 2 * 24 * 3600
 
 
 def welcome():
@@ -201,7 +202,8 @@ class FrontendHandlers:
         The client then marks the slot as pending deletion (0x006F02E0: +0x5D = 1,
         +0x5E = complete_time) and offers "Cancel Delete" (2246).
         The record is kept until the delay ends (purged by handle_get_char_list).
-        Hypothesis: complete_time is a Unix timestamp; its display is not confirmed.
+        complete_time is the number of seconds left: the list passes +0x5E to
+        the duration formatter 0x0074F1D0 (divides by 86400/3600/60).
         """
         req = DeleteCharacterReq.decode(body)
         self.transport.record('delete-character', body, char_uid=req.char_uid)
@@ -211,11 +213,11 @@ class FrontendHandlers:
             if not char.get('delete_time'):
                 char['delete_time'] = int(time.time()) + CHAR_DELETE_DELAY
                 self.store().save()
-            complete_time = char['delete_time']
+            complete_time = delete_seconds_left(char['delete_time'])
         ack = DeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid,
                                  complete_time=complete_time).encode()
         await self.transport.send_event(event(2015, ack, correlation),
-                                        note=f'delete character ack ({req.char_uid}, done at {complete_time})')
+                                        note=f'delete character ack ({req.char_uid}, {complete_time} s left)')
 
     async def handle_undelete_character(self, correlation: int, body: bytes):
         """Opcode 2246 (eEGS_UNDELETE_CHARACTER_REQ) -> 2247 (eEGS_UNDELETE_CHARACTER_ACK).
