@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import struct
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import varuint, wide_string
+from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 
 
@@ -544,3 +544,120 @@ class RelayJoinGroupAck:
 
     def encode(self) -> bytes:
         return b'\x00\x03' + struct.pack('<HI', 3001, self.group_host_id)
+
+
+@dataclass
+class ChangeDungeonLayerNot:
+    """Opcode 5095: eERC_CHANGE_DUNGEON_LAYER_NOT (JAppStateGamePlay::Initialize -> 0x007900B0).
+
+    Sent by the client when entering a dungeon layer (e.g. Layer 4 of Lucid Forest).
+    Wire format: i32 prefix (0x7FFFFFFF) + i64 layer_net_id.
+    layer_net_id is (jhash(map_code) << 32) | layer_id.
+    """
+    prefix: int = 0x7FFFFFFF
+    layer_net_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeDungeonLayerNot':
+        prefix, layer_net_id = struct.unpack_from('<iq', data, 0)
+        return cls(prefix=prefix, layer_net_id=layer_net_id)
+
+    @property
+    def layer_id(self) -> int:
+        return self.layer_net_id & 0xFFFFFFFF
+
+    @property
+    def map_hash(self) -> int:
+        return (self.layer_net_id >> 32) & 0xFFFFFFFF
+
+
+@dataclass
+class ActiveWarFlagReq:
+    """Opcode 2422: eEGS_ACTIVE_WARFLAG_REQ (0x0087D170 -> 0x0079C300).
+
+    Sent by the client with the active war flag ID.
+    Wire format: i32 prefix (0x7FFFFFFF) + u32 war_flag_id.
+    """
+    prefix: int = 0x7FFFFFFF
+    war_flag_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ActiveWarFlagReq':
+        prefix, war_flag_id = struct.unpack_from('<iI', data, 0)
+        return cls(prefix=prefix, war_flag_id=war_flag_id)
+
+
+@dataclass
+class GuideBeginnerUpdateReq:
+    """Opcode 2358: eEGS_GUIDE_BEGINNER_UPDATE_REQ (0x0079A3B0).
+
+    Sent by the client to update completed/viewed beginner guide IDs.
+    Wire format: i32 prefix (0x7FFFFFFF) + vector (tag 0x10) of u32 guide IDs.
+    """
+    prefix: int = 0x7FFFFFFF
+    guide_ids: list = field(default_factory=list)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuideBeginnerUpdateReq':
+        if len(data) < 4:
+            return cls()
+        prefix = struct.unpack_from('<i', data, 0)[0]
+        offset = 4
+        guide_ids = []
+        if offset < len(data) and data[offset] == 0x10:
+            offset += 1
+            count, offset = read_varuint(data, offset)
+            for _ in range(count):
+                if offset + 4 <= len(data):
+                    guide_ids.append(struct.unpack_from('<I', data, offset)[0])
+                    offset += 4
+        return cls(prefix=prefix, guide_ids=guide_ids)
+
+
+@dataclass
+class MonsterDeadReq:
+    """Opcode 5063: eERC_MONSTER_DEAD_REQ (JUserClient::MonsterDeadREQ 0x0078A690).
+
+    Sent by the client when a monster is killed in gameplay.
+    Wire format: i32 prefix (0x7FFFFFFF) + u32 monster_id + u32 param.
+    """
+    prefix: int = 0x7FFFFFFF
+    monster_id: int = 0
+    param: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'MonsterDeadReq':
+        prefix, monster_id, param = struct.unpack_from('<iII', data, 0)
+        return cls(prefix=prefix, monster_id=monster_id, param=param)
+
+
+@dataclass
+class ItemDropEntry:
+    """A dropped item entity on the dungeon floor (client struct 0x00A509E0, 26 bytes)."""
+    drop_uid: int
+    item_id: int
+    count: int = 1
+    drop_type: int = 0
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    flags: int = 0
+
+    def encode(self) -> bytes:
+        return (b'\x1e' + struct.pack('<IIHH', self.drop_uid, self.item_id, self.count, self.drop_type)
+                + b'\x13' + struct.pack('<fffH', self.x, self.y, self.z, self.flags))
+
+
+@dataclass
+class DropItemNot:
+    """Opcode 5064: eERC_DROP_ITEM_NOT (JUserClient::On_eERC_DROP_ITEM_NOT 0x0078A870).
+
+    Notifies the client of items dropped in the world (e.g. from monster defeat).
+    Wire format: u32 source_id + vector (tag 0x10) of 26-byte ItemDropEntry structs.
+    """
+    source_id: int = 0
+    drops: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        header = struct.pack('<I', self.source_id) + b'\x10' + varuint(len(self.drops))
+        return header + b''.join(d.encode() for d in self.drops)

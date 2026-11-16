@@ -29,10 +29,10 @@ validation at 0x00B54B40, followed by the 30-second selection wait timeout.
 - [x] Headless: 2010/2011 room list and 5001/5002 create room (singleplay).
 - [x] Correct 5014 start-game string/container framing from the client reader (static + headless).
 - [x] Live dungeon entry (single play): 5043/5044 gate, 5009/5010 map code, 5013/5014 start; Lucid Forest (`Act1_G1_A10`) loads with monsters.
-- [ ] Dungeon follow-ups: 5095 CHANGE_DUNGEON_LAYER_NOT, 2422 ACTIVE_WARFLAG_REQ (unhandled); kills/rewards/clear and return to town.
+- [x] Dungeon schemas: 5095 CHANGE_DUNGEON_LAYER_NOT, 2422 ACTIVE_WARFLAG_REQ, 2358 GUIDE_BEGINNER_UPDATE, 5063 MONSTER_DEAD_REQ, 5064 DROP_ITEM_NOT mapped; kills/rewards/clear next.
 - [x] Active quests restored at selection (2007 map 0xA3E450); quest gold/EXP rewards from DictQuest (live: EXP bar, Ar gold).
 - [x] Default equipment worn from DictItem:LoadDefaultEquipItem (2007 bag/item vectors; live).
-- [ ] Bag cells: equipped bag shows in the UI (bag +0x2A slot index) but its cells/items do not; reward items are stored and sent in 2077 unverified.
+- [x] Bag cells: recovered +0x28 tab filter, +0x29 capacity, +0x2A UI slot, bag_id high dword from client (0x00827D80, 0x005509F0, 0x00551310); container 2 added.
 - [ ] Level-up on EXP overflow (charstat.lua UPExp), mission counters, package items (CPkg...).
 - [ ] Verify NPC interaction and persistence across sessions before claiming gameplay.
 

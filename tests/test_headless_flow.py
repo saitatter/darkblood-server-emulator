@@ -59,6 +59,33 @@ class SquareEntryTest(unittest.TestCase):
             needle = struct.pack('<Q?', entities.layer_net_id(), cleared)
             self.assertEqual(details.count(needle), 1, cleared)
 
+    def test_dungeon_messages_and_item_drop(self):
+        from darkblood.games.network.messages import (
+            ChangeDungeonLayerNot, ActiveWarFlagReq, GuideBeginnerUpdateReq,
+            MonsterDeadReq, ItemDropEntry, DropItemNot
+        )
+        layer_net_id = (hashing.jhash('Act1_G1_A10') << 32) | 4
+        raw_5095 = struct.pack('<iq', 0x7fffffff, layer_net_id)
+        msg_5095 = ChangeDungeonLayerNot.decode(raw_5095)
+        self.assertEqual(msg_5095.layer_id, 4)
+        self.assertEqual(msg_5095.map_hash, hashing.jhash('Act1_G1_A10'))
+
+        msg_2422 = ActiveWarFlagReq.decode(struct.pack('<iI', 0x7fffffff, 31))
+        self.assertEqual(msg_2422.war_flag_id, 31)
+
+        raw_2358 = struct.pack('<i', 0x7fffffff) + b'\x10' + jser.varuint(2) + struct.pack('<II', 101, 102)
+        msg_2358 = GuideBeginnerUpdateReq.decode(raw_2358)
+        self.assertEqual(msg_2358.guide_ids, [101, 102])
+
+        msg_5063 = MonsterDeadReq.decode(struct.pack('<iII', 0x7fffffff, 42, 1))
+        self.assertEqual((msg_5063.monster_id, msg_5063.param), (42, 1))
+
+        drop = ItemDropEntry(drop_uid=1, item_id=hashing.jhash('Ihppa0024'), count=1, x=100.0, y=-2000.0, z=0.0)
+        not_5064 = DropItemNot(source_id=42, drops=[drop])
+        encoded = not_5064.encode()
+        self.assertTrue(encoded.startswith(struct.pack('<I', 42) + b'\x10'))
+        self.assertEqual(len(drop.encode()), 1 + 12 + 1 + 14)
+
 
 class HeadlessFlowTest(unittest.TestCase):
     def run_async(self, coro):
@@ -202,6 +229,17 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(ack5014, bytes.fromhex('00000000 0000 00000000 96')
                              + 'Act1_G1_A10'.encode('utf-16le')
                              + bytes.fromhex('1780 1780 1780 1080'))
+
+            # Dungeon notifications / requests observed after 5014:
+            # 5095: eERC_CHANGE_DUNGEON_LAYER_NOT (layer 4, jhash('Act1_G1_A10'))
+            client.send_event(5095, bytes.fromhex('ffffff7f0400000046cdad32'))
+            # 2422: eEGS_ACTIVE_WARFLAG_REQ (warflag 31)
+            client.send_event(2422, bytes.fromhex('ffffff7f1f000000'))
+            # 2358: eEGS_GUIDE_BEGINNER_UPDATE_REQ
+            client.send_event(2358, bytes.fromhex('ffffff7f108101000000'))
+            # 5063: eERC_MONSTER_DEAD_REQ (monster id 100, overkill 0)
+            client.send_event(5063, struct.pack('<iII', 0x7fffffff, 100, 0))
+
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
             _, ack2345 = await client.expect_event(2345)
             self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, hashing.jhash('Act1') << 32, 1))

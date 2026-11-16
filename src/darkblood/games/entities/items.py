@@ -53,14 +53,18 @@ class Item:
 class Bag:
     """Container entry of the 2007 bag vector (0x00558010 -> 0x005499F0 -> 0x00A1EC30, 0x2F bytes).
 
-    i64 +0 id (matched against Item.container by 0x00828600; -1 default),
-    u32 +8 (default -1; assumption: bag item code), J-wstring +0xC, u8 +0x28
-    (0xFF), u8 +0x29, u16 +0x2A (0xFFFF), bool +0x2C, bool +0x2D, bool +0x2E
-    (1). Defaults from 0x00A1E760; meanings not recovered.
+    i64 +0 id: matched against Item.container by 0x00828600; high dword must be
+      < 0x80000000 for the bag to be active in 0x00827D80.
+    u32 +8 code: bag item code / jhash (0x00827D80 requires != -1).
+    J-wstring +0xC: bag name / label (sent empty).
+    u8 +0x28 page: item category / tab (0x00551310: 0 matches any item type).
+    u8 +0x29 capacity: number of cell slots in the bag (0x005509F0 loops 0..capacity-1).
+    u16 +0x2A ui_slot: UI bag slot index (0..4, 0x00827D80 matches short at +0x2A).
+    bool +0x2C, bool +0x2D, bool +0x2E (defaults 0, 0, 1 from 0x00A1E760).
     """
     bag_id: int = -1
     code: int = -1  # int hash, or item id string (hashed)
-    b28: int = 0xFF
+    b28: int = 0
     b29: int = 0
     w2a: int = 0xFFFF
     f2c: bool = False

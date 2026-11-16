@@ -2,7 +2,17 @@ import struct
 
 from darkblood.core.serialization.jser import WireError, event, read_varuint, varuint, wide_string
 from darkblood.frontend.relay import RELAY_PORT
-from darkblood.games.network.messages import ChangeMapCodeAck, CreateRoomAck, RoomInfoListAck, SelectDungeonAck
+from darkblood.games.network.messages import (
+    ActiveWarFlagReq,
+    ChangeDungeonLayerNot,
+    ChangeMapCodeAck,
+    CreateRoomAck,
+    DropItemNot,
+    GuideBeginnerUpdateReq,
+    MonsterDeadReq,
+    RoomInfoListAck,
+    SelectDungeonAck,
+)
 from darkblood.games.state import selected_character
 
 
@@ -79,3 +89,38 @@ class DungeonHandlers:
                + (b'\x17' + varuint(0)) * 3 + b'\x10' + varuint(0))
         await self.transport.send_event(event(5014, ack, correlation),
                                         note='start game ack')
+
+    async def on_5095(self, correlation, body):
+        # eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x7900B0): ffffff7f + i64 layer_net_id.
+        try:
+            msg = ChangeDungeonLayerNot.decode(body)
+            self.current_dungeon_layer = msg.layer_id
+            self.current_dungeon_map_hash = msg.map_hash
+            self.transport.record('dungeon-layer', body, layer_id=msg.layer_id, map_hash='0x%08x' % msg.map_hash)
+        except (struct.error, ValueError):
+            pass
+
+    async def on_2422(self, correlation, body):
+        # eEGS_ACTIVE_WARFLAG_REQ (sender 0x79C300): ffffff7f + u32 war_flag_id.
+        try:
+            msg = ActiveWarFlagReq.decode(body)
+            self.active_war_flag = msg.war_flag_id
+            self.transport.record('active-warflag', body, war_flag_id=msg.war_flag_id)
+        except (struct.error, ValueError):
+            pass
+
+    async def on_2358(self, correlation, body):
+        # eEGS_GUIDE_BEGINNER_UPDATE_REQ (sender 0x79A3B0): ffffff7f + vector<u32> guide_ids.
+        try:
+            msg = GuideBeginnerUpdateReq.decode(body)
+            self.transport.record('guide-beginner-update', body, guide_ids=msg.guide_ids)
+        except (struct.error, ValueError):
+            pass
+
+    async def on_5063(self, correlation, body):
+        # eERC_MONSTER_DEAD_REQ (sender 0x78A690): ffffff7f + u32 monster_id + u32 param.
+        try:
+            msg = MonsterDeadReq.decode(body)
+            self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
+        except (struct.error, ValueError):
+            pass

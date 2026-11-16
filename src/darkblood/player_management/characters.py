@@ -86,6 +86,9 @@ class CharacterStore:
 
 
 EQUIP_CONTAINER = 1  # item container treated as worn by the client (0x008354D0)
+INVENTORY_BAG_CONTAINER = 2
+DEFAULT_BAG_CODE = 'Ibaga0004'
+DEFAULT_BAG_CAPACITY = 5
 
 
 def ensure_inventory(char):
@@ -94,19 +97,36 @@ def ensure_inventory(char):
     Characters created before inventory support have no 'bags'/'items'; they
     receive the client's default equipment for their job
     (DictItem:LoadDefaultEquipItem), worn in container 1. Live-verified: the
-    selected character renders with it. Returns True if the record changed.
+    selected character renders with it. Container 2 provides an initial 5-cell
+    Ibaga0004 bag in UI slot 0 so inventory items can be viewed and stored.
+    Returns True if the record changed.
     """
-    if 'bags' in char and 'items' in char:
-        return False
+    changed = False
     from darkblood.games.game_data.client_dict import default_equipment
     job = int(char.get('char_class', 0))
-    # Package items ("CPkg...") in the list are not wearable; they are left
-    # out until the bag/cell display is recovered.
-    gear = [code for code in default_equipment().get(job, []) if not code.startswith('C')]
-    char.setdefault('bags', [{'bag_id': EQUIP_CONTAINER}])
-    char.setdefault('items', [dict(code=code, uid=next_item_uid(char), container=EQUIP_CONTAINER, slot=i)
-                              for i, code in enumerate(gear)])
-    return True
+
+    if 'bags' not in char:
+        char['bags'] = [
+            {'bag_id': EQUIP_CONTAINER, 'b28': 0xFF, 'w2a': 0xFFFF},
+            {'bag_id': INVENTORY_BAG_CONTAINER, 'code': DEFAULT_BAG_CODE,
+             'b28': 0, 'b29': DEFAULT_BAG_CAPACITY, 'w2a': 0},
+        ]
+        changed = True
+    else:
+        # Migrate existing records that only had the equipment bag
+        bags = char['bags']
+        if not any(b.get('bag_id') == INVENTORY_BAG_CONTAINER for b in bags):
+            bags.append({'bag_id': INVENTORY_BAG_CONTAINER, 'code': DEFAULT_BAG_CODE,
+                         'b28': 0, 'b29': DEFAULT_BAG_CAPACITY, 'w2a': 0})
+            changed = True
+
+    if 'items' not in char:
+        gear = [code for code in default_equipment().get(job, []) if not code.startswith('C')]
+        char['items'] = [dict(code=code, uid=next_item_uid(char), container=EQUIP_CONTAINER, slot=i)
+                         for i, code in enumerate(gear)]
+        changed = True
+
+    return changed
 
 
 def next_item_uid(char):

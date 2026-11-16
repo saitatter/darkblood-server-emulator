@@ -196,6 +196,37 @@ Evidence: matching executable hash in STATUS.md; local mapped image
 confirms the reader calls independently of inferred decompiler signatures.
 Headless flow checks the complete default body; live acceptance is pending.
 
+### Dungeon layer, warflag, monster kill, and drop schemas (2026-11-16; static + headless)
+
+1. **5095 eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x007900B0):**
+   Sent by JAppStateGamePlay::Initialize (0x006C0000.c:10234) via 0x0087D1F0.
+   Payload: i32 0x7FFFFFFF + i64 layer_net_id.
+   layer_net_id encodes (jhash(map_code) << 32) | layer_id.
+   For Lucid Forest Entrance (Act1_G1_A10), jhash('Act1_G1_A10') = 0x32ADCD46, layer is 4.
+   The observed payload ffffff7f 04000000 46cdad32 is exactly this.
+
+2. **2422 eEGS_ACTIVE_WARFLAG_REQ (sender 0x0079C300):**
+   Sent by 0x0087D170 with active war flag id (i32 0x7FFFFFFF + u32 war_flag_id).
+   Observed value 31 (0x1F). No client-side ACK handler is registered in handler_map.txt.
+
+3. **2358 eEGS_GUIDE_BEGINNER_UPDATE_REQ (sender 0x0079A3B0):**
+   JUserClient::GuideBeginnerListUpdateREQ: i32 0x7FFFFFFF + vector (tag 0x10) of u32 guide IDs.
+
+4. **5063 eERC_MONSTER_DEAD_REQ (sender 0x0078A690):**
+   JUserClient::MonsterDeadREQ: i32 0x7FFFFFFF + u32 monster_id + u32 param.
+
+5. **5064 eERC_DROP_ITEM_NOT (handler 0x0078A870):**
+   JUserClient::On_eERC_DROP_ITEM_NOT: u32 source_id + vector (tag 0x10) of 26-byte item drop structs
+   (tag 0x1E, u32 drop_uid, u32 item_id, u16 count, u16 drop_type, tag 0x13, 3x float coordinates, u16 flags).
+
+6. **Bag cell display (0x00827D80 / 0x005509F0 / 0x00551310):**
+   In the 2007 bag vector (struct 0x00A1EC30):
+   - bag_id: must have high dword < 0x80000000 (positive int64) to be considered active by 0x00827D80.
+   - code: item hash from DictItem (jhash('Ibaga0004')); must not be -1.
+   - +0x28 (b28): item category tab filter (0x00551310: 0 matches any item type). Setting 0xFF prevented matching.
+   - +0x29 (b29): cell capacity (0x005509F0: BagSize = 5 for Ibaga0004). Setting 0 displayed zero cells.
+   - +0x2A (w2a): UI bag slot index (0..4). UI slot 0 is 0.
+
 ## 6. Instrumentation and continuation addresses
 
 | Address / slot | Role |

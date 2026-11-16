@@ -1,5 +1,14 @@
 # Research status and handoff
 
+## Dungeon schemas & Bag cell display resolved — 2026-11-16 ~17:15
+
+* 5095 eERC_CHANGE_DUNGEON_LAYER_NOT: payload decoded as i32 0x7FFFFFFF + i64 layer_net_id = (jhash(map_code) << 32) | layer_id. For Lucid Forest Entrance (Act1_G1_A10), jhash is 0x32ADCD46 and layer is 4 (fffff7f 04000000 46cdad32). Sent by JAppStateGamePlay::Initialize (0x006C0000.c:10234 via 0x0087D1F0 -> 0x007900B0). Handled in on_5095.
+* 2422 eEGS_ACTIVE_WARFLAG_REQ: decoded as i32 0x7FFFFFFF + u32 war_flag_id (31). Sent by 0x0087D170 via 0x0079C300. Client registers no 2423 ACK. Handled in on_2422.
+* 2358 eEGS_GUIDE_BEGINNER_UPDATE_REQ: guide vector (i32 0x7FFFFFFF + tag 0x10 vector<u32>). Handled in on_2358.
+* 5063 eERC_MONSTER_DEAD_REQ & 5064 eERC_DROP_ITEM_NOT: JUserClient::MonsterDeadREQ (0x0078A690) sends u32 monster_id + u32 param. On_eERC_DROP_ITEM_NOT (0x0078A870) maps 26-byte item drop structs (drop_uid, item_id, count, drop_type, 3x float coords, flags).
+* Bag cell display: Field semantics recovered from 0x00827D80, 0x005509F0, 0x00551310. Bag id must have high dword < 0x80000000; +0x28 is item category tab (0 accepts all items; 0xFF blocked matching), +0x29 is cell capacity (BagSize = 5 for Ibaga0004; 0 displayed zero cells), +0x2A is UI slot (0). Container 2 added to ensure_inventory.
+* 16/16 headless tests pass.
+
 ## Dungeon render reproduced — Cristian machine, 2026-11-16 ~13:50
 
 Fresh e410c89 server; 13/13 headless tests pass. Existing Mage `lindic` entered
