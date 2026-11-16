@@ -1,5 +1,16 @@
 # Research status and handoff
 
+## Dungeon render reproduced — Cristian machine, 2026-11-16 ~13:50
+
+Fresh e410c89 server; 13/13 headless tests pass. Existing Mage `lindic` entered
+town directly with tutorial completion persisted. Movement and map transitions
+through Elwood Center/Village/Western Forked Road were observed locally.
+Room creation, gate selection, map-code change and start-game replies loaded
+Lucid Forest Entrance without a logged crash. Initial viewport had no monsters;
+automated arrow/X input did not visibly act. Manual control check pending;
+local dungeon movement/combat is not yet established. 5095 remains unhandled.
+See SESSION_HANDOFF.md for captures and the live session.
+
 ## Dungeon entry live — saita machine, 2026-11-16 ~13:30
 
 Thief1 walked from town (Western Forked Road) into the Gnogue Haram entrance:

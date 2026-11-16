@@ -1,5 +1,34 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~13:50 (Cristian machine, dungeon render reproduced)
+
+User clarified the earlier movement/attacks were their manual input, so do not
+investigate spontaneous tutorial input. They authorized a new test. Pulled main
+at e410c89, stopped the old owned server (client had already exited), ran the
+13 passing headless tests, and started a fresh session with gamectl. Existing
+Mage `lindic` (id 2) now has tutorial_cleared=true, persisted by the previous
+manual session. Both characters remain present.
+
+Locally verified: direct town entry; click movement; transitions Northern
+Elwood Forest -> Elwood Center -> Elwood Village -> Western Forked Road ->
+Entrance to Gnogue Haram. Then 2010/2011, 5001/5002 `_singleplay`,
+5043/5044 `Act1_G1`, 5009/5010 `Act1_G1_A10`, 5013/5014: Lucid Forest
+Entrance rendered successfully with the Mage and no logged exception/crash.
+5095 (ffffff7f0400000046cdad32) remains unhandled. No monster was visible
+in the initial viewport. Do not claim local dungeon movement/combat yet:
+click movement, automated right arrow and X did not produce a visible action.
+Requested a manual right-arrow/X test to distinguish input delivery from an
+incomplete game state. UI automation is stopped pending that answer; leave
+the client/server running for the manual check (owned processes are tracked in
+logs/session.json, verify before stopping). Computer Use native pipe was
+unavailable earlier in this conversation; gamectl is the fallback.
+
+Screenshots (local): `research/test2-dungeon.png`,
+`research/test2-dungeon-move.png`, `research/test2-action.png`;
+latest traversal `research/test2-ui.png`. Wire log session starts at byte
+2027398 (~13:41); new server runs e410c89. Next: manual control result,
+then combat/drop/clear flow or input delivery debugging as supported by evidence.
+
 ## Update — 2026-11-16 ~13:30 (saita machine, dungeon entry live)
 
 Dungeon entry works live (see STATUS.md top). Test route: gamectl
