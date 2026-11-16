@@ -163,6 +163,15 @@ class HeadlessFlowTest(unittest.TestCase):
             client.send_event(2119, bytes.fromhex('ffffff7f01001080'))  # observed live
             _, ack2120 = await client.expect_event(2120)
             self.assertEqual(ack2120, struct.pack('<I', 0) + bytes.fromhex('01001080'))
+            # Dungeon entry: room list 2010 -> 2011, create room 5001 -> 5002
+            client.send_event(2010, bytes.fromhex('ffffff7f00000000012543f6f0ffffffffffff'))
+            _, ack2011 = await client.expect_event(2011)
+            self.assertEqual(len(ack2011), 4 + 1 + 4 + 2 + 4)
+            client.send_event(5001, bytes.fromhex(
+                '965f00730069006e0067006c00650070006c0061007900ffffffffffffffffffff0100'))
+            _, ack5002 = await client.expect_event(5002)
+            self.assertEqual(struct.unpack_from('<Iq', ack5002), (0, 1))
+            self.assertEqual(ack5002[-6:], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
             client.send_event(2369)
             _, ack2370 = await client.expect_event(2370)
             self.assertEqual(ack2370, b'\x00' * 16)

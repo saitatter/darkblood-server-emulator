@@ -533,6 +533,56 @@ class QuestStartAck:
 
 
 @dataclass
+class RoomInfoListAck:
+    """Opcode 2011: eEGS_GET_ROOMINFOLIST_ACK (JUserClient handler 0x0077A1F0).
+
+    Field names from the read-failure messages: u32 nOK, bool
+    m_bShowOnlyWaitRoom, i32 m_iViewRoomPage, tag 0x10 m_vecRoomList (0x46-byte
+    elements, reader 0x00778F50), i32 m_iN* (probably the page count).
+    Offline: no open rooms.
+    """
+    result: int = 0
+    show_only_wait: bool = False
+    page: int = 0
+    pages: int = 0
+
+    def encode(self) -> bytes:
+        return (struct.pack('<I?i', self.result, self.show_only_wait, self.page)
+                + b'\x10' + varuint(0) + struct.pack('<i', self.pages))
+
+
+@dataclass
+class CreateRoomAck:
+    """Opcode 5002: eERC_CREATE_ROOM_ACK (JAppPageGameRoom, table case 0x59D970 -> 0x5984D0).
+
+    Read order (names from "jRoomInfo >> nTeamID >> jRelayAddress"): u32 nOK,
+    implicit jRoomInfo (0x00A49380: i64, wstring, i16, i16, i32, i64, i64,
+    i32, i32, i16), u32 nTeamID, implicit jRelayAddress (0x00A48910, 6 bytes:
+    IPv4 network order + u16 LE port, as in 5134). The handler then connects
+    JP2PClient (0x00956C80) to the relay address. jRoomInfo field meanings are
+    not recovered: room id first, the requested name second, the rest echo the
+    5001 request (i32, i32, i16, i16) or default to -1 / 0.
+    """
+    result: int = 0
+    room_id: int = 1
+    name: str = ''
+    req_a: int = -1
+    req_b: int = -1
+    req_c: int = -1
+    req_d: int = 1
+    host_uid: int = 0
+    team_id: int = 0
+    relay_port: int = 9401
+
+    def encode(self) -> bytes:
+        info = (struct.pack('<q', self.room_id) + wide_string(self.name)
+                + struct.pack('<hhiqqiih', self.req_c, self.req_d, self.req_a,
+                              self.host_uid, 0, self.req_b, -1, self.req_d))
+        relay = bytes([127, 0, 0, 1]) + struct.pack('<H', self.relay_port)
+        return struct.pack('<I', self.result) + info + struct.pack('<I', self.team_id) + relay
+
+
+@dataclass
 class QuestCompleteAck:
     """Opcode 2077: eEGS_QUEST_COMPLETE_ACK (JAppPageTalkBox, case 0x659F00 -> 0x656870).
 

@@ -8,6 +8,7 @@ from models import (
     ChannelSquare,
     Character,
     ClearTutorialAck,
+    CreateRoomAck,
     CurrentCashAck,
     FriendListAck,
     GameServer,
@@ -20,6 +21,7 @@ from models import (
     QuestCompleteAck,
     QuestStartAck,
     RelayAddressNot,
+    RoomInfoListAck,
     RouletteManagerInfoAck,
     SelectCharacterAck,
     StoreInfoAck,
@@ -367,6 +369,28 @@ class GameSession:
         ack = QuestStartAck(quest_id=quest_id, quest_uid=self.quest_uid).encode()
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
+
+    async def on_2010(self, correlation, body):
+        # eEGS_GET_ROOMINFOLIST_REQ (sender 0x7AB140) -> 2011: no open rooms.
+        await self.transport.send_event(event(2011, RoomInfoListAck().encode(), correlation),
+                                        note='room info list ack')
+
+    async def on_5001(self, correlation, body):
+        # eERC_CREATE_ROOM_REQ (writer 0x58B060): wstring name, i32, i32, i16,
+        # i16 (observed: "_singleplay", -1, -1, -1, 1) -> 5002 CREATE_ROOM_ACK.
+        name, a, b, c, d = '', -1, -1, -1, 1
+        try:
+            length, offset = read_varuint(body, 0)
+            name = body[offset:offset + length].decode('utf-16le')
+            a, b, c, d = struct.unpack_from('<iihh', body, offset + length)
+        except (WireError, struct.error, UnicodeDecodeError):
+            pass
+        self.room_id = getattr(self, 'room_id', 0) + 1
+        ack = CreateRoomAck(room_id=self.room_id, name=name, req_a=a, req_b=b, req_c=c, req_d=d,
+                            host_uid=selected_character.get('id', 0),
+                            relay_port=RELAY_PORT).encode()
+        await self.transport.send_event(event(5002, ack, correlation),
+                                        note='create room ack (%s)' % name)
 
     async def on_2076(self, correlation, body):
         # eEGS_QUEST_COMPLETE_REQ (same observed prefix as 2073: wstring, u32

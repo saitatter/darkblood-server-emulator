@@ -145,6 +145,51 @@ def case_handlers(ex, dispatcher, opcode):
     return calls
 
 
+def jump_table_cases(ex, fn):
+    """Decode `add/sub reg, K; cmp reg, N; ja; [movzx r2, byte [reg+T1];]
+    jmp [r*4+T2]` dispatchers. Returns {opcode: [called functions]} using the
+    first non-helper call of each case block."""
+    insns = list(ex.body(fn))
+    img = ex.img
+    out = {}
+    for i, ins in enumerate(insns):
+        if ins.mnemonic != 'jmp' or '*4 +' not in ins.op_str:
+            continue
+        window = insns[max(0, i - 6):i]
+        base = n = t1 = None
+        for w in window:
+            ops = [o.strip() for o in w.op_str.split(',')]
+            if w.mnemonic == 'add' and len(ops) == 2 and ops[1].startswith('0x'):
+                v = int(ops[1], 16)
+                base = (0x100000000 - v) if v >= 0x80000000 else -v
+            elif w.mnemonic == 'sub' and len(ops) == 2 and ops[1].startswith('0x'):
+                base = int(ops[1], 16)
+            elif w.mnemonic == 'cmp' and len(ops) == 2 and ops[1].startswith('0x'):
+                n = int(ops[1], 16)
+            elif w.mnemonic == 'movzx' and 'byte ptr [' in w.op_str and '+ 0x' in w.op_str:
+                t1 = int(w.op_str.rsplit('+ ', 1)[1].rstrip(']'), 16)
+        if base is None or n is None or n > 0x400:
+            continue
+        t2 = int(ins.op_str.rsplit('+ ', 1)[1].rstrip(']'), 16)
+        for k in range(n + 1):
+            try:
+                idx = img[t1 - BASE + k] if t1 else k
+                target = struct.unpack_from('<I', img, t2 - BASE + idx * 4)[0]
+            except (IndexError, struct.error):
+                break
+            calls = []
+            for c in ex.md.disasm(img[target - BASE:target - BASE + 24], target):
+                if c.mnemonic in ('ret', 'jmp'):
+                    break
+                if c.mnemonic == 'call' and c.op_str.startswith('0x'):
+                    tgt = int(c.op_str, 16)
+                    if tgt not in PRIMS and tgt not in SKIP and tgt in ex.sizes:
+                        calls.append(tgt)
+            if calls:
+                out.setdefault(base + k, []).extend(calls[:1])
+    return out
+
+
 def render(items, indent='  '):
     lines = []
     for item in items:
@@ -179,11 +224,30 @@ def main():
             print('FUN_%08x' % fn)
             print('\n'.join(render(ex.fields(fn))))
         return 0
-    count = cases = 0
+    count = cases = tables = 0
+    names = {}
+    for line in open(ROOT / 'server/data/opcodes.tsv', encoding='utf-8'):
+        q = line.rstrip('\n').split('\t')
+        if q[0].isdigit():
+            names[int(q[0])] = q[1]
+    # Jump-table dispatchers anywhere in the client (two-level tables included).
+    table_cases = {}
+    for fn in ex.sizes:
+        for op, fns in jump_table_cases(ex, fn).items():
+            if names.get(op, '').endswith(('_ACK', '_NOT', '_AKC')):
+                table_cases.setdefault(op, set()).update((fn, h) for h in fns)
     with open(a.output, 'w', encoding='utf-8', newline='\n') as out:
         for line in open(ROOT / 'research/opcode_xrefs.tsv', encoding='utf-8'):
             p = line.rstrip('\n').split('\t')
             if p[0] == 'opcode' or len(p) < 6:
+                continue
+            if not p[5] and int(p[0]) in table_cases:
+                for d, fn in sorted(table_cases[int(p[0])]):
+                    items = ex.fields(fn)
+                    if items:
+                        out.write('%s %s  table case in %08x -> %08x\n' % (p[0], p[1], d, fn))
+                        out.write('\n'.join(render(items)) + '\n\n')
+                        tables += 1
                 continue
             if p[5]:
                 for h in p[5].split():
@@ -200,7 +264,7 @@ def main():
                         out.write('%s %s  case in %s -> %08x\n' % (p[0], p[1], d, fn))
                         out.write('\n'.join(render(items)) + '\n\n')
                         cases += 1
-    print('%d dispatcher-case schemas' % cases)
+    print('%d dispatcher-case schemas, %d jump-table case schemas' % (cases, tables))
     print('%d handler schemas -> %s' % (count, a.output))
     return 0
 
