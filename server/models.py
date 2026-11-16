@@ -20,6 +20,9 @@ class CharacterClass(IntEnum):
     KNIGHT = 1
     HUNTER = 2
     MAGE = 3
+    THIEF = 4
+    FIGHTER = 5
+    WHUNTER = 6
 
 
 def varuint(n: int) -> bytes:
@@ -135,10 +138,16 @@ class Character:
             body_sliders=list(data.get('body', [100] * 5)[:5]),
             extra=data.get('extra', 0)
         )
+        raw_class = data.get('char_class', 0)
+        try:
+            char_class = CharacterClass(raw_class)
+        except ValueError:
+            char_class = raw_class
+
         return cls(
             id=data.get('id', 1),
             name=data.get('name', 'Tester'),
-            char_class=CharacterClass(data.get('char_class', 0)),
+            char_class=char_class,
             visuals=visuals,
             level=data.get('level', 1),
             location=data.get('location', 'default town'),
@@ -434,6 +443,34 @@ class TutorialQuestStartAck:
 
     def encode(self) -> bytes:
         return struct.pack('<I', self.result)
+
+
+@dataclass
+class TamingMonsterInsertAck:
+    """Opcode 2349: eEGS_TAMEING_MONSTER_INSERT_ACK response.
+
+    Binary schema: Reader 0x00771A00.
+    u32 result (0 = success) + tag 0x10 vector.
+    """
+    result: int = 0
+    monsters: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.monsters))
+
+
+@dataclass
+class TamingMonsterDeleteAck:
+    """Opcode 2351: eEGS_TAMEING_MONSTER_DELETE_ACK response.
+
+    Binary schema: Reader 0x00771BB0.
+    u32 result (0 = success) + tag 0x10 vector.
+    """
+    result: int = 0
+    monsters: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.monsters))
 
 
 @dataclass

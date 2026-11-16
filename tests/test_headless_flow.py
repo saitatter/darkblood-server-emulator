@@ -90,6 +90,16 @@ class HeadlessFlowTest(unittest.TestCase):
             _, ack2347 = await client.expect_event(2347)
             self.assertEqual(struct.unpack_from('<I', ack2347)[0], 0)
 
+            # Taming monster insert 2348 -> 2349
+            client.send_event(2348)
+            _, ack2349 = await client.expect_event(2349)
+            self.assertEqual(struct.unpack_from('<I', ack2349)[0], 0)
+
+            # Taming monster delete 2350 -> 2351
+            client.send_event(2350)
+            _, ack2351 = await client.expect_event(2351)
+            self.assertEqual(struct.unpack_from('<I', ack2351)[0], 0)
+
             # Roulette info 2390 -> 2391
             client.send_event(2390)
             _, ack2391 = await client.expect_event(2391)
@@ -97,6 +107,23 @@ class HeadlessFlowTest(unittest.TestCase):
             self.assertEqual(len(ack2391), 25)
 
         self.run_async(self.with_server(scenario))
+
+    def test_thief_creation_and_selection(self):
+        async def scenario(client):
+            out = await lobby_flow(client)
+            # Create Thief (char_class = 4)
+            client.send_event(2012, create_request('ThiefTester', char_class=4))
+            _, created = await client.expect_event(2013)
+            self.assertEqual(struct.unpack_from('<I', created)[0], 0)
+            char_id = struct.unpack_from('<Q', created, 4)[0]
+            # Select the Thief character
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            self.assertEqual(struct.unpack_from('<I', ack2007)[0], 0)
+            return ack2007
+
+        ack = self.run_async(self.with_server(scenario))
+        self.assertIsNotNone(ack)
 
     def test_relay_handshake_without_welcome(self):
         async def scenario(client):

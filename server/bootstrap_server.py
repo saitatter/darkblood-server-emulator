@@ -147,6 +147,10 @@ class Session:
                 pong = b'\x01' + struct.pack('<H', 0xfa02) + payload[3:]
                 await self.send_payload(pong, note='RMI pong 0xfa02')
                 return
+            elif rmi_id == 0xfa06:
+                # ProudNet Relay / P2P notify (ProudC2S::Proxy method 15/16)
+                self.record('rmi-fa06', payload)
+                return
             elif rmi_id == 0xfa13:
                 self.record('rmi-fa13', payload)
                 return

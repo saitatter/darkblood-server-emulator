@@ -14,6 +14,8 @@ from models import (
     RelayAddressNot,
     RouletteManagerInfoAck,
     SelectCharacterAck,
+    TamingMonsterDeleteAck,
+    TamingMonsterInsertAck,
     TutorialQuestStartAck,
     varuint,
     wide_string,
@@ -314,6 +316,18 @@ class GameSession:
         # u32 result (0 = success).
         ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
+
+    async def on_2348(self, correlation, body):
+        # eEGS_TAMEING_MONSTER_INSERT_REQ -> eEGS_TAMEING_MONSTER_INSERT_ACK (2349), handler 0x771A00:
+        # u32 result (0 = success) + tag 0x10 vector.
+        ack = TamingMonsterInsertAck().encode()
+        await self.transport.send_event(event(2349, ack, correlation), note='taming monster insert ack')
+
+    async def on_2350(self, correlation, body):
+        # eEGS_TAMEING_MONSTER_DELETE_REQ -> eEGS_TAMEING_MONSTER_DELETE_ACK (2351), handler 0x771BB0:
+        # u32 result (0 = success) + tag 0x10 vector.
+        ack = TamingMonsterDeleteAck().encode()
+        await self.transport.send_event(event(2351, ack, correlation), note='taming monster delete ack')
 
     async def on_2390(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0:
