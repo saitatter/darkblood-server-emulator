@@ -384,6 +384,16 @@ class GameSession:
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
 
+    async def on_2344(self, correlation, body):
+        # eEGS_WAYPOINT_INSERT_REQ (observed: i32, u64 nLayerNetID) ->
+        # eEGS_WAYPOINT_INSERT_ACK 2345 (JAppPageSquarePortal 0x64B9D0 -> 0x64AE00):
+        # u32 result, u64 nLayerNetID, implicit jData = square entry 0xA49700
+        # (same reader as the 2022 channel list).
+        layer = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
+        ack = struct.pack('<IQ', 0, layer) + square_entry(**SQUARES[0])
+        await self.transport.send_event(event(2345, ack, correlation),
+                                        note='waypoint insert ack (%016x)' % layer)
+
     async def on_2010(self, correlation, body):
         # eEGS_GET_ROOMINFOLIST_REQ (sender 0x7AB140) -> 2011: no open rooms.
         await self.transport.send_event(event(2011, RoomInfoListAck().encode(), correlation),

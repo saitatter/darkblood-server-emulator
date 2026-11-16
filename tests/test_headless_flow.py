@@ -179,6 +179,9 @@ class HeadlessFlowTest(unittest.TestCase):
             _, ack5002 = await client.expect_event(5002)
             self.assertEqual(struct.unpack_from('<Iq', ack5002), (0, 1))
             self.assertEqual(ack5002[-6:], bytes([127, 0, 0, 1]) + struct.pack('<H', game_wire.RELAY_PORT))
+            client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))  # observed live
+            _, ack2345 = await client.expect_event(2345)
+            self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, models.jhash('Act1') << 32, 1))
             client.send_event(2369)
             _, ack2370 = await client.expect_event(2370)
             self.assertEqual(ack2370, b'\x00' * 16)
