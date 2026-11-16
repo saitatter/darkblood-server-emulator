@@ -1,5 +1,21 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Update — 2026-11-16 ~18:30 (Modular test suite refactoring into granular categories)
+
+Decomposed monolithic `test_headless_flow.py` into dedicated, modular test suites:
+1. `tests/test_wire_messages.py` (13 tests): Pure unit tests for opcode dataclass encode/decode (2014/2015, 2040/2041, 2030/2031, 2046/2047, 2050/2051, 2594/2595, 2024/2025, 5086, 5087, 5095, 2422, 2358, 5063, 5064, item count at +0).
+2. `tests/test_character_store.py` (4 tests): Unit tests for `CharacterStore` CRUD, case-insensitive duplicate check, deletion, inventory & bag initialization.
+3. `tests/test_hashing.py` (2 tests): Unit tests for djb2 `jhash` matching client `0x00B3AD70`.
+4. `tests/test_lobby_flow.py` (2 tests): Server & channel lists, character creation & deletion, selection.
+5. `tests/test_inventory_flow.py` (1 test): Item drag, use, discard, bag & quickslots, skill learn.
+6. `tests/test_dungeon_flow.py` (1 test): Dungeon gates, layer transition, combat, death & rebirth coin, rank rewards, back to square.
+7. `tests/test_quest_flow.py` (3 tests): Quest completion persistence, client dictionary rewards, active quest tracking in selection.
+8. `tests/test_social_flow.py` (1 test): Post list, friends, invite list, web notices, NPC dialogue.
+9. `tests/test_relay_flow.py` (1 test): Relay server connection and handshake isolation.
+10. `tests/test_jpk.py` (5 tests): Archive structure, cipher inverse, rebuild verification.
+
+Total 31/31 unit and integration tests passing cleanly.
+
 ## Update — 2026-11-16 ~18:15 (Skill training, character deletion, item discard, bag & quickslot switching, notices)
 
 Decompiled client handlers/senders and added full support:

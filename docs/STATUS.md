@@ -1,5 +1,20 @@
 # Research status and handoff
 
+## Modular Test Suite Refactoring — 2026-11-16 ~18:30
+
+* Refactored monolithic `test_headless_flow.py` into 10 granular, modular test modules:
+  - `test_character_store.py`: CharacterStore creation, duplicate check, deletion, inventory.
+  - `test_wire_messages.py`: Unit encoding/decoding for all opcode dataclasses.
+  - `test_hashing.py`: JHash algorithm verification against client DJB2.
+  - `test_lobby_flow.py`: Lobby handshake, server/channel/character listing, creation/deletion/selection.
+  - `test_inventory_flow.py`: Drag, use, discard, bags, quickslots, skill learning.
+  - `test_dungeon_flow.py`: Gates, layers, monster combat, death/revival, cards, town return.
+  - `test_quest_flow.py`: Quest acceptance, completion, client dict rewards, tracking restore.
+  - `test_social_flow.py`: Mailbox, friends, invite lists, web notices, NPC dialogue.
+  - `test_relay_flow.py`: Relay server isolation.
+  - `test_jpk.py`: JPK archive and crypto.
+* 31/31 tests pass cleanly across all categories.
+
 ## Skills, Character deletion, Item management, Bag & Quickslots — 2026-11-16 ~18:15
 
 * 2014 eEGS_DELETE_CHARACTER_REQ & 2015 eEGS_DELETE_CHARACTER_ACK: Wire schema i64 char_uid -> i32 result + i64 char_uid + i32 complete_time=0. CharacterStore.delete() persists account character removals.

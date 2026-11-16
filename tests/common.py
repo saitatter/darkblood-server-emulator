@@ -1,0 +1,53 @@
+"""Shared test fixtures and helpers for Dark Blood server test suite."""
+import asyncio
+import os
+from pathlib import Path
+import struct
+import sys
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parent.parent
+TMP = tempfile.TemporaryDirectory()
+os.environ.setdefault('DARKBLOOD_DATA', TMP.name)
+os.environ.setdefault('DARKBLOOD_CLIENT_DATA', TMP.name)
+if str(ROOT / 'src') not in sys.path:
+    sys.path.insert(0, str(ROOT / 'src'))
+if str(ROOT / 'tools') not in sys.path:
+    sys.path.insert(0, str(ROOT / 'tools'))
+
+from darkblood.core.serialization import jser  # noqa: E402
+from darkblood.frontend.server import BootstrapServer  # noqa: E402
+from headless_client import HeadlessClient, lobby_flow  # noqa: E402
+
+
+def wide(text: str) -> bytes:
+    raw = text.encode('utf-16le')
+    return jser.varuint(len(raw)) + raw
+
+
+def create_request(name: str, char_class: int = 1) -> bytes:
+    # Observed 2012 layout: i32, u8 class, wstr, u32 face, u32 hair, 5 x u8, u8.
+    return (struct.pack('<iB', 0x7fffffff, char_class) + wide(name)
+            + struct.pack('<II', 1, 1) + bytes([50] * 5) + b'\x00')
+
+
+class ServerTestCase(unittest.TestCase):
+    """Base class for tests requiring an async server instance."""
+
+    def run_async(self, coro):
+        return asyncio.run(asyncio.wait_for(coro, 30))
+
+    async def with_server(self, scenario, role='game'):
+        server = BootstrapServer(port=0, role=role,
+                                 log_path=Path(TMP.name) / 'wire.jsonl',
+                                 key_path=Path(TMP.name) / 'rsa.key')
+        await server.start()
+        port = server.server.sockets[0].getsockname()[1]
+        client = HeadlessClient(port=port)
+        try:
+            return await scenario(client)
+        finally:
+            await client.close()
+            server.server.close()
+            await server.server.wait_closed()
