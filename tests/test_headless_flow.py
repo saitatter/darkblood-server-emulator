@@ -156,6 +156,10 @@ class HeadlessFlowTest(unittest.TestCase):
             result, qid, quid = struct.unpack_from('<Iiq', ack2074)
             self.assertEqual((result, qid & 0xffffffff, quid), (0, models.jhash('Q0001S01'), 1))
             self.assertEqual(len(ack2074), 16 + 18 + 2)
+            client.send_event(2076, req, compressed=True)
+            _, ack2077 = await client.expect_event(2077)
+            self.assertEqual(struct.unpack_from('<Ii', ack2077)[1] & 0xffffffff, models.jhash('Q0001S01'))
+            self.assertEqual(len(ack2077), 12 + 18 + 12 + 2 + 2 + 8)
             client.send_event(2119, bytes.fromhex('ffffff7f01001080'))  # observed live
             _, ack2120 = await client.expect_event(2120)
             self.assertEqual(ack2120, struct.pack('<I', 0) + bytes.fromhex('01001080'))

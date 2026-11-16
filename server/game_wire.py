@@ -17,6 +17,7 @@ from models import (
     layer_net_id,
     NpcFirstMeetAck,
     PostListAck,
+    QuestCompleteAck,
     QuestStartAck,
     RelayAddressNot,
     RouletteManagerInfoAck,
@@ -366,6 +367,21 @@ class GameSession:
         ack = QuestStartAck(quest_id=quest_id, quest_uid=self.quest_uid).encode()
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
+
+    async def on_2076(self, correlation, body):
+        # eEGS_QUEST_COMPLETE_REQ (same observed prefix as 2073: wstring, u32
+        # quest id) -> eEGS_QUEST_COMPLETE_ACK 2077. No rewards offline yet.
+        quest_id = 0
+        try:
+            length, offset = read_varuint(body, 0)
+            quest_id = struct.unpack_from('<I', body, offset + length)[0]
+        except (WireError, struct.error):
+            pass
+        char = self.store().get(self.account, selected_character.get('id', 1)) or {}
+        total = Character.from_dict(char).u66 if char else Character().u66
+        ack = QuestCompleteAck(quest_id=quest_id, total=total).encode()
+        await self.transport.send_event(event(2077, ack, correlation),
+                                        note='quest complete ack (%08x)' % quest_id)
 
     async def on_2119(self, correlation, body):
         # eEGS_ALARM_UPDATE_REQ (observed: i32 0x7FFFFFFF, i16, tag 0x10

@@ -533,6 +533,28 @@ class QuestStartAck:
 
 
 @dataclass
+class QuestCompleteAck:
+    """Opcode 2077: eEGS_QUEST_COMPLETE_ACK (JAppPageTalkBox, case 0x659F00 -> 0x656870).
+
+    u32 result, then implicit struct jAck (reader 0x00A55B70; draft from
+    tools/extract_schemas.py): i32 quest id (looked up via 0x00A7B390),
+    i32 (unknown), jInfo 18 raw bytes, i32 (unknown), i64 new total compared
+    with player +0x70 (= 2007 details +0x45, Character.u66; probably money or
+    experience -- sending the current value means "no change"), tag 0x10
+    reward item vector, tag 0x17 map<?, i16>, i32, i32 (unknown).
+    """
+    result: int = 0
+    quest_id: int = 0
+    total: int = 0
+
+    def encode(self) -> bytes:
+        qid = self.quest_id - (1 << 32) if self.quest_id >= 1 << 31 else self.quest_id
+        info = struct.pack('<iHiii', -1, 0xFFFF, -1, -1, -1)
+        return (struct.pack('<Iii', self.result, qid, 0) + info + struct.pack('<iq', 0, self.total)
+                + b'\x10' + varuint(0) + b'\x17' + varuint(0) + struct.pack('<ii', 0, 0))
+
+
+@dataclass
 class StoreInfoAck:
     """Opcode 2066: eEGS_GET_STORE_INFO_ACK (handler 0x007842C0).
 
