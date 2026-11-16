@@ -37,6 +37,12 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2043 = await client.expect_event(2043)
             self.assertEqual(struct.unpack_from('<i', ack2043)[0], 0)
 
+            # 2b. Unequip item via right click (2042 -> 2043)
+            client.send_event(2042, struct.pack('<qi', 1, 0))
+            _, ack2043_unequip = await client.expect_event(2043)
+            self.assertEqual(struct.unpack_from('<i', ack2043_unequip)[0], 0)
+            self.assertEqual(char['items'][0]['container'], 2)
+
             # 3. Use item (2038 -> 2039)
             client.send_event(2038, struct.pack('<qi', 1, 1))
             _, ack2039 = await client.expect_event(2039)

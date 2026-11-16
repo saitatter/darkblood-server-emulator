@@ -125,17 +125,28 @@ class CommerceHandlers:
             ack = DragItemAck(result=1).encode()
             await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (not found)')
             return
-        target = next((i for i in items if i.get('container') == req.to_container and i.get('slot') == req.to_slot), None)
-        updated = [dragged]
-        if target and target is not dragged:
-            target['container'], target['slot'] = dragged['container'], dragged['slot']
-            updated.append(target)
-        dragged['container'] = req.to_container
-        dragged['slot'] = req.to_slot
-        self.store().save()
+        old_container = dragged.get('container')
+        old_slot = dragged.get('slot')
 
+        target = next((i for i in items if i.get('container') == req.to_container and i.get('slot') == req.to_slot), None)
         from darkblood.games.entities.items import Item
-        wire_items = [Item(owner=char.get('id', -1), **i) for i in updated]
+        if target and target is not dragged:
+            target['container'], target['slot'] = old_container, old_slot
+            dragged['container'], dragged['slot'] = req.to_container, req.to_slot
+            self.store().save()
+            wire_items = [
+                Item(owner=char.get('id', -1), **dragged),
+                Item(owner=char.get('id', -1), **target)
+            ]
+        else:
+            dragged['container'] = req.to_container
+            dragged['slot'] = req.to_slot
+            self.store().save()
+            wire_items = [
+                Item(owner=char.get('id', -1), **dragged),
+                Item(owner=char.get('id', -1), uid=0, code='', container=old_container, slot=old_slot, count=0)
+            ]
+
         ack = DragItemAck(result=0, items=wire_items).encode()
         await self.transport.send_event(event(2037, ack, correlation),
                                         note='drag item ack (uid=%d to c=%d s=%d)' % (req.item_uid, req.to_container, req.to_slot))
@@ -200,23 +211,52 @@ class CommerceHandlers:
             ack = EquipItemAck(result=1).encode()
             await self.transport.send_event(event(2043, ack, correlation), note='equip item fail (not found)')
             return
-        # Find any currently equipped item in target slot
-        target_slot = req.equip_slot if req.equip_slot >= 0 else target_item.get('slot', 0)
-        previous_equipped = next((i for i in items if i.get('container') == EQUIPPED and i.get('slot') == target_slot), None)
-        updated = [target_item]
-        if previous_equipped and previous_equipped is not target_item:
-            # Move previously equipped item into the bag slot vacated by target_item
-            previous_equipped['container'] = target_item.get('container', 2)
-            previous_equipped['slot'] = target_item.get('slot', 0)
-            updated.append(previous_equipped)
-        target_item['container'] = EQUIPPED
-        target_item['slot'] = target_slot
-        self.store().save()
 
-        wire_items = [Item(owner=char.get('id', -1), **i) for i in updated]
+        from darkblood.games.entities.items import Item
+        old_container = target_item.get('container')
+        old_slot = target_item.get('slot')
+
+        if old_container == EQUIPPED:
+            # Unequip action: move equipped item back to the first available bag slot
+            used_slots = {i.get('slot') for i in items if i.get('container') == 2}
+            bag = next((b for b in char.get('bags', []) if b.get('bag_id') == 2), None)
+            capacity = bag.get('b29', 30) if bag else 30
+            free_slot = next((s for s in range(capacity) if s not in used_slots), None)
+            if free_slot is None:
+                free_slot = max(used_slots, default=-1) + 1
+            target_item['container'] = 2
+            target_item['slot'] = free_slot
+            self.store().save()
+            wire_items = [
+                Item(owner=char.get('id', -1), **target_item),
+                Item(owner=char.get('id', -1), uid=0, code='', container=EQUIPPED, slot=old_slot, count=0)
+            ]
+        else:
+            # Equip action: move from bag to equipped slot
+            target_slot = req.equip_slot if req.equip_slot >= 0 else target_item.get('slot', 0)
+            previous_equipped = next((i for i in items if i.get('container') == EQUIPPED and i.get('slot') == target_slot), None)
+            if previous_equipped and previous_equipped is not target_item:
+                previous_equipped['container'] = old_container
+                previous_equipped['slot'] = old_slot
+                target_item['container'] = EQUIPPED
+                target_item['slot'] = target_slot
+                self.store().save()
+                wire_items = [
+                    Item(owner=char.get('id', -1), **target_item),
+                    Item(owner=char.get('id', -1), **previous_equipped)
+                ]
+            else:
+                target_item['container'] = EQUIPPED
+                target_item['slot'] = target_slot
+                self.store().save()
+                wire_items = [
+                    Item(owner=char.get('id', -1), **target_item),
+                    Item(owner=char.get('id', -1), uid=0, code='', container=old_container, slot=old_slot, count=0)
+                ]
+
         ack = EquipItemAck(result=0, items=wire_items).encode()
         await self.transport.send_event(event(2043, ack, correlation),
-                                        note='equip item ack (uid=%d slot=%d)' % (req.item_uid, target_slot))
+                                        note='equip item ack (uid=%d slot=%d)' % (req.item_uid, target_item.get('slot', 0)))
 
     async def on_2044(self, correlation, body):
         # eEGS_ASSIGN_QUICKSLOT_REQ (0x00780000.c:8513) -> 2045 eEGS_ASSIGN_QUICKSLOT_ACK (0x0078C4A0).

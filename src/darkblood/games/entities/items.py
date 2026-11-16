@@ -61,7 +61,8 @@ class Item:
         b += struct.pack('<?', False) + b'\x10' + varuint(0)
         b += b'\x10' + varuint(0)
         b += struct.pack('<iiififiiB', -1, -1, -1, -1.0, -1, -1.0, -1, -1, 0)
-        b += struct.pack('<qqIqB', self.owner, self.uid, jhash(self.code), self.container, self.slot)
+        code_hash = jhash(self.code) if self.code else 0
+        b += struct.pack('<qqIqB', self.owner, self.uid, code_hash, self.container, self.slot)
         return b + wide_string('')
 
 
