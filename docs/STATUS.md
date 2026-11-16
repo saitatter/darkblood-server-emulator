@@ -2,6 +2,30 @@
 
 Updated **November 16, 2026** (second session). Offline gameplay is not available yet; the client now reaches character creation and selection against the local server.
 
+## Tutorial skip and client data (saitatter machine, 2026-11-16, sixth session)
+
+1. **Skip-tutorial loop explained (static).** The 2083 path requests
+   `ChangeState(eAS_SquarePlay)`. `JAppStateSquarePlay` can-enter (`0x006FA540`)
+   requires player `+0xF0` (`nJoinLayerNetID`, copied from 2007 details `+0x5F`
+   by `0x0095A150`) to carry a loaded SquareID hash in its high dword. We sent 0,
+   so after 5 s `JAppStateMgr` fell back to the previous state: the tutorial
+   restarted. The emulator now sends `jhash("Act1") << 32 | 1` (DJB2 over
+   UTF-16LE, `0x00B3AD70`; `Act1` from `maplist.lua` `DictMap:LoadSquare`).
+   Details `+0x9C` is confirmed as the flag that picks Tutorial vs SquarePlay
+   after selection (`0x006F88C0`). 5046 `BACK_TO_SQUARE_ACK` schema recovered.
+   See PROTOCOL.md §7. Headless tests pass; **live confirmation pending.**
+2. **JPK encryption rule corrected.** Header byte `0x226` marks an encrypted
+   archive and the cipher covers every entry blob, not only XML/Lua. Older
+   extractions of encrypted archives (e.g. `research/all_extracted`) contain
+   still-encrypted textures/effects and 5,209 failed `.j` entries. With the
+   corrected reader 36,648 entries extract (6 placeholder failures). `tools/jpk_pack.py` rebuilds
+   archives byte-identically and can replace edited entries (client loading of
+   an edited archive not yet tested).
+3. **Private client-data workspace.** `tools/build_client_data.py` extracts all
+   archives into `../darkblood-client-data` (separate local Git repository, not
+   for publication) with a manifest and `tools/luac51_dump.py` listings of all
+   86 Lua 5.1 dict chunks.
+
 ## World entry reproduced (saitatter machine, 2026-11-16, 03:23)
 
 The Proud error 14 blocker is resolved. 2007's handler connects `JP2PClient`

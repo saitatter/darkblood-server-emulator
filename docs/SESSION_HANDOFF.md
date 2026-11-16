@@ -1,5 +1,25 @@
 # Session handoff ? 2026-11-16 (Cristian machine)
 
+## Update — saitatter machine, 2026-11-16 ~06:00 (sixth session)
+
+User report: "skip tutorial" restarted the tutorial. Cause found statically
+(PROTOCOL.md §7): SquarePlay can-enter `0x006FA540` rejected
+`nJoinLayerNetID` (2007 details `+0x5F` → player `+0xF0`) because we sent 0;
+`JAppStateMgr` then timed out (5 s) and returned to Tutorial. Fix: details
+`+0x5F = jhash("Act1") << 32 | 1`; 5046 `BACK_TO_SQUARE_ACK` now complete.
+Headless tests: 11/11 pass. **Not yet live-tested**: the user's own client
+(started 05:08) and server PID 43592 were still running, so nothing was
+stopped. Next live test: restart the server with this code, select a
+character (tutorial cleared or not), skip, and record the next requests the
+town sends; also check for the "invalid layer netid" message box.
+
+JPK correction: header byte `0x226` = encrypted flag; cipher covers whole
+blobs of every entry. New tools: `tools/build_client_data.py` (private
+workspace `../darkblood-client-data`, separate local Git repo — never push it
+publicly), `tools/jpk_pack.py` (byte-identical rebuild, entry replacement),
+`tools/luac51_dump.py` (Lua 5.1 constant listings). `research/all_extracted`
+was produced with the old rule and is partly still encrypted.
+
 ## Update — saitatter machine, 2026-11-16 03:55
 
 The "Unknown Internet address" blocker below is RESOLVED. The endpoint was the
