@@ -85,10 +85,13 @@ def load_opcodes_tsv() -> list:
         with open(tsv_path, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if not line or '\t' not in line:
+                if not line or line.startswith('#') or '\t' not in line:
                     continue
                 parts = line.split('\t', 1)
-                opcode_id = int(parts[0])
+                try:
+                    opcode_id = int(parts[0])
+                except ValueError:
+                    continue
                 name = parts[1]
                 domain = name.split('_')[0] if '_' in name else 'OTHER'
                 opcodes.append({
