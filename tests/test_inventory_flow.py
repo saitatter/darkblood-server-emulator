@@ -33,12 +33,12 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(ack2037[4], 0x10)  # tag 0x10 vector
 
             # 2. Equip item (2042 -> 2043)
-            client.send_event(2042, struct.pack('<qi', 1, 0))
+            client.send_event(2042, struct.pack('<iqi', 0x7FFFFFFF, 1, -1))  # live form: prefix + uid + slot
             _, ack2043 = await client.expect_event(2043)
             self.assertEqual(struct.unpack_from('<i', ack2043)[0], 0)
 
             # 2b. Unequip item via right click (2042 -> 2043)
-            client.send_event(2042, struct.pack('<qi', 1, 0))
+            client.send_event(2042, struct.pack('<iqi', 0x7FFFFFFF, 1, -1))  # live form: prefix + uid + slot
             _, ack2043_unequip = await client.expect_event(2043)
             self.assertEqual(struct.unpack_from('<i', ack2043_unequip)[0], 0)
             self.assertEqual(char['items'][0]['container'], 3)

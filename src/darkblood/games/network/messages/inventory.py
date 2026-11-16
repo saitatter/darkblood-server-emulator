@@ -166,15 +166,18 @@ class AssignQuickslotAck:
 class EquipItemReq:
     """Opcode 2042: eEGS_EQUIP_ITEM_REQ (0x00800000.c:500).
 
-    Wire format: i64 item_uid + i32 equip_slot (12 bytes).
+    Wire format: i64 item_uid + i32 equip_slot (12 bytes). The live client
+    (right-click equip, 2026-11-17) prepends the 0x7FFFFFFF prefix:
+    ffffff7f + i64 uid + i32 slot (-1 = pick by item), 16 bytes.
     """
     item_uid: int = 0
     equip_slot: int = 0
 
     @classmethod
     def decode(cls, data: bytes) -> 'EquipItemReq':
-        if len(data) >= 12:
-            item_uid, equip_slot = struct.unpack_from('<qi', data, 0)
+        offset = 4 if len(data) >= 16 and data[:4] == b'\xff\xff\xff\x7f' else 0
+        if len(data) >= offset + 12:
+            item_uid, equip_slot = struct.unpack_from('<qi', data, offset)
             return cls(item_uid=item_uid, equip_slot=equip_slot)
         return cls()
 
