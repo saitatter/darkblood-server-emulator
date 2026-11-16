@@ -20,6 +20,7 @@ from darkblood.games.network.messages import (
     GameplayDieCharAck,
     GameplayDieCharReq,
     GuideBeginnerUpdateReq,
+    LeaveRoomAck,
     MonsterDeadReq,
     PartyAcceptInviteAck,
     PartyAcceptInviteReq,
@@ -209,6 +210,12 @@ class DungeonHandlers:
                                         note='daily rebirth coin use ack (pcbang=%d +%d)' % (req.coin_type, granted))
         await self.transport.send_event(event(2286, RebirthCoinChangeNot(result=0, coins=coins).encode()),
                                         note='rebirth coin change not (%d)' % coins)
+
+    async def on_5005(self, correlation, body):
+        # eERC_LEAVE_ROOM_REQ (0x0058B240) -> 5006 eERC_LEAVE_ROOM_ACK (0x00598A00).
+        # Acknowledges leaving game room before eERC_BACK_TO_SQUARE_REQ (5045).
+        ack = LeaveRoomAck(result=0).encode()
+        await self.transport.send_event(event(5006, ack, correlation), note='leave room ack')
 
     async def on_5045(self, correlation, body):
         # eERC_BACK_TO_SQUARE_REQ (0x007A0000.c:8367) -> 5046 eERC_BACK_TO_SQUARE_ACK (0x007897F0).

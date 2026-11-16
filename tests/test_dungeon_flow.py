@@ -74,6 +74,11 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5091 = await client.expect_event(5091)
             self.assertEqual(struct.unpack_from('<iq', ack5091)[:2], (0, char['id']))
 
+            # 10b. Leave room (5005 -> 5006)
+            client.send_event(5005, b'')
+            _, ack5006 = await client.expect_event(5006)
+            self.assertEqual(struct.unpack_from('<i', ack5006)[0], 0)
+
             # 11. Back to square (5045 -> 5046)
             client.send_event(5045, struct.pack('<i', 0x7fffffff))
             _, ack5046 = await client.expect_event(5046)

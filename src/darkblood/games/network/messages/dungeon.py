@@ -290,3 +290,19 @@ class ChangeDungeonPenaltyNot:
 
     def encode(self) -> bytes:
         return struct.pack('<??hii', self.in_dungeon, self.is_penalty, self.penalty_level, self.penalty_id, self.duration)
+
+@dataclass
+class LeaveRoomReq:
+    """Opcode 5005: eERC_LEAVE_ROOM_REQ (0x0058B240)."""
+    @classmethod
+    def decode(cls, data: bytes) -> 'LeaveRoomReq':
+        return cls()
+
+@dataclass
+class LeaveRoomAck:
+    """Opcode 5006: eERC_LEAVE_ROOM_ACK (0x00598A00)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.result)
+

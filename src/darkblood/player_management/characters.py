@@ -99,21 +99,22 @@ def ensure_inventory(char):
 # SHOULDER, HELMET).
 ARMOR_SLOTS = {'Abod': 2, 'Aglo': 3, 'Asho': 4, 'Abel': 5, 'Ader': 6, 'Ahel': 13}
 WEAPON_RIGHT, WEAPON_LEFT = 0, 1
-OFFHAND_PREFIXES = ('Ashi', 'Abok')   # shield / book (LoadDefaultBody LWeapon)
+OFFHAND_PREFIXES = ('Ashi', 'Abok', 'Wshu', 'WTof')  # shield (Knight), book (Mage), shuriken (Thief), tonfa (Fighter)
 
 
 def equip_slot_for(code, taken):
     """Equipment slot for a default item, or None if it belongs in a bag.
 
-    Weapons fill the right hand first and then the left hand (LoadDefaultBody
-    RWeapon then RWeapon2/LWeapon). A shield or book takes the left hand. A
-    third weapon (Knight: sword, shield, mace) goes to the bag.
+    Main weapons take the right hand (Slot 0). Shields (Ashi), books (Abok),
+    and true dual-wield offhands (Thief shuriken Wshu, Fighter tonfa WTof)
+    take the left hand (Slot 1). Single-weapon classes (Warrior, Hunter, etc.)
+    never occupy Slot 1; alternate weapons (e.g. Warrior axe Waxew0000) go to the bag.
     """
     slot = ARMOR_SLOTS.get(code[:4])
     if slot is None and code.startswith(OFFHAND_PREFIXES):
         slot = WEAPON_LEFT
-    if slot is None and code.startswith('W'):
-        slot = next((s for s in (WEAPON_RIGHT, WEAPON_LEFT) if s not in taken), None)
+    elif slot is None and code.startswith('W'):
+        slot = WEAPON_RIGHT
     if slot is None or slot in taken:
         return None
     return slot

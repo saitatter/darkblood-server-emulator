@@ -41,7 +41,7 @@ class InventoryFlowTest(ServerTestCase):
             client.send_event(2042, struct.pack('<qi', 1, 0))
             _, ack2043_unequip = await client.expect_event(2043)
             self.assertEqual(struct.unpack_from('<i', ack2043_unequip)[0], 0)
-            self.assertEqual(char['items'][0]['container'], 2)
+            self.assertEqual(char['items'][0]['container'], 3)
 
             # 3. Use item (2038 -> 2039)
             client.send_event(2038, struct.pack('<qi', 1, 1))

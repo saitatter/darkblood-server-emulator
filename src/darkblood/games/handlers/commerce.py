@@ -130,9 +130,27 @@ class CommerceHandlers:
         old_container = dragged.get('container')
         old_slot = dragged.get('slot')
 
+        if req.to_container == 2:
+            ack = DragItemAck(result=1).encode()
+            await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (invalid container 2)')
+            return
+
+        if req.to_container == EQUIPPED:
+            code = dragged.get('code', '')
+            if not (code.startswith('A') or code.startswith('W')):
+                ack = DragItemAck(result=1).encode()
+                await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (item not equippable)')
+                return
+
         target = next((i for i in items if i.get('container') == req.to_container and i.get('slot') == req.to_slot), None)
         from darkblood.games.entities.items import Item
         if target and target is not dragged:
+            if old_container == EQUIPPED:
+                code = target.get('code', '')
+                if not (code.startswith('A') or code.startswith('W')):
+                    ack = DragItemAck(result=1).encode()
+                    await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (target not equippable)')
+                    return
             target['container'], target['slot'] = old_container, old_slot
             dragged['container'], dragged['slot'] = req.to_container, req.to_slot
             self.store().save()
@@ -220,13 +238,17 @@ class CommerceHandlers:
 
         if old_container == EQUIPPED:
             # Unequip action: move equipped item back to the first available bag slot
-            used_slots = {i.get('slot') for i in items if i.get('container') == 2}
-            bag = next((b for b in char.get('bags', []) if b.get('bag_id') == 2), None)
-            capacity = bag.get('b29', 30) if bag else 30
+            from darkblood.player_management.characters import INVENTORY_BAG_CONTAINER, DEFAULT_BAG_CAPACITY
+            bag_id = INVENTORY_BAG_CONTAINER
+            bag = next((b for b in char.get('bags', []) if b.get('bag_id') != EQUIPPED and b.get('bag_id') != 2), None)
+            if bag:
+                bag_id = bag.get('bag_id', INVENTORY_BAG_CONTAINER)
+            used_slots = {i.get('slot') for i in items if i.get('container') == bag_id}
+            capacity = bag.get('b29', DEFAULT_BAG_CAPACITY) if bag else DEFAULT_BAG_CAPACITY
             free_slot = next((s for s in range(capacity) if s not in used_slots), None)
             if free_slot is None:
                 free_slot = max(used_slots, default=-1) + 1
-            target_item['container'] = 2
+            target_item['container'] = bag_id
             target_item['slot'] = free_slot
             self.store().save()
             wire_items = [
@@ -235,7 +257,15 @@ class CommerceHandlers:
             ]
         else:
             # Equip action: move from bag to equipped slot
-            target_slot = req.equip_slot if req.equip_slot >= 0 else target_item.get('slot', 0)
+            from darkblood.player_management.characters import equip_slot_for
+            code = target_item.get('code', '')
+            if req.equip_slot >= 0:
+                target_slot = req.equip_slot
+            else:
+                taken = {i.get('slot') for i in items if i.get('container') == EQUIPPED}
+                target_slot = equip_slot_for(code, taken)
+                if target_slot is None:
+                    target_slot = 0 if code.startswith('W') else 0
             previous_equipped = next((i for i in items if i.get('container') == EQUIPPED and i.get('slot') == target_slot), None)
             if previous_equipped and previous_equipped is not target_item:
                 previous_equipped['container'] = old_container

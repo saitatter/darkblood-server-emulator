@@ -78,7 +78,7 @@ class DefaultEquipmentSlotTest(unittest.TestCase):
             taken.add(slot)
             slots[code] = slot
         self.assertEqual(slots, {'Abelw0002': 5, 'Abodw0002': 2, 'Aglow0001': 3, 'Ashow0001': 4,
-                                 'Ahelw0000': 13, 'Wlsww0001': 0, 'AderW1N': 6, 'Waxew0000': 1})
+                                 'Ahelw0000': 13, 'Wlsww0001': 0, 'AderW1N': 6, 'Waxew0000': None})
 
     def test_knight_third_weapon_goes_to_bag(self):
         from darkblood.player_management.characters import equip_slot_for
