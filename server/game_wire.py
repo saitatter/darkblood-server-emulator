@@ -310,6 +310,14 @@ class GameSession:
         ack = RouletteManagerInfoAck().encode()
         await self.transport.send_event(event(2391, ack, correlation), note='roulette manager info ack')
 
+    async def on_0(self, correlation, body):
+        # Application-level keepalive heartbeat sent by client periodically.
+        pass
+
+    async def on_2084(self, correlation, body):
+        # eEGS_CLEAR_OPENING_NOT: client notification that opening cinematic/sequence has ended.
+        pass
+
     async def on_2353(self, correlation, body):
         # eEGS_TUTORIAL_MONSTER_DEAD_NOT, sender 0x799E60: notification only.
         pass

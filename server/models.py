@@ -213,9 +213,10 @@ class Character:
         b += wide_string(self.name)
         b += struct.pack('<QQQ', 0, 0, self.id)
         b += struct.pack('<B', int(self.char_class))
-        b += struct.pack('<III', 0, 0, 0)
-        b += struct.pack('<B', 0)
-        b += struct.pack('<IQI', 0, 0, 0)
+        # Face, hair, and cosmetic parameter (Reader 0x00A52630 +0x35, +0x39, +0x3D)
+        b += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
+        b += struct.pack('<B', self.u09)
+        b += struct.pack('<IQI', self.u62, self.u66, self.u6e)
         b += struct.pack('<HHHH', 0, 0, 0, 0)
         # Sub-struct 0xa488f0: untagged 24 bytes
         b += (b'\x00' * 24)
