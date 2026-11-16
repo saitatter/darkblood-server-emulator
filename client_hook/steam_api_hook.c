@@ -417,11 +417,58 @@ static int BorderlessEnabled(void) {
     return g_borderless;
 }
 
+/* While borderless is active the window is pinned to the monitor. The game's
+ * windowed-mode logic (it now sees a windowed device) shrank the popup to fit
+ * the work area with the same aspect ratio. Live: 2560x1440 became 2474x1392,
+ * i.e. 1440 minus the 48 px taskbar. A subclass rewrites every move/resize and
+ * style change for that window back to the monitor rect and WS_POPUP. */
+static volatile LONG g_borderlessActive;
+static RECT g_monitorRect;
+static WNDPROC g_origWndProc;
+static HWND g_subclassedWindow;
+
+static LRESULT CALLBACK BorderlessWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    if (g_borderlessActive) {
+        if (msg == WM_WINDOWPOSCHANGING) {
+            WINDOWPOS* pos = (WINDOWPOS*)lp;
+            pos->x = g_monitorRect.left;
+            pos->y = g_monitorRect.top;
+            pos->cx = g_monitorRect.right - g_monitorRect.left;
+            pos->cy = g_monitorRect.bottom - g_monitorRect.top;
+            pos->flags &= ~(SWP_NOMOVE | SWP_NOSIZE);
+        } else if (msg == WM_STYLECHANGING && wp == (WPARAM)GWL_STYLE) {
+            STYLESTRUCT* st = (STYLESTRUCT*)lp;
+            st->styleNew = WS_POPUP | WS_VISIBLE | (st->styleNew & (WS_CLIPSIBLINGS | WS_CLIPCHILDREN));
+        }
+    }
+    return IsWindowUnicode(hwnd) ? CallWindowProcW(g_origWndProc, hwnd, msg, wp, lp)
+                                 : CallWindowProcA(g_origWndProc, hwnd, msg, wp, lp);
+}
+
+static void SubclassForBorderless(HWND hwnd) {
+    if (g_subclassedWindow == hwnd) return;
+    g_origWndProc = (WNDPROC)(IsWindowUnicode(hwnd)
+        ? SetWindowLongW(hwnd, GWL_WNDPROC, (LONG)BorderlessWndProc)
+        : SetWindowLongA(hwnd, GWL_WNDPROC, (LONG)BorderlessWndProc));
+    if (g_origWndProc) { g_subclassedWindow = hwnd; RawLog("[D3D9] borderless: window subclassed"); }
+}
+
 static void ApplyBorderless(PresentParams* pp, HWND focus) {
     HWND hwnd;
     MONITORINFO mi;
     int w, h;
-    if (!pp || pp->Windowed || !BorderlessEnabled()) return;
+    if (!pp || !BorderlessEnabled()) return;
+    if (pp->Windowed) {
+        /* A real windowed request ("Window Mode" checked): stop pinning. Our
+         * own converted requests are re-sent windowed by the game at the
+         * monitor size, so only turn off for a different size. */
+        if (g_borderlessActive && ((int)pp->BackBufferWidth != g_monitorRect.right - g_monitorRect.left ||
+                                   (int)pp->BackBufferHeight != g_monitorRect.bottom - g_monitorRect.top)) {
+            g_borderlessActive = 0;
+            RawLogFmt("[D3D9] borderless off: windowed %ux%u requested", pp->BackBufferWidth, pp->BackBufferHeight);
+        }
+        return;
+    }
     hwnd = pp->hDeviceWindow ? pp->hDeviceWindow : (focus ? focus : g_deviceWindow);
     if (!hwnd) return;
     g_deviceWindow = hwnd;
@@ -430,6 +477,9 @@ static void ApplyBorderless(PresentParams* pp, HWND focus) {
     w = mi.rcMonitor.right - mi.rcMonitor.left;
     h = mi.rcMonitor.bottom - mi.rcMonitor.top;
     RawLogFmt("[D3D9] borderless: fullscreen %ux%u -> windowed popup %dx%d", pp->BackBufferWidth, pp->BackBufferHeight, w, h);
+    g_monitorRect = mi.rcMonitor;
+    g_borderlessActive = 1;
+    SubclassForBorderless(hwnd);
     SetWindowLongA(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
     SetWindowLongA(hwnd, GWL_EXSTYLE, GetWindowLongA(hwnd, GWL_EXSTYLE) & ~(WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME));
     SetWindowPos(hwnd, HWND_NOTOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, w, h,

@@ -8,7 +8,9 @@ the old inline Direct3DCreate9 hook was removed in 634b1e8 because it broke laun
 For an exclusive fullscreen request it sets `Windowed=TRUE`, sets the back buffer to the monitor size, and makes the window `WS_POPUP` covering its monitor.
 Windowed mode is unchanged. `exclusive_fullscreen.txt` next to the exe disables the conversion.
 Live log: the saved option requested `Windowed=0 2560x1440`, which became a windowed popup 2560x1440; the window style was `0x94000000`.
-The window rect read from PowerShell was 2474x1392, which is unexplained (DPI virtualization of the reader, or a later resize by the game). Confirm on screen.
+Follow-up: the 2474x1392 rect was the game shrinking the window to the work area (1440 minus the 48 px taskbar, same aspect ratio).
+A window subclass now pins the window to the monitor rect (WM_WINDOWPOSCHANGING) and keeps WS_POPUP (WM_STYLECHANGING) while borderless is active.
+A windowed request at another size turns borderless off. Live: rect 0,0,2560,1440, style 0x94000000.
 The live check was stopped early because the test window opened under the user's foreground apps on the primary monitor.
 
 ## Return to the server list after a disconnect — saita machine, 2026-11-16 ~21:45 (live-verified)
