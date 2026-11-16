@@ -4,6 +4,7 @@ import struct
 from darkblood.core.serialization.jser import event
 from darkblood.games.config import SQUARES, square_entry
 from darkblood.games.entities.character import layer_net_id
+from darkblood.games.entities.items import Item
 from darkblood.games.network.messages import (
     BackToSquareAck,
     ClearTutorialAck,
@@ -22,14 +23,27 @@ class SquareHandlers:
         Client handler: 0x0077EEB0.
         Marks tutorial quest sequence as finished on character record, unlocking full
         town access, NPC interactions, and dungeon gates.
+
+        Body: i32 prefix + bool. The quest talk SQ0882S01c1 calls
+        On_Tutorial_Exit(true) and the skip button sends 0 (live: ffffff7f 00),
+        so the bool is read as "completed". The rewards come from
+        tutorialreward.lua (CompleteLoad / SkipLoad) and are granted once.
         """
+        completed = len(body) > 4 and body[4] != 0
         char_id = selected_character.get('id', 1)
         char = self.store().get(self.account, char_id)
+        items = []
         if char:
+            if not char.get('tutorial_cleared'):
+                from darkblood.games.game_data.client_dict import tutorial_rewards
+                from darkblood.player_management.characters import add_reward_items
+                rewards = tutorial_rewards()['complete' if completed else 'skip']
+                items = [Item(owner=char.get('id', -1), **i) for i in add_reward_items(char, rewards)]
             char['tutorial_cleared'] = True
             self.store().save()
-        ack = ClearTutorialAck().encode()
-        await self.transport.send_event(event(2083, ack, correlation), note='clear tutorial ack')
+        ack = ClearTutorialAck(elements=items).encode()
+        await self.transport.send_event(event(2083, ack, correlation),
+                                        note='clear tutorial ack (completed=%d, %d items)' % (completed, len(items)))
 
     async def handle_clear_opening(self, correlation: int, body: bytes):
         """Opcode 2084 (eEGS_CLEAR_OPENING_NOT): Cinematic intro complete."""

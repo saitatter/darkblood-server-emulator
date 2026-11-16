@@ -289,3 +289,24 @@ def item_durabilities():
 def item_max_durability(code: str):
     """Max durability of an equipment item, or None when the table lacks it."""
     return item_durabilities().get(code)
+
+
+TUTORIAL_REWARD_RE = re.compile(r'\{RewardItemAmount = (\d+), RewardItemID = "([^"]+)"\}')
+
+
+@lru_cache(maxsize=None)
+def tutorial_rewards():
+    """{'complete': [(item, n)], 'skip': [(item, n)]} from tutorialreward.lua
+    (DictTutorialReward:CompleteLoad / :SkipLoad)."""
+    out = {'complete': [], 'skip': []}
+    path = data_root() / 'tutorialreward.lua'
+    if not path.exists():
+        return out
+    text = path.read_text(encoding='utf-8', errors='replace')
+    for key, loader in (('complete', 'CompleteLoad'), ('skip', 'SkipLoad')):
+        start = text.find('DictTutorialReward:%s({' % loader)
+        if start == -1:
+            continue
+        end = text.find('}),', start)
+        out[key] = [(item, int(n)) for n, item in TUTORIAL_REWARD_RE.findall(text[start:end])]
+    return out

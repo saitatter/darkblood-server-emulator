@@ -146,7 +146,8 @@ class ClearTutorialAck:
     elements: list = field(default_factory=list)
 
     def encode(self) -> bytes:
-        return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.elements))
+        return (struct.pack('<I', self.result) + b'\x10' + varuint(len(self.elements))
+                + b''.join(item.encode() for item in self.elements))
 
 @dataclass
 class GuideBeginnerUpdateReq:

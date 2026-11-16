@@ -98,12 +98,20 @@ def add_reward_items(char, items):
     bags = [b['bag_id'] for b in char.get('bags', []) if b.get('bag_id') != EQUIP_CONTAINER]
     container = bags[0] if bags else -1
     used = {i['slot'] for i in char.get('items', []) if i.get('container') == container}
+    from darkblood.games.game_data.client_dict import item_max_durability
     stored = []
     for code, count in items:
-        for _ in range(max(1, int(count))):
+        count = max(1, int(count))
+        # Equipment (has a Durability entry) takes one slot per piece; other
+        # items are stored as one stack (Item +0 Amount). Stack limits are not
+        # recovered.
+        stacks = [1] * count if item_max_durability(code) is not None else [count]
+        for amount in stacks:
             slot = next(s for s in range(256) if s not in used)
             used.add(slot)
             record = dict(code=code, uid=next_item_uid(char), container=container, slot=slot)
+            if amount > 1:
+                record['count'] = amount
             char.setdefault('items', []).append(record)
             stored.append(record)
     return stored

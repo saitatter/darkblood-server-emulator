@@ -373,7 +373,7 @@ Following character selection and relay attachment, the client interacts with tu
 | `2131` (`eEGS_FRIEND_LIST_REQUEST_REQ`) | `0x007712E0` | `2132` (`eEGS_FRIEND_LIST_REQUEST_ACK`) | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
 | `2569` | `0x00772160` | `2570` | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
 | `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) | `0x0077EEB0` | `2083` (`eEGS_CLEAR_TUTORIAL_ACK`) | `u32 result` (0) + tag `0x10` reward vector (empty = `10 80`). `0x006DBFA0(9)` is a state **getter** (JAppStateTutorial), not a transition; its method `0x006E5CE0` sends 2084, sets SquarePlay `+0x75` and fades into `g_jAS_Tutorial:On_Tutorial_FadeOut()` (`0x006F2EC0`) → `ChangeState(eAS_SquarePlay)`. See §7. |
-| `2346` (`eEGS_TUTORIAL_QUEST_START_REQ`) | `0x006481E0` | `2347` (`eEGS_TUTORIAL_QUEST_START_ACK`) | `u32 result` (0) |
+| `2346` (`eEGS_TUTORIAL_QUEST_START_REQ`) | TalkBox `0x006481E0` | `2347` + `2074` | Request (`0x00799A60`): J-wstring tag + u32 quest id. 2347 is `u32 result` only. The server also sends 2074 to add the quest to the client's active list (hypothesis; see STATUS). |
 | `2390` (`eEGS_ROULETTE_MANAGER_INFO_REQ`) | `0x006CC6B0` | `2391` (`eEGS_ROULETTE_MANAGER_INFO_ACK`) | `u32 result` (0) + untagged 21 zero bytes (`0x00A48B80`) |
 | `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) | Sender `0x00799E60` | None | Notification sent on tutorial mob defeat |
 | `2352` (`eEGS_IP_ADDRESS_NOT`) | Sender `0x00930` | None | Notification broadcasting client network IP |

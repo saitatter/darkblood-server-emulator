@@ -19,6 +19,15 @@ from darkblood.games.network.messages import (
 from darkblood.games.state import selected_character
 
 
+def _quest_id_after_tag(body: bytes) -> int:
+    """2073/2346 bodies: J-wstring tag, then u32 quest id (0 if malformed)."""
+    try:
+        length, offset = read_varuint(body, 0)
+        return struct.unpack_from('<I', body, offset + length)[0]
+    except (WireError, struct.error):
+        return 0
+
+
 class QuestHandlers:
     """Quest start/complete and tutorial quests."""
 
@@ -29,26 +38,25 @@ class QuestHandlers:
         Decodes target quest ID hash, assigns new active quest UID, initializes
         objective counters, and persists in character's active quest list.
         """
-        quest_id = 0
-        try:
-            length, offset = read_varuint(body, 0)
-            quest_id = struct.unpack_from('<I', body, offset + length)[0]
-        except (WireError, struct.error):
-            pass
+        quest_id = _quest_id_after_tag(body)
+        uid = self._activate_quest(quest_id)
+        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
+        await self.transport.send_event(event(2074, ack, correlation),
+                                        note='quest start ack (%08x)' % quest_id)
+
+    def _activate_quest(self, quest_id: int) -> int:
+        """Add quest_id to the selected character's active quests; return its UID."""
         char = self.store().get(self.account, selected_character.get('id', 1))
         active = char.setdefault('quests_active', {}) if char else {}
         quests = {q: ActiveQuest.from_store(q, r) for q, r in active.items()}
         if str(quest_id) in quests:
-            uid = quests[str(quest_id)].uid
-        else:
-            uid = max([0] + [q.uid for q in quests.values()]) + 1
-            tracked = sum(q.tracked for q in quests.values()) < 5  # 0x00A60960
-            active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=[])
+            return quests[str(quest_id)].uid
+        uid = max([0] + [q.uid for q in quests.values()]) + 1
+        tracked = sum(q.tracked for q in quests.values()) < 5  # 0x00A60960
+        active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=[])
         if char:
             self.store().save()
-        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
-        await self.transport.send_event(event(2074, ack, correlation),
-                                        note='quest start ack (%08x)' % quest_id)
+        return uid
 
     async def handle_quest_complete(self, correlation: int, body: bytes):
         """Opcode 2076 (eEGS_QUEST_COMPLETE_REQ) -> 2077 (eEGS_QUEST_COMPLETE_ACK).
@@ -79,7 +87,7 @@ class QuestHandlers:
             char['u66'] = total
             char['gold'] = total
             from darkblood.games.game_data.client_dict import char_level_stat
-            char_class = char.get('class', 1)
+            char_class = int(char.get('char_class', 1))
             level = char.get('level', 1)
             char_exp = char.get('exp', 0) + exp
             while level < 60:
@@ -126,11 +134,22 @@ class QuestHandlers:
     async def handle_tutorial_quest_start(self, correlation: int, body: bytes):
         """Opcode 2346 (eEGS_TUTORIAL_QUEST_START_REQ) -> 2347 (eEGS_TUTORIAL_QUEST_START_ACK).
 
-        Client handler: 0x006481E0.
-        Acknowledge starting introductory tutorial quest series.
+        Sender: JBehaviorQuestStart (0x0089B020 -> 0x00799A60), a map trigger,
+        writes J-wstring tag + u32 quest id (live: "2015-02-23 15:42:11, " +
+        jhash('Q0882S01')). The 2347 reader (TalkBox 0x006481E0) only checks
+        the result, and only the 2074 reader (0x00659790 -> 0x00A60960) adds
+        a quest to the client's active list. Without it the tutorial NPC
+        (0mok01n2) never offered the closing talk SQ0882S01c1
+        (CompleteQuest + On_Tutorial_Exit(true)). The server therefore also
+        sends 2074 for the quest. This is a hypothesis; a live run is pending.
         """
+        quest_id = _quest_id_after_tag(body)
+        uid = self._activate_quest(quest_id)
         ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
+        start = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
+        await self.transport.send_event(event(2074, start),
+                                        note='tutorial quest start -> quest start ack (%08x)' % quest_id)
 
     async def handle_quest_giveup(self, correlation: int, body: bytes):
         """Opcode 2078 (eEGS_QUEST_GIVEUP_REQ) -> 2079 (eEGS_QUEST_GIVEUP_ACK).

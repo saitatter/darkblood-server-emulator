@@ -56,9 +56,10 @@ class InventoryFlowTest(ServerTestCase):
             client.send_event(2028, struct.pack('<iq', 0x7fffffff, 2))
 
             # 7. Assign quickslot (2044 -> 2045)
-            client.send_event(2044, struct.pack('<BBiq', 0, 1, 12345, 1))
+            # Live body: prefix + type 1, slot 1, ref 0x19a, ref_uid -1.
+            client.send_event(2044, bytes.fromhex('ffffff7f01019a010000ffffffffffffffff'))
             _, ack2045 = await client.expect_event(2045)
-            self.assertEqual(struct.unpack_from('<iBBiq', ack2045), (0, 0, 1, 12345, 1))
+            self.assertEqual(struct.unpack_from('<iBBiq', ack2045), (0, 1, 1, 0x19a, -1))
 
             # 8. Switch quickslot (2046 -> 2047)
             client.send_event(2046, struct.pack('<BBB', 0, 0, 1))

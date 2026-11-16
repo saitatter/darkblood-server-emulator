@@ -123,10 +123,13 @@ class UseItemAck:
 
 @dataclass
 class AssignQuickslotReq:
-    """Opcode 2044: eEGS_ASSIGN_QUICKSLOT_REQ (0x00780000.c:8513).
+    """Opcode 2044: eEGS_ASSIGN_QUICKSLOT_REQ (writer 0x0078C2E0..: u8, u8, u32, u64).
 
-    Wire format: u8 ucType + u8 ucSlotNum + i32 nRefID + i64 nRefUID (14 bytes).
+    Wire format: i32 prefix (0x7FFFFFFF) + u8 ucType + u8 ucSlotNum + i32 nRefID
+    + i64 nRefUID (18 bytes). Observed live: ffffff7f 01 01 9a010000 ffff..ff.
+    Decoding from offset 0 (without the prefix) stored type/slot 255.
     """
+    prefix: int = 0x7FFFFFFF
     slot_type: int = 0
     slot_num: int = 0
     ref_id: int = 0
@@ -134,9 +137,9 @@ class AssignQuickslotReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'AssignQuickslotReq':
-        if len(data) >= 14:
-            stype, snum, rid, ruid = struct.unpack_from('<BBiq', data, 0)
-            return cls(slot_type=stype, slot_num=snum, ref_id=rid, ref_uid=ruid)
+        if len(data) >= 18:
+            prefix, stype, snum, rid, ruid = struct.unpack_from('<iBBiq', data, 0)
+            return cls(prefix=prefix, slot_type=stype, slot_num=snum, ref_id=rid, ref_uid=ruid)
         return cls()
 
 @dataclass

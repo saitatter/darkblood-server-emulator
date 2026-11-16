@@ -1,5 +1,21 @@
 # Research status and handoff
 
+## Log review: quickslots, tutorial completion, level-up class — saita machine, 2026-11-16 ~21:10
+
+Source: wire log of the 20:56-21:05 session (new character, tutorial). Static + headless; live retest pending.
+- The repeated connect/disconnect pairs every 4 s are `tools/dashboard.py` health probes (auto-refresh). They are harmless.
+- 2044 quickslot: the live body is `ffffff7f` + u8 type + u8 slot + u32 ref + u64 ref_uid (18 bytes). The decoder read from
+  offset 0, so it stored and echoed type/slot 255. Fixed.
+- Tutorial never finished (the same pattern appears in the 05:00 session): the map trigger JBehaviorQuestStart (`0x0089B020`) sends 2346
+  for `Q0882S01` (`0x34C58E7C`). Its missions are QM788/QM789 (targets 71/72, x2 each), and the closing NPC is `0mok01n2` (`0xEAEC51BD`, met at 21:04:12).
+  The talk `SQ0882S01c1` runs `CompleteQuest('Q0882S01'); On_Tutorial_Exit(true)`. The 2347 reader (TalkBox `0x006481E0`) only checks the
+  result, and only 2074 (`0x00659790` -> `0x00A60960`) adds a quest to the client's active list. The server now stores the quest and also
+  sends 2074 after 2347. This is a hypothesis: confirm that the NPC offers the closing talk and that 2076 + 2082 follow.
+- 2082 bool is read as "completed" (Exit(true) from the closing talk; the skip button sends 0). 2083 now carries the tutorialreward.lua
+  items: CompleteLoad on completion, SkipLoad on skip, once per character. Reward potions are stored as one stack (Item Amount);
+  equipment still takes one slot per piece.
+- The quest-complete level-up read `char['class']`, but the key is `char_class`, so every class used the Warrior's level thresholds. Fixed.
+
 ## Legacy and migration code removed, data reset — saita machine, 2026-11-16
 
 At the user's request, there is no legacy or migration code before the first release:
