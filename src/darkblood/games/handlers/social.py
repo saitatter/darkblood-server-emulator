@@ -498,6 +498,53 @@ class SocialHandlers:
         ack = RequestItemInfoAck(result=0, item_uid=req.item_uid).encode()
         await self.transport.send_event(event(6029, ack, correlation), note=f'request item info ack (item={req.item_uid})')
 
+    async def on_2179(self, correlation, body):
+        # eEGS_GUILD_MONEY_IN_REQ -> 2180 eEGS_GUILD_MONEY_IN_ACK (0x00794250).
+        from darkblood.games.network.messages import GuildMoneyInAck, GuildMoneyInReq
+        req = GuildMoneyInReq.decode(body)
+        self.transport.record('guild-money-in-req', body, amount=req.amount)
+        ack = GuildMoneyInAck(result=0, remain_gold=req.amount).encode()
+        await self.transport.send_event(event(2180, ack, correlation), note=f'guild money in ack (amount={req.amount})')
+
+    async def on_2181(self, correlation, body):
+        # eEGS_GUILD_MONEY_OUT_REQ -> 2182 eEGS_GUILD_MONEY_OUT_ACK (0x00794470).
+        from darkblood.games.network.messages import GuildMoneyOutAck, GuildMoneyOutReq
+        req = GuildMoneyOutReq.decode(body)
+        self.transport.record('guild-money-out-req', body, amount=req.amount)
+        ack = GuildMoneyOutAck(result=0, remain_gold=req.amount).encode()
+        await self.transport.send_event(event(2182, ack, correlation), note=f'guild money out ack (amount={req.amount})')
+
+    async def on_2164(self, correlation, body):
+        # eEGS_GUILD_PERSON_GRADE_MODIFY_REQ -> 2165 eEGS_GUILD_PERSON_GRADE_MODIFY_ACK (0x00753170).
+        from darkblood.games.network.messages import GuildPersonGradeModifyAck, GuildPersonGradeModifyReq
+        req = GuildPersonGradeModifyReq.decode(body)
+        self.transport.record('guild-person-grade-modify-req', body, member_uid=req.member_uid, new_grade=req.new_grade)
+        ack = GuildPersonGradeModifyAck(result=0, member_uid=req.member_uid, new_grade=req.new_grade).encode()
+        await self.transport.send_event(event(2165, ack, correlation), note=f'guild person grade modify ack (member={req.member_uid})')
+
+    async def on_2183(self, correlation, body):
+        # eEGS_GUILD_LEVEL_UP_REQ -> 2184 eEGS_GUILD_LEVEL_UP_ACK (0x00753380).
+        from darkblood.games.network.messages import GuildLevelUpAck
+        ack = GuildLevelUpAck(result=0, new_level=2).encode()
+        await self.transport.send_event(event(2184, ack, correlation), note='guild level up ack')
+
+    async def on_2185(self, correlation, body):
+        # eEGS_GUILD_NOTICE_MODIFY_REQ -> 2186 eEGS_GUILD_NOTICE_MODIFY_ACK (0x0075A120).
+        from darkblood.games.network.messages import GuildNoticeModifyAck, GuildNoticeModifyReq
+        req = GuildNoticeModifyReq.decode(body)
+        self.transport.record('guild-notice-modify-req', body, notice=req.notice)
+        ack = GuildNoticeModifyAck(result=0).encode()
+        await self.transport.send_event(event(2186, ack, correlation), note='guild notice modify ack')
+
+    async def on_2234(self, correlation, body):
+        # eEGS_POST_RETURN_REQ -> 2235 eEGS_POST_RETURN_ACK (0x00771470).
+        from darkblood.games.network.messages import PostReturnAck, PostReturnReq
+        req = PostReturnReq.decode(body)
+        self.transport.record('post-return-req', body, mail_id=req.mail_id)
+        ack = PostReturnAck(result=0).encode()
+        await self.transport.send_event(event(2235, ack, correlation), note=f'post return ack (mail={req.mail_id})')
+
+
 
 
 

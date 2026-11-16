@@ -222,6 +222,26 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2710 = await client.expect_event(2710)
             self.assertEqual(struct.unpack_from('<i', ack2710[:4])[0], 0)
 
+            # 40. Divide item (2250 -> 2251)
+            client.send_event(2250, struct.pack('<qqih', 1, 0, 5, 2))
+            _, ack2251 = await client.expect_event(2251)
+            self.assertEqual(struct.unpack_from('<i', ack2251[:4])[0], 0)
+
+            # 41. Use learn skill item (2111 -> 2112)
+            client.send_event(2111, struct.pack('<qh', 1, 105))
+            _, ack2112 = await client.expect_event(2112)
+            self.assertEqual(struct.unpack_from('<i', ack2112[:4])[0], 0)
+
+            # 42. Depot save AR (2228 -> 2229)
+            client.send_event(2228, struct.pack('<q', 10000))
+            _, ack2229 = await client.expect_event(2229)
+            self.assertEqual(struct.unpack_from('<i', ack2229[:4])[0], 0)
+
+            # 43. Depot load AR (2230 -> 2231)
+            client.send_event(2230, struct.pack('<q', 5000))
+            _, ack2231 = await client.expect_event(2231)
+            self.assertEqual(struct.unpack_from('<i', ack2231[:4])[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

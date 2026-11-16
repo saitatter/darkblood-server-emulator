@@ -561,6 +561,84 @@ class WireMessagesTest(unittest.TestCase):
         ack_i = messages.RequestItemInfoAck(result=0, item_uid=456).encode()
         self.assertEqual(struct.unpack_from('<iq', ack_i[:12]), (0, 456))
 
+    def test_guild_banking_and_level_up_messages(self):
+        req_in = messages.GuildMoneyInReq.decode(struct.pack('<q', 5000))
+        self.assertEqual(req_in.amount, 5000)
+        ack_in = messages.GuildMoneyInAck(result=0, remain_gold=5000).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_in), (0, 5000))
+
+        req_out = messages.GuildMoneyOutReq.decode(struct.pack('<q', 2000))
+        self.assertEqual(req_out.amount, 2000)
+        ack_out = messages.GuildMoneyOutAck(result=0, remain_gold=3000).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_out), (0, 3000))
+
+        req_grade = messages.GuildPersonGradeModifyReq.decode(struct.pack('<qh', 888, 3))
+        self.assertEqual((req_grade.member_uid, req_grade.new_grade), (888, 3))
+        ack_grade = messages.GuildPersonGradeModifyAck(result=0, member_uid=888, new_grade=3).encode()
+        self.assertEqual(struct.unpack_from('<iqh', ack_grade), (0, 888, 3))
+
+        req_lvl = messages.GuildLevelUpReq.decode(b'')
+        self.assertIsInstance(req_lvl, messages.GuildLevelUpReq)
+        ack_lvl = messages.GuildLevelUpAck(result=0, new_level=3).encode()
+        self.assertEqual(struct.unpack_from('<ih', ack_lvl), (0, 3))
+
+        notice_bytes = 'Guild Notice'.encode('utf-16le') + b'\x00\x00'
+        req_not = messages.GuildNoticeModifyReq.decode(notice_bytes)
+        self.assertEqual(req_not.notice, 'Guild Notice')
+        ack_not = messages.GuildNoticeModifyAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_not), (0,))
+
+        not_skill = messages.GuildSkillNot(flag=True).encode()
+        self.assertEqual(not_skill, b'\x01\x10\x80')
+
+    def test_depot_and_item_split_messages(self):
+        req_div = messages.DivideItemReq.decode(struct.pack('<qqih', 10, 0, 5, 2))
+        self.assertEqual((req_div.source_item_uid, req_div.count, req_div.slot), (10, 5, 2))
+        ack_div = messages.DivideItemAck(result=0, items=[]).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_div[:4])[0], 0)
+
+        req_lskill = messages.UseLearnSkillItemReq.decode(struct.pack('<qh', 99, 105))
+        self.assertEqual((req_lskill.item_uid, req_lskill.skill_id), (99, 105))
+        ack_lskill = messages.UseLearnSkillItemAck(result=0, skill_id=105, skill_level=1, item_code=50, count=1, sp=15).encode()
+        self.assertEqual(struct.unpack_from('<ihBii', ack_lskill[:15]), (0, 105, 1, 50, 1))
+
+        not_inven = messages.InventoryUpdatedNot().encode()
+        self.assertEqual(not_inven, b'\x10\x80\x10\x80')
+
+        not_time = messages.ItemRemainTimeNot(item_uid=123, remain_seconds=3600).encode()
+        self.assertEqual(struct.unpack_from('<qq', not_time), (123, 3600))
+
+        not_del = messages.ItemDeleteNot(item_uid=123).encode()
+        self.assertEqual(struct.unpack_from('<q', not_del), (123,))
+
+        req_dsave = messages.DepotSaveArReq.decode(struct.pack('<q', 10000))
+        self.assertEqual(req_dsave.gold, 10000)
+        ack_dsave = messages.DepotSaveArAck(result=0, new_gold=10000).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_dsave[:4])[0], 0)
+
+        req_dload = messages.DepotLoadArReq.decode(struct.pack('<q', 5000))
+        self.assertEqual(req_dload.gold, 5000)
+        ack_dload = messages.DepotLoadArAck(result=0, new_gold=5000).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_dload[:4])[0], 0)
+
+        not_mail = messages.PostNewArrivalNot().encode()
+        self.assertEqual(not_mail, b'')
+
+        req_pret = messages.PostReturnReq.decode(struct.pack('<q', 777))
+        self.assertEqual(req_pret.mail_id, 777)
+        ack_pret = messages.PostReturnAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', ack_pret[:4])[0], 0)
+
+    def test_combat_ap_and_randombox_messages(self):
+        not_ap = messages.InsertApNot(current_ap=50, total_ap=150).encode()
+        self.assertEqual(struct.unpack_from('<ii', not_ap), (50, 150))
+
+        not_pen = messages.ChangeDungeonPenaltyNot(in_dungeon=True, is_penalty=True, penalty_level=2, penalty_id=10, duration=60).encode()
+        self.assertEqual(struct.unpack_from('<??hii', not_pen), (True, True, 2, 10, 60))
+
+        not_rbox = messages.RandomboxResultItemNot(result=0, item_code=5001, count=3, is_jackpot=True).encode()
+        self.assertEqual(struct.unpack_from('<iih?', not_rbox), (0, 5001, 3, True))
+
 
 
 

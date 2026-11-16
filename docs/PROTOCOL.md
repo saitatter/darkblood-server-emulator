@@ -556,6 +556,44 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `char_uid: i64` -> `result: i32 (0), flag: bool, tag 0x1E summary, 2x tag 0x10 item vectors`.
 - `6028 eERT_REQUEST_ITEM_INFO_REQ` -> `6029 eERT_REQUEST_ITEM_INFO_ACK` (`0x00766C20`):
   `item_uid: i64` -> `result: i32 (0), item_uid: i64, tag 0x1E item struct`.
+- `2250 eEGS_DIVIDE_ITEM_REQ` -> `2251 eEGS_DIVIDE_ITEM_ACK` (`0x0077F570`):
+  `source_item_uid: i64, dest_item_uid: i64, count: i32, slot: i16` -> `result: i32 (0), items: tag 0x10 vector`.
+- `2111 eEGS_USE_LEARN_SKILL_ITEM_REQ` -> `2112 eEGS_USE_LEARN_SKILL_ITEM_ACK` (`0x0078BCD0`):
+  `item_uid: i64, skill_id: i16` -> `result: i32 (0), skill_id: i16, level: u8, item_code: i32, count: i32, items: tag 0x10 vector, sp: i32`.
+- `2092 eEGS_INVENTORY_UPDATED_NOT` (`0x0077F070`):
+  Tag `0x10` deleted_items + Tag `0x10` added_items: live bag refresh.
+- `2321 eEGS_ITEM_REMAIN_TIME_NOT` (`0x0077AED0`):
+  `item_uid: i64, remain_seconds: i64`.
+- `2322 eEGS_ITEM_DELETE_NOT` (`0x00774DD0`):
+  `item_uid: i64`.
+- `2179 eEGS_GUILD_MONEY_IN_REQ` -> `2180 eEGS_GUILD_MONEY_IN_ACK` (`0x00794250`):
+  `amount: i64` -> `result: i32 (0), remain_gold: i64`.
+- `2181 eEGS_GUILD_MONEY_OUT_REQ` -> `2182 eEGS_GUILD_MONEY_OUT_ACK` (`0x00794470`):
+  `amount: i64` -> `result: i32 (0), remain_gold: i64`.
+- `2157 eEGS_GUILD_INFO_NOT` (`0x00752FF0`) & `2158 eEGS_GUILD_PERSON_LIST_NOT` (`0x0077ABA0`):
+  Guild summary (Tag `0x1E`) and guild roster (Tag `0x10`).
+- `2164 eEGS_GUILD_PERSON_GRADE_MODIFY_REQ` -> `2165 eEGS_GUILD_PERSON_GRADE_MODIFY_ACK` (`0x00753170`):
+  `member_uid: i64, new_grade: i16` -> `result: i32 (0), member_uid: i64, new_grade: i16`.
+- `2183 eEGS_GUILD_LEVEL_UP_REQ` -> `2184 eEGS_GUILD_LEVEL_UP_ACK` (`0x00753380`):
+  empty -> `result: i32 (0), new_level: i16`.
+- `2185 eEGS_GUILD_NOTICE_MODIFY_REQ` -> `2186 eEGS_GUILD_NOTICE_MODIFY_ACK` (`0x0075A120`):
+  `notice: wstring` -> `result: i32 (0)`.
+- `2205 eEGS_GUILD_SKILL_NOT` (`0x00779390`):
+  `flag: bool, tag 0x10 vector`.
+- `2228 eEGS_DEPOT_SAVE_AR_REQ` -> `2229 eEGS_DEPOT_SAVE_AR_ACK` (`0x00795220`):
+  `gold: i64` -> `result: i32 (0), tag 0x17 map, new_gold: i64`.
+- `2230 eEGS_DEPOT_LOAD_AR_REQ` -> `2231 eEGS_DEPOT_LOAD_AR_ACK` (`0x00795490`):
+  `gold: i64` -> `result: i32 (0), tag 0x17 map, new_gold: i64`.
+- `2227 eEGS_POST_NEW_ARRIVAL_NOT` (`0x007965B0`):
+  empty -> HUD mail notification icon.
+- `2234 eEGS_POST_RETURN_REQ` -> `2235 eEGS_POST_RETURN_ACK` (`0x00771470`):
+  `mail_id: i64` -> `result: i32 (0), tag 0x10 vector`.
+- `2109 eEGS_INSERT_AP_NOT` (`0x00790480`):
+  `current_ap: i32, total_ap: i32`.
+- `2085 eEGS_CHANGE_DUNGEON_PENALTY_NOT` (`0x0078FA70`):
+  `in_dungeon: bool, is_penalty: bool, penalty_level: i16, penalty_id: i32, duration: i32`.
+- `2196 eEGS_RANDOMBOX_RESULT_ITEM_NOT` (`0x0075A2E0`):
+  `result: i32 (0), item_code: i32, count: i16, is_jackpot: bool`.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 

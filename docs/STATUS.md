@@ -1,5 +1,29 @@
 # Research status and handoff
 
+## Guild Banking, Level Up, Item Splitting & Storage Depot — 2026-11-16 ~21:30
+
+* **Guild Banking, Grade & Level-Up System (Opcodes 2157 - 2158, 2164 - 2165, 2179 - 2186, 2205)**:
+  - Reverse engineered `0x00752FF0` (`GuildInfoNot`), `0x0077ABA0` (`GuildPersonListNot`), `0x00794250` (`GuildMoneyInAck`), `0x00794470` (`GuildMoneyOutAck`), `0x00753170` (`GuildPersonGradeModifyAck`), `0x00753380` (`GuildLevelUpAck`), `0x0075A120` (`GuildNoticeModifyAck`), and `0x00779390` (`GuildSkillNot`).
+  - Wire serialization: `GuildMoneyInReq/Ack` (i64 amount -> u32 result, i64 remain_gold), `GuildMoneyOutReq/Ack`, `GuildPersonGradeModifyReq/Ack` (i64 member_uid, i16 new_grade), `GuildLevelUpReq/Ack` (i16 new_level), `GuildNoticeModifyReq/Ack` (wstring notice), and `GuildSkillNot` (bool flag, Tag 0x10 skills vector).
+  - Wired domain handlers `on_2179`, `on_2181`, `on_2164`, `on_2183`, `on_2185` in `social.py`.
+  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
+* **Personal Storage Depot & Mail Return (Opcodes 2227 - 2231, 2234 - 2235)**:
+  - Reverse engineered `0x00795220` (`DepotSaveArAck`), `0x00795490` (`DepotLoadArAck`), `0x007965B0` (`PostNewArrivalNot`), and `0x00771470` (`PostReturnAck`).
+  - Wire serialization: `DepotSaveArReq/Ack` (i64 gold -> u32 result, Tag 0x17 map, i64 new_storage_gold), `DepotLoadArReq/Ack`, `PostNewArrivalNot` (empty notification), and `PostReturnReq/Ack` (i64 mail_id -> u32 result, Tag 0x10 vector).
+  - Wired domain handlers `on_2228`, `on_2230` in `commerce.py` and `on_2234` in `social.py`.
+  - Verified in `tests/test_inventory_flow.py`, `tests/test_social_flow.py`, and `tests/test_wire_messages.py`.
+* **Item Stack Splitting, Skill Books & Inventory Refresh (Opcodes 2092, 2111 - 2112, 2250 - 2251, 2321 - 2322)**:
+  - Reverse engineered `0x0077F570` (`DivideItemAck`), `0x0078BCD0` (`UseLearnSkillItemAck`), `0x0077F070` (`InventoryUpdatedNot`), `0x0077AED0` (`ItemRemainTimeNot`), and `0x00774DD0` (`ItemDeleteNot`).
+  - Wire serialization: `DivideItemReq/Ack` (i64 source_uid, i64 dest_uid, i32 count, i16 slot -> u32 result, Tag 0x10 items), `UseLearnSkillItemReq/Ack` (i64 item_uid, i16 skill_id -> u32 result, i16 skill_id, u8 level, i32 item_code, i32 count, Tag 0x10 items, i32 sp), and `InventoryUpdatedNot` (Tag 0x10 deleted + Tag 0x10 added).
+  - Wired domain handlers `on_2250` and `on_2111` in `commerce.py`.
+  - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
+* **Combat AP, Dungeon Penalty & Random Box (Opcodes 2085, 2109, 2196)**:
+  - Reverse engineered `0x0078FA70` (`ChangeDungeonPenaltyNot`), `0x00790480` (`InsertApNot`), and `0x0075A2E0` (`RandomboxResultItemNot`).
+  - Wire serialization: `InsertApNot` (i32 current_ap, i32 total_ap), `ChangeDungeonPenaltyNot` (bool in_dungeon, bool is_penalty, i16 level, i32 id, i32 duration), and `RandomboxResultItemNot` (u32 result, i32 item_code, i16 count, bool is_jackpot).
+  - Verified in `tests/test_wire_messages.py`.
+* **72/72 unit and flow tests passing cleanly** across all test modules in ~1.33s.
+
+
 ## Titles, Achievements, Avatar Zam Socketing, Security & Inspection — 2026-11-16 ~21:15
 
 * **Titles & Achievements System (Opcodes 2327 - 2336)**:

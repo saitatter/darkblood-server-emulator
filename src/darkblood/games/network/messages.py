@@ -2008,7 +2008,7 @@ class GuildNoticeModifyReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'GuildNoticeModifyReq':
-        return cls(notice=data.decode('utf-16le', errors='replace'))
+        return cls(notice=data.decode('utf-16le', errors='replace').rstrip('\x00'))
 
 
 @dataclass
@@ -3377,6 +3377,284 @@ class RequestItemInfoAck:
             return struct.pack('<i', self.result) + struct.pack('<q', self.item_uid)
         item_dummy = b'\x00' * 16
         return struct.pack('<iq', self.result, self.item_uid) + b'\x1e' + item_dummy
+
+
+# =========================================================================
+# Item Operations & Stack Splitting (2092, 2111-2112, 2250-2251, 2321-2322)
+# =========================================================================
+
+@dataclass
+class DivideItemReq:
+    """Opcode 2250: eEGS_DIVIDE_ITEM_REQ (0x00795B83)."""
+    source_item_uid: int = 0
+    dest_item_uid: int = 0
+    count: int = 1
+    slot: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DivideItemReq':
+        if len(data) >= 22:
+            s_uid, d_uid, cnt, s = struct.unpack_from('<qqih', data, 0)
+            return cls(source_item_uid=s_uid, dest_item_uid=d_uid, count=cnt, slot=s)
+        return cls()
+
+
+@dataclass
+class DivideItemAck:
+    """Opcode 2251: eEGS_DIVIDE_ITEM_ACK (0x0077F570)."""
+    result: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<i', self.result)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
+class UseLearnSkillItemReq:
+    """Opcode 2111: eEGS_USE_LEARN_SKILL_ITEM_REQ."""
+    item_uid: int = 0
+    skill_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UseLearnSkillItemReq':
+        if len(data) >= 10:
+            item_uid, skill_id = struct.unpack_from('<qh', data, 0)
+            return cls(item_uid=item_uid, skill_id=skill_id)
+        return cls()
+
+
+@dataclass
+class UseLearnSkillItemAck:
+    """Opcode 2112: eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0)."""
+    result: int = 0
+    skill_id: int = 0
+    skill_level: int = 1
+    item_code: int = 0
+    count: int = 1
+    items: list = field(default_factory=list)
+    sp: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<ihBii', self.result, self.skill_id, self.skill_level, self.item_code, self.count)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(i.encode() for i in self.items)
+                + struct.pack('<i', self.sp))
+
+
+@dataclass
+class InventoryUpdatedNot:
+    """Opcode 2092: eEGS_INVENTORY_UPDATED_NOT (0x0077F070)."""
+    def encode(self) -> bytes:
+        # Tag 0x10 deleted_items + Tag 0x10 added_items
+        return b'\x10\x80\x10\x80'
+
+
+@dataclass
+class ItemRemainTimeNot:
+    """Opcode 2321: eEGS_ITEM_REMAIN_TIME_NOT (0x0077AED0)."""
+    item_uid: int = 0
+    remain_seconds: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<qq', self.item_uid, self.remain_seconds)
+
+
+@dataclass
+class ItemDeleteNot:
+    """Opcode 2322: eEGS_ITEM_DELETE_NOT (0x00774DD0)."""
+    item_uid: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<q', self.item_uid)
+
+
+# =========================================================================
+# Guild Banking, Level Up & Skills (2157-2158, 2164-2165, 2179-2186, 2205)
+# =========================================================================
+
+@dataclass
+class GuildInfoNot:
+    """Opcode 2157: eEGS_GUILD_INFO_NOT (0x00752FF0)."""
+    def encode(self) -> bytes:
+        # Tag 0x1E + dummy guild struct
+        return b'\x1e' + b'\x00' * 64
+
+
+@dataclass
+class GuildPersonListNot:
+    """Opcode 2158: eEGS_GUILD_PERSON_LIST_NOT (0x0077ABA0)."""
+    def encode(self) -> bytes:
+        # Tag 0x10 vector of guild members
+        return b'\x10\x80'
+
+
+@dataclass
+class GuildPersonGradeModifyReq:
+    """Opcode 2164: eEGS_GUILD_PERSON_GRADE_MODIFY_REQ."""
+    member_uid: int = 0
+    new_grade: int = 1
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'GuildPersonGradeModifyReq':
+        if len(data) >= 10:
+            member_uid, new_grade = struct.unpack_from('<qh', data, 0)
+            return cls(member_uid=member_uid, new_grade=new_grade)
+        return cls()
+
+
+@dataclass
+class GuildPersonGradeModifyAck:
+    """Opcode 2165: eEGS_GUILD_PERSON_GRADE_MODIFY_ACK (0x00753170)."""
+    result: int = 0
+    member_uid: int = 0
+    new_grade: int = 1
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<iqh', self.result, self.member_uid, self.new_grade)
+
+
+@dataclass
+class GuildSkillNot:
+    """Opcode 2205: eEGS_GUILD_SKILL_NOT (0x00779390)."""
+    flag: bool = False
+
+    def encode(self) -> bytes:
+        # bool flag + Tag 0x10 vector
+        return (b'\x01' if self.flag else b'\x00') + b'\x10\x80'
+
+
+# =========================================================================
+# Storage / Depot & Mailbox Notifications (2227-2231, 2234-2235)
+# =========================================================================
+
+@dataclass
+class DepotSaveArReq:
+    """Opcode 2228: eEGS_DEPOT_SAVE_AR_REQ."""
+    gold: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DepotSaveArReq':
+        if len(data) >= 8:
+            return cls(gold=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class DepotSaveArAck:
+    """Opcode 2229: eEGS_DEPOT_SAVE_AR_ACK (0x00795220)."""
+    result: int = 0
+    new_gold: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        # result (u32) + Tag 0x17 map + i64 new_storage_gold
+        return struct.pack('<i', self.result) + b'\x17\x80' + struct.pack('<q', self.new_gold)
+
+
+@dataclass
+class DepotLoadArReq:
+    """Opcode 2230: eEGS_DEPOT_LOAD_AR_REQ."""
+    gold: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DepotLoadArReq':
+        if len(data) >= 8:
+            return cls(gold=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class DepotLoadArAck:
+    """Opcode 2231: eEGS_DEPOT_LOAD_AR_ACK (0x00795490)."""
+    result: int = 0
+    new_gold: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        # result (u32) + Tag 0x17 map + i64 new_storage_gold
+        return struct.pack('<i', self.result) + b'\x17\x80' + struct.pack('<q', self.new_gold)
+
+
+@dataclass
+class PostNewArrivalNot:
+    """Opcode 2227: eEGS_POST_NEW_ARRIVAL_NOT (0x007965B0)."""
+    def encode(self) -> bytes:
+        return b''
+
+
+@dataclass
+class PostReturnReq:
+    """Opcode 2234: eEGS_POST_RETURN_REQ."""
+    mail_id: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PostReturnReq':
+        if len(data) >= 8:
+            return cls(mail_id=struct.unpack_from('<q', data, 0)[0])
+        return cls()
+
+
+@dataclass
+class PostReturnAck:
+    """Opcode 2235: eEGS_POST_RETURN_ACK (0x00771470)."""
+    result: int = 0
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<i', self.result) + b'\x10\x80'
+
+
+# =========================================================================
+# Combat, AP, Penalties & Random Box (2085, 2109, 2196)
+# =========================================================================
+
+@dataclass
+class InsertApNot:
+    """Opcode 2109: eEGS_INSERT_AP_NOT (0x00790480)."""
+    current_ap: int = 0
+    total_ap: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<ii', self.current_ap, self.total_ap)
+
+
+@dataclass
+class ChangeDungeonPenaltyNot:
+    """Opcode 2085: eEGS_CHANGE_DUNGEON_PENALTY_NOT (0x0078FA70)."""
+    in_dungeon: bool = False
+    is_penalty: bool = False
+    penalty_level: int = 0
+    penalty_id: int = 0
+    duration: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<??hii', self.in_dungeon, self.is_penalty, self.penalty_level, self.penalty_id, self.duration)
+
+
+@dataclass
+class RandomboxResultItemNot:
+    """Opcode 2196: eEGS_RANDOMBOX_RESULT_ITEM_NOT (0x0075A2E0)."""
+    result: int = 0
+    item_code: int = 0
+    count: int = 1
+    is_jackpot: bool = False
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return struct.pack('<iih?', self.result, self.item_code, self.count, self.is_jackpot)
+
 
 
 

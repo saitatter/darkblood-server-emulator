@@ -142,10 +142,20 @@ Final objective: launch without the original services, establish a local session
 - [x] **Remote Player & Item Inspection**:
   - Character gear and avatar inspection (`6011/6012 eERT_REQUEST_CHAR_INFO_REQ/ACK` `0x00790FA0`).
   - Remote item tooltip inspection (`6028/6029 eERT_REQUEST_ITEM_INFO_REQ/ACK` `0x00766C20`).
-- [ ] **Guild Management Expansion**:
-  - Member grade and permissions management (Master, Officer, Veteran, Member).
-  - Guild shared warehouse / storage (`GUILD_STORAGE_OPEN_REQ`, `GUILD_STORAGE_IN/OUT_REQ`).
-  - Guild level-up perks and guild skill tree progression.
+- [x] **Guild Management Expansion**:
+  - Member grade and permissions management (`2164/2165 eEGS_GUILD_PERSON_GRADE_MODIFY_REQ/ACK` `0x00753170`).
+  - Guild bank and economy (`2179/2180 eEGS_GUILD_MONEY_IN_REQ/ACK` `0x00794250`, `2181/2182 eEGS_GUILD_MONEY_OUT_REQ/ACK` `0x00794470`).
+  - Guild info and roster broadcast (`2157 eEGS_GUILD_INFO_NOT` `0x00752FF0`, `2158 eEGS_GUILD_PERSON_LIST_NOT` `0x0077ABA0`).
+  - Guild level-up perks and notices (`2183/2184 eEGS_GUILD_LEVEL_UP_REQ/ACK` `0x00753380`, `2185/2186 eEGS_GUILD_NOTICE_MODIFY_REQ/ACK` `0x0075A120`).
+  - Guild skill tree sync (`2205 eEGS_GUILD_SKILL_NOT` `0x00779390`, `2207 eEGS_GUILD_LEARN_SKILL_ACK`, `2209 eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK`).
+- [x] **Storage Depot, Item Splitting & Combat Feedback**:
+  - Personal depot AR gold storage (`2228/2229 eEGS_DEPOT_SAVE_AR_REQ/ACK` `0x00795220`, `2230/2231 eEGS_DEPOT_LOAD_AR_REQ/ACK` `0x00795490`).
+  - Mail arrival notice (`2227 eEGS_POST_NEW_ARRIVAL_NOT` `0x007965B0`) and mail return (`2234/2235 eEGS_POST_RETURN_REQ/ACK` `0x00771470`).
+  - Item stack splitting (`2250/2251 eEGS_DIVIDE_ITEM_REQ/ACK` `0x0077F570`).
+  - Skill book consumption (`2111/2112 eEGS_USE_LEARN_SKILL_ITEM_REQ/ACK` `0x0078BCD0`).
+  - Item duration & deletion sync (`2321 eEGS_ITEM_REMAIN_TIME_NOT` `0x0077AED0`, `2322 eEGS_ITEM_DELETE_NOT` `0x00774DD0`).
+  - Real-time inventory refresh (`2092 eEGS_INVENTORY_UPDATED_NOT` `0x0077F070`).
+  - AP gain, dungeon penalty & random box feedback (`2109 eEGS_INSERT_AP_NOT` `0x00790480`, `2085 eEGS_CHANGE_DUNGEON_PENALTY_NOT` `0x0078FA70`, `2196 eEGS_RANDOMBOX_RESULT_ITEM_NOT` `0x0075A2E0`).
 - [ ] **PvP Duels & Arena**:
   - 1v1 duel challenge in town / square (`DUEL_REQ` / `DUEL_ACK`).
   - Arena room creation, spectator slots, and match start (`ARENA_ROOM_CREATE_REQ`).

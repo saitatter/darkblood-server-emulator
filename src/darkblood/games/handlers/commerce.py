@@ -732,6 +732,39 @@ class CommerceHandlers:
         ack = UseArenaSpItemAck(result=0, consumed_items=[], arena_sp=100).encode()
         await self.transport.send_event(event(2710, ack, correlation), note=f'use arena sp item ack (item={req.item_uid})')
 
+    async def on_2250(self, correlation, body):
+        # eEGS_DIVIDE_ITEM_REQ -> 2251 eEGS_DIVIDE_ITEM_ACK (0x0077F570).
+        from darkblood.games.network.messages import DivideItemAck, DivideItemReq
+        req = DivideItemReq.decode(body)
+        self.transport.record('divide-item-req', body, source_uid=req.source_item_uid, count=req.count)
+        ack = DivideItemAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(2251, ack, correlation), note=f'divide item ack (item={req.source_item_uid})')
+
+    async def on_2111(self, correlation, body):
+        # eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0).
+        from darkblood.games.network.messages import UseLearnSkillItemAck, UseLearnSkillItemReq
+        req = UseLearnSkillItemReq.decode(body)
+        self.transport.record('use-learn-skill-item-req', body, item_uid=req.item_uid, skill_id=req.skill_id)
+        ack = UseLearnSkillItemAck(result=0, skill_id=req.skill_id, skill_level=1, item_code=0, count=1, items=[], sp=10).encode()
+        await self.transport.send_event(event(2112, ack, correlation), note=f'use learn skill item ack (skill={req.skill_id})')
+
+    async def on_2228(self, correlation, body):
+        # eEGS_DEPOT_SAVE_AR_REQ -> 2229 eEGS_DEPOT_SAVE_AR_ACK (0x00795220).
+        from darkblood.games.network.messages import DepotSaveArAck, DepotSaveArReq
+        req = DepotSaveArReq.decode(body)
+        self.transport.record('depot-save-ar-req', body, gold=req.gold)
+        ack = DepotSaveArAck(result=0, new_gold=req.gold).encode()
+        await self.transport.send_event(event(2229, ack, correlation), note=f'depot save ar ack (gold={req.gold})')
+
+    async def on_2230(self, correlation, body):
+        # eEGS_DEPOT_LOAD_AR_REQ -> 2231 eEGS_DEPOT_LOAD_AR_ACK (0x00795490).
+        from darkblood.games.network.messages import DepotLoadArAck, DepotLoadArReq
+        req = DepotLoadArReq.decode(body)
+        self.transport.record('depot-load-ar-req', body, gold=req.gold)
+        ack = DepotLoadArAck(result=0, new_gold=req.gold).encode()
+        await self.transport.send_event(event(2231, ack, correlation), note=f'depot load ar ack (gold={req.gold})')
+
+
 
 
 
