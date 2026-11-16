@@ -449,8 +449,205 @@ static void* __stdcall Hook_Direct3DCreate9(unsigned int SDKVersion) {
     return pD3D;
 }
 
+/* Return to the server list after a server disconnect instead of exiting.
+ * JUserClient::vf0c (0x007869A0) handles the lost connection: it sets
+ * 0x00F45204 = 1 (box shown once), sets byte 0 of the object at 0x00F36544
+ * (getter 0x00457010) to 1, which makes 0x006E2400 skip input, and opens
+ * MB_DisconnectFromServer. That box's OnOK (page_msgbox.xml) runs
+ * g_jLobby:ExitGame() = Lua_ExitGame 0x007381E0. While the disconnect flag is
+ * set, the hook does what Lua_GoBackToLobby (0x006E25E0) does instead:
+ * FadeOut("g_jAppStateMgr:ChangeState(eAS_Lobby)", 0.0) through 0x00406700 /
+ * 0x00AD6BA0, and clears both flags. Every other ExitGame call runs the
+ * original code. */
+#define EXITGAME_VA      0x007381E0
+#define DISCONNECT_SHOWN 0x00F45204
+#define INPUT_LOCK       0x00F36544
+static BYTE* g_exitTrampoline;
+static const char g_toLobby[] = "g_jAppStateMgr:ChangeState(eAS_Lobby)";
+
+/* The server list exists only after the startup login: FUN_00472320 calls
+ * JLobbyCommon::Login (0x00749EE0, thiscall on getter 0x00456CE0, arg
+ * const wchar_t* id, ret 4). Login runs ConnectServer (0x00786B40), waits for
+ * 5020 and then for the server list (2403). It refuses while flags +9/+10 of
+ * the singleton 0x00F2EE90 (getter 0x0043A180) are set. The welcome handler
+ * sets +9 (0x0096B20B), and nothing clears it on disconnect. The hook records
+ * the startup id and runs Login again before switching to the Lobby. */
+#define LOGIN_VA       0x00749EE0
+#define LOGIN_FLAGS    0x00F2EE98   /* +8, +9, +10 of 0x00F2EE90 */
+static BYTE* g_loginTrampoline;
+static wchar_t g_loginId[64];
+
+static void __cdecl RecordLoginId(const wchar_t* id) {
+    int i;
+    for (i = 0; i < 63; i++) {
+        wchar_t c;
+        if (!SafeRead((DWORD)(id + i), &c, sizeof(c))) break;
+        g_loginId[i] = c;
+        if (!c) break;
+    }
+    g_loginId[i < 63 ? i : 63] = 0;
+    RawLogFmt("[RECONNECT] Login id recorded (%d chars)", lstrlenW(g_loginId));
+}
+
+static void __declspec(naked) Hook_Login(void) {
+    __asm {
+        pushad
+        push dword ptr [esp + 0x24]   /* first argument (after pushad + ret) */
+        call RecordLoginId
+        add esp, 4
+        popad
+        jmp dword ptr [g_loginTrampoline]
+    }
+}
+
+/* JUserClient's connect wrapper 0x00A5E800 refuses while the global
+ * "connected" bytes 0x00F29AE8..EA are set, and the NetClient left over
+ * from the lost session does not connect again either: clearing the bytes
+ * alone produced no TCP connect. 0x00A5CF50 (JNetProxy release, called by
+ * the destructor 0x00A5D5A0) deletes the NetClient at +0x18, sets it to NULL
+ * (the state the constructor 0x00A5D570 starts in) and clears the bytes. The
+ * next connect then creates a fresh client through 0x00B59280. The
+ * JUserClient singleton comes from 0x004065F0. */
+#define NET_CONNECTED 0x00F29AE8
+
+static void ReleaseNetClient(void) {
+    volatile BYTE* net = (volatile BYTE*)NET_CONNECTED;
+    RawLogFmt("[RECONNECT] releasing NetClient; net flags %d %d %d", net[0], net[1], net[2]);
+    __asm {
+        mov eax, 0x004065F0
+        call eax                 /* JUserClient singleton */
+        mov ecx, eax
+        mov eax, 0x00A5CF50
+        call eax                 /* thiscall release, no args */
+    }
+}
+
+static void CallLogin(void) {
+    const wchar_t* id = g_loginId;
+    ReleaseNetClient();
+    __asm {
+        push id
+        mov eax, 0x00456CE0
+        call eax                 /* JLobbyCommon singleton (argument stays for Login) */
+        mov ecx, eax
+        mov eax, LOGIN_VA
+        call eax                 /* thiscall Login(id), ret 4 */
+    }
+}
+
+static void FadeToLobby(void) {
+    __asm {
+        mov eax, 0x00406700
+        call eax                 /* fade/UI singleton */
+        mov ecx, eax
+        push 0                   /* float 0.0 */
+        push offset g_toLobby
+        mov eax, 0x00AD6BA0
+        call eax                 /* thiscall FadeOut(cmd, time), ret 8 */
+    }
+}
+
+static void ShowDisconnectBox(void) {
+    static const char name[] = "MB_DisconnectFromServer";
+    __asm {
+        push offset name
+        mov eax, 0x00AF57A0
+        call eax                 /* cdecl open dialog by name (as 0x00786ADF) */
+        add esp, 4
+    }
+}
+
+static int __cdecl ReturnToLobbyIfDisconnected(void) {
+    volatile BYTE* flags = (volatile BYTE*)LOGIN_FLAGS;
+    if (*(volatile BYTE*)DISCONNECT_SHOWN != 1) return 0;
+    *(volatile BYTE*)DISCONNECT_SHOWN = 0;
+    *(volatile BYTE*)INPUT_LOCK = 0;
+    RawLogFmt("[RECONNECT] ExitGame after disconnect; login flags %d %d %d",
+              flags[0], flags[1], flags[2]);
+    if (!g_loginTrampoline || !g_loginId[0]) return 0;   /* fall back to exiting */
+    flags[1] = 0;
+    flags[2] = 0;
+    CallLogin();
+    RawLogFmt("[RECONNECT] Login returned; flags %d %d %d", flags[0], flags[1], flags[2]);
+    if (!flags[1]) {
+        /* Welcome (which sets +9) never arrived: the server is still down.
+         * Entering the Lobby without a session leaves the server list
+         * stuck after Knock (live), so reopen the box; Ok retries. */
+        *(volatile BYTE*)DISCONNECT_SHOWN = 1;
+        *(volatile BYTE*)INPUT_LOCK = 1;
+        ShowDisconnectBox();
+        RawLog("[RECONNECT] server unreachable; disconnect box reopened");
+        return 1;
+    }
+    FadeToLobby();
+    RawLog("[RECONNECT] ChangeState(eAS_Lobby)");
+    return 1;
+}
+
+static void __declspec(naked) Hook_ExitGame(void) {
+    __asm {
+        push ecx
+        call ReturnToLobbyIfDisconnected
+        pop ecx
+        test eax, eax
+        jz original
+        ret
+    original:
+        jmp dword ptr [g_exitTrampoline]
+    }
+}
+
+/* Patch a "push -1; push imm32" prologue (7 position-independent bytes). */
+static BYTE* HookPushPushPrologue(DWORD va, DWORD imm, void* hook, const char* name) {
+    BYTE expected[7] = {0x6A,0xFF,0x68};
+    BYTE* target = (BYTE*)va;
+    BYTE* tramp;
+    DWORD protect;
+    *(DWORD*)(expected + 3) = imm;
+    if (memcmp(target, expected, sizeof(expected))) { RawLogFmt("[RECONNECT] %s prologue mismatch; hook refused", name); return NULL; }
+    tramp = (BYTE*)VirtualAlloc(NULL, 16, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!tramp) return NULL;
+    memcpy(tramp, target, 7);
+    tramp[7] = 0xE9;
+    *(DWORD*)(tramp + 8) = (DWORD)(target + 7) - (DWORD)(tramp + 12);
+    if (!VirtualProtect(target, 7, PAGE_EXECUTE_READWRITE, &protect)) { VirtualFree(tramp, 0, MEM_RELEASE); return NULL; }
+    target[0] = 0xE9;
+    *(DWORD*)(target + 1) = (DWORD)hook - (DWORD)(target + 5);
+    target[5] = 0x90; target[6] = 0x90;
+    VirtualProtect(target, 7, protect, &protect);
+    FlushInstructionCache(GetCurrentProcess(), target, 7);
+    RawLogFmt("[RECONNECT] %s hook installed", name);
+    return tramp;
+}
+
+static void InstallLoginHook(void) {
+    g_loginTrampoline = HookPushPushPrologue(LOGIN_VA, 0x00BFC409, Hook_Login, "Login");
+}
+
+static void InstallExitGameHook(void) {
+    /* push 0; push 0; push 2; call 0x004488D0 -- position-independent pushes. */
+    static const BYTE expected[] = {0x6A,0x00,0x6A,0x00,0x6A,0x02,0xE8};
+    BYTE* target = (BYTE*)EXITGAME_VA;
+    DWORD protect;
+    if (memcmp(target, expected, sizeof(expected))) { RawLog("[RECONNECT] ExitGame prologue mismatch; hook refused"); return; }
+    g_exitTrampoline = (BYTE*)VirtualAlloc(NULL, 16, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!g_exitTrampoline) return;
+    memcpy(g_exitTrampoline, target, 6);
+    g_exitTrampoline[6] = 0xE9;
+    *(DWORD*)(g_exitTrampoline + 7) = (DWORD)(target + 6) - (DWORD)(g_exitTrampoline + 11);
+    if (!VirtualProtect(target, 6, PAGE_EXECUTE_READWRITE, &protect)) return;
+    target[0] = 0xE9;
+    *(DWORD*)(target + 1) = (DWORD)Hook_ExitGame - (DWORD)(target + 5);
+    target[5] = 0x90;
+    VirtualProtect(target, 6, protect, &protect);
+    FlushInstructionCache(GetCurrentProcess(), target, 6);
+    RawLog("[RECONNECT] ExitGame hook installed");
+}
+
 static void InstallHooks() {
     if(orig_connect) return;
+    InstallExitGameHook();
+    InstallLoginHook();
     BYTE* call=(BYTE*)0x0096b091;
     if(call[0]==0xe8 && (DWORD)(call+5+*(LONG*)(call+1))==0x00a519a0) {
         DWORD protect;

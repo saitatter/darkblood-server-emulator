@@ -1,5 +1,24 @@
 # Session handoff — 2026-11-16 (Cristian machine)
 
+## Return to the server list after a disconnect — saita machine, 2026-11-16 ~21:45 (live-verified)
+
+Before this change, losing the server closed the client. `JUserClient::vf0c` (`0x007869A0`) sets `0x00F45204 = 1`,
+sets byte 0 of the `0x00F36544` object to 1 (an input lock checked by `0x006E2400`), and opens `MB_DisconnectFromServer`.
+That box's OnOK in `page_msgbox.xml` runs `g_jLobby:ExitGame()` (`Lua_ExitGame` `0x007381E0`).
+The shim (`client_hook/steam_api_hook.c`) now hooks:
+- `Lua_ExitGame` (prologue `6A 00 6A 00 6A 02`): while `0x00F45204 == 1` it clears both flags and releases the old
+  NetClient through `0x00A5CF50`. The old instance never connects again, and the global "connected" bytes `0x00F29AE8..EA` stay at 1.
+  It clears login flags +9/+10 of the `0x00F2EE90` singleton, because the welcome sets +9 (`0x0096B20B`) and Login refuses while it is set.
+  Then it runs `JLobbyCommon::Login` (`0x00749EE0`, thiscall on `0x00456CE0`, arg = the id recorded at startup)
+  and `FadeOut("g_jAppStateMgr:ChangeState(eAS_Lobby)", 0)` (as `Lua_GoBackToLobby` `0x006E25E0` does).
+- `JLobbyCommon::Login` (prologue `6A FF 68 09 C4 BF 00`): records the startup login id (live: 13 characters).
+- If Login gets no welcome (the server is still down), the box opens again (`0x00AF57A0`), and the next Ok retries.
+  Entering the Lobby without a session left the server list stuck after Knock (2001 was acked, but 2021 was never sent), so that path is avoided.
+Live: tested from character select and from the world (Northern Elwood). With the server down, Ok reopened the box. After the server restarted,
+Ok led to Server List -> Channel List (2001/2021) -> 5028/2008 -> character select -> 2006 back into the world.
+Any other ExitGame call still exits normally. The relay reconnects on its own (9401 connect observed).
+Note: another agent (agy.exe) ran its own `run_server.py` on this machine during the test. Check for running servers before testing live.
+
 ## Log review: quickslots, tutorial completion, level-up class — saita machine, 2026-11-16 ~21:10
 
 Source: wire log of the 20:56-21:05 session (new character, tutorial). Static + headless; live retest pending.
