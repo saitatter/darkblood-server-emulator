@@ -25,6 +25,8 @@ if str(REPO_ROOT / 'src') not in sys.path:
 
 from darkblood.player_management.store import SqliteCharacterStore
 
+DEFAULT_ACCOUNT = 'OfflinePlayer'  # single local account (Steam shim persona)
+
 
 CLASS_NAMES = {
     1: 'Warrior (Slayer)',
@@ -131,6 +133,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_error(400, 'Invalid character ID')
         elif path == '/api/opcodes':
             self.serve_api_opcodes(parse_qs(url.query))
+        elif path == '/api/account/cash':
+            self.serve_account_cash(parse_qs(url.query).get('account', [DEFAULT_ACCOUNT])[0])
         else:
             self.send_error(404, 'Not Found')
 
@@ -153,6 +157,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_error(400, 'Invalid character ID')
         elif path == '/api/test_probe':
             self.handle_test_probe(data)
+        elif path == '/api/account/cash':
+            self.handle_account_cash(data)
         else:
             self.send_error(404, 'Endpoint Not Found')
 
@@ -267,6 +273,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json({'success': True, 'char_id': char_id})
         else:
             self.send_json({'error': 'Character not found'}, code=404)
+
+    def serve_account_cash(self, account: str):
+        self.send_json({'account': account, 'cash': self.store.account_cash(account)})
+
+    def handle_account_cash(self, data: dict):
+        """Cheat: change the cash shop balance (2370 u64 cash) of an account.
+
+        {"add": n} adds (negative subtracts), {"set": n} replaces. The game
+        server reads the value on every 2369, e.g. when the cash shop opens.
+        """
+        account = str(data.get('account') or DEFAULT_ACCOUNT)
+        try:
+            if 'set' in data:
+                cash = self.store.set_account_cash(account, int(data['set']))
+            else:
+                cash = self.store.add_account_cash(account, int(data.get('add', 0)))
+        except (TypeError, ValueError):
+            self.send_json({'error': 'amount must be an integer'}, code=400)
+            return
+        self.send_json({'success': True, 'account': account, 'cash': cash})
 
     def handle_character_delete(self, char_id: int):
         for acc, c in self.store.all_characters():
@@ -613,6 +639,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <h2>Character Accounts</h2>
         <button class="btn" onclick="refreshCharacters()">Reload</button>
       </div>
+      <div class="card" style="margin-bottom: 16px;">
+        <h3 style="margin-top:0;">Cash Shop Balance (cheat)</h3>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span>Account <b>OfflinePlayer</b>: <b id="cash-value">--</b> cash</span>
+          <input type="number" id="cash-amount" class="input-box" value="10000" style="width:140px;">
+          <button class="btn" onclick="changeCash('add')">Add</button>
+          <button class="btn btn-secondary" onclick="changeCash('set')">Set</button>
+          <button class="btn btn-secondary" onclick="changeCash('set', 0)">Reset</button>
+        </div>
+        <div style="font-size:13px; color:var(--text-muted); margin-top:8px;">
+          The client asks for the balance (2369) when the cash shop opens; reopen it to see the new value.
+        </div>
+      </div>
       <div class="table-container">
         <table>
           <thead>
@@ -752,7 +791,30 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
+    async function refreshCash() {
+      try {
+        const res = await fetch('/api/account/cash');
+        const data = await res.json();
+        document.getElementById('cash-value').textContent = data.cash.toLocaleString();
+      } catch (err) {
+        console.error('Failed to load cash:', err);
+      }
+    }
+
+    async function changeCash(mode, fixed) {
+      const amount = fixed !== undefined ? fixed : parseInt(document.getElementById('cash-amount').value, 10);
+      if (isNaN(amount)) return;
+      const res = await fetch('/api/account/cash', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account: 'OfflinePlayer', [mode]: amount })
+      });
+      const data = await res.json();
+      if (data.success) document.getElementById('cash-value').textContent = data.cash.toLocaleString();
+    }
+
     async function refreshCharacters() {
+      refreshCash();
       try {
         const res = await fetch('/api/characters');
         const chars = await res.json();

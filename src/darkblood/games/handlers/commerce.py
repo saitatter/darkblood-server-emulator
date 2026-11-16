@@ -70,9 +70,11 @@ class CommerceHandlers:
                                         note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 
     async def on_2369(self, correlation, body):
-        # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: u32 result + 12 raw bytes (zeros).
-        await self.transport.send_event(event(2370, CurrentCashAck().encode(), correlation),
-                                        note='current cash ack')
+        # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: result, u64 cash, u32 mileage.
+        # Cash is per account (store meta, set from the dashboard); mileage 0.
+        cash = self.store().account_cash(self.account)
+        await self.transport.send_event(event(2370, CurrentCashAck(cash=cash).encode(), correlation),
+                                        note='current cash ack (%d)' % cash)
 
     async def on_2390(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0:

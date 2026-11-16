@@ -190,3 +190,21 @@ class SqliteCharacterStore(ICharacterStore):
                 (char.get('name', ''), char.get('char_class', 1), char.get('level', 1), json.dumps(char), account, char_id)
             )
             conn.commit()
+
+    # Account values (cash shop balance). Read from SQLite on every call, not
+    # cached, so changes made by tools/dashboard.py (a separate process)
+    # reach the running server.
+    def account_cash(self, account: str) -> int:
+        with self.lock, self._get_connection() as conn:
+            row = conn.execute('SELECT value FROM meta WHERE key = ?', ('cash:' + account,)).fetchone()
+            return int(row['value']) if row else 0
+
+    def set_account_cash(self, account: str, amount: int) -> int:
+        amount = max(0, min(int(amount), 2 ** 63 - 1))
+        with self.lock, self._get_connection() as conn:
+            conn.execute('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', ('cash:' + account, str(amount)))
+            conn.commit()
+        return amount
+
+    def add_account_cash(self, account: str, delta: int) -> int:
+        return self.set_account_cash(account, self.account_cash(account) + int(delta))

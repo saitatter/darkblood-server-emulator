@@ -34,15 +34,16 @@ class StoreInfoAck:
 class CurrentCashAck:
     """Opcode 2370: eEGS_BILLING_GET_CURRENT_CASH_ACK (case in 0x004DCCC0 -> 0x004CFDF0).
 
-    u32 result, then an implicit struct 0x00AC82A0 read as 12 raw bytes.
-    The split of those bytes (cash amounts?) is not recovered; zeros offline.
+    u32 result, then implicit struct 0x1E (reader 0x00AC82A0, stored at
+    +0x124): u64 cash + u32 mileage. 0x004CFDF0 logs them as
+    "캐시 : %I64d, 마일리지 : %d" (CP949 strings 0x00C9E64C / 0x00C9E63C).
     """
     result: int = 0
-    raw: bytes = b'\x00' * 12
+    cash: int = 0
+    mileage: int = 0
 
     def encode(self) -> bytes:
-        assert len(self.raw) == 12
-        return struct.pack('<I', self.result) + self.raw
+        return struct.pack('<IqI', self.result, self.cash, self.mileage)
 
 @dataclass
 class BuyItemReq:
