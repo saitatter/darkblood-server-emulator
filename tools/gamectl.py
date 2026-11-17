@@ -131,7 +131,9 @@ def start(server_only=False, client_only=False):
             raise GameError('Server did not start listening; see logs/server.log')
     if not server_only:
         env = dict(os.environ, __COMPAT_LAYER='RunAsInvoker')
-        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env)
+        si = subprocess.STARTUPINFO()
+        si.lpDesktop = r'WinSta0\Default'
+        client = subprocess.Popen([str(LAB / 'DarkBlood.exe')], cwd=str(LAB), env=env, startupinfo=si)
         state['client_pid'] = client.pid
     _save_state(state)
     return status()

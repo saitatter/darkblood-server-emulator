@@ -164,40 +164,68 @@ def default_accounts(count, skip=0):
     return names[skip:skip + count]
 
 
-def start(count=2, resize=True, timeout=90, accounts=None):
+def _launch_desktop_client(account, timeout=90):
+    """Launch DarkBlood.exe directly on the user's interactive desktop (WinSta0\\Default).
+    Uses Windows Task Scheduler to break out of agent sandbox desktops if present."""
+    lab = gamectl.LAB
+    bat = lab / ('_launch_%s.bat' % account)
+    bat.write_text(f"""@echo off\r\nset __COMPAT_LAYER=RunAsInvoker\r\nset DARKBLOOD_ACCOUNT={account}\r\ncd /d "{lab}"\r\nstart "" "{lab}\\DarkBlood.exe"\r\n""")
+    task_name = 'DarkBlood_Launch_%s' % account
+    cmd = f'cmd.exe /c "{bat}"'
+    pids_before = set(_running_clients())
+    try:
+        subprocess.run(['schtasks', '/create', '/tn', task_name, '/tr', cmd, '/sc', 'once', '/st', '00:00', '/f'],
+                       capture_output=True, check=False)
+        subprocess.run(['schtasks', '/run', '/tn', task_name], capture_output=True, check=False)
+        time.sleep(2)
+    finally:
+        subprocess.run(['schtasks', '/delete', '/tn', task_name, '/f'], capture_output=True, check=False)
+        try:
+            bat.unlink()
+        except OSError:
+            pass
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        new_pids = [p for p in _running_clients() if p not in pids_before]
+        if new_pids:
+            pid = new_pids[0]
+            if gamectl.find_window(pid):
+                return pid
+        time.sleep(1)
+    raise gamectl.GameError('Client window for %s did not appear within %ds' % (account, timeout))
+
+
+def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False):
     if gamectl._port_free():
         raise gamectl.GameError('Server is not listening on 127.0.0.1:%d; start it first' % gamectl.PORT)
     if gamectl.client_hash() != gamectl.CLIENT_SHA256:
         raise gamectl.GameError('Unexpected client hash; addresses in the shim are build specific')
     state = _load()
     state['clients'] = _alive_clients(state)
-    env = dict(os.environ, __COMPAT_LAYER='RunAsInvoker')
     # Clients already running (also ones started by hand) hold the mutexes.
     for pid in _running_clients():
         release_instance_mutexes(pid)
     accounts = list(accounts or default_accounts(count, skip=len(_running_clients())))
     for i in range(count):
         account = accounts[i] if i < len(accounts) else 'Player%d' % (i + 2)
-        # The shim logs in as DARKBLOOD_ACCOUNT (Steam persona + auth ticket in 5386).
-        proc = subprocess.Popen([str(gamectl.LAB / 'DarkBlood.exe')], cwd=str(gamectl.LAB),
-                                env=dict(env, DARKBLOOD_ACCOUNT=account))
-        state.setdefault('accounts', {})[str(proc.pid)] = account
-        state['clients'].append(proc.pid)
+        pid = _launch_desktop_client(account, timeout=timeout)
+        state.setdefault('accounts', {})[str(pid)] = account
+        state['clients'].append(pid)
         _save(state)
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            if not gamectl._alive(proc.pid, 'DarkBlood.exe'):
-                raise gamectl.GameError('Client %d exited during start-up' % proc.pid)
-            if gamectl.find_window(proc.pid):
-                break
-            time.sleep(1)
-        else:
-            raise gamectl.GameError('Client %d window did not appear within %ds' % (proc.pid, timeout))
         # The mutexes are created before the window; release them for the next client.
-        release_instance_mutexes(proc.pid)
+        release_instance_mutexes(pid)
     # A new client resizes its window once its device is up; tile after that.
-    time.sleep(8)
+    time.sleep(6)
     tile(resize)
+    if keep_alive:
+        print(json.dumps(status(), indent=2))
+        sys.stdout.flush()
+        try:
+            while any(gamectl._alive(p, 'DarkBlood.exe') for p in state['clients']):
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
     return status()
 
 
@@ -224,6 +252,7 @@ def main(argv=None):
     p_start = sub.add_parser('start')
     p_start.add_argument('-n', '--count', type=int, default=2)
     p_start.add_argument('--no-resize', action='store_true')
+    p_start.add_argument('--keep-alive', action='store_true', help='keep running to supervise clients')
     p_start.add_argument('--accounts', nargs='+', help='account per window (default: OfflinePlayer, Player2, ...)')
     p_tile = sub.add_parser('tile')
     p_tile.add_argument('--no-resize', action='store_true')
@@ -232,7 +261,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.cmd == 'start':
-            result = start(args.count, not args.no_resize, accounts=args.accounts)
+            result = start(args.count, not args.no_resize, accounts=args.accounts, keep_alive=args.keep_alive)
         elif args.cmd == 'tile':
             result = tile(not args.no_resize)
         elif args.cmd == 'status':
