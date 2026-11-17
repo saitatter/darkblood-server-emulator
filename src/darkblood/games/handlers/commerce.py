@@ -269,7 +269,7 @@ class CommerceHandlers:
         from darkblood.games.state import selected_character
         req = AcceptRequestTradeReq.decode(body)
         self.transport.record('trade-accept-request-req', body, source=req.source_uid)
-        my_uid = selected_character.get('id', 1)
+        my_uid = self.char_id
         ack = AcceptRequestTradeAck(result=0, source_uid=req.source_uid, target_uid=my_uid).encode()
         await self.transport.send_event(event(5072, ack, correlation), note='trade accept request ack')
 
@@ -298,7 +298,7 @@ class CommerceHandlers:
         from darkblood.games.state import selected_character
         req = UpdateTradeArReq.decode(body)
         self.transport.record('trade-update-ar-req', body, gold=req.gold)
-        my_uid = selected_character.get('id', 1)
+        my_uid = self.char_id
         ack = UpdateTradeArAck(result=0, char_uid=my_uid, gold=req.gold).encode()
         await self.transport.send_event(event(5080, ack, correlation), note=f'trade update ar ack (gold={req.gold})')
 
@@ -306,7 +306,7 @@ class CommerceHandlers:
         # eERC_ACCEPT_TRADE_REQ -> 5082 eERC_ACCEPT_TRADE_ACK (0x0078EB40).
         from darkblood.games.state import selected_character
         self.transport.record('trade-accept-req', body)
-        my_uid = selected_character.get('id', 1)
+        my_uid = self.char_id
         ack = AcceptTradeAck(result=0, char_uid=my_uid, accepted=True).encode()
         await self.transport.send_event(event(5082, ack, correlation), note='trade accept ack')
 

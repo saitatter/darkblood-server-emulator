@@ -15,6 +15,11 @@ Player reports from a live session, with the cause found in the wire log or clie
 - Dungeon clear froze: 5018 looked up `char['char_uid']` (absent), so `mapSingleReward` was empty; it now uses the character id (player UID, details `+0x1C`).
 - Quickslots: 2007 vector `0x4B2C30` (struct `+0x2B3`, loaded by `0x00966080` at `0x007AA8A6`), element `0x00A49DC0` = `u8 type, u8 slot, i32 refID, i64 refUID, bool, i64, u16 0xFFFF`. Storage was keyed by slot only, so the item bar overwrote the skill bar.
 
+Multibox (static + headless; two live windows not tried yet): `python tools/multibox.py start -n 2` launches clients against the running
+server and tiles them on the primary monitor (`tile`, `status`, `stop`). All windows log in as the same local account, so give each window
+its own character. The selected character is now kept per game connection (`GameSession.char_id`); the relay connection takes the oldest
+pending selection on its first JoinGroup (`state.pending_relay`). Whether the client allows a second instance is not verified.
+
 Open: inventory shows "Ar : 0" although 2007 details `+0x45` carries the gold; drag-unequip to an empty cell looked wrong live (2036 acked, then a 2042 re-equipped); dungeon gate list content (2010/5043) still to inspect with the player; learning skills does not charge SP/AR.
 
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)

@@ -28,13 +28,19 @@ class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHand
         self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
         self.active_char_id = None
 
-    def current_char(self):
-        """The selected character record (process-wide selection from 2006),
-        else the account's first character, else None."""
+    @property
+    def char_id(self):
+        """This connection's selected character (2006), else the last one
+        selected by any connection."""
+        if self.active_char_id is not None:
+            return self.active_char_id
         from darkblood.games.state import selected_character
-        char = None
-        if selected_character.get('id') is not None:
-            char = self.store().get(self.account, selected_character['id'])
+        return selected_character.get('id', 1)
+
+    def current_char(self):
+        """This connection's selected character record, else the account's
+        first character, else None."""
+        char = self.store().get(self.account, self.char_id)
         if not char:
             chars = self.store().characters(self.account)
             char = chars[0] if chars else None

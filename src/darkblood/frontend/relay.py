@@ -43,6 +43,9 @@ def join_group_ack(group_host_id, members):
 async def relay_rmi(transport, rmi_id, args):
     transport.record('relay-rmi', args, rmi=RELAY_RMI[rmi_id])
     if rmi_id == 1001:
-        members = [(selected_character['id'], transport.host_id)]
+        if getattr(transport, 'char_id', None) is None:
+            from darkblood.games.state import pending_relay
+            transport.char_id = pending_relay.popleft() if pending_relay else selected_character['id']
+        members = [(transport.char_id, transport.host_id)]
         await transport.send_payload(join_group_ack(RELAY_GROUP_HOST_ID, members),
                                      note='relay JoinGroupACK 3001')

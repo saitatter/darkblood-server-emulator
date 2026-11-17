@@ -39,7 +39,7 @@ class QuestHandlers:
         objective counters, and persists in character's active quest list.
         """
         quest_id = _quest_id_after_tag(body)
-        char = self.store().get(self.account, selected_character.get('id', 1))
+        char = self.store().get(self.account, self.char_id)
         is_new = bool(char) and str(quest_id) not in char.get('quests_active', {})
         uid = self._activate_quest(quest_id)
         ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
@@ -69,7 +69,7 @@ class QuestHandlers:
 
     def _activate_quest(self, quest_id: int) -> int:
         """Add quest_id to the selected character's active quests; return its UID."""
-        char = self.store().get(self.account, selected_character.get('id', 1))
+        char = self.store().get(self.account, self.char_id)
         active = char.setdefault('quests_active', {}) if char else {}
         quests = {q: ActiveQuest.from_store(q, r) for q, r in active.items()}
         if str(quest_id) in quests:
@@ -129,7 +129,7 @@ class QuestHandlers:
             pass
         from darkblood.games.game_data.client_dict import quest_rewards
         exp, gold, gp, items = quest_rewards(quest_id, select)
-        char = self.store().get(self.account, selected_character.get('id', 1)) or {}
+        char = self.store().get(self.account, self.char_id) or {}
         already = quest_id in char.get('quests_done', [])
         if already:
             exp = gold = gp = 0
@@ -172,7 +172,7 @@ class QuestHandlers:
         # The tutorial map replays from the start and 2074 carries no progress,
         # so the client's counters begin at 0. Reset the stored ones to match;
         # otherwise counters left at 2/2 by an earlier run suppress every 2075.
-        char = self.store().get(self.account, selected_character.get('id', 1))
+        char = self.store().get(self.account, self.char_id)
         record = char.get('quests_active', {}).get(str(quest_id)) if char else None
         if record and record.get('counters'):
             record['counters'] = [0] * len(record['counters'])
@@ -227,7 +227,7 @@ class QuestHandlers:
         Removes active quest from character's tracked log upon abandonment.
         """
         req = QuestGiveupReq.decode(body)
-        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        char = self.store().get(self.account, self.char_id) 
         if not char:
             chars = self.store().characters(self.account)
             char = chars[0] if chars else None
@@ -245,7 +245,7 @@ class QuestHandlers:
         Processes quest objective expiration or failure condition.
         """
         req = QuestFailReq.decode(body)
-        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        char = self.store().get(self.account, self.char_id) 
         if not char:
             chars = self.store().characters(self.account)
             char = chars[0] if chars else None

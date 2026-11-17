@@ -79,8 +79,8 @@ class SocialHandlers:
         self.transport.record('guild-create-req', body, name=req.guild_name)
         char = None
         gold = 0
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
+        if self.char_id is not None:
+            char = self.store().get(self.account, self.char_id)
         if not char:
             chars = self.store().characters(self.account)
             char = chars[0] if chars else None
@@ -349,7 +349,7 @@ class SocialHandlers:
         req = CharNickChangeReq.decode(body)
         new_name = req.new_name.strip()
         self.transport.record('char-nick-change-req', body, new_name=new_name)
-        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        char = self.store().get(self.account, self.char_id) 
         if char and new_name:
             char['name'] = new_name
             self.store().save()
@@ -371,7 +371,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = KeyboardSetCustomKeyReq.decode(body)
         self.transport.record('keyboard-set-custom-key-req', body)
-        char = self.store().get(self.account, selected_character.get('id', 1)) if 'id' in selected_character else None
+        char = self.store().get(self.account, self.char_id) 
         if char:
             char['custom_keys'] = body.hex()
             self.store().save()

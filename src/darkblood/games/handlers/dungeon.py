@@ -56,7 +56,7 @@ class DungeonHandlers:
             pass
         self.room_id = getattr(self, 'room_id', 0) + 1
         ack = CreateRoomAck(room_id=self.room_id, name=name, req_a=a, req_b=b, req_c=c, req_d=d,
-                            host_uid=selected_character.get('id', 0),
+                            host_uid=self.char_id,
                             relay_port=RELAY_PORT).encode()
         await self.transport.send_event(event(5002, ack, correlation),
                                         note='create room ack (%s)' % name)
@@ -350,7 +350,7 @@ class DungeonHandlers:
     async def on_5090(self, correlation, body):
         # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
         req = ChoiceRewardPartyRankReq.decode(body)
-        char_id = selected_character.get('id', 1)
+        char_id = self.char_id
         item_id = jhash('Ihppa0001')
         ack = ChoiceRewardPartyRankAck(
             result=0,

@@ -44,7 +44,7 @@ class SquareHandlers:
         tutorialreward.lua (CompleteLoad / SkipLoad) and are granted once.
         """
         completed = len(body) > 4 and body[4] != 0
-        char_id = selected_character.get('id', 1)
+        char_id = self.char_id
         char = self.store().get(self.account, char_id)
         items = []
         if char:
@@ -81,7 +81,7 @@ class SquareHandlers:
             return
 
         obj_idx = TUTORIAL_HOG_OBJECTIVES[monster_hash]
-        char_id = selected_character.get('id', 1)
+        char_id = self.char_id
         char = self.store().get(self.account, char_id)
         if not char:
             return
