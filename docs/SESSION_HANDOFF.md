@@ -10,7 +10,9 @@
 - Death crash (`0x0055BF71`): 08b20e5 replaced the request UID 0 with the character id in 5094; the death page looked up user 1
   through `0x00966470`, got NULL. 5094 now echoes the request UID. Max durability is sent as an integer (helmet showed 19/18).
 - Reconnect: tracer at `0x0063DAF3/F8` (fresh login): local user object exists, UID -1 -> 2008 path. The shim now resets
-  [[0x00F2EE90+0x78]]+0x10 to -1 on reconnect (b104ead). Not yet tested live.
+  [[0x00F2EE90+0x78]]+0x10 to -1 on reconnect (b104ead). Live-verified 02:29: shim logged uid 0 -> -1, 5028 was followed by
+  2008, then 2006 back into the world. Live also confirmed: equip/swap updates now display (owner -1), cash shop items arrive.
+  2038 use / 2040 delete also carry the ffffff7f prefix (fixed f4db786). Cash packages (CPkg*) are consumed but not opened yet.
 - Steam cash shop: 2712 = prefix, u64 SteamID, vector<u32> ProductID (item_cash.lua). Offline there is no overlay/MicroTxn callback,
   so the server grants the product items for free, delivers them via an unsolicited 2037 and closes the flow with 2714 (u32, vector<u32>
   empty, bool, bool applied). 2713 acked without items.
