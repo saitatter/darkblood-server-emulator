@@ -711,6 +711,25 @@ static void ShowDisconnectBox(void) {
     }
 }
 
+/* JAppPageSelectChannel::SelectChannel (call at 0x0063DAF3) reads the local
+ * user's character UID through 0x00946570: [[0x00F2EE90+0x78]]+0x10 (i64).
+ * Live tracer, fresh login: holder 063F1888 -> user 0766E018, UID -1, so it
+ * waits for 5029 and sends 2008. The user object survives a disconnect with
+ * the selected character's UID, which takes the in-game channel-change
+ * branch instead (waits for 5031, never sends 2008: the client stalled
+ * after 5028). Restore the pre-selection value; 2007 sets it again. */
+#define NETUSERMGR 0x00F2EE90
+
+static void ResetLocalUserUid(void) {
+    DWORD holder = 0, user = 0, uid[2] = {0, 0};
+    if (!SafeRead(NETUSERMGR + 0x78, &holder, 4) || !holder) return;
+    if (!SafeRead(holder, &user, 4) || !user) return;
+    if (!SafeRead(user + 0x10, uid, 8)) return;
+    RawLogFmt("[RECONNECT] local user %08X uid %08X:%08X -> -1", user, uid[1], uid[0]);
+    ((volatile DWORD*)(user + 0x10))[0] = 0xFFFFFFFF;
+    ((volatile DWORD*)(user + 0x10))[1] = 0xFFFFFFFF;
+}
+
 static int __cdecl ReturnToLobbyIfDisconnected(void) {
     volatile BYTE* flags = (volatile BYTE*)LOGIN_FLAGS;
     if (*(volatile BYTE*)DISCONNECT_SHOWN != 1) return 0;
@@ -733,6 +752,7 @@ static int __cdecl ReturnToLobbyIfDisconnected(void) {
         RawLog("[RECONNECT] server unreachable; disconnect box reopened");
         return 1;
     }
+    ResetLocalUserUid();
     FadeToLobby();
     RawLog("[RECONNECT] ChangeState(eAS_Lobby)");
     return 1;
