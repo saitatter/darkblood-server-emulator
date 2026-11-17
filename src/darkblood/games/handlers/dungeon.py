@@ -162,9 +162,18 @@ class DungeonHandlers:
         # eERC_MONSTER_DEAD_REQ (sender 0x78A690): ffffff7f + u32 monster_id + u32 param.
         try:
             msg = MonsterDeadReq.decode(body)
-            self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
         except (struct.error, ValueError):
-            pass
+            return
+        self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
+        # monster_id is the template hash (jhash of monster.lua ID, live
+        # 0x5B3FEC1C = 1npi01n0). EXP = the template's Exp (float, e.g. 9.9),
+        # rounded, at least 1. Drops are not generated yet.
+        from darkblood.games.game_data.client_dict import monsters
+        info = monsters().get(msg.monster_id)
+        char = self._current_char()
+        if info and char is not None and hasattr(self, '_grant_exp'):
+            await self._grant_exp(char, max(1, int(round(info['exp']))))
+            self.store().save()
 
     def _current_char(self):
         char = None

@@ -59,6 +59,37 @@ class QuestHandlers:
             self.store().save()
         return uid
 
+    async def _grant_exp(self, char, exp):
+        """Add EXP to char, send 5087 for each level gained and 5086 with the total.
+
+        Shared by quest completion (2076) and monster kills (5063). Level
+        thresholds come from charstat.lua (upexp per class and level).
+        """
+        if not char or exp <= 0:
+            return
+        from darkblood.games.game_data.client_dict import char_level_stat
+        char_class = int(char.get('char_class', 1))
+        level = char.get('level', 1)
+        char_exp = char.get('exp', 0) + exp
+        while level < 60:
+            stat = char_level_stat(char_class, level)
+            req_exp = stat.get('upexp', 999999)
+            if char_exp < req_exp:
+                break
+            char_exp -= req_exp
+            level += 1
+            char['level'] = level
+            char['sp'] = char.get('sp', 0) + 3
+            char['max_hp'] = stat.get('hp', 500)
+            char['max_mp'] = stat.get('mp', 200)
+            lvl_ack = LevelUpNot(char_uid=char.get('id', 1), new_level=level,
+                                 max_hp=char['max_hp'], max_mp=char['max_mp'], flag=True).encode()
+            await self.transport.send_event(event(5087, lvl_ack), note=f'level up not (level={level})')
+        char['exp'] = char_exp
+        char['u62'] = char_exp
+        exp_ack = ChangeExpNot(exp_total=char_exp, exp_details=(exp, 0, 0, 0, 0, 0, 0, 0, 0.0)).encode()
+        await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
+
     async def handle_quest_complete(self, correlation: int, body: bytes):
         """Opcode 2076 (eEGS_QUEST_COMPLETE_REQ) -> 2077 (eEGS_QUEST_COMPLETE_ACK).
 
@@ -87,38 +118,7 @@ class QuestHandlers:
                 done.append(quest_id)
             char['u66'] = total
             char['gold'] = total
-            from darkblood.games.game_data.client_dict import char_level_stat
-            char_class = int(char.get('char_class', 1))
-            level = char.get('level', 1)
-            char_exp = char.get('exp', 0) + exp
-            while level < 60:
-                stat = char_level_stat(char_class, level)
-                req_exp = stat.get('upexp', 999999)
-                if char_exp >= req_exp:
-                    char_exp -= req_exp
-                    level += 1
-                    char['level'] = level
-                    char['sp'] = char.get('sp', 0) + 3
-                    char['max_hp'] = stat.get('hp', 500)
-                    char['max_mp'] = stat.get('mp', 200)
-                    lvl_ack = LevelUpNot(
-                        char_uid=char.get('id', 1),
-                        new_level=level,
-                        max_hp=char['max_hp'],
-                        max_mp=char['max_mp'],
-                        flag=True
-                    ).encode()
-                    await self.transport.send_event(event(5087, lvl_ack), note=f'level up not (level={level})')
-                else:
-                    break
-            char['exp'] = char_exp
-            char['u62'] = char_exp
-            if exp > 0:
-                exp_ack = ChangeExpNot(
-                    exp_total=char_exp,
-                    exp_details=(exp, 0, 0, 0, 0, 0, 0, 0, 0.0)
-                ).encode()
-                await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (exp={char_exp})')
+            await self._grant_exp(char, exp)
             from darkblood.player_management.characters import add_reward_items
             reward_items = [] if already else add_reward_items(char, items)
             self.store().save()

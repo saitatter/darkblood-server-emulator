@@ -413,3 +413,27 @@ def random_boxes():
                 grades.append((float(prob.group(1)), names))
         states[rid.group(1)] = grades
     return states, groups
+
+
+@lru_cache(maxsize=None)
+def monsters():
+    """{jhash(ID) & 0xFFFFFFFF: {'id', 'exp', 'lv', 'drop_cnt'}} from monster.lua.
+
+    5063 (MONSTER_DEAD_REQ) carries the monster's template hash.
+    """
+    from darkblood.core.hashing import jhash
+    path = data_root() / 'monster.lua'
+    if not path.exists():
+        return {}
+    out = {}
+    for entry in _top_entries(path.read_text(encoding='utf-8', errors='replace')):
+        mid = re.search(r'\bID = "([^"]+)"', entry)
+        if not mid:
+            continue
+        exp = re.search(r'\bExp = ([0-9.]+)', entry)
+        lv = re.search(r'\bLv = (\d+)', entry)
+        drop = re.search(r'\bDropCnt = (\d+)', entry)
+        out[jhash(mid.group(1)) & 0xFFFFFFFF] = {
+            'id': mid.group(1), 'exp': float(exp.group(1)) if exp else 0.0,
+            'lv': int(lv.group(1)) if lv else 1, 'drop_cnt': int(drop.group(1)) if drop else 0}
+    return out
