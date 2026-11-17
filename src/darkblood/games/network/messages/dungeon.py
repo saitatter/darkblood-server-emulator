@@ -308,3 +308,37 @@ class LeaveRoomAck:
     def encode(self) -> bytes:
         return struct.pack('<i', self.result)
 
+@dataclass
+class FinishGameReq:
+    """Opcode 5017: eERC_FINISH_GAME_REQ (sender 0x007AD380)."""
+    is_clear: bool = True
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'FinishGameReq':
+        # sender: 0x408c60 header, then bool is_clear
+        # live body starts with 0x01
+        is_clear = bool(data[0]) if data else True
+        return cls(is_clear=is_clear)
+
+@dataclass
+class FinishGameAck:
+    """Opcode 5018: eERC_FINISH_GAME_ACK (handler 0x007ADB60).
+
+    u32 result (0 = success)
+    bool is_clear (1 = dungeon clear)
+    wstring map_code
+    bool flag
+    tag 0x17 map (reward data; 0x17 + varuint(0) = empty map)
+    """
+    result: int = 0
+    is_clear: bool = True
+    map_code: str = ''
+    flag: bool = False
+
+    def encode(self) -> bytes:
+        return (struct.pack('<I?', self.result, self.is_clear)
+                + wide_string(self.map_code)
+                + struct.pack('<?', self.flag)
+                + b'\x17' + varuint(0))
+
+

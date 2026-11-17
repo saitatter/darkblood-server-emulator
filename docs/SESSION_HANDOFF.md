@@ -53,7 +53,9 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   Simulation: ~4.4% drop per normal hog, ~4.3 items per `1fpi03U0`.
 - Cash packages (Type 36, PACKAGEnnn -> DictItem:LoadPackage) and random boxes (DictRandomBox) open on use;
   bag capacity (`free_bag_slots`, bag `b29`) is enforced for opening, buying and picking up.
-- 5017 finish game -> 5018 (u32, bool clear, wstring, bool, empty 0x17 map): no reward data yet.
+- 5017 finish game -> 5018 (u32, bool clear, wstring map_code, bool flag, empty 0x17 map): implemented in `dungeon.py`.
+- Blood effect unlocked in options: `m_bAdultUser = True` in welcome 5020 ungrays `Btn_ShowBlood` (JNetUserMgr+0x4C / 0x00577860).
+- Quest monster kill tracking: 5063 now resolves active quest objectives via `quest_monster_objectives()` and broadcasts 2075 progress updates.
 - Empty/record-only handlers: 2242->2243, 2446->2447, 2592 (no client handler), 2509, monster cards 2601/2608/2617.
 - `GameSession.current_char()` replaces 26 copied character lookups.
 - The live character's bag was upgraded once to Ibaga0003 (20 slots) in `data/darkblood.db` (backup in scratchpad).

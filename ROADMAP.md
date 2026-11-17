@@ -49,7 +49,7 @@ Final objective: launch without the original services, establish a local session
 - [x] Implement local account session states (`OfflinePlayer`) and credentials handling.
 - [x] Implement character listing, creation, and deletion with case-insensitive name validation.
 - [x] Implement versioned local character persistence (`data/characters.json`).
-- [ ] Decode remaining unknown flags in opcode 5020 (welcome message; current fields use safe defaults).
+- [x] Decode adult flag in opcode 5020 (`m_bAdultUser = True` unlocks blood effect in client options).
 - [ ] Add multiple account support and profile switching.
 
 ### P3 — Map Entry, Dungeons, Combat & Economy

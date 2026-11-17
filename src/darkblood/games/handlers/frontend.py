@@ -29,7 +29,9 @@ def welcome():
     """Build initial session handshake greeting for 0x96AF60 / 0xA519A0."""
     now = datetime.datetime.now()
     body = struct.pack('<IQ', 0, 1) + wide_string('OfflinePlayer')
-    body += struct.pack('<II???Q', 0, 0, False, False, False, 0)
+    # Flag tuple: (nAccountID, nAuthLevel, bFlag1, m_bAdultUser, bFlag3, nReserved)
+    # m_bAdultUser=True unlocks the Blood Effect in client options (JNetUserMgr+0x4C / 0x00577860).
+    body += struct.pack('<II???Q', 0, 0, False, True, False, 0)
     body += b'\x17' + varuint(0)
     body += struct.pack('<IIB', 0, 0, 0) + wide_string('')
     body += struct.pack('<6H', now.year, now.month, now.day, now.hour, now.minute, now.second)

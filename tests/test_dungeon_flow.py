@@ -115,6 +115,12 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5366 = await client.expect_event(5366)
             self.assertEqual(struct.unpack_from('<i', ack5366)[0], 0)
 
+            # 18. Finish game (5017 -> 5018)
+            client.send_event(5017, b'\x01')
+            _, ack5018 = await client.expect_event(5018)
+            res, is_clear = struct.unpack_from('<I?', ack5018, 0)
+            self.assertEqual((res, is_clear), (0, True))
+
         self.run_async(self.with_server(scenario))
 
 

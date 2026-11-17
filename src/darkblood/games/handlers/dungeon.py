@@ -166,17 +166,51 @@ class DungeonHandlers:
         except (struct.error, ValueError):
             return
         self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
-        # monster_id is the template hash (jhash of monster.lua ID, live
-        # 0x5B3FEC1C = 1npi01n0). EXP = the template's Exp (float, e.g. 9.9),
-        # rounded, at least 1. Drops are not generated yet.
         from darkblood.games.game_data.client_dict import monsters
         info = monsters().get(msg.monster_id)
         char = self._current_char()
         if info and char is not None and hasattr(self, '_grant_exp'):
             await self._grant_exp(char, max(1, int(round(info['exp']))))
             self.store().save()
-        if info and char is not None:
-            await self._drop_loot(msg.param, info, char)
+        if char is not None:
+            if info:
+                await self._drop_loot(msg.param, info, char)
+            mon_target = info['id'] if info else msg.monster_id
+            await self._update_quest_monsters(mon_target, char)
+
+    async def _update_quest_monsters(self, mon_code, char):
+        """Advance kill counters for active quests targeting mon_code."""
+        from darkblood.games.game_data.client_dict import quest_monster_objectives
+        from darkblood.games.network.messages import QuestUpdateNot
+        objectives = quest_monster_objectives().get(mon_code, [])
+        if not objectives:
+            return
+        active = char.get('quests_active', {})
+        for q_hash, obj_idx, target_count in objectives:
+            q_key = str(q_hash)
+            if q_key in active:
+                q_record = active[q_key]
+                counters = q_record.setdefault('counters', [])
+                while len(counters) <= obj_idx:
+                    counters.append(0)
+                if counters[obj_idx] < target_count:
+                    counters[obj_idx] += 1
+                    self.store().save()
+                    update = QuestUpdateNot(updates=[(q_hash, obj_idx, counters[obj_idx])]).encode()
+                    await self.transport.send_event(
+                        event(2075, update),
+                        note=f'quest update not ({q_key} obj={obj_idx} count={counters[obj_idx]}/{target_count})'
+                    )
+
+    async def on_5017(self, correlation, body):
+        # eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60).
+        from darkblood.games.network.messages import FinishGameAck, FinishGameReq
+        req = FinishGameReq.decode(body)
+        self.transport.record('finish-game-req', body, is_clear=req.is_clear)
+        map_code = getattr(self, 'map_code', '')
+        ack = FinishGameAck(result=0, is_clear=req.is_clear, map_code=map_code).encode()
+        await self.transport.send_event(event(5018, ack, correlation),
+                                        note=f'finish game ack ({map_code} clear={req.is_clear})')
 
     async def _drop_loot(self, source_id, monster, char):
         """Roll itemlooting.lua drops for a kill and announce them with 5064.

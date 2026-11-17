@@ -1,4 +1,6 @@
 """Tests for quest completion, client dictionary rewards, and active quest restoration."""
+import os
+from pathlib import Path
 import struct
 import unittest
 
@@ -108,6 +110,58 @@ class QuestFlowTest(ServerTestCase):
         self.assertNotIn(entry, first)
         # The 0xA3E450 map now carries one entry; everything else is unchanged.
         self.assertEqual(second.replace(b'\x17\x81' + entry, b'\x17\x80', 1), first)
+
+    def test_monster_dead_advances_quest_objective(self):
+        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
+        dict_dir.mkdir(parents=True, exist_ok=True)
+        quest_file = dict_dir / 'quest_act1.lua'
+        quest_file.write_text('\n'.join([
+            'assert(DictQuest:LoadMission({',
+            '  {',
+            '    MissionID = "QM14",',
+            '    MissionType = "0",',
+            '    TargetID = "1fpi03U0",',
+            '    TargetValue = 1,',
+            '  }',
+            '}), "DictQuest:LoadMission")',
+            'assert(DictQuest:LoadQuest({',
+            '  {',
+            '    ID = "Q0002S01",',
+            '    MissionID = {"QM14"},',
+            '  }',
+            '}), "DictQuest:LoadQuest")',
+            ''
+        ]), encoding='utf-8')
+        from darkblood.games.game_data import client_dict
+        client_dict.quest_monster_objectives.cache_clear()
+        self.addCleanup(client_dict.quest_monster_objectives.cache_clear)
+        self.addCleanup(quest_file.unlink)
+
+        quest = hashing.jhash('Q0002S01')
+        stamp = 'x'.encode('utf-16le')
+        req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
+        berserk_hog_hash = hashing.jhash('1fpi03U0') & 0xFFFFFFFF
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('HogHunter'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            # Accept Q0002S01
+            client.send_event(2073, req, compressed=True)
+            await client.expect_event(2074)
+
+            # Kill Berserk Hog in dungeon (5063)
+            client.send_event(5063, struct.pack('<iII', 0x7fffffff, berserk_hog_hash, 1))
+            _, not2075 = await client.expect_event(2075)
+            self.assertEqual(not2075[:2], b'\x10\x81')
+            q_id, obj_idx, count = struct.unpack_from('<iii', not2075, 2)
+            q_signed = quest - (1 << 32) if quest >= 1 << 31 else quest
+            self.assertEqual((q_id, obj_idx, count), (q_signed, 0, 1))
+
+        self.run_async(self.with_server(scenario))
 
     def test_char_level_stats_progression(self):
         from darkblood.games.game_data import client_dict

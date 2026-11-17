@@ -512,3 +512,44 @@ def equip_index():
             out.append((iid.group(1), int(grade.group(1)) if grade else 0,
                         int(lv.group(1)) if lv else 1, cls.group(1) if cls else ''))
     return out
+
+
+@lru_cache(maxsize=None)
+def quest_monster_objectives():
+    """Mapping: monster_id (str) -> [(quest_id_hash, objective_index, target_count)].
+
+    Parsed from LoadMission and LoadQuest in quest_act*.lua.
+    """
+    root = data_root()
+    if not root.exists():
+        return {}
+    mission_defs = {}
+    quest_missions = {}
+
+    for p in _quest_files():
+        txt = p.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', txt):
+            if block.startswith('LoadMission'):
+                for m_block in re.split(r'\n  \{', block):
+                    mid = re.search(r'MissionID\s*=\s*"([^"]+)"', m_block)
+                    mtype = re.search(r'MissionType\s*=\s*"([^"]+)"', m_block)
+                    tid = re.search(r'TargetID\s*=\s*"([^"]+)"', m_block)
+                    tval = re.search(r'TargetValue\s*=\s*(\d+)', m_block)
+                    if mid and mtype and tval and mtype.group(1) == '0' and tid:
+                        mission_defs[mid.group(1)] = (tid.group(1), int(tval.group(1)))
+            elif block.startswith('LoadQuest'):
+                for q_block in re.split(r'\n  \{', block):
+                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    if qid and mids:
+                        quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = mids
+
+    out = {}
+    for qid_hash, mids in quest_missions.items():
+        for obj_idx, mid in enumerate(mids):
+            if mid in mission_defs:
+                target_mon, target_val = mission_defs[mid]
+                target_hash = jhash(target_mon) & 0xFFFFFFFF
+                out.setdefault(target_mon, []).append((qid_hash, obj_idx, target_val))
+                out.setdefault(target_hash, []).append((qid_hash, obj_idx, target_val))
+    return out
