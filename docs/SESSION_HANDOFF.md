@@ -1,5 +1,25 @@
 # Session handoff — 2026-11-17 (saita machine)
 
+## Inventory owner, revive crash, Steam shop, missing handlers — saita machine, 2026-11-17 ~02:25 (static + headless; live retest pending)
+
+- Equip/drag updates never showed in the client: per-item apply `0x008354D0` drops a record whose i64 owner (+0xAB) differs from
+  the inventory owner `0x007F9330` unless either is -1. Records carried the character id 1; the client's own UID is 0 (2007 details
+  +0x1C). Tracer confirmed owner=1 at +0xAB and that `0x00828BB0` found both items. Incremental records now use owner -1
+  (`items.UPDATE_OWNER`); 2007 is unchanged. Swaps send the vacating item first. Accessory slots mapped from DropImgFilePath:
+  Aclo 7, Anec 8, Aear 9/10, Arin 11/12.
+- Death crash (`0x0055BF71`): 08b20e5 replaced the request UID 0 with the character id in 5094; the death page looked up user 1
+  through `0x00966470`, got NULL. 5094 now echoes the request UID. Max durability is sent as an integer (helmet showed 19/18).
+- Reconnect: tracer at `0x0063DAF3/F8` (fresh login): local user object exists, UID -1 -> 2008 path. The shim now resets
+  [[0x00F2EE90+0x78]]+0x10 to -1 on reconnect (b104ead). Not yet tested live.
+- Steam cash shop: 2712 = prefix, u64 SteamID, vector<u32> ProductID (item_cash.lua). Offline there is no overlay/MicroTxn callback,
+  so the server grants the product items for free, delivers them via an unsolicited 2037 and closes the flow with 2714 (u32, vector<u32>
+  empty, bool, bool applied). 2713 acked without items.
+- New handlers: 2601/2608/2617 monster cards (empty lists; readers 0x00603C40/0x00603F10/0x006046A0), 2446 -> 2447, 2592 (stored,
+  no 2593 handler in the client), 2242 -> 2243 (empty map).
+- Open: 5017 FINISH_GAME_REQ (dungeon end, handler 0x007ADB60, large result parser) is not implemented. A crash at `0x00650DB4`
+  (FUN_00650D00, item tooltip/compare: user lookup `0x00938C70(-1,-1)` returned NULL) happened after a swap drag on the old server
+  build (owner 1 records); recheck with owner -1. 5030 layer id is parsed as i64 at +4 (likely u32 at +8).
+
 ## Reconnect stall after 5028, equip prefix, drag slots — saita machine, 2026-11-17 ~02:05
 
 - 2042 equip: the live body is `ffffff7f` + i64 uid + i32 slot (-1). The decoder read the uid at offset 0, so every equip/unequip
