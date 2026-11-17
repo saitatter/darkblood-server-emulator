@@ -7,6 +7,9 @@ from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 
+PREFIX = bytes.fromhex('ffffff7f')
+
+
 @dataclass
 class ItemDropEntry:
     """A dropped item entity on the dungeon floor (client struct 0x00A509E0, 26 bytes)."""
@@ -95,8 +98,10 @@ class UseItemReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'UseItemReq':
-        if len(data) >= 12:
-            item_uid, use_count = struct.unpack_from('<qi', data, 0)
+        # Live (2026-11-17): ffffff7f + i64 uid + i32 count, 16 bytes.
+        offset = 4 if len(data) >= 16 and data[:4] == PREFIX else 0
+        if len(data) >= offset + 12:
+            item_uid, use_count = struct.unpack_from('<qi', data, offset)
             return cls(item_uid=item_uid, use_count=use_count)
         return cls()
 
@@ -206,8 +211,10 @@ class DeleteItemReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteItemReq':
-        if len(data) >= 12:
-            uid, amt = struct.unpack_from('<qi', data, 0)
+        # Same optional 0x7FFFFFFF prefix as 2038/2042 (not yet seen live).
+        offset = 4 if len(data) >= 16 and data[:4] == PREFIX else 0
+        if len(data) >= offset + 12:
+            uid, amt = struct.unpack_from('<qi', data, offset)
             return cls(item_uid=uid, amount=amt)
         return cls()
 
