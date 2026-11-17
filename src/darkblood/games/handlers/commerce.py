@@ -143,6 +143,13 @@ class CommerceHandlers:
                 self.store().save()
             self.transport.record('bag-sell-enable', body, bag=bag_id, enabled=enabled)
 
+    async def on_2242(self, correlation, body):
+        # eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ (empty body, sent when opening
+        # the storage) -> 2243 (0x0076C040): u32 result, tag 0x17 map of
+        # shared-depot expiry times. No shared depot: empty map.
+        await self.transport.send_event(event(2243, struct.pack('<I', 0) + bytes.fromhex('1780'), correlation),
+                                        note='depot share expire time ack (none)')
+
     def _shop_char(self):
         char = None
         if selected_character.get('id'):
