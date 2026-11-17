@@ -9,6 +9,18 @@ from darkblood.player_management.store import SqliteCharacterStore
 
 
 class InventoryTest(unittest.TestCase):
+    def test_rewards_fill_every_bag_within_capacity(self):
+        from darkblood.player_management.characters import add_reward_items, free_bag_slots
+        char = dict(bags=[dict(bag_id=1, b28=255, w2a=0xFFFF),
+                          dict(bag_id=38, code='Ibaga0004', b29=5, w2a=1),
+                          dict(bag_id=3, code='Ibaga0003', b29=2, w2a=0)],
+                    items=[dict(code='X', uid=1, container=3, slot=0)])
+        self.assertEqual(free_bag_slots(char), 6)
+        stored = add_reward_items(char, [('A', 1), ('B', 1), ('C', 1)])
+        # UI slot 0 (bag 3) first, within its capacity, then bag 38.
+        self.assertEqual([(r['container'], r['slot']) for r in stored], [(3, 1), (38, 0), (38, 1)])
+        self.assertEqual(free_bag_slots(char), 3)
+
     def test_ensure_inventory_adds_default_equipment_and_bag(self):
         char = {'id': 1, 'name': 'Thief', 'char_class': 4}
         changed = ensure_inventory(char)

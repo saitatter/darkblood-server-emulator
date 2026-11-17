@@ -172,27 +172,43 @@ def slots_needed(items):
     return sum(max(1, int(n)) if item_max_durability(code) is not None else 1 for code, n in items)
 
 
-def free_bag_slots(char):
-    """Free cells in the reward bag (first non-equipment bag; its capacity is
-    the bag entry's b29, e.g. 5 for Ibaga0004). None when there is no bag."""
+def _inventory_bags(char):
+    """Non-equipment bags in UI slot order (w2a 0..4)."""
     bags = [b for b in char.get('bags', []) if b.get('bag_id') != EQUIP_CONTAINER]
-    if not bags:
+    return sorted(bags, key=lambda b: int(b.get('w2a', 0xFFFF)))
+
+
+def free_cells(char):
+    """[(container, slot)] free cells over every equipped bag, in UI order.
+
+    A bag's capacity is its entry's b29 (BagSize, e.g. 5 for Ibaga0004).
+    """
+    used = {(i.get('container'), i.get('slot')) for i in char.get('items', [])}
+    return [(b['bag_id'], s) for b in _inventory_bags(char)
+            for s in range(int(b.get('b29', DEFAULT_BAG_CAPACITY)))
+            if (b['bag_id'], s) not in used]
+
+
+def free_bag_slots(char):
+    """Free cells over all equipped bags. None when there is no bag."""
+    if not _inventory_bags(char):
         return None
-    capacity = int(bags[0].get('b29', DEFAULT_BAG_CAPACITY))
-    used = {i['slot'] for i in char.get('items', []) if i.get('container') == bags[0]['bag_id']}
-    return sum(1 for s in range(capacity) if s not in used)
+    return len(free_cells(char))
 
 
 def add_reward_items(char, items):
-    """Store reward items in the first non-equipment bag, next free slots.
+    """Store reward items in the free cells of the equipped bags, in UI order.
 
-    Returns the stored item records. Without an equipped bag the items go to
-    container -1 (client default bag 0x00828600(-1)); their display in the
+    Returns the stored item records. Callers check free_bag_slots first; if
+    the bags are still full, the remaining items go past the last bag's
+    capacity (not shown by the client). Without an equipped bag the items go
+    to container -1 (client default bag 0x00828600(-1)); their display in the
     inventory window is NOT verified yet.
     """
-    bags = [b['bag_id'] for b in char.get('bags', []) if b.get('bag_id') != EQUIP_CONTAINER]
-    container = bags[0] if bags else -1
-    used = {i['slot'] for i in char.get('items', []) if i.get('container') == container}
+    bags = _inventory_bags(char)
+    cells = free_cells(char)
+    last = bags[-1]['bag_id'] if bags else -1
+    used = {i['slot'] for i in char.get('items', []) if i.get('container') == last}
     from darkblood.games.game_data.client_dict import item_max_durability
     stored = []
     for code, count in items:
@@ -202,8 +218,13 @@ def add_reward_items(char, items):
         # recovered.
         stacks = [1] * count if item_max_durability(code) is not None else [count]
         for amount in stacks:
-            slot = next(s for s in range(256) if s not in used)
-            used.add(slot)
+            if cells:
+                container, slot = cells.pop(0)
+            else:
+                container = last
+                slot = next(s for s in range(256) if s not in used)
+            if container == last:
+                used.add(slot)
             record = dict(code=code, uid=next_item_uid(char), container=container, slot=slot)
             if amount > 1:
                 record['count'] = amount
