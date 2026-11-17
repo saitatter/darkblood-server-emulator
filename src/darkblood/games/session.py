@@ -3,7 +3,9 @@ import struct
 import zlib
 
 from darkblood.core.serialization.jser import WireError, event, parse_event
+from darkblood.games.dispatcher import PacketDispatcher
 from darkblood.games.handlers.arena import ArenaHandlers
+from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.handlers.commerce import CommerceHandlers
 from darkblood.games.handlers.dungeon import DungeonHandlers
 from darkblood.games.handlers.frontend import FrontendHandlers, welcome
@@ -16,12 +18,10 @@ from darkblood.games.handlers.social import SocialHandlers
 from darkblood.games.handlers.square import SquareHandlers
 
 
-class GameSession(FrontendHandlers, SocialHandlers, MailHandlers, SquareHandlers, CommerceHandlers,
-                  InventoryHandlers, SkillHandlers, QuestHandlers, DungeonHandlers,
-                  ArenaHandlers, PetHandlers):
-    """Application layer: JEvent dispatch to ``on_<opcode>`` handlers.
+class GameSession:
+    """Application layer: JEvent dispatch via PacketDispatcher and domain services.
 
-    Handlers live in darkblood.games.handlers, one mixin per game domain.
+    Domain services live in darkblood.games.handlers, one service per game domain.
     Only responses with recovered parsers belong there.
     """
 
@@ -29,6 +29,40 @@ class GameSession(FrontendHandlers, SocialHandlers, MailHandlers, SquareHandlers
         self.transport = transport
         self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
         self.active_char_id = None
+
+        # Composition: PacketDispatcher and Domain Services
+        self.dispatcher = PacketDispatcher()
+
+        self.frontend = FrontendHandlers(self)
+        self.social = SocialHandlers(self)
+        self.mail = MailHandlers(self)
+        self.square = SquareHandlers(self)
+        self.commerce = CommerceHandlers(self)
+        self.inventory = InventoryHandlers(self)
+        self.skills = SkillHandlers(self)
+        self.quests = QuestHandlers(self)
+        self.dungeon = DungeonHandlers(self)
+        self.arena = ArenaHandlers(self)
+        self.pets = PetHandlers(self)
+
+        self.services = [
+            self.frontend,
+            self.social,
+            self.mail,
+            self.square,
+            self.commerce,
+            self.inventory,
+            self.skills,
+            self.quests,
+            self.dungeon,
+            self.arena,
+            self.pets,
+        ]
+
+        # Register self (for on_5386) and all domain services onto the dispatcher
+        self.dispatcher.register_controller(self)
+        for service in self.services:
+            self.dispatcher.register_controller(service)
 
     @property
     def char_id(self):
@@ -88,7 +122,11 @@ class GameSession(FrontendHandlers, SocialHandlers, MailHandlers, SquareHandlers
             fallback.cancel()
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
-            GameWorldManager.get().unregister_player(self.active_char_id)
+            world = GameWorldManager.get()
+            p = world.get_player(self.active_char_id)
+            square_id = p.square_id if p else 1
+            world.unregister_player(self.active_char_id)
+            await world.broadcast_user_leave(self.active_char_id, square_id)
 
     async def on_user_message(self, data):
         try:
@@ -111,11 +149,42 @@ class GameSession(FrontendHandlers, SocialHandlers, MailHandlers, SquareHandlers
         if getattr(self.transport.server, 'role', 'game') != 'game':
             self.transport.record('relay-event', body, opcode=opcode)
             return
-        handler = getattr(self, 'on_%d' % opcode, None)
-        if handler is None:
-            self.transport.record('unhandled-event', body, opcode=opcode)
-            return
-        await handler(correlation, body)
+        await self.on_event(opcode, correlation, body)
+
+    async def on_event(self, opcode, *args):
+        """Route incoming packet events to registered handlers via dispatcher."""
+        if len(args) == 2:
+            correlation, body = args
+        elif len(args) == 1:
+            correlation, body = 0, args[0]
+        else:
+            raise TypeError(f"on_event() takes 2 or 3 arguments ({1 + len(args)} given)")
+        return await self.dispatcher.dispatch(self, opcode, correlation, body)
+
+    def __getattr__(self, name: str):
+        if name.startswith('on_') and name[3:].isdigit():
+            opcode = int(name[3:])
+            handler = self.dispatcher.get_handler(opcode)
+            if handler is not None:
+                return handler
+        services = self.__dict__.get('services')
+        if services:
+            for s in services:
+                for cls in type(s).__mro__:
+                    if cls is BaseDomainService or cls is object:
+                        continue
+                    if name in cls.__dict__:
+                        return getattr(s, name)
+                if name in s.__dict__:
+                    return s.__dict__[name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    # Cross-service forwarding helpers for backward-compatibility
+    async def _grant_exp(self, *args, **kwargs):
+        return await self.quests._grant_exp(*args, **kwargs)
+
+    async def _apply_pet_or_mount_item(self, *args, **kwargs):
+        return await self.pets._apply_pet_or_mount_item(*args, **kwargs)
 
     _store = None
 

@@ -14,9 +14,10 @@ from darkblood.games.network.messages import (
     UseLearnSkillItemAck,
     UseLearnSkillItemReq,
 )
+from darkblood.games.handlers.base import BaseDomainService
 
 
-class SkillHandlers:
+class SkillHandlers(BaseDomainService):
     """Skill learning, skill trees, quickslots and skill custom speech."""
 
     def _charge_skills(self, char, wanted):

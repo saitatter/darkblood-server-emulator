@@ -11,6 +11,13 @@ from darkblood.games.network.messages.mail import (
     PostReadReq, PostReadAck, PostGetAppendItemReq, PostGetAppendItemAck,
     PostDeleteReq, PostDeleteAck, PostNewArrivalNot, PostReturnReq, PostReturnAck
 )
+from darkblood.games.network.messages.party import (
+    UserMoveNot, UserJoinSquareNot, UserLeaveSquareNot,
+    PartyInviteReq, PartyInviteAck, PartyInviteNot,
+    PartyJoinReq, PartyJoinAck, PartyLeaveReq, PartyLeaveAck,
+    PartyKickReq, PartyKickAck, PartyAcceptInviteReq, PartyAcceptInviteAck,
+    PartyAcceptInviteNot, PartyMemberInfo, PartyInfoNot
+)
 
 @dataclass
 class FriendEntry:
@@ -163,43 +170,6 @@ class FriendMyDisconnectionNot:
     def encode(self) -> bytes:
         return struct.pack('<q?', self.char_uid, self.notify)
 
-@dataclass
-class PartyInviteReq:
-    """Opcode 5049: eERC_INVITE_REQ."""
-    target_uid: int = 0
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyInviteReq':
-        if len(data) >= 8:
-            return cls(target_uid=struct.unpack_from('<q', data, 0)[0])
-        return cls()
-
-@dataclass
-class PartyInviteAck:
-    """Opcode 5050: eERC_INVITE_ACK (0x00758700)."""
-    result: int = 0
-
-    def encode(self) -> bytes:
-        return struct.pack('<i', self.result)
-
-@dataclass
-class PartyAcceptInviteReq:
-    """Opcode 5054: eERC_ACCEPT_INVITE_REQ."""
-    host_uid: int = 0
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyAcceptInviteReq':
-        if len(data) >= 8:
-            return cls(host_uid=struct.unpack_from('<q', data, 0)[0])
-        return cls()
-
-@dataclass
-class PartyAcceptInviteAck:
-    """Opcode 5055: eERC_ACCEPT_INVITE_ACK."""
-    result: int = 0
-
-    def encode(self) -> bytes:
-        return struct.pack('<i', self.result)
 
 @dataclass
 class ChangeTeamReq:

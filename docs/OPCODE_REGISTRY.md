@@ -80,6 +80,14 @@
 | **2087** | `0x0827` | `eEGS_BUY_LIFE_WATER_ACK` | **S → C** | `0x0078FF90` | — | `BuyLifeWaterAck` (Opcode 2087: eEGS_BUY_LIFE_WATER_ACK (On_eEGS_BUY_LIFE_WATER_ACK 0x0078FF90).) |
 | **2092** | `0x082C` | `eEGS_INVENTORY_UPDATED_NOT` | **S → C** | `0x0077F070` | — | `InventoryUpdatedNot` (Opcode 2092: eEGS_INVENTORY_UPDATED_NOT (0x0077F070).) |
 | **2095** | `0x082F` | `eEGS_NPC_FIRST_MEET_ACK` | **S → C** | `0x00752B60` | — | `NpcFirstMeetAck` (Opcode 2095: eEGS_NPC_FIRST_MEET_ACK response.) |
+| **2100** | `0x0834` | `eEGS_PARTY_INVITE_REQ` | **C → S** | `—` | `social.py` | `PartyInviteReq`: party invite request |
+| **2101** | `0x0835` | `eEGS_PARTY_INVITE_ACK` | **S → C** | `0x00758700` | — | `PartyInviteAck`: party invite ack |
+| **2102** | `0x0836` | `eEGS_PARTY_JOIN_REQ` | **C → S** | `—` | `social.py` | `PartyJoinReq`: party join request |
+| **2103** | `0x0837` | `eEGS_PARTY_JOIN_ACK` | **S → C** | `—` | — | `PartyJoinAck`: party join ack |
+| **2104** | `0x0838` | `eEGS_PARTY_LEAVE_REQ` | **C → S** | `—` | `social.py` | `PartyLeaveReq`: party leave request |
+| **2105** | `0x0839` | `eEGS_PARTY_LEAVE_ACK` | **S → C** | `—` | — | `PartyLeaveAck`: party leave ack / kick notification |
+| **2106** | `0x083A` | `eEGS_PARTY_KICK_REQ` | **C → S** | `—` | `social.py` | `PartyKickReq`: party leader kick request |
+| **2107** | `0x083B` | `eEGS_PARTY_KICK_ACK` | **S → C** | `—` | — | `PartyKickAck`: party kick ack |
 | **2109** | `0x083D` | `eEGS_INSERT_AP_NOT` | **S → C** | `0x00790480` | — | `InsertApNot` (Opcode 2109: eEGS_INSERT_AP_NOT (0x00790480).) |
 | **2110** | `0x083E` | `eEGS_INCREASING_STATUS_NOT` | **S → C** | `0x007743A0` | — | — |
 | **2115** | `0x0843` | `eEGS_ITEM_UPGRADE_REQ` | **C → S** | `—` | `inventory.py` | `ItemUpgradeReq` (Opcode 2115: eEGS_ITEM_UPGRADE_REQ (0x00790000.c:296).) |
@@ -348,11 +356,14 @@
 | **5016** | `0x1398` | `eERC_CHANGE_TEAM_ACK` | **S → C** | `—` | — | `ChangeTeamAck` (Opcode 5016: eERC_CHANGE_TEAM_ACK.) |
 | **5017** | `0x1399` | `eERC_FINISH_GAME_REQ` | **C → S** | `—` | `dungeon.py` | `FinishGameReq` (Opcode 5017: eERC_FINISH_GAME_REQ (sender 0x007AD380).) |
 | **5018** | `0x139A` | `eERC_FINISH_GAME_ACK` | **S → C** | `0x007ADB60` | — | `FinishGameAck` (Opcode 5018: eERC_FINISH_GAME_ACK (handler 0x007ADB60).) |
+| **5021** | `0x139D` | `eERC_USER_JOIN_SQUARE_NOT` | **S → C** | `—` | `world.py` | `UserJoinSquareNot`: spatial presence broadcast when player enters town square |
+| **5022** | `0x139E` | `eERC_USER_LEAVE_SQUARE_NOT` | **S → C** | `—` | `world.py` | `UserLeaveSquareNot`: presence broadcast when player leaves square or disconnects |
 | **5027** | `0x13A3` | `eERC_JOIN_LAYER_NOT` | **S → C** | `0x00787790` | — | — |
 | **5029** | `0x13A5` | `eERC_JOIN_SQUARE_ACK` | **S → C** | `0x00757AD0` | — | `JoinSquareAck` (Opcode 5029: eERC_JOIN_SQUARE_ACK response.) |
-| **5031** | `0x13A7` | `eERC_JOIN_LAYER_ACK` | **S → C** | `0x00787A70` | — | — |
-| **5033** | `0x13A9` | `eERC_LEAVE_SQUARE_ACK` | **S → C** | `0x00757960` | — | — |
-| **5038** | `0x13AE` | `eERC_LEAVE_LAYER_ACK` | **S → C** | `0x007895C0` | — | — |
+| **5030** | `0x13A6` | `eERC_USER_MOVE_NOT` | **C → S** | `—` | `square.py` | `UserMoveNot`: town square movement updates decoded and broadcast to peers |
+| **5031** | `0x13A7` | `eERC_JOIN_LAYER_ACK / eERC_USER_MOVE_NOT` | **S → C** | `0x00787A70` | `square.py` | `UserMoveNot` / `BackToSquareAck`: spatial movement broadcast to square occupants |
+| **5033** | `0x13A9` | `eERC_LEAVE_SQUARE_ACK` | **S → C** | `0x00757960` | `square.py` | Clears player from world square presence |
+| **5038** | `0x13AE` | `eERC_LEAVE_LAYER_ACK` | **S → C** | `0x007895C0` | `square.py` | Clears player from world layer presence |
 | **5039** | `0x13AF` | `eERC_LEAVE_LAYER_NOT` | **S → C** | `0x00789450` | — | — |
 | **5040** | `0x13B0` | `eERC_CHAT_REQ` | **C → S** | `—` | `social.py` | `ChatReq` (Opcode 5040: eERC_CHAT_REQ (0x007AC5E0).) |
 | **5041** | `0x13B1` | `eERC_CHAT_ACK` | **S → C** | `0x007AC890` | — | `ChatAck` (Opcode 5041: eERC_CHAT_ACK (0x007AC890).) |
@@ -360,12 +371,13 @@
 | **5044** | `0x13B4` | `eERC_SELECT_DUNGEON_ACK` | **S → C** | `0x007702E0` | — | `SelectDungeonAck` (Opcode 5044: eERC_SELECT_DUNGEON_ACK (JUserClient handler 0x007702E0).) |
 | **5045** | `0x13B5` | `eERC_BACK_TO_SQUARE_REQ` | **C → S** | `—` | `dungeon.py` | eERC_BACK_TO_SQUARE_REQ (0x007A0000.c:8367) -> 5046 eERC_BACK_TO_SQUARE_ACK (0x007897F0). Return to town/square from dungeon. |
 | **5046** | `0x13B6` | `eERC_BACK_TO_SQUARE_ACK` | **S → C** | `0x007897F0` | — | `BackToSquareAck` (Opcode 5046: eERC_BACK_TO_SQUARE_ACK response.) |
-| **5049** | `0x13B9` | `eERC_INVITE_REQ` | **C → S** | `—` | `dungeon.py` | `PartyInviteReq` (Opcode 5049: eERC_INVITE_REQ.) |
-| **5050** | `0x13BA` | `eERC_INVITE_ACK` | **S → C** | `0x00758700` | — | `PartyInviteAck` (Opcode 5050: eERC_INVITE_ACK (0x00758700).) |
-| **5051** | `0x13BB` | `eERC_INVITE_NOT` | **S → C** | `0x007706E0` | — | — |
+| **5049** | `0x13B9` | `eERC_INVITE_REQ` | **C → S** | `—` | `social.py` | `PartyInviteReq` (Opcode 5049: party invitation request via UID/name) |
+| **5050** | `0x13BA` | `eERC_INVITE_ACK` | **S → C** | `0x00758700` | — | `PartyInviteAck` (Opcode 5050: party invitation ack) |
+| **5051** | `0x13BB` | `eERC_INVITE_NOT` | **S → C** | `0x007706E0` | `social.py` | `PartyInviteNot`: notification delivered to target player with inviter info |
 | **5053** | `0x13BD` | `eERC_AGAIN_SELECT_DUNGEON_ACK` | **S → C** | `0x00770A80` | — | — |
-| **5054** | `0x13BE` | `eERC_ACCEPT_INVITE_REQ` | **C → S** | `—` | `dungeon.py` | `PartyAcceptInviteReq` (Opcode 5054: eERC_ACCEPT_INVITE_REQ.) |
-| **5055** | `0x13BF` | `eERC_ACCEPT_INVITE_ACK` | **S → C** | `—` | — | `PartyAcceptInviteAck` (Opcode 5055: eERC_ACCEPT_INVITE_ACK.) |
+| **5054** | `0x13BE` | `eERC_ACCEPT_INVITE_REQ` | **C → S** | `—` | `social.py` | `PartyAcceptInviteReq` (Opcode 5054: accept party invitation) |
+| **5055** | `0x13BF` | `eERC_ACCEPT_INVITE_ACK` | **S → C** | `—` | — | `PartyAcceptInviteAck` (Opcode 5055: accept party invitation ack) |
+| **5056** | `0x13C0` | `eERC_ACCEPT_INVITE_NOT` | **S → C** | `—` | `social.py` | `PartyAcceptInviteNot`: broadcast to party members when a new member joins |
 | **5061** | `0x13C5` | `eERC_ROOM_MEM_INFO_ACK` | **S → C** | `0x0076BC60` | — | — |
 | **5063** | `0x13C7` | `eERC_MONSTER_DEAD_REQ` | **C → S** | `—` | `dungeon.py` | `MonsterDeadReq` (Opcode 5063: eERC_MONSTER_DEAD_REQ (JUserClient::MonsterDeadREQ 0x0078A690).) |
 | **5064** | `0x13C8` | `eERC_DROP_ITEM_NOT` | **S → C** | `0x0078A870` | — | `DropItemNot` (Opcode 5064: eERC_DROP_ITEM_NOT (JUserClient::On_eERC_DROP_ITEM_NOT 0x0078A870).) |

@@ -30,9 +30,10 @@ from darkblood.games.network.messages.pets import (
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
 )
+from darkblood.games.handlers.base import BaseDomainService
 
 
-class PetHandlers:
+class PetHandlers(BaseDomainService):
     """Pet summoning, evolution, feeding, mounts, and monster taming."""
 
     # --- Monster Taming (2348, 2350) ---

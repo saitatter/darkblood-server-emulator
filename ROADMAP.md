@@ -16,7 +16,7 @@ Final objective: launch without the original services, establish a local session
 | **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot |
 | **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~80%)** | Validated decoder, store/quest/stat/cash/monster tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
-| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress (~50%)** | Relay JoinGroup verified; world manager spatial presence & 5096 mutual spawn; movement sync & party next |
+| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress (~85%)** | Relay JoinGroup verified; world manager spatial presence & 5096 spawn; movement (5030/5031), join/leave (5021/5022), party subsystem (2100-2107, 5049-5056) verified in test suite |
 | **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **In Progress (~85%)** | P2P trade, full mailbox system with attachments, depot AR & slot extension live; personal shop next |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
 | **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode registry | **Verified (~95%)** | 150 tests; opcode registry (501 entries); C# composition architecture blueprint & PacketDispatcher |
@@ -110,14 +110,14 @@ Final objective: launch without the original services, establish a local session
 ## New Milestones
 
 ### P6 — Multiplayer, Party & P2P Relay Synchronization
-- [ ] **Multi-client Square Synchronization**:
-  - Broadcast player position, rotation, and animation state to nearby players in the same square/layer.
+- [x] **Multi-client Square Synchronization**:
+  - Broadcast player position, rotation, and animation state to nearby players in the same square/layer (`5030/5031 eERC_USER_MOVE_NOT`).
   - Handle player join notification (`5021 eERC_USER_JOIN_SQUARE_NOT`) and player leave notification (`5022 eERC_USER_LEAVE_SQUARE_NOT`).
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
-- [ ] **Party System**:
-  - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`).
-  - Party join, leave, and kick (`2102 eEGS_PARTY_JOIN_REQ`, `2104 eEGS_PARTY_LEAVE_REQ`, `2106 eEGS_PARTY_KICK_REQ`).
-  - Master delegation and loot distribution settings (free-for-all, round-robin, leader-only).
+- [x] **Party System**:
+  - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).
+  - Party join, leave, and kick (`2102/2103 eEGS_PARTY_JOIN`, `5054/5055 eERC_ACCEPT_INVITE`, `5056 ACCEPT_INVITE_NOT`, `2104/2105 LEAVE`, `2106/2107 KICK`).
+  - Master delegation and leader promotion upon departure.
 - [ ] **Co-op Dungeon Instances**:
   - Synchronize party dungeon entry so all party members enter the same dungeon instance.
   - Synchronize monster health, damage numbers, and boss cinematic triggers across party members.

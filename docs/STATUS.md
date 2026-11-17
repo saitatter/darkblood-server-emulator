@@ -1,8 +1,20 @@
 # Research status and handoff
 
-## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 150 tests passing)
+## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
-Major subsystems implemented, integrated, and verified with 150 automated tests:
+Major subsystems implemented, integrated, and verified with 155 automated tests:
+- **Multiplayer Movement & Spatial Broadcasting (Milestone P6)**:
+  - Wire messages `UserMoveNot` (Opcodes 5030 / 5031), `UserJoinSquareNot` (Opcode 5021), and `UserLeaveSquareNot` (Opcode 5022).
+  - Spatial position updates (x, y, z, angle, move_state) decoded and tracked on `WorldPlayer` in `GameWorldManager`.
+  - Movement notifications broadcast to connected occupants in the same square/layer.
+  - Presence notifications broadcast to peers on square join, leave (5032/5037), and connection disconnect.
+- **Party Management Subsystem (Milestone P6)**:
+  - Implemented `PartyManager` singleton (`src/darkblood/games/world.py`) and wire messages (`src/darkblood/games/network/messages/party.py`).
+  - Opcodes 2100-2101 & 5049-5050 (Invite request/ack, client handler `0x00758700`), Opcode 5051 (`PartyInviteNot`, handler `0x007706E0`).
+  - Opcodes 2102-2103 & 5054-5055 (Join / accept request/ack), Opcode 5056 (`PartyAcceptInviteNot`).
+  - Opcodes 2104-2105 (Leave request/ack with automatic host leader re-election).
+  - Opcodes 2106-2107 (Party kick with leader permission checks and kick notice delivery).
+  - Fully verified across multi-client sessions in `tests/test_party_flow.py`.
 - **Pets, Mounts & Monster Taming Subsystem**:
   - Implemented `PetHandlers` (`src/darkblood/games/handlers/pets.py`) and wire messages (`src/darkblood/games/network/messages/pets.py`).
   - Opcodes 2348-2351 (Taming), 2434-2438 (Mount summon/dismiss/speed), 2464-2474 (Pet summon/dismiss/feed/rename/level).

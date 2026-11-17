@@ -160,6 +160,15 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | Daily rebirth coin | 2448 `eEGS_DAILY_REBIRTH_COIN_USE_REQ` | 2449 `eEGS_DAILY_REBIRTH_COIN_USE_ACK` | `0x0079DC70`: i32 result, u16 daily_count, i32 remain_pcbang | Verified |
 | Level up notification | — | 5087 `eERC_LEVEL_UP_NOT` | `0x0078CCF0`: tag `0x1E` + tag `0x0D` (count 0) + i64 char_uid + u8 level + i32 hp + i32 mp + bool flag | Verified |
 | Exp notification | — | 5086 `eERC_CHANGE_EXP_NOT` | `0x0078D170`: i32 nExpTotal + tag `0x1E` jGainExp (8 x i32 + 1 x f32) | Verified |
+| Spatial Movement | 5030 / 5031 `eERC_USER_MOVE_NOT` (i64 char_id, 4 × f32 x/y/z/angle, i32 move_state) | 5031 `eERC_USER_MOVE_NOT` | Spatial position update decoded and broadcast to other connected square occupants | Verified |
+| Square presence join | — | 5021 `eERC_USER_JOIN_SQUARE_NOT` | `i64 char_id, i32 square_id, 4 × f32 x/y/z/angle, u8 class, u8 level, wstr name`: broadcast to square occupants | Verified |
+| Square presence leave | — | 5022 `eERC_USER_LEAVE_SQUARE_NOT` | `i64 char_id, i32 reason`: broadcast to square occupants upon departure or disconnect | Verified |
+| Party invite | 2100 / 5049 `eEGS_PARTY_INVITE_REQ` (i64 target_uid / wstr name) | 2101 / 5050 `eEGS_PARTY_INVITE_ACK` | `0x00758700`: i32 result | Verified |
+| Party invite notice | — | 5051 `eERC_INVITE_NOT` | `0x007706E0`: i64 inviter_uid, i64 party_id, wstr inviter_name | Verified |
+| Party join / accept | 2102 / 5054 `eEGS_PARTY_JOIN_REQ` (i32 party_id, i32 host_uid) | 2103 / 5055 `eEGS_PARTY_JOIN_ACK` | i32 result, i32 party_id | Verified |
+| Party member joined | — | 5056 `eERC_ACCEPT_INVITE_NOT` | i32 party_id, i64 member_uid, bool is_leader, wstr member_name | Verified |
+| Party leave | 2104 `eEGS_PARTY_LEAVE_REQ` (i32 party_id) | 2105 `eEGS_PARTY_LEAVE_ACK` | i32 result; auto-promotes next member if leader departs | Verified |
+| Party kick | 2106 `eEGS_PARTY_KICK_REQ` (i64 target_uid, i32 party_id) | 2107 `eEGS_PARTY_KICK_ACK` | i32 result, i64 target_uid; delivers 2105 to kicked member | Verified |
 
 Create request (observed): `i32 0x7FFFFFFF, u8 class, wstr name, u32 face, u32 hair, 5 × u8 body sliders (head, arms, chest, torso, legs), u8`.
 

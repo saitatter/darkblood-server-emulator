@@ -39,15 +39,44 @@ from darkblood.games.network.messages import (
     TamingMonsterInsertAck,
     UpdateTradeArAck,
     UpdateTradeArReq,
+    PersonalShopOpenReq,
+    PersonalShopOpenAck,
+    PersonalShopCloseReq,
+    PersonalShopCloseAck,
+    PersonalShopChangeTitleReq,
+    PersonalShopChangeTitleAck,
+    PersonalShopBuyReq,
+    PersonalShopBuyAck,
+    PersonalShopGetProductsReq,
+    PersonalShopGetProductsAck,
+    PersonalShopChangeNot,
+    PersonalShopStartNot,
+    PersonalShopCloseNot,
+    BrokerListReq,
+    BrokerListAck,
+    BrokerMyListReq,
+    BrokerMyListAck,
+    BrokerRegistItemReq,
+    BrokerRegistItemAck,
+    BrokerBuyItemReq,
+    BrokerBuyItemAck,
+    BrokerCancelReq,
+    BrokerCancelAck,
+    BrokerPriceReq,
+    BrokerPriceAck,
+    StallItem,
+    BrokerProduct,
 )
+from darkblood.games.stalls import PersonalShopManager, BrokerManager
 from darkblood.player_management.characters import (
     add_reward_items,
     free_bag_slots,
     slots_needed,
 )
+from darkblood.games.handlers.base import BaseDomainService
 
 
-class CommerceHandlers:
+class CommerceHandlers(BaseDomainService):
     """Store transactions, buybacks, cash packages, Steam integration and P2P trade."""
 
     def _shop_char(self):
@@ -306,3 +335,259 @@ class CommerceHandlers:
         self.transport.record('trade-finally-accept-req', body)
         ack = FinallyAcceptTradeAck(result=0).encode()
         await self.transport.send_event(event(5084, ack, correlation), note='trade finally accept ack')
+
+    # --- Personal Shop (Player Stalls) Handlers ---
+
+    def _broadcast_square(self, evt_data: bytes):
+        """Broadcast an event to all players in the square."""
+        try:
+            from darkblood.games.world import GameWorldManager
+            world = GameWorldManager.get()
+            world.broadcast_to_square(1, evt_data, exclude_char_id=self.char_id)
+        except Exception:
+            pass
+
+    async def on_2078(self, correlation, body):
+        # eEGS_PERSONALSHOP_OPEN_REQ / eEGS_QUEST_GIVEUP_REQ disambiguation:
+        # Quest giveup has a small body with a quest ID (<= 12 bytes or no 0x10 item vector),
+        # whereas personal shop open contains stall items (0x10 vector) or stall title.
+        from darkblood.core.serialization.jser import strip_prefix
+        unprefixed = strip_prefix(body)
+        if len(unprefixed) <= 8 or (b'\x10' not in unprefixed and len(unprefixed) < 16):
+            if hasattr(self.session, 'quests') and hasattr(self.session.quests, 'handle_quest_giveup'):
+                return await self.session.quests.handle_quest_giveup(correlation, body)
+        await self._handle_open_stall(correlation, body, ack_opcode=2079)
+
+    async def on_2340(self, correlation, body):
+        # eEGS_PERSONALSHOP_START_REQ -> 2341 eEGS_PERSONALSHOP_START_ACK (0x00601AA0)
+        await self._handle_open_stall(correlation, body, ack_opcode=2341)
+
+    async def _handle_open_stall(self, correlation, body, ack_opcode=2079):
+        req = PersonalShopOpenReq.decode(body)
+        char = self.current_char()
+        if not char:
+            ack = PersonalShopOpenAck(result=1).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation), note='personal shop open fail (no char)')
+            return
+
+        char_uid = char.get('id', self.char_id)
+        char_name = char.get('name', 'Player')
+        mgr = PersonalShopManager.get()
+        success, msg, stall = mgr.open_stall(char_uid, char_name, req.title, req.items, char)
+        if success and stall:
+            ack = PersonalShopOpenAck(
+                result=0,
+                owner_uid=char_uid,
+                title=stall.title,
+                items=stall.wire_items(),
+                expire_time=stall.expire_seconds
+            ).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation),
+                                            note=f'personal shop open ack (uid={char_uid} items={len(stall.items)})')
+            # Broadcast stall opening to town square
+            notif = event(5254, PersonalShopStartNot(seller_uid=char_uid, title=stall.title).encode())
+            self._broadcast_square(notif)
+        else:
+            ack = PersonalShopOpenAck(result=1).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation),
+                                            note=f'personal shop open fail ({msg})')
+
+    async def on_2080(self, correlation, body):
+        # eEGS_PERSONALSHOP_BUY_REQ / eEGS_QUEST_FAIL_REQ disambiguation:
+        # Quest fail has a small body with a quest ID (<= 12 bytes),
+        # whereas personal shop buy has seller_uid, item_uid (>= 16 bytes).
+        from darkblood.core.serialization.jser import strip_prefix
+        unprefixed = strip_prefix(body)
+        if len(unprefixed) <= 12:
+            if hasattr(self.session, 'quests') and hasattr(self.session.quests, 'handle_quest_fail'):
+                return await self.session.quests.handle_quest_fail(correlation, body)
+        await self._handle_buy_stall_item(correlation, body, ack_opcode=2081)
+
+    async def on_5242(self, correlation, body):
+        # eERC_PERSONALSHOP_BUYITEM_REQ -> 5243 eERC_PERSONALSHOP_BUYITEM_ACK (0x006022AC)
+        await self._handle_buy_stall_item(correlation, body, ack_opcode=5243)
+
+    async def _handle_buy_stall_item(self, correlation, body, ack_opcode=2081):
+        req = PersonalShopBuyReq.decode(body)
+        char = self.current_char()
+        if not char:
+            ack = PersonalShopBuyAck(result=1).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation), note='personal shop buy fail (no char)')
+            return
+
+        mgr = PersonalShopManager.get()
+        success, msg, total_cost, new_items = mgr.buy_stall_item(
+            char, req.seller_uid, req.item_uid, req.count, self.store()
+        )
+        if success:
+            wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
+            stall = mgr.get_stall(req.seller_uid)
+            remaining_stall = stall.wire_items() if stall else []
+            ack = PersonalShopBuyAck(
+                result=0,
+                gold=char.get('gold', 0),
+                items=wire_items,
+                stall_items=remaining_stall,
+                seller_uid=req.seller_uid
+            ).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation),
+                                            note=f'personal shop buy ack (cost={total_cost} gold={char.get("gold", 0)})')
+            if stall:
+                notif = event(5250, PersonalShopChangeNot(
+                    seller_uid=req.seller_uid,
+                    title=stall.title,
+                    item_count=len(stall.items)
+                ).encode())
+                self._broadcast_square(notif)
+        else:
+            ack = PersonalShopBuyAck(result=1).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation),
+                                            note=f'personal shop buy fail ({msg})')
+
+    async def on_2088(self, correlation, body):
+        # eEGS_PERSONALSHOP_CLOSE_REQ -> 2089 eEGS_PERSONALSHOP_CLOSE_ACK
+        await self._handle_close_stall(correlation, body, ack_opcode=2089)
+
+    async def on_2342(self, correlation, body):
+        # eEGS_PERSONALSHOP_CLOSE_REQ -> 2343 eEGS_PERSONALSHOP_CLOSE_ACK (0x00601F09)
+        await self._handle_close_stall(correlation, body, ack_opcode=2343)
+
+    async def _handle_close_stall(self, correlation, body, ack_opcode=2089):
+        char = self.current_char()
+        char_uid = char.get('id', self.char_id) if char else self.char_id
+        mgr = PersonalShopManager.get()
+        success, returned = mgr.close_stall(char_uid, char, self.store())
+        ack = PersonalShopCloseAck(result=0 if success else 1, owner_uid=char_uid).encode()
+        await self.transport.send_event(event(ack_opcode, ack, correlation),
+                                        note=f'personal shop close ack (uid={char_uid})')
+        if success:
+            notif = event(5255, PersonalShopCloseNot(seller_uid=char_uid).encode())
+            self._broadcast_square(notif)
+
+    async def on_2090(self, correlation, body):
+        # eEGS_PERSONALSHOP_CHANGE_TITLE_REQ -> 2091 eEGS_PERSONALSHOP_CHANGE_TITLE_ACK
+        req = PersonalShopChangeTitleReq.decode(body)
+        char = self.current_char()
+        char_uid = char.get('id', self.char_id) if char else self.char_id
+        mgr = PersonalShopManager.get()
+        success = mgr.change_title(char_uid, req.title)
+        ack = PersonalShopChangeTitleAck(result=0 if success else 1, title=req.title).encode()
+        await self.transport.send_event(event(2091, ack, correlation),
+                                        note=f'personal shop change title ack (title={req.title})')
+        if success:
+            stall = mgr.get_stall(char_uid)
+            item_cnt = len(stall.items) if stall else 0
+            notif = event(5250, PersonalShopChangeNot(
+                seller_uid=char_uid,
+                title=req.title,
+                item_count=item_cnt
+            ).encode())
+            self._broadcast_square(notif)
+
+    async def on_6021(self, correlation, body):
+        # eERT_PERSONALSHOP_GET_PRODUCTS_REQ -> 6022 eERT_PERSONALSHOP_GET_PRODUCTS_ACK (0x006029D6)
+        req = PersonalShopGetProductsReq.decode(body)
+        mgr = PersonalShopManager.get()
+        stall = mgr.get_stall(req.seller_uid)
+        if stall:
+            ack = PersonalShopGetProductsAck(
+                result=0,
+                seller_uid=req.seller_uid,
+                title=stall.title,
+                items=stall.wire_items(),
+                expire_time=stall.expire_seconds
+            ).encode()
+        else:
+            ack = PersonalShopGetProductsAck(result=1, seller_uid=req.seller_uid).encode()
+        await self.transport.send_event(event(6022, ack, correlation),
+                                        note=f'personal shop get products ack (seller={req.seller_uid})')
+
+    # --- Broker (Marketplace / Auction House) Handlers ---
+
+    async def on_2262(self, correlation, body):
+        # eEGS_BROKER_LIST_REQ -> 2263 eEGS_BROKER_LIST_ACK (0x005ADAC0)
+        req = BrokerListReq.decode(body)
+        mgr = BrokerManager.get()
+        products, total = mgr.get_listings(page=req.page, category=req.category, filter_name=req.filter_name)
+        ack = BrokerListAck(result=0, products=products, page=req.page, total_count=total).encode()
+        await self.transport.send_event(event(2263, ack, correlation),
+                                        note=f'broker list ack (page={req.page} count={len(products)} total={total})')
+
+    async def on_2264(self, correlation, body):
+        # eEGS_BROKER_MYLIST_REQ -> 2265 eEGS_BROKER_MYLIST_ACK (0x005ADFF0)
+        char = self.current_char()
+        char_uid = char.get('id', self.char_id) if char else self.char_id
+        mgr = BrokerManager.get()
+        my_products = mgr.get_my_listings(char_uid)
+        ack = BrokerMyListAck(result=0, products=my_products).encode()
+        await self.transport.send_event(event(2265, ack, correlation),
+                                        note=f'broker mylist ack (uid={char_uid} count={len(my_products)})')
+
+    async def on_2266(self, correlation, body):
+        # eEGS_BROKER_REGIST_ITEM_REQ -> 2267 eEGS_BROKER_REGIST_ITEM_ACK (0x005AFBAC)
+        req = BrokerRegistItemReq.decode(body)
+        char = self.current_char()
+        if not char:
+            ack = BrokerRegistItemAck(result=1).encode()
+            await self.transport.send_event(event(2267, ack, correlation), note='broker regist item fail (no char)')
+            return
+
+        mgr = BrokerManager.get()
+        success, msg, listing = mgr.register_item(
+            char, req.item_uid, req.count, req.price, req.period_hours, self.store()
+        )
+        ack = BrokerRegistItemAck(result=0 if success else 1).encode()
+        await self.transport.send_event(event(2267, ack, correlation),
+                                        note=f'broker regist item ack (success={success} msg={msg})')
+
+    async def on_2268(self, correlation, body):
+        # eEGS_BROKER_BUY_ITEM_REQ -> 2269 eEGS_BROKER_BUY_ITEM_ACK (0x005B005C)
+        req = BrokerBuyItemReq.decode(body)
+        char = self.current_char()
+        if not char:
+            ack = BrokerBuyItemAck(result=1, gold=0).encode()
+            await self.transport.send_event(event(2269, ack, correlation), note='broker buy item fail (no char)')
+            return
+
+        mgr = BrokerManager.get()
+        success, msg, total_cost, new_items = mgr.buy_listing(
+            char, req.listing_id, req.count, self.store()
+        )
+        gold = char.get('gold', 0)
+        ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold).encode()
+        await self.transport.send_event(event(2269, ack, correlation),
+                                        note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
+
+    async def on_2270(self, correlation, body):
+        # eEGS_BROKER_CANCEL_REQ -> 2271 eEGS_BROKER_CANCEL_ACK (0x00789882)
+        req = BrokerCancelReq.decode(body)
+        char = self.current_char()
+        if not char:
+            ack = BrokerCancelAck(result=1).encode()
+            await self.transport.send_event(event(2271, ack, correlation), note='broker cancel fail (no char)')
+            return
+
+        mgr = BrokerManager.get()
+        success, msg = mgr.cancel_listing(char, req.listing_id, self.store())
+        ack = BrokerCancelAck(result=0 if success else 1).encode()
+        await self.transport.send_event(event(2271, ack, correlation),
+                                        note=f'broker cancel ack (success={success} msg={msg})')
+
+    async def on_2272(self, correlation, body):
+        # eEGS_BROKER_PRICE_REQ -> 2273 eEGS_BROKER_PRICE_ACK
+        req = BrokerPriceReq.decode(body)
+        from darkblood.games.game_data import client_dict
+        # Lookup code if any
+        item_code = ''
+        for s_items in client_dict.store_items().values():
+            for code, _ in s_items:
+                if jhash(code) == req.item_id:
+                    item_code = code
+                    break
+            if item_code:
+                break
+        mgr = BrokerManager.get()
+        avg_price, min_price = mgr.get_price_stats(item_code)
+        ack = BrokerPriceAck(result=0, avg_price=avg_price, min_price=min_price).encode()
+        await self.transport.send_event(event(2273, ack, correlation),
+                                        note=f'broker price ack (avg={avg_price} min={min_price})')

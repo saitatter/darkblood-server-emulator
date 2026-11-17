@@ -70,15 +70,16 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**: All 34 sequential chunks mapped and documented, including mailbox substructure at `0x0074C1D0` -> `0x00A3E760`.
 - **Master Opcode Registry**: Created `docs/OPCODE_REGISTRY.md` detailing 501 tracked opcodes, 298 client handler virtual addresses, 140 implemented server handlers, wire formats and packet semantics.
 - **C# Composition Blueprint & Packet Dispatcher**: Created `docs/ARCHITECTURE_REFACTOR_CSHARP.md`, `src/darkblood/games/dispatcher.py` (`PacketDispatcher`), and `src/darkblood/games/handlers/base.py` (`BaseDomainService`) replacing multiple inheritance with clean composition.
-- Test suite expanded to **150 automated tests** passing 100%.
+- **Multiplayer Movement & Spatial Broadcasting (P6)**: Opcodes 5030 / 5031 (`eERC_USER_MOVE_NOT`), 5021 (`eERC_USER_JOIN_SQUARE_NOT`), and 5022 (`eERC_USER_LEAVE_SQUARE_NOT`) wired to `GameWorldManager` spatial presence. Decodes coordinates (x, y, z), heading/angle, move state, updates `WorldPlayer`, and broadcasts updates to square occupants.
+- **Party Management Subsystem (P6)**: `PartyManager` singleton with party lifecycle: invite (2100/2101, 5049/5050), invite notification (5051), join/accept (2102/2103, 5054/5055), accept notification (5056), leave (2104/2105) with auto leader re-election, and kick (2106/2107) with notice delivery. End-to-end verified in `tests/test_party_flow.py`.
+- Test suite expanded to **155 automated tests** passing 100%.
 
 ## Open items (priority order)
 
 1. **GameSession Composition Refactoring**: Complete migration of `GameSession` from 11 mixins to composition via `PacketDispatcher` (`self.dispatcher`).
-2. **Multiplayer Movement & Spatial Broadcasting (P6)**: Broadcast player position updates (`5030/5031 eERC_USER_MOVE_NOT`) to nearby players in square/dungeon and handle join/leave (`5021/5022`).
-3. **Party System & Co-op Dungeons (P6)**: Party invite, join, leave, kick (2100-2106), synchronized party dungeon entry and instance state.
-4. **Live verification of Depot / Warehouse, Mailbox, and Pets**: In-game client verification of storage, mail send/receive with attachments, and pet summoning.
-5. **C# / .NET 8 Server Scaffolding (P10)**: Initialize `DarkBloodServer.sln` matching MHServerEmu architecture.
+2. **Co-op Dungeons Instance Synchronization (P6)**: Synchronized party dungeon entry and instance state across party members.
+3. **Live verification of Depot / Warehouse, Mailbox, Pets, and Party**: In-game client verification of storage, mail send/receive with attachments, pet summoning, and party invites.
+4. **C# / .NET 8 Server Scaffolding (P10)**: Initialize `DarkBloodServer.sln` matching MHServerEmu architecture.
 
 ## Environment notes (saita machine)
 

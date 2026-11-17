@@ -34,9 +34,10 @@ from darkblood.player_management.characters import (
     free_cells,
     next_item_uid,
 )
+from darkblood.games.handlers.base import BaseDomainService
 
 
-class MailHandlers:
+class MailHandlers(BaseDomainService):
     """Mailbox / Post domain handlers."""
 
     def _to_post_entry(self, r: dict) -> PostEntry:

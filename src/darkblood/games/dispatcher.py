@@ -18,18 +18,19 @@ class PacketDispatcher:
         # opcode -> handler(session, correlation, body) or handler(correlation, body)
         self._handlers: Dict[int, Callable] = {}
 
-    def register(self, opcode: int, handler: Callable):
+    def register(self, opcode: int, handler: Callable, overwrite: bool = False):
         """Register a single opcode handler."""
-        self._handlers[opcode] = handler
+        if overwrite or opcode not in self._handlers:
+            self._handlers[opcode] = handler
 
-    def register_controller(self, controller: Any):
+    def register_controller(self, controller: Any, overwrite: bool = False):
         """Register all ``on_<opcode>`` methods from a domain controller instance or class."""
         for name in dir(controller):
             if name.startswith('on_') and name[3:].isdigit():
                 opcode = int(name[3:])
                 method = getattr(controller, name)
                 if callable(method):
-                    self.register(opcode, method)
+                    self.register(opcode, method, overwrite=overwrite)
 
     def get_handler(self, opcode: int) -> Optional[Callable]:
         return self._handlers.get(opcode)
@@ -48,7 +49,7 @@ class PacketDispatcher:
 
         if handler is None:
             logger.debug(f'Unhandled event opcode {opcode} (correlation {correlation})')
-            session.transport.record('unhandled-event', body, opcode=opcode, correlation=correlation)
+            session.transport.record('unhandled-event', body, opcode=opcode)
             return False
 
         try:
@@ -57,13 +58,15 @@ class PacketDispatcher:
 
             if len(params) == 3:
                 if hasattr(handler, '__self__'):
-                    await handler(correlation, body)
+                    res = handler(correlation, body)
                 else:
-                    await handler(session, correlation, body)
+                    res = handler(session, correlation, body)
             elif len(params) == 2:
-                await handler(correlation, body)
+                res = handler(correlation, body)
             else:
-                await handler(session, correlation, body)
+                res = handler(session, correlation, body)
+            if inspect.isawaitable(res):
+                await res
             return True
         except Exception as e:
             logger.exception(f'Error handling opcode {opcode}: {e}')

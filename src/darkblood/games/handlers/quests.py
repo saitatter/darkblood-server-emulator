@@ -28,7 +28,10 @@ def _quest_id_after_tag(body: bytes) -> int:
         return 0
 
 
-class QuestHandlers:
+from darkblood.games.handlers.base import BaseDomainService
+
+
+class QuestHandlers(BaseDomainService):
     """Quest start/complete and tutorial quests."""
 
     async def handle_quest_start(self, correlation: int, body: bytes):

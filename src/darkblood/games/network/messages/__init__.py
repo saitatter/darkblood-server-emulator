@@ -12,3 +12,5 @@ from .system import *
 from .arena import *
 from .pets import *
 from .mail import *
+from .party import *
+from .stalls import *

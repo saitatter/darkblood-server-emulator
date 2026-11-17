@@ -22,6 +22,13 @@ def wide_string(text):
     return varuint(len(raw)) + raw
 
 
+def read_wide(data: bytes, offset: int = 0):
+    """Read length-prefixed UTF-16LE string from bytes, returning (text, next_offset)."""
+    length, noff = read_varuint(data, offset)
+    val = data[noff:noff + length].decode('utf-16le', errors='replace').rstrip('\x00')
+    return val, noff + length
+
+
 def event(opcode, body=b'', correlation=0, compress=False):
     # Nonempty body includes a compression boolean; empty body omits it.
     if body and compress:

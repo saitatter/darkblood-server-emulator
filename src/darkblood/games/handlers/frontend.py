@@ -97,7 +97,10 @@ def build_select_char_ack(char):
     ).encode()
 
 
-class FrontendHandlers:
+from darkblood.games.handlers.base import BaseDomainService
+
+
+class FrontendHandlers(BaseDomainService):
     """Server/channel lists, character list, creation and selection."""
 
     async def handle_get_server_list(self, correlation: int, body: bytes):
@@ -158,8 +161,9 @@ class FrontendHandlers:
                 from darkblood.games.world import GameWorldManager
                 char = self.store().get(self.account, self.active_char_id)
                 if char:
-                    player = GameWorldManager.get().register_player(self, self.active_char_id, char, square_id=square_id)
+                    player = GameWorldManager.get().register_player(self.session or self, self.active_char_id, char, square_id=square_id)
                     await GameWorldManager.get().broadcast_player_spawn(player)
+                    await GameWorldManager.get().broadcast_user_join(player)
             except Exception:
                 pass
 
@@ -209,8 +213,9 @@ class FrontendHandlers:
         # Register in GameWorldManager and broadcast mutual character spawns
         try:
             from darkblood.games.world import GameWorldManager
-            player = GameWorldManager.get().register_player(self, char_id, char, square_id=1)
+            player = GameWorldManager.get().register_player(self.session or self, char_id, char, square_id=1)
             await GameWorldManager.get().broadcast_player_spawn(player)
+            await GameWorldManager.get().broadcast_user_join(player)
         except Exception:
             pass
 

@@ -1,10 +1,11 @@
 import struct
 
 from darkblood.core.serialization.jser import event
+from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck, PostListAck
 
 
-class SocialHandlers:
+class SocialHandlers(BaseDomainService):
     """Mailbox, friends, block list and client notifications."""
 
     async def on_2131(self, correlation, body):
@@ -448,6 +449,156 @@ class SocialHandlers:
         self.transport.record('guild-person-grade-modify-req', body, member_uid=req.member_uid, new_grade=req.new_grade)
         ack = GuildPersonGradeModifyAck(result=0, member_uid=req.member_uid, new_grade=req.new_grade).encode()
         await self.transport.send_event(event(2165, ack, correlation), note=f'guild person grade modify ack (member={req.member_uid})')
+
+    # =========================================================================
+    # Party Subsystem Handlers (Opcodes 2100-2107, 5049-5056)
+    # =========================================================================
+
+    async def on_2100(self, correlation, body):
+        """Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK).
+
+        Client handler: 0x00758700.
+        Invites target player to co-op party.
+        """
+        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteNot, PartyInviteReq
+        from darkblood.games.world import GameWorldManager, PartyManager
+        req = PartyInviteReq.decode(body)
+        char = self.current_char()
+        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_name = char.get('name', 'Leader') if char else 'Leader'
+        char_class = char.get('char_class', 0) if char else 0
+        level = char.get('level', 1) if char else 1
+
+        target_id = req.target_uid
+        if not target_id and req.target_name:
+            target = next((c for _, c in self.store().all_characters()
+                           if c.get('name', '').lower() == req.target_name.lower()), None)
+            if target:
+                target_id = target.get('id', 0)
+
+        pm = PartyManager.get()
+        res, party = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
+        ack = PartyInviteAck(result=res, target_uid=target_id).encode()
+        await self.transport.send_event(event(2101, ack, correlation),
+                                        note=f'party invite ack (res={res} target={target_id})')
+
+        if res == 0 and target_id:
+            target_player = GameWorldManager.get().get_player(target_id)
+            if target_player and target_player.session and getattr(target_player.session, 'transport', None):
+                notif = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name, party_id=party.party_id if party else 0).encode()
+                await target_player.session.transport.send_event(event(5051, notif), note=f'party invite not from {char_name}')
+
+    async def on_5049(self, correlation, body):
+        """Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK).
+
+        Client handler: 0x00758700.
+        Invites target player to co-op party.
+        """
+        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteNot, PartyInviteReq
+        from darkblood.games.world import GameWorldManager, PartyManager
+        req = PartyInviteReq.decode(body)
+        char = self.current_char()
+        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_name = char.get('name', 'Leader') if char else 'Leader'
+        char_class = char.get('char_class', 0) if char else 0
+        level = char.get('level', 1) if char else 1
+
+        target_id = req.target_uid
+        if not target_id and req.target_name:
+            target = next((c for _, c in self.store().all_characters()
+                           if c.get('name', '').lower() == req.target_name.lower()), None)
+            if target:
+                target_id = target.get('id', 0)
+
+        pm = PartyManager.get()
+        res, party = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
+        ack = PartyInviteAck(result=res, target_uid=target_id).encode()
+        await self.transport.send_event(event(5050, ack, correlation),
+                                        note=f'party invite ack (res={res} target={target_id})')
+
+        if res == 0 and target_id:
+            target_player = GameWorldManager.get().get_player(target_id)
+            if target_player and target_player.session and getattr(target_player.session, 'transport', None):
+                notif = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name, party_id=party.party_id if party else 0).encode()
+                await target_player.session.transport.send_event(event(5051, notif), note=f'party invite not from {char_name}')
+
+    async def on_2102(self, correlation, body):
+        """Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK)."""
+        from darkblood.games.network.messages.party import PartyAcceptInviteNot, PartyJoinAck, PartyJoinReq
+        from darkblood.games.world import PartyManager
+        req = PartyJoinReq.decode(body)
+        char = self.current_char()
+        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_name = char.get('name', 'Member') if char else 'Member'
+        char_class = char.get('char_class', 0) if char else 0
+        level = char.get('level', 1) if char else 1
+
+        pm = PartyManager.get()
+        host_ref = req.host_uid if req.host_uid else req.party_id
+        res, party = pm.accept_invite(char_id, host_ref, char_name, char_class, level, session=self)
+        party_id = party.party_id if party else 0
+        ack = PartyJoinAck(result=res, party_id=party_id).encode()
+        await self.transport.send_event(event(2103, ack, correlation),
+                                        note=f'party join ack (res={res} party={party_id})')
+
+        if res == 0 and party:
+            notif = PartyAcceptInviteNot(party_id=party_id, member_uid=char_id, member_name=char_name).encode()
+            await pm.broadcast_to_party(party_id, event(5056, notif), exclude_char_id=char_id, note='party accept invite not')
+
+    async def on_5054(self, correlation, body):
+        """Opcode 5054 (eERC_ACCEPT_INVITE_REQ) -> 5055 (eERC_ACCEPT_INVITE_ACK)."""
+        from darkblood.games.network.messages.party import PartyAcceptInviteAck, PartyAcceptInviteNot, PartyAcceptInviteReq
+        from darkblood.games.world import PartyManager
+        req = PartyAcceptInviteReq.decode(body)
+        char = self.current_char()
+        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_name = char.get('name', 'Member') if char else 'Member'
+        char_class = char.get('char_class', 0) if char else 0
+        level = char.get('level', 1) if char else 1
+
+        pm = PartyManager.get()
+        res, party = pm.accept_invite(char_id, req.host_uid, char_name, char_class, level, session=self)
+        party_id = party.party_id if party else 0
+        ack = PartyAcceptInviteAck(result=res, party_id=party_id).encode()
+        await self.transport.send_event(event(5055, ack, correlation),
+                                        note=f'party accept invite ack (res={res} party={party_id})')
+
+        if res == 0 and party:
+            notif = PartyAcceptInviteNot(party_id=party_id, member_uid=char_id, member_name=char_name).encode()
+            await pm.broadcast_to_party(party_id, event(5056, notif), exclude_char_id=char_id, note='party accept invite not')
+
+    async def on_2104(self, correlation, body):
+        """Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK)."""
+        from darkblood.games.network.messages.party import PartyLeaveAck, PartyLeaveReq
+        from darkblood.games.world import PartyManager
+        char = self.current_char()
+        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        pm = PartyManager.get()
+        res, rem_party = pm.leave_party(char_id)
+        ack = PartyLeaveAck(result=res).encode()
+        await self.transport.send_event(event(2105, ack, correlation), note=f'party leave ack (res={res})')
+
+    async def on_2106(self, correlation, body):
+        """Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK)."""
+        from darkblood.games.network.messages.party import PartyKickAck, PartyKickReq
+        from darkblood.games.world import GameWorldManager, PartyManager
+        req = PartyKickReq.decode(body)
+        char = self.current_char()
+        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        pm = PartyManager.get()
+        res, party = pm.kick_player(char_id, req.target_uid)
+        ack = PartyKickAck(result=res, target_uid=req.target_uid).encode()
+        await self.transport.send_event(event(2107, ack, correlation),
+                                        note=f'party kick ack (res={res} target={req.target_uid})')
+
+        if res == 0:
+            target_player = GameWorldManager.get().get_player(req.target_uid)
+            if target_player and target_player.session and getattr(target_player.session, 'transport', None):
+                from darkblood.games.network.messages.party import PartyLeaveAck
+                await target_player.session.transport.send_event(
+                    event(2105, PartyLeaveAck(result=0).encode()),
+                    note=f'kicked from party {party.party_id if party else 0}'
+                )
 
 
 

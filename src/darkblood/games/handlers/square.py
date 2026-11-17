@@ -27,8 +27,10 @@ TUTORIAL_HOG_OBJECTIVES = {
 }
 TUTORIAL_QUEST_ID = 0x34c58e7c
 
+from darkblood.games.handlers.base import BaseDomainService
 
-class SquareHandlers:
+
+class SquareHandlers(BaseDomainService):
     """Town (square) play: tutorial, layers, NPCs, waypoints."""
 
     async def handle_clear_tutorial(self, correlation: int, body: bytes):
@@ -139,15 +141,44 @@ class SquareHandlers:
                                         note='gtarget list ack')
 
     async def handle_join_layer(self, correlation: int, body: bytes):
-        """Opcode 5030 (eERC_JOIN_LAYER_REQ) -> 5031 (eERC_JOIN_LAYER_ACK).
+        """Opcode 5030 (eERC_JOIN_LAYER_REQ / eERC_USER_MOVE_NOT).
 
-        Client handler: 0x00787A70.
-        Moves client into an instanced town layer / sub-district.
+        If body carries spatial coordinates (>= 20 bytes), handles movement update.
+        Otherwise moves client into an instanced town layer / sub-district.
         """
+        from darkblood.core.serialization.jser import strip_prefix
+        if len(strip_prefix(body)) >= 20:
+            return await self.handle_user_move(correlation, body)
+
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         ack = BackToSquareAck(square_uid=SQUARES[0]['square_id'], layer_net_id=layer_id).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
+
+    async def handle_user_move(self, correlation: int, body: bytes):
+        """Opcode 5030 / 5031: eERC_USER_MOVE_NOT.
+
+        Decodes player spatial movement (x, y, z, angle, move_state), updates
+        active WorldPlayer position, and broadcasts the movement to other players.
+        """
+        from darkblood.games.network.messages.party import UserMoveNot
+        from darkblood.games.world import GameWorldManager
+        move = UserMoveNot.decode(body)
+        if not move.char_id:
+            move.char_id = self.active_char_id or self.char_id
+
+        world = GameWorldManager.get()
+        player = world.get_player(move.char_id)
+        square_id = 1
+        if player:
+            player.x = move.x
+            player.y = move.y
+            player.z = move.z
+            player.angle = move.angle
+            player.move_state = move.move_state
+            square_id = player.square_id
+
+        await world.broadcast_user_move(move, square_id=square_id)
 
     async def handle_enter_maptool(self, correlation: int, body: bytes):
         """Opcode 2016 (eEGS_ENTER_MAPTOOL_REQ) -> 2017 (eEGS_ENTER_MAPTOOL_ACK).
@@ -185,7 +216,11 @@ class SquareHandlers:
         """
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
-            GameWorldManager.get().unregister_player(self.active_char_id)
+            world = GameWorldManager.get()
+            p = world.get_player(self.active_char_id)
+            square_id = p.square_id if p else 1
+            world.unregister_player(self.active_char_id)
+            await world.broadcast_user_leave(self.active_char_id, square_id)
         await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
                                         note='leave layer ack')
 
@@ -199,7 +234,11 @@ class SquareHandlers:
         """
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
-            GameWorldManager.get().unregister_player(self.active_char_id)
+            world = GameWorldManager.get()
+            p = world.get_player(self.active_char_id)
+            square_id = p.square_id if p else 1
+            world.unregister_player(self.active_char_id)
+            await world.broadcast_user_leave(self.active_char_id, square_id)
         await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
                                         note='leave square ack')
 
@@ -211,6 +250,7 @@ class SquareHandlers:
     on_5045 = handle_back_to_square
     on_5124 = handle_get_gtarget_list
     on_5030 = handle_join_layer
+    on_5031 = handle_user_move
     on_5037 = handle_leave_layer
     on_5032 = handle_leave_square
     on_2016 = handle_enter_maptool

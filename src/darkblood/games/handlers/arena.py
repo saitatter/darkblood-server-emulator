@@ -51,10 +51,11 @@ from darkblood.games.network.messages import (
     LeagueSeasonArenaGetRankAck,
     LeagueSeasonArenaGetRankReq,
 )
+from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.state import selected_character
 
 
-class ArenaHandlers:
+class ArenaHandlers(BaseDomainService):
     """Arena matches, teams, ladder rankings, and 1v1 town duels handlers."""
 
     # Server-wide shared state for rooms, teams, and leaderboard rankings

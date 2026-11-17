@@ -72,9 +72,10 @@ from darkblood.player_management.characters import (
     free_bag_slots,
     slots_needed,
 )
+from darkblood.games.handlers.base import BaseDomainService
 
 
-class InventoryHandlers:
+class InventoryHandlers(BaseDomainService):
     """Item management: equip, drag, split, use, bag switching, durability and storage."""
 
     async def on_2026(self, correlation, body):
