@@ -673,3 +673,114 @@ element layout is unknown and sent empty. The request body is not recovered.
 Status: static reconstruction plus headless tests. A live run that confirms the
 client enters SquarePlay after skip is still pending.
 
+## 6. Mailbox (Post) System Specification (Opcodes 2219 - 2237)
+
+Binary layout reconstructed from client senders and dispatch handlers:
+- `0x007AEF70`: Opcode 2220 (`eEGS_POST_REQUEST_LIST_ACK`)
+- `0x00795D70` / `0x00795F40`: Opcode 2221 / 2222 (`eEGS_POST_SEND_REQ` / `ACK`)
+- `0x007963C0` / `0x0075A660`: Opcode 2223 / 2224 (`eEGS_POST_READ_REQ` / `ACK`)
+- `0x0079664C` / `0x0077F8E0`: Opcode 2225 / 2226 (`eEGS_POST_GET_APPEND_ITEM_REQ` / `ACK`)
+- `0x007965B0`: Opcode 2227 (`eEGS_POST_NEW_ARRIVAL_NOT`)
+- `0x00A33907` / `0x00771470`: Opcode 2234 / 2235 (`eEGS_POST_RETURN_REQ` / `ACK`)
+- `0x007964EC` / `0x007715F0`: Opcode 2236 / 2237 (`eEGS_POST_DELETE_REQ` / `ACK`)
+
+### Mail Header & Payload Struct (Deserializer `0x00A55920`)
+Element tag `0x1E` preceding each mail record:
+1. `i64 mail_uid` (+0)
+2. `u8 post_type` (+8): `0` = normal player mail, `1` = system/admin notice, `2` = returned mail
+3. `i64 sender_uid` (+9): character UID of sender
+4. `bool is_read` (+0x11): read status flag
+5. `bool has_item` (+0x12): attachment flag (items or gold present)
+6. `bool can_return` (+0x13): return eligibility (returned mails set to false)
+7. `i32 remain_days` (+0x14): remaining days until expiry (default 30)
+8. `i64 gold` (+0x18): attached money / AR
+9. `i64 send_time` (+0x20): unix timestamp of dispatch
+10. `J-wstring sender_name` (+0x28): character name of sender
+11. `J-wstring title` (+0x44): subject line
+12. `J-wstring content` (+0x60): message body
+13. `tag 0x10 vector<Item>` (+0x7C): attached items serialized via standard Item struct `0x00A53F50`
+
+### Post List Request & Ack (2219 → 2220)
+- **Request 2219**: `i32 dummy` (observed `ffffff7f 00`).
+- **Ack 2220 (`0x007AEF70`)**:
+  - `u32 result` (0 = success)
+  - `tag 0x17 map<i64, PostEntry>`: Inbox (received mails)
+  - `tag 0x17 map<i64, PostEntry>`: Outbox (sent mails)
+  - `u32 unread_count`: number of unread mails in inbox
+  - `bool notify`: new mail indicator badge in UI
+
+### Post Send Request & Ack (2221 → 2222)
+- **Request 2221 (`0x00795D70`)**:
+  - `J-wstring recipient`: target character name
+  - `J-wstring title`: subject line
+  - `tag 0x10 vector<i64>`: UIDs of inventory items attached to the mail
+  - `i64 gold`: attached AR
+  - `i64 extra`: payment-on-delivery (COD) requested gold
+  - `bool is_cod`: COD flag
+- **Ack 2222 (`0x00795F40`)**:
+  - `i32 result` (0 = success, 0xCE = recipient not found / offline, 1 = insufficient funds)
+  - `tag 0x10 vector<Item>`: updated inventory item states
+  - `i64 remain_gold`: updated sender gold balance
+  - `i16 daily_send_count`: sender's mails sent today
+  - `i16 max_daily_send_count`: daily limit (default 30)
+
+### Post Read Request & Ack (2223 → 2224)
+- **Request 2223 (`0x007963C0`)**: `i64 mail_uid`.
+- **Ack 2224 (`0x0075A660`)**: `i32 result, i64 mail_uid`. Marks mail as read in database.
+
+### Post Claim Attachments (2225 → 2226)
+- **Request 2225 (`0x0079664C`)**: `i64 mail_uid`.
+- **Ack 2226 (`0x0077F8E0`)**:
+  - `i32 result` (0 = success)
+  - `i64 mail_uid`
+  - `i64 gold`: claimed AR credited to player
+  - `tag 0x10 vector<Item>`: claimed items added into player inventory bags.
+  Transfers attachments atomically, clears `gold = 0, items = [], has_item = 0` on the mail record.
+
+### Post Return & Delete (2234 → 2235, 2236 → 2237)
+- **Return 2234 / 2235 (`0x00771470`)**: `i64 mail_id` -> `i32 result, tag 0x10 vector<i64> returned_mail_uids`. Swaps recipient and sender, sets `post_type = 2`.
+- **Delete 2236 / 2237 (`0x007715F0`)**: `tag 0x10 vector<i64>` -> `i32 result, tag 0x10 vector<i64> deleted_mail_uids`. Marks mails as deleted.
+
+---
+
+## 7. Select Character Ack 2007 (`0x00A40760`) Full Field Layout
+
+Decompiled directly from `0x00A40760` (invoked by handler `0x007AA4B0`):
+1. `u32 result`: peeked via `0x00A1EA20(1)` then reread at cursor 0.
+2. `varuint (max 3)`: custom tag flags.
+3. `varuint (max 10)`: custom tag flags.
+4. `struct 0x00A52630`: Character World Details (stats, visuals, face, hair, body sliders, join layer netid).
+5. `4 x i64 + 2 x u8`: scalar fields (experience counters, world flags).
+6. `tag 0x17 map (0x00A40720)`: attribute modifiers map.
+7. `tag 0x10 vector (0x00558010)`: equipped and inventory bags (`0x2F` bytes each).
+8. `tag 0x10 vector (0x004B9830)`: inventory items (Item struct `0x00A53F50`).
+9. `tag 0x10 vector (0x004B2C30)`: quickslots (QuickSlot struct `0x00A49DC0`, 25 bytes).
+10. `tag 0x10 vector (0x00A3EEC0)`: secondary quickslots / keybind mappings.
+11. `tag 0x17 map (0x004B1240)`: learned skills map (skill_id -> level, lock state, speech text).
+12. `tag 0x17 map (0x0076E560)`: skill combos / chain triggers.
+13. `tag 0x13 set (0x0076A8C0)`: skill category unlocks.
+14. `tag 0x17 map (0x00A3E410)`: passive abilities.
+15. `i64 + 2 x i32`: current AP, total AP, combat rank.
+16. `tag 0x17 map (0x00A3E450)`: active quests map (ActiveQuest struct `0x00A209B0`).
+17. `tag 0x13 set (0x005EE0F0)`: completed quest tags.
+18. `18 raw bytes (0x00641E00)`: untagged world navigation & coordinates block.
+19. `tag 0x13 set (0x005EE0F0)`: secondary quest completion set.
+20. `3 x i64 + 1 x i32 + 2 x i64`: PvP rating, duel statistics, win/loss counters.
+21. `tag 0x10 vector (0x004B1A60)`: achievements / title unlocks.
+22. `i64 + 2 x bool + f32 + 2 x i64`: movement speeds, mount status, active buffs.
+23. `2 x tag 0x17 maps (0x00485220)`: social presence & friendship state.
+24. `J-wstring (0x00B35AB0)`: guild title / player motto.
+25. `struct 0x0074C1D0 -> 0x00A3E760`: Mailbox state (tag 0x1E):
+    - `tag 0x17 map #1`: inbox mail summaries (`map<i32, i64>`)
+    - `tag 0x17 map #2`: outbox mail summaries (`map<i32, struct 0x00A1ED90>`)
+    - `bool notify`: new mail notification badge.
+26. `tag 0x17 map (0x00A3EA00)`: temporary depot / warehouse slots.
+27. `2 x i64 + 1 x i32`: extended character counters.
+28. `2 x tag 0x10 vectors (0x004DA660)`: pet list & mount list.
+29. `i16 + 2 x i64`: daily mail send count and reset timestamps.
+30. `tag 0x17 map (0x005F9190)`: cash shop purchased perks map.
+31. `tag 0x13 set (0x0076ABA0)`: unlocked emotes / gestures set.
+32. `4 x tag 0x10 vectors (0x00A1E8C0, 0x00A3EDD0, 0x00A1EEA0, 0x00A1E900)`: taming monsters, arena presets, league records.
+33. `i16 + tag 0x10 vector + tag 0x17 map + i16 + tag 0x17 map`: mentorship links, guild permissions, second password status.
+34. `tag 0x10 vector (0x004B9210)`: trailing item updates vector.
+

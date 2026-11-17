@@ -7,14 +7,6 @@ from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck
 class SocialHandlers:
     """Mailbox, friends, block list and client notifications."""
 
-    async def on_2219(self, correlation, body):
-        # eEGS_POST_REQUEST_LIST_ACK (2220), handler 0x7AEF70:
-        # result, two tagged maps, u32 unread count, bool notification flag.
-        # Empty mailbox is a local offline default; notification stays false.
-        ack = PostListAck().encode()
-        await self.transport.send_event(event(2220, ack, correlation),
-                                        note='empty post list ack')
-
     async def on_2131(self, correlation, body):
         # eEGS_FRIEND_LIST_REQUEST_REQ -> eEGS_FRIEND_LIST_REQUEST_ACK (2132), handler 0x7712E0:
         # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
@@ -273,43 +265,6 @@ class SocialHandlers:
         await self.transport.send_event(event(2215, ack, correlation),
                                         note='guild all skill init ack')
 
-    async def on_2221(self, correlation, body):
-        # eEGS_POST_SEND_REQ (0x00795D70) -> 2222 eEGS_POST_SEND_ACK (0x00795F40).
-        from darkblood.games.network.messages import PostSendAck, PostSendReq
-        req = PostSendReq.decode(body)
-        self.transport.record('post-send-req', body)
-        ack = PostSendAck(result=0, items=[]).encode()
-        await self.transport.send_event(event(2222, ack, correlation), note='post send ack')
-
-    async def on_2223(self, correlation, body):
-        # eEGS_POST_READ_REQ (0x007963C0) -> 2224 eEGS_POST_READ_ACK (0x0075A660).
-        from darkblood.games.network.messages import PostReadAck, PostReadReq
-        req = PostReadReq.decode(body)
-        self.transport.record('post-read-req', body, mail_uid=req.mail_uid)
-        ack = PostReadAck(result=0, mail_uid=req.mail_uid).encode()
-        await self.transport.send_event(event(2224, ack, correlation), note=f'post read ack (uid={req.mail_uid})')
-
-    async def on_2225(self, correlation, body):
-        # eEGS_POST_GET_APPEND_ITEM_REQ (0x0079664C) -> 2226 eEGS_POST_GET_APPEND_ITEM_ACK (0x0077F8E0).
-        from darkblood.games.network.messages import PostGetAppendItemAck, PostGetAppendItemReq
-        from darkblood.games.state import selected_character
-        req = PostGetAppendItemReq.decode(body)
-        self.transport.record('post-get-append-item-req', body, mail_uid=req.mail_uid)
-        char = self.current_char()
-        char_gold = char.get('gold', 0) if char else 0
-        ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=char_gold, items=[]).encode()
-        await self.transport.send_event(event(2226, ack, correlation),
-                                        note=f'post get append item ack (uid={req.mail_uid})')
-
-    async def on_2236(self, correlation, body):
-        # eEGS_POST_DELETE_REQ (0x007964EC) -> 2237 eEGS_POST_DELETE_ACK (0x007715F0).
-        from darkblood.games.network.messages import PostDeleteAck, PostDeleteReq
-        req = PostDeleteReq.decode(body)
-        self.transport.record('post-delete-req', body, mail_uids=req.mail_uids)
-        ack = PostDeleteAck(result=0, mail_uids=req.mail_uids).encode()
-        await self.transport.send_event(event(2237, ack, correlation),
-                                        note=f'post delete ack (count={len(req.mail_uids)})')
-
     async def on_5040(self, correlation, body):
         # eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890).
         from darkblood.games.network.messages import ChatAck, ChatReq, LevelUpNot, ChangeExpNot
@@ -494,13 +449,6 @@ class SocialHandlers:
         ack = GuildPersonGradeModifyAck(result=0, member_uid=req.member_uid, new_grade=req.new_grade).encode()
         await self.transport.send_event(event(2165, ack, correlation), note=f'guild person grade modify ack (member={req.member_uid})')
 
-    async def on_2234(self, correlation, body):
-        # eEGS_POST_RETURN_REQ -> 2235 eEGS_POST_RETURN_ACK (0x00771470).
-        from darkblood.games.network.messages import PostReturnAck, PostReturnReq
-        req = PostReturnReq.decode(body)
-        self.transport.record('post-return-req', body, mail_id=req.mail_id)
-        ack = PostReturnAck(result=0).encode()
-        await self.transport.send_event(event(2235, ack, correlation), note=f'post return ack (mail={req.mail_id})')
 
 
 

@@ -106,6 +106,50 @@ class SqliteCharacterStore(ICharacterStore):
                          'VALUES (1, "OfflinePlayer", strftime("%s","now"))')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_char_account ON characters(account)')
             conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_char_name ON characters(name)')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS mailbox (
+                    uid INTEGER PRIMARY KEY AUTOINCREMENT,
+                    recipient_char_id INTEGER NOT NULL,
+                    sender_char_id INTEGER NOT NULL,
+                    sender_name TEXT NOT NULL,
+                    post_type INTEGER NOT NULL DEFAULT 0,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    gold INTEGER NOT NULL DEFAULT 0,
+                    extra INTEGER NOT NULL DEFAULT 0,
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    has_item INTEGER NOT NULL DEFAULT 0,
+                    can_return INTEGER NOT NULL DEFAULT 1,
+                    remain_days INTEGER NOT NULL DEFAULT 30,
+                    send_time INTEGER NOT NULL,
+                    items_json TEXT NOT NULL DEFAULT '[]',
+                    is_deleted INTEGER NOT NULL DEFAULT 0
+                )
+            ''')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_mail_recipient ON mailbox(recipient_char_id, is_deleted)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_mail_sender ON mailbox(sender_char_id, is_deleted)')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS mailbox (
+                    uid INTEGER PRIMARY KEY AUTOINCREMENT,
+                    recipient_char_id INTEGER NOT NULL,
+                    sender_char_id INTEGER NOT NULL,
+                    sender_name TEXT NOT NULL,
+                    post_type INTEGER NOT NULL DEFAULT 0,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    gold INTEGER NOT NULL DEFAULT 0,
+                    extra INTEGER NOT NULL DEFAULT 0,
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    has_item INTEGER NOT NULL DEFAULT 0,
+                    can_return INTEGER NOT NULL DEFAULT 1,
+                    remain_days INTEGER NOT NULL DEFAULT 30,
+                    send_time INTEGER NOT NULL,
+                    items_json TEXT NOT NULL DEFAULT '[]',
+                    is_deleted INTEGER NOT NULL DEFAULT 0
+                )
+            ''')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_mail_recipient ON mailbox(recipient_char_id, is_deleted)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_mail_sender ON mailbox(sender_char_id, is_deleted)')
             cur = conn.cursor()
             cur.execute('SELECT value FROM meta WHERE key = "next_id"')
             row = cur.fetchone()
@@ -231,3 +275,90 @@ class SqliteCharacterStore(ICharacterStore):
 
     def add_account_cash(self, account: str, delta: int) -> int:
         return self.set_account_cash(account, self.account_cash(account) + int(delta))
+
+    # --- Mailbox / Post Persistence ---
+
+    def get_mail_inbox(self, char_id: int) -> list:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                'SELECT * FROM mailbox WHERE recipient_char_id = ? AND is_deleted = 0 ORDER BY uid DESC',
+                (char_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def get_mail_outbox(self, char_id: int) -> list:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                'SELECT * FROM mailbox WHERE sender_char_id = ? AND is_deleted = 0 ORDER BY uid DESC',
+                (char_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def send_mail(self, sender_char_id: int, sender_name: str, recipient_char_id: int,
+                  title: str, content: str = '', gold: int = 0, extra: int = 0,
+                  items: list = None, post_type: int = 0) -> int:
+        import time
+        items_json = json.dumps(items or [])
+        has_item = 1 if (items and len(items) > 0) or gold > 0 else 0
+        send_time = int(time.time())
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO mailbox (
+                    recipient_char_id, sender_char_id, sender_name, post_type,
+                    title, content, gold, extra, is_read, has_item, can_return,
+                    remain_days, send_time, items_json, is_deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, 30, ?, ?, 0)
+            ''', (recipient_char_id, sender_char_id, sender_name, post_type,
+                  title, content, gold, extra, has_item, send_time, items_json))
+            conn.commit()
+            return cur.lastrowid
+
+    def read_mail(self, mail_uid: int) -> bool:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('UPDATE mailbox SET is_read = 1 WHERE uid = ?', (mail_uid,))
+            conn.commit()
+            return cur.rowcount > 0
+
+    def claim_mail_append(self, mail_uid: int) -> tuple:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT gold, items_json FROM mailbox WHERE uid = ? AND is_deleted = 0', (mail_uid,))
+            row = cur.fetchone()
+            if not row:
+                return 0, []
+            gold = int(row['gold'])
+            items = json.loads(row['items_json'])
+            cur.execute('UPDATE mailbox SET gold = 0, items_json = "[]", has_item = 0 WHERE uid = ?', (mail_uid,))
+            conn.commit()
+            return gold, items
+
+    def delete_mail(self, mail_uids: list) -> list:
+        if not mail_uids:
+            return []
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            placeholders = ','.join('?' for _ in mail_uids)
+            cur.execute(f'UPDATE mailbox SET is_deleted = 1 WHERE uid IN ({placeholders})', mail_uids)
+            conn.commit()
+            return list(mail_uids)
+
+    def return_mail(self, mail_uid: int) -> bool:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT recipient_char_id, sender_char_id FROM mailbox WHERE uid = ? AND is_deleted = 0', (mail_uid,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            rec = row['recipient_char_id']
+            snd = row['sender_char_id']
+            # Swap recipient and sender, set post_type = 2 (returned), can_return = 0
+            cur.execute(
+                'UPDATE mailbox SET recipient_char_id = ?, sender_char_id = ?, post_type = 2, can_return = 0 WHERE uid = ?',
+                (snd, rec, mail_uid)
+            )
+            conn.commit()
+            return True

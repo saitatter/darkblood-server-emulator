@@ -6,6 +6,11 @@ from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.mail import (
+    PostEntry, PostListReq, PostListAck, PostSendReq, PostSendAck,
+    PostReadReq, PostReadAck, PostGetAppendItemReq, PostGetAppendItemAck,
+    PostDeleteReq, PostDeleteAck, PostNewArrivalNot, PostReturnReq, PostReturnAck
+)
 
 @dataclass
 class FriendEntry:
@@ -44,23 +49,6 @@ class FriendListAck:
         for f in self.friends:
             body += b'\x0f' + struct.pack('<q', f.uid) + f.encode()
         return body
-
-@dataclass
-class PostListAck:
-    """Opcode 2220: eEGS_POST_REQUEST_LIST_ACK response.
-
-    Binary schema: Reader 0x007AEF70.
-    u32 result (0), 2x tag 0x17 map (0x7680E0), u32 unread_count, bool notify.
-    """
-    result: int = 0
-    unread_count: int = 0
-    notify: bool = False
-
-    def encode(self) -> bytes:
-        return (struct.pack('<I', self.result)
-                + b'\x17' + varuint(0)
-                + b'\x17' + varuint(0)
-                + struct.pack('<I?', self.unread_count, self.notify))
 
 @dataclass
 class FriendListAddReq:
@@ -303,132 +291,7 @@ class ChatAck:
 
 # --- Quest Giveup & Fail Opcodes (2078 - 2081) ---
 
-@dataclass
-class PostSendReq:
-    """Opcode 2221: eEGS_POST_SEND_REQ (0x00795D70)."""
-    recipient: str = ''
-    title: str = ''
-    gold: int = 0
-    extra: int = 0
-    items: list = field(default_factory=list)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostSendReq':
-        return cls()
-
-@dataclass
-class PostSendAck:
-    """Opcode 2222: eEGS_POST_SEND_ACK (0x00795F40)."""
-    result: int = 0
-    items: list = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        return (struct.pack('<i', self.result)
-                + b'\x10' + varuint(len(self.items))
-                + b''.join(i.encode() for i in self.items))
-
-@dataclass
-class PostReadReq:
-    """Opcode 2223: eEGS_POST_READ_REQ (0x007963C0)."""
-    mail_uid: int = 0
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostReadReq':
-        if len(data) >= 8:
-            return cls(mail_uid=struct.unpack_from('<q', data, 0)[0])
-        return cls()
-
-@dataclass
-class PostReadAck:
-    """Opcode 2224: eEGS_POST_READ_ACK (0x0075A660)."""
-    result: int = 0
-    mail_uid: int = 0
-
-    def encode(self) -> bytes:
-        return struct.pack('<iq', self.result, self.mail_uid)
-
-@dataclass
-class PostGetAppendItemReq:
-    """Opcode 2225: eEGS_POST_GET_APPEND_ITEM_REQ (0x0079664C)."""
-    mail_uid: int = 0
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostGetAppendItemReq':
-        if len(data) >= 8:
-            return cls(mail_uid=struct.unpack_from('<q', data, 0)[0])
-        return cls()
-
-@dataclass
-class PostGetAppendItemAck:
-    """Opcode 2226: eEGS_POST_GET_APPEND_ITEM_ACK (0x0077F8E0)."""
-    result: int = 0
-    mail_uid: int = 0
-    gold: int = 0
-    items: list = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        return (struct.pack('<iqq', self.result, self.mail_uid, self.gold)
-                + b'\x10' + varuint(len(self.items))
-                + b''.join(i.encode() for i in self.items))
-
-@dataclass
-class PostDeleteReq:
-    """Opcode 2236: eEGS_POST_DELETE_REQ (0x007964EC)."""
-    mail_uids: list = field(default_factory=list)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostDeleteReq':
-        uids = []
-        if len(data) >= 2 and data[0] == 0x10:
-            count, offset = read_varuint(data, 1)
-            for _ in range(count):
-                if offset + 8 <= len(data):
-                    uids.append(struct.unpack_from('<q', data, offset)[0])
-                    offset += 8
-        elif len(data) >= 8:
-            uids.append(struct.unpack_from('<q', data, 0)[0])
-        return cls(mail_uids=uids)
-
-@dataclass
-class PostDeleteAck:
-    """Opcode 2237: eEGS_POST_DELETE_ACK (0x007715F0)."""
-    result: int = 0
-    mail_uids: list = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        return (struct.pack('<i', self.result)
-                + b'\x10' + varuint(len(self.mail_uids))
-                + struct.pack(f'<{len(self.mail_uids)}q', *self.mail_uids))
-
-
 # --- Trade Opcodes (5069 - 5085) ---
-
-@dataclass
-class PostNewArrivalNot:
-    """Opcode 2227: eEGS_POST_NEW_ARRIVAL_NOT (0x007965B0)."""
-    def encode(self) -> bytes:
-        return b''
-
-@dataclass
-class PostReturnReq:
-    """Opcode 2234: eEGS_POST_RETURN_REQ."""
-    mail_id: int = 0
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostReturnReq':
-        if len(data) >= 8:
-            return cls(mail_id=struct.unpack_from('<q', data, 0)[0])
-        return cls()
-
-@dataclass
-class PostReturnAck:
-    """Opcode 2235: eEGS_POST_RETURN_ACK (0x00771470)."""
-    result: int = 0
-
-    def encode(self) -> bytes:
-        if self.result != 0:
-            return struct.pack('<i', self.result)
-        return struct.pack('<i', self.result) + b'\x10\x80'
 
 
 # =========================================================================

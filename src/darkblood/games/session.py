@@ -8,6 +8,7 @@ from darkblood.games.handlers.commerce import CommerceHandlers
 from darkblood.games.handlers.dungeon import DungeonHandlers
 from darkblood.games.handlers.frontend import FrontendHandlers, welcome
 from darkblood.games.handlers.inventory import InventoryHandlers
+from darkblood.games.handlers.mail import MailHandlers
 from darkblood.games.handlers.pets import PetHandlers
 from darkblood.games.handlers.quests import QuestHandlers
 from darkblood.games.handlers.skills import SkillHandlers
@@ -15,7 +16,7 @@ from darkblood.games.handlers.social import SocialHandlers
 from darkblood.games.handlers.square import SquareHandlers
 
 
-class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHandlers,
+class GameSession(FrontendHandlers, SocialHandlers, MailHandlers, SquareHandlers, CommerceHandlers,
                   InventoryHandlers, SkillHandlers, QuestHandlers, DungeonHandlers,
                   ArenaHandlers, PetHandlers):
     """Application layer: JEvent dispatch to ``on_<opcode>`` handlers.

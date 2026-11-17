@@ -240,6 +240,9 @@ class PostGetAppendItemReq:
             return cls(mail_uid=struct.unpack_from('<q', data, 0)[0])
         return cls()
 
+    def encode(self) -> bytes:
+        return struct.pack('<q', self.mail_uid)
+
 
 @dataclass
 class PostGetAppendItemAck:
@@ -274,6 +277,9 @@ class PostReturnReq:
         if len(data) >= 8:
             return cls(mail_id=struct.unpack_from('<q', data, 0)[0])
         return cls()
+
+    def encode(self) -> bytes:
+        return struct.pack('<q', self.mail_id)
 
 
 @dataclass
