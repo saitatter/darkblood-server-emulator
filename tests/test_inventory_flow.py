@@ -119,7 +119,7 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2068)[0], 0)
 
             # 14. Store sell item (2069 -> 2070)
-            client.send_event(2069, struct.pack('<iqi', 1, 1, 1))
+            client.send_event(2069, bytes.fromhex('ffffff7f6d03416f') + struct.pack('<qH', 1, 1))
             _, ack2070 = await client.expect_event(2070)
             self.assertEqual(struct.unpack_from('<i', ack2070)[0], 0)
 

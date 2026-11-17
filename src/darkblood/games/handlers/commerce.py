@@ -131,7 +131,8 @@ class CommerceHandlers:
         else:
             target['count'] = curr - del_cnt
 
-        earned = 50 * del_cnt
+        from darkblood.games.game_data.client_dict import item_field
+        earned = item_field(target.get('code', ''), 'SellPrice', 0) * del_cnt
         char_gold = char.get('gold', 0) + earned
         char['gold'] = char_gold
         char['u66'] = char_gold

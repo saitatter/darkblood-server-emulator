@@ -172,7 +172,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', enc_buy)[0], 0)
         self.assertEqual(struct.unpack_from('<i', enc_buy)[0], 0)
 
-        raw_sell = struct.pack('<iqi', 1, 7777777, 1)
+        # Live shape: prefix + npc id + item uid + u16 count.
+        raw_sell = bytes.fromhex('ffffff7f') + struct.pack('<iqH', 1, 7777777, 1)
         req_sell = messages.SellItemReq.decode(raw_sell)
         self.assertEqual((req_sell.npc_id, req_sell.item_uid, req_sell.count), (1, 7777777, 1))
         ack_sell = messages.SellItemAck(result=0, gold=100050, items=[])

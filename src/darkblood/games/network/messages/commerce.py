@@ -71,7 +71,8 @@ class CurrentCashAck:
 class BuyItemReq:
     """Opcode 2067: eEGS_BUY_ITEM_REQ (0x00780000.c:10667).
 
-    Wire format: i32 npc_id + i32 item_id + u16 count (10 bytes).
+    Wire format: i32 npc_id + i32 item_id + u16 count (10 bytes), after the
+    0x7FFFFFFF prefix when the client sends one (as it does for 2069).
     """
     store_id: int = 0
     item_id: int = 0
@@ -79,6 +80,8 @@ class BuyItemReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'BuyItemReq':
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
         if len(data) >= 10:
             sid, iid, cnt = struct.unpack_from('<iiH', data, 0)
             return cls(store_id=sid, item_id=iid, count=cnt)
@@ -121,7 +124,9 @@ class BuyItemAck:
 class SellItemReq:
     """Opcode 2069: eEGS_SELL_ITEM_REQ (0x00780000.c:10700).
 
-    Wire format: i32 npc_id + i64 item_uid + u16 count (14 bytes).
+    Observed live (2026-11-17): ffffff7f prefix + i32 npc id + i64 item uid
+    + u16 count, 18 bytes. Decoding without the prefix and with an i32 count
+    read the npc id as the item uid ("sell item fail (not found)").
     """
     npc_id: int = 0
     item_uid: int = 0
@@ -129,8 +134,10 @@ class SellItemReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'SellItemReq':
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
         if len(data) >= 14:
-            nid, uid, cnt = struct.unpack_from('<iqi', data, 0)
+            nid, uid, cnt = struct.unpack_from('<iqH', data, 0)
             return cls(npc_id=nid, item_uid=uid, count=cnt)
         return cls()
 
