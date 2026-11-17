@@ -84,6 +84,9 @@ class PostListReq:
         dummy = struct.unpack_from('<i', data, 0)[0] if len(data) >= 4 else 0
         return cls(dummy=dummy)
 
+    def encode(self) -> bytes:
+        return struct.pack('<i', self.dummy)
+
 
 @dataclass
 class PostListAck:
@@ -212,6 +215,9 @@ class PostReadReq:
             return cls(mail_uid=struct.unpack_from('<q', data, 0)[0])
         return cls()
 
+    def encode(self) -> bytes:
+        return struct.pack('<q', self.mail_uid)
+
 
 @dataclass
 class PostReadAck:
@@ -288,6 +294,9 @@ class PostReturnAck:
 class PostDeleteReq:
     """Opcode 2236: eEGS_POST_DELETE_REQ (0x007964EC)."""
     mail_uids: list[int] = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return b'\x10' + varuint(len(self.mail_uids)) + b''.join(struct.pack('<q', u) for u in self.mail_uids)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PostDeleteReq':
