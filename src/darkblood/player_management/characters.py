@@ -98,6 +98,9 @@ def ensure_inventory(char):
 # item's PartFilePath/DropImgFilePath (BODY_A, GLOVE, BOOTS, BODY_B = pants,
 # SHOULDER, HELMET).
 ARMOR_SLOTS = {'Abod': 2, 'Aglo': 3, 'Asho': 4, 'Abel': 5, 'Ader': 6, 'Ahel': 13}
+# Accessories by prefix, from each item's DropImgFilePath in item_equip*.lua
+# (Cloak_*, Necklace_*, Earring_*, Ring_*).
+ACCESSORY_SLOTS = {'Aclo': (7,), 'Anec': (8,), 'Aear': (9, 10), 'Arin': (11, 12)}
 WEAPON_RIGHT, WEAPON_LEFT = 0, 1
 OFFHAND_PREFIXES = ('Ashi', 'Abok', 'Wshu', 'WTof')  # shield (Knight), book (Mage), shuriken (Thief), tonfa (Fighter)
 
@@ -123,20 +126,19 @@ def equip_slot_for(code, taken):
 def fits_equip_slot(code, slot):
     """Whether an item may sit in equipment slot `slot`.
 
-    Armour with a known prefix only fits its own slot; weapons fit the hands
-    (offhand items the left hand, others the right); other A* items
-    (accessories, prefixes not mapped yet) only fit slots 7-12
-    (cloak, necklace, earrings, rings).
+    Armour with a known prefix only fits its own slot; accessories their
+    slot(s); weapons fit the hands (offhand items the left hand, others the
+    right). Unknown A* prefixes fit nowhere.
     """
     part = ARMOR_SLOTS.get(code[:4])
     if part is not None:
         return slot == part
+    if code[:4] in ACCESSORY_SLOTS:
+        return slot in ACCESSORY_SLOTS[code[:4]]
     if code.startswith(OFFHAND_PREFIXES):
         return slot == WEAPON_LEFT
     if code.startswith('W'):
         return slot == WEAPON_RIGHT
-    if code.startswith('A'):
-        return 7 <= slot <= 12
     return False
 
 

@@ -163,9 +163,12 @@ class CommerceHandlers:
             target['container'], target['slot'] = old_container, old_slot
             dragged['container'], dragged['slot'] = req.to_container, req.to_slot
             self.store().save()
+            # Displaced item first: the client applies records in order, and
+            # placing the dragged item into a cell it still sees occupied did
+            # not take effect (live 2043 swap, 2026-11-17).
             wire_items = [
-                Item(owner=char.get('id', -1), **dragged),
-                Item(owner=char.get('id', -1), **target)
+                Item(owner=char.get('id', -1), **target),
+                Item(owner=char.get('id', -1), **dragged)
             ]
         else:
             dragged['container'] = req.to_container
@@ -289,9 +292,10 @@ class CommerceHandlers:
                 target_item['container'] = EQUIPPED
                 target_item['slot'] = target_slot
                 self.store().save()
+                # Vacate the equipment cell first (see the drag swap above).
                 wire_items = [
-                    Item(owner=char.get('id', -1), **target_item),
-                    Item(owner=char.get('id', -1), **previous_equipped)
+                    Item(owner=char.get('id', -1), **previous_equipped),
+                    Item(owner=char.get('id', -1), **target_item)
                 ]
             else:
                 target_item['container'] = EQUIPPED
