@@ -90,7 +90,7 @@ class CommerceHandlers:
             item_code = 'Ihppa0001'
 
         count = max(1, req.count)
-        cost = 100 * count
+        cost = client_dict.item_field(item_code, 'BuyPrice', 0) * count
         char_gold = char.get('gold', 100000)
         if char_gold >= cost:
             char_gold -= cost

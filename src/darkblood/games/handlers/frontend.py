@@ -60,7 +60,10 @@ def build_select_char_ack(char):
         character=c,
         active_quests=active,
         bags=bags,
-        items=items
+        items=items,
+        skills=char.get('skills', {}) if isinstance(char, dict) else {},
+        skill_speeches=char.get('skill_speeches', {}) if isinstance(char, dict) else {},
+        locked_skills=char.get('locked_skills', []) if isinstance(char, dict) else [],
     ).encode()
 
 

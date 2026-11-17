@@ -134,7 +134,12 @@ class WireMessagesTest(unittest.TestCase):
     def test_store_info_ack(self):
         ack = messages.StoreInfoAck(npc_id=1, items=[('Ihppa0001', -1)]).encode()
         self.assertEqual(ack[8:10], b'\x10\x81')
-        self.assertEqual(struct.unpack_from('<Ii', ack, 10), (hashing.jhash('Ihppa0001'), -1))
+        self.assertEqual(struct.unpack_from('<I', ack, 10)[0], hashing.jhash('Ihppa0001'))
+        # +0x18 stock (0 = "Not enough products", 0x0059A5DC), +0x1A -1.
+        self.assertEqual(struct.unpack_from('<hh', ack, 10 + 0x18), (-1, -1))
+        record = messages.commerce.store_record('Ihppa0001', 3, price=150)
+        self.assertEqual(struct.unpack_from('<IIIi', record), (hashing.jhash('Ihppa0001'), 150, 0, 0))
+        self.assertEqual(struct.unpack_from('<h', record, 0x18)[0], 3)
 
     def test_change_bag_property_messages(self):
         raw_req = struct.pack('<qB', 2, 3)
@@ -373,6 +378,18 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(req_chat.channel, 0)
         ack_chat = messages.ChatAck(result=0, channel=0, sender='Tester', message='Hello world').encode()
         self.assertEqual(struct.unpack_from('<iB', ack_chat[:5]), (0, 0))
+
+    def test_select_char_ack_carries_learned_skills(self):
+        # 2007 map 0x4B1240 shares the 2698 element reader 0x4ACB80.
+        skills = {'5': 2, '35': 1}
+        smap = messages.skills.encode_skill_map(skills, {'5': 'Hi'}, [35])
+        self.assertEqual(smap[:2], b'\x17\x82')
+        self.assertEqual(smap[2:8], b'\x0f' + struct.pack('<HHB', 5, 5, 2))
+        ack = messages.SelectCharacterAck(skills=skills, skill_speeches={'5': 'Hi'},
+                                          locked_skills=[35]).encode()
+        self.assertIn(smap, ack)
+        empty = messages.SelectCharacterAck().encode()
+        self.assertEqual(len(ack) - len(empty), len(smap) - 2)
 
     def test_lobby_entry_town_is_join_layer(self):
         # Character select resolves the high dword of +0x37 as the town

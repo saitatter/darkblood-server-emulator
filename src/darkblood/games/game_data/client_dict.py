@@ -251,6 +251,42 @@ def char_level_stat(char_class: int, level: int) -> dict:
 
 
 
+ITEM_FIELD_RE = re.compile(r'^ {4}(\w+) = (-?\d+),?$')
+
+
+@lru_cache(maxsize=None)
+def item_int_fields():
+    """{item id: {field: int}} for the integer top-level fields of every
+    item_*.lua dictionary (e.g. BuyPrice, SellPrice, BagSize).
+
+    Keys are emitted sorted and ItemID sorts after BagSize/BuyPrice, so the
+    fields seen since the entry start ("  {") belong to the next ItemID.
+    """
+    out = {}
+    root = data_root()
+    if not root.exists():
+        return out
+    for path in sorted(root.glob('item_*.lua')):
+        fields = {}
+        for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
+            if line.startswith('  {'):
+                fields = {}
+                continue
+            m = ITEM_ID_RE.match(line)
+            if m:
+                out.setdefault(m.group(1), {}).update(fields)
+                continue
+            m = ITEM_FIELD_RE.match(line)
+            if m:
+                fields[m.group(1)] = int(m.group(2))
+    return out
+
+
+def item_field(code: str, name: str, default=None):
+    """One integer field of an item's dictionary entry (see item_int_fields)."""
+    return item_int_fields().get(code, {}).get(name, default)
+
+
 ITEM_EQUIP_FILES = ('item_equip1_15lv.lua', 'item_equip20_27lv.lua', 'item_equip30_37lv.lua',
                     'item_equip40_47lv.lua', 'item_equip50_57lv.lua')
 DURABILITY_RE = re.compile(r'^ {4}Durability = ([\d.]+),?$')

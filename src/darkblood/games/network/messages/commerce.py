@@ -7,6 +7,31 @@ from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 
+def store_record(item: str, stock: int = -1, price: int = None) -> bytes:
+    """32-byte store record (raw copy 0x00A489D0), found by item hash 0x00581070.
+
+    Fields read by the shop UI (flags 0x0059A280, disable 0x0059A5DC, buy
+    0x0059AD60):
+      +0x00 i32 jhash(item id)
+      +0x04 u32 AR price: flag 1 when it exceeds player gold (+0x70)
+      +0x08 u32 price in the currency at player +0x268: flag 2 (sent 0)
+      +0x0C i32 price in the currency at player +0x27C: flag 4 (sent 0)
+      +0x10 8 bytes unknown (0)
+      +0x18 i16 stock: 0 disables the item with flag 8 "JERI_STOREMAXNUM_00"
+            (Not enough products); storelist.lua -1 = unlimited
+      +0x1A i16 -1: max buy count is the item's stack size (dict +0x19E),
+            otherwise +0x18 is used
+      +0x1C 4 bytes unknown (0)
+    price defaults to the item's BuyPrice from the item dictionaries.
+    """
+    if price is None:
+        from darkblood.games.game_data.client_dict import item_field
+        price = item_field(item, 'BuyPrice', 0)
+    stock = max(-0x8000, min(0x7FFF, stock))
+    return (struct.pack('<IIIi', jhash(item), price & 0xFFFFFFFF, 0, 0) + b'\x00' * 8
+            + struct.pack('<hh', stock, -1) + b'\x00' * 4)
+
+
 @dataclass
 class StoreInfoAck:
     """Opcode 2066: eEGS_GET_STORE_INFO_ACK (handler 0x007842C0).
@@ -14,10 +39,7 @@ class StoreInfoAck:
     Draft schema (tools/extract_schemas.py): u32 result, i32 (stored at
     store window +0xCC; NPC id echoed, assumption), tag 0x10 vector of 32-byte
     records (0x00A489D0) and tag 0x10 vector of item structs (0x0077CEB0 ->
-    0x00A53F50, sent empty). Store open 0x005953D0 passes the first u32 of
-    each 32-byte record to 0x009E5870, an item-dict lookup returning the item
-    tab, so a record starts with jhash(item id). The other 28 bytes are not
-    recovered: i32 stock (-1 = unlimited, as in storelist.lua) + zeros.
+    0x00A53F50, sent empty). Records are built by store_record().
     """
     result: int = 0
     npc_id: int = 0
@@ -27,7 +49,7 @@ class StoreInfoAck:
         npc = self.npc_id - (1 << 32) if self.npc_id >= 1 << 31 else self.npc_id
         body = struct.pack('<Ii', self.result, npc) + b'\x10' + varuint(len(self.items))
         for item, count in self.items:
-            body += struct.pack('<Ii', jhash(item), count) + b'\x00' * 24
+            body += store_record(item, count)
         return body + b'\x10' + varuint(0)
 
 @dataclass

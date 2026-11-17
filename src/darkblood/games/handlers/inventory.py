@@ -61,6 +61,8 @@ from darkblood.games.network.messages import (
     UseArenaSpItemReq,
     UseItemAck,
     UseItemReq,
+    OpenBagAck,
+    OpenBagReq,
 )
 from darkblood.player_management.characters import (
     DEFAULT_BAG_CAPACITY,
@@ -74,6 +76,32 @@ from darkblood.player_management.characters import (
 
 class InventoryHandlers:
     """Item management: equip, drag, split, use, bag switching, durability and storage."""
+
+    async def on_2026(self, correlation, body):
+        # eEGS_OPEN_BAG_REQ -> 2027 eEGS_OPEN_BAG_ACK (0x00557860): equip a
+        # bag item into the first free UI bag slot (0..4).
+        from darkblood.games.entities.items import Bag
+        from darkblood.games.game_data.client_dict import item_field
+        req = OpenBagReq.decode(body)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        item = next((i for i in items if i.get('uid') == req.item_uid), None)
+        size = item_field(item['code'], 'BagSize') if item else None
+        bags = char.setdefault('bags', []) if char else []
+        used = {int(b.get('w2a', 0xFFFF)) for b in bags}
+        free = [s for s in range(5) if s not in used]
+        if not item or not size or not free:
+            reason = 'no item' if not item else 'not a bag' if not size else 'no free slot'
+            await self.transport.send_event(event(2027, OpenBagAck(result=1).encode(), correlation),
+                                            note=f'open bag fail ({reason}, uid={req.item_uid})')
+            return
+        record = dict(bag_id=req.item_uid, code=item['code'], b28=0, b29=size, w2a=free[0])
+        items.remove(item)  # the bag item now lives in the bag list
+        bags.append(record)
+        self.store().save()
+        ack = OpenBagAck(result=0, bag=Bag(**record)).encode()
+        await self.transport.send_event(event(2027, ack, correlation),
+                                        note=f'open bag ack ({item["code"]} uid={req.item_uid} size={size} slot={free[0]})')
 
     async def on_2028(self, correlation, body):
         # eEGS_CLOSE_BAG_REQ (0x00550000.c:1773).

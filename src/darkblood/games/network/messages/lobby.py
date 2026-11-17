@@ -6,6 +6,7 @@ from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.skills import encode_skill_map
 
 @dataclass
 class GameServer:
@@ -57,6 +58,9 @@ class SelectCharacterAck:
     active_quests: list = field(default_factory=list)  # [ActiveQuest]
     bags: list = field(default_factory=list)  # [Bag]
     items: list = field(default_factory=list)  # [Item]
+    skills: dict = field(default_factory=dict)  # {skill_index: level}
+    skill_speeches: dict = field(default_factory=dict)  # {str(skill_index): text}
+    locked_skills: list = field(default_factory=list)
 
     def encode(self) -> bytes:
         p = bytearray(struct.pack('<I', self.result))
@@ -77,7 +81,8 @@ class SelectCharacterAck:
         p += b'\x10' + varuint(len(self.items)) + b''.join(item.encode() for item in self.items)
         p += b'\x10' + varuint(0)  # 0x4b2c30
         p += b'\x10' + varuint(0)  # 0xa3eec0
-        p += b'\x17' + varuint(0)  # 0x4b1240
+        # 0x4b1240: learned skills, same element reader (0x4ACB80) as 2698.
+        p += encode_skill_map(self.skills, self.skill_speeches, self.locked_skills)
         p += b'\x17' + varuint(0)  # 0x76e560
         p += b'\x13' + varuint(0)  # 0x76a8c0
         p += b'\x17' + varuint(0)  # 0xa3e410

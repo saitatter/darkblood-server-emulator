@@ -7,6 +7,23 @@ from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 
+def encode_skill_map(skills: dict, speeches: dict = None, locked=()) -> bytes:
+    """Tag 0x17 learned-skill map, element reader 0x004ACB80.
+
+    Shared by 2698 (0x007A74A0) and 2007 (0x004B1240 inside 0x00A40760).
+    Element: tag 0x0F, u16 key, u16 skill_index, u8 level, wstring speech,
+    bool locked, bool unknown (sent 0).
+    """
+    speeches = speeches or {}
+    locked = {int(x) for x in locked}
+    out = bytearray(b'\x17') + varuint(len(skills))
+    for sidx, lvl in sorted((int(k), int(v)) for k, v in skills.items()):
+        out += b'\x0f' + struct.pack('<HHB', sidx, sidx, lvl)
+        out += wide_string(speeches.get(str(sidx), ''))
+        out += struct.pack('<??', sidx in locked, False)
+    return bytes(out)
+
+
 @dataclass
 class LearnSkillReq:
     """Opcode 2050: eEGS_LEARN_SKILL_REQ (0x00780000.c:9504).
@@ -243,14 +260,7 @@ class LearnSkillListAck:
     def encode(self) -> bytes:
         buf = bytearray()
         buf.extend(struct.pack('<i', self.result))
-        buf.append(0x17)
-        buf.extend(varuint(len(self.skills)))
-        for sidx, lvl in self.skills.items():
-            buf.append(0x0f)
-            buf.extend(struct.pack('<H', int(sidx)))
-            buf.extend(struct.pack('<HB', int(sidx), int(lvl)))
-            buf.extend(wide_string(''))
-            buf.extend(b'\x00\x00')
+        buf.extend(encode_skill_map(self.skills))
         buf.extend(struct.pack('<iq', self.remain_sp, self.remain_gold))
         return bytes(buf)
 

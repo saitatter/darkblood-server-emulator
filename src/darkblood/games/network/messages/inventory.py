@@ -45,6 +45,42 @@ class DropItemNot:
         return header + b''.join(d.encode() for d in self.drops)
 
 @dataclass
+class OpenBagReq:
+    """Opcode 2026: eEGS_OPEN_BAG_REQ (sent from 0x0082D34E).
+
+    Observed body: i32 prefix (0x7FFFFFFF) + i64 uid of the bag item being
+    equipped (12 bytes).
+    """
+    prefix: int = 0x7FFFFFFF
+    item_uid: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'OpenBagReq':
+        if len(data) >= 12:
+            prefix, uid = struct.unpack_from('<iq', data, 0)
+            return cls(prefix=prefix, item_uid=uid)
+        return cls()
+
+
+@dataclass
+class OpenBagAck:
+    """Opcode 2027: eEGS_OPEN_BAG_ACK (handler 0x00557860, dispatch 0x0055883F).
+
+    u32 result (nonzero: error popup), then the implicit 0x1E bag struct read
+    by 0x00A1EC30 (same Bag entry as the 2007 bag vector). The client inserts
+    it with 0x00836010 and then 0x0082F060 looks up the inventory cell whose
+    item uid equals the bag id, so the bag id is the bag item's uid.
+    """
+    result: int = 0
+    bag: object = None  # entities.items.Bag
+
+    def encode(self) -> bytes:
+        if self.result != 0 or self.bag is None:
+            return struct.pack('<I', self.result or 1)
+        return struct.pack('<I', 0) + self.bag.encode()
+
+
+@dataclass
 class CloseBagReq:
     """Opcode 2028: eEGS_CLOSE_BAG_REQ (0x00550000.c:1773).
 
