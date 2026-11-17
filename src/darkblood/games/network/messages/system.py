@@ -79,9 +79,11 @@ class LevelUpNot:
     flag: bool = True
 
     def encode(self) -> bytes:
-        inner = (b'\r' + varuint(0)
-                 + struct.pack('<qBii?', self.char_uid, self.new_level, self.max_hp, self.max_mp, self.flag))
-        return b'\x1e' + inner
+        # 0x0078CCF0 checks tag 0x1E (and the array tag) through 0x00B35010,
+        # which consumes no byte for tags outside 0x0F..0x1A: neither byte is
+        # on the wire. The array is a bare varint count, as in 2007.
+        return varuint(0) + struct.pack('<qBii?', self.char_uid, self.new_level,
+                                        self.max_hp, self.max_mp, self.flag)
 
 @dataclass
 class ChangeExpNot:
@@ -96,7 +98,8 @@ class ChangeExpNot:
 
     def encode(self) -> bytes:
         inner = struct.pack('<iiiiiiiif', *self.exp_details)
-        return struct.pack('<i', self.exp_total) + b'\x1e' + inner
+        # Tag 0x1E is checked by 0x00B35010 (0x0078D170) without reading a byte.
+        return struct.pack('<i', self.exp_total) + inner
 
 @dataclass
 class CharNickChangeReq:

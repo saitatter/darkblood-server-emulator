@@ -65,15 +65,15 @@ class WireMessagesTest(unittest.TestCase):
     def test_level_up_and_change_exp_not_messages(self):
         lvl = messages.LevelUpNot(char_uid=777, new_level=10, max_hp=1500, max_mp=800, flag=True)
         enc_lvl = lvl.encode()
-        self.assertEqual(enc_lvl[0], 0x1e)
-        self.assertEqual(enc_lvl[1:3], b'\r\x80')
-        self.assertEqual(struct.unpack_from('<qBii?', enc_lvl, 3), (777, 10, 1500, 800, True))
+        # No tag bytes: 0x1E / array tag are not on the wire (0x00B35010).
+        self.assertEqual(enc_lvl[0:1], bytes.fromhex('80'))
+        self.assertEqual(struct.unpack_from('<qBii?', enc_lvl, 1), (777, 10, 1500, 800, True))
 
         exp = messages.ChangeExpNot(exp_total=25000, exp_details=(50, 100, 0, 0, 0, 0, 0, 0, 2.0))
         enc_exp = exp.encode()
         self.assertEqual(struct.unpack_from('<i', enc_exp, 0)[0], 25000)
-        self.assertEqual(enc_exp[4], 0x1e)
-        details = struct.unpack_from('<iiiiiiiif', enc_exp, 5)
+        self.assertEqual(len(enc_exp), 4 + 36)
+        details = struct.unpack_from('<iiiiiiiif', enc_exp, 4)
         self.assertEqual(details[:2], (50, 100))
         self.assertAlmostEqual(details[8], 2.0)
 
