@@ -818,8 +818,42 @@ static void InstallExitGameHook(void) {
     RawLog("[RECONNECT] ExitGame hook installed");
 }
 
+/* Client options (darkblood_options.ini next to DarkBlood.exe, edited by
+ * tools/patcher.py). Each patch checks the original bytes first and is
+ * skipped, with a log line, when they differ. */
+#define OPTIONS_FILE ".\\darkblood_options.ini"
+static int Option(const char* key, int fallback) {
+    return (int)GetPrivateProfileIntA("client", key, fallback, OPTIONS_FILE);
+}
+static void ApplyOptionPatch(const char* name, DWORD va, const BYTE* expected, const BYTE* patched, SIZE_T len) {
+    BYTE* at = (BYTE*)va; DWORD protect;
+    if (memcmp(at, expected, len)) { RawLogFmt("[OPTION] %s: unexpected bytes at %08X, not applied", name, va); return; }
+    if (!VirtualProtect(at, len, PAGE_EXECUTE_READWRITE, &protect)) return;
+    memcpy(at, patched, len);
+    VirtualProtect(at, len, protect, &protect);
+    FlushInstructionCache(GetCurrentProcess(), at, len);
+    RawLogFmt("[OPTION] %s applied at %08X", name, va);
+}
+static void ApplyClientOptions(void) {
+    /* JAppStateLogo next-clip (0x006F3950): take the "queue empty" branch
+     * at once, which ends the logo state (0x006F2E10). je -> jmp. */
+    if (Option("skip_logos", 0)) {
+        static const BYTE e[] = {0x74, 0x0D}, p[] = {0xEB, 0x0D};
+        ApplyOptionPatch("skip_logos", 0x006F39AB, e, p, sizeof(e));
+    }
+    /* JAppStateTutorial Esc (0x006FBC50): the skip dialog needs user
+     * manager +0x65/+0x66 == 0, which 0x006F8A10 sets only when the
+     * character list (2009) already held a character of the class group,
+     * so a new account's first character could not skip. sete bl -> mov bl,1. */
+    if (Option("skip_tutorial_always", 0)) {
+        static const BYTE e[] = {0x0F, 0x94, 0xC3}, p[] = {0xB3, 0x01, 0x90};
+        ApplyOptionPatch("skip_tutorial_always", 0x006FBCEE, e, p, sizeof(e));
+    }
+}
+
 static void InstallHooks() {
     if(orig_connect) return;
+    ApplyClientOptions();
     InstallExitGameHook();
     InstallLoginHook();
     BYTE* call=(BYTE*)0x0096b091;

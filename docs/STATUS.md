@@ -28,6 +28,15 @@ within 3 s it falls back to the default account. The client also has an unused N
 (`MainLoginPage`, `TryLogin` `0x0063EB00` → the same 5386 sender; `OnRegister` is the shared stub `0x00464750`). The single-instance
 mutex is "DarkBlood Online" (`0x00472579`); `tools/multibox.py` closes it in running clients and sets one account per window.
 
+Options (`tools/patcher.py` GUI → `research/client/darkblood_options.ini`; static, patch bytes verified in a live client's memory):
+- Tutorial skip rule: `JAppStateTutorial` Esc (`0x006FBC50`) opens MB_Tutorial_Exit only when user-manager `+0x65` (`+0x66` for class 5)
+  is 0. `0x006F8A10` sets these from the 2009 character list (`class & 0xF` of each entry +0x09): 0 only if the list already held a
+  character of that group, so a new account's first character cannot skip (seen live with a Player2 Elf Hunter). Option
+  `skip_tutorial_always` patches `sete bl` at `0x006FBCEE` to `mov bl,1`.
+- Logos: `JAppStateLogo` plays a clip queue (`+0x8C..+0x90`); `0x006F3950` ends the state (`0x006F2E10(1)`) when it is empty. Option
+  `skip_logos` turns `je` at `0x006F39AB` into `jmp`. Whether a separate intro movie follows is not checked yet.
+- `adult_content` (server) drives `m_bAdultUser` in the welcome.
+
 Open: inventory shows "Ar : 0" although 2007 details `+0x45` carries the gold; drag-unequip to an empty cell looked wrong live (2036 acked, then a 2042 re-equipped); dungeon gate list content (2010/5043) still to inspect with the player; learning skills does not charge SP/AR.
 
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)
