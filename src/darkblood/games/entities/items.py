@@ -71,8 +71,15 @@ class Item:
         b += struct.pack('<?', False) + b'\x10' + varuint(0)
         b += b'\x10' + varuint(0)
         b += struct.pack('<iiififiiB', -1, -1, -1, -1.0, -1, -1.0, -1, -1, 0)
-        code_hash = jhash(self.code) if self.code else 0
-        b += struct.pack('<qqIqB', self.owner, self.uid, code_hash, self.container, self.slot)
+        if self.code:
+            uid, code_hash = self.uid, jhash(self.code) & 0xFFFFFFFF
+        else:
+            # Empty cell (vacated slot in a move/equip diff): the outer
+            # constructor 0x004AAB20 marks an empty item with uid -1 and code
+            # -1. uid 0 / code 0 was kept as an item in bag cells (live: each
+            # equip left a ghost copy behind until the bag reported full).
+            uid, code_hash = -1, 0xFFFFFFFF
+        b += struct.pack('<qqIqB', self.owner, uid, code_hash, self.container, self.slot)
         return b + wide_string('')
 
 
