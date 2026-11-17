@@ -71,12 +71,11 @@ class SquareHandlers:
         Updates active tutorial quest Q0882S01 objective kill counters and
         broadcasts opcode 2075 (eEGS_QUEST_UPDATE_NOT) to advance quest status.
         """
-        if len(body) >= 8 and body[:4] == b'\xff\xff\xff\x7f':
-            monster_hash = struct.unpack_from('<I', body, 4)[0]
-        elif len(body) >= 4:
-            monster_hash = struct.unpack_from('<I', body, 0)[0]
-        else:
+        from darkblood.core.serialization.jser import strip_prefix
+        body = strip_prefix(body)
+        if len(body) < 4:
             return
+        monster_hash = struct.unpack_from('<I', body, 0)[0]
 
         if monster_hash not in TUTORIAL_HOG_OBJECTIVES:
             return

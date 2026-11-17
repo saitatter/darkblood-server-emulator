@@ -130,7 +130,10 @@ class QuestGiveupAck:
     quest_id: int = 0
 
     def encode(self) -> bytes:
-        return struct.pack('<iI', self.result, self.quest_id) + b'\x1e\x10\x80'
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        qvec = b'\x10' + (varuint(1) + struct.pack('<I', self.quest_id) if self.quest_id else b'\x80')
+        return struct.pack('<i', 0) + qvec + (b'\x00' * 18) + b'\x10\x80\x10\x80'
 
 @dataclass
 class QuestFailReq:
@@ -150,7 +153,10 @@ class QuestFailAck:
     quest_id: int = 0
 
     def encode(self) -> bytes:
-        return struct.pack('<iI', self.result, self.quest_id) + b'\x1e\x10\x80'
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        qvec = b'\x10' + (varuint(1) + struct.pack('<I', self.quest_id) if self.quest_id else b'\x80')
+        return struct.pack('<i', 0) + qvec + (b'\x00' * 18) + b'\x10\x80\x10\x80'
 
 
 # --- Enchanting & Upgrade Opcodes (2254-2259, 2284-2285, 2672-2673) ---

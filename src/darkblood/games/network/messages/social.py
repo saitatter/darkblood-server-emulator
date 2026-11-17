@@ -258,7 +258,7 @@ class ChatAck:
                 + wide_string(self.sender)
                 + wide_string(self.target)
                 + wide_string(self.message)
-                + b'\x1e\x00'
+                + b'\x0a\x00\x10\x80\x10\x80'
                 + struct.pack('<iqqqi', 0, 0, 0, 0, 0))
         return data
 
@@ -480,7 +480,7 @@ class RequestCharInfoAck:
         # result (u32) + bool(0) + Tag 0x1E summary struct + Tag 0x10 equipment + Tag 0x10 avatar
         summary_dummy = b'\x00' * 32
         return (struct.pack('<i', self.result)
-                + b'\x0a\x00\x1e' + summary_dummy + b'\x10\x80\x10\x80')
+                + b'\x0a\x00' + summary_dummy + b'\x10\x80\x10\x80')
 
 @dataclass
 class RequestItemInfoReq:
@@ -503,7 +503,7 @@ class RequestItemInfoAck:
         if self.result != 0:
             return struct.pack('<i', self.result) + struct.pack('<q', self.item_uid)
         item_dummy = b'\x00' * 16
-        return struct.pack('<iq', self.result, self.item_uid) + b'\x1e' + item_dummy
+        return struct.pack('<iq', self.result, self.item_uid) + item_dummy
 
 
 # =========================================================================

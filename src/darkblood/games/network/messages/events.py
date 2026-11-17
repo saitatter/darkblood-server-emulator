@@ -135,7 +135,7 @@ class TeachingGetInfoNot:
     info_payload: bytes = b''
 
     def encode(self) -> bytes:
-        return b'\x1e\x00' if not self.info_payload else (b'\x1e' + self.info_payload)
+        return self.info_payload if self.info_payload else (b'\x00' * 32)
 
 
 # --- Citadel, Treasure & Gold Goblin Events (5344-5346, 5362-5367) ---

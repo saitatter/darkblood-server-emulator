@@ -199,12 +199,16 @@ class QuestFlowTest(ServerTestCase):
             # Give up quest 1 (2078 -> 2079)
             client.send_event(2078, struct.pack('<I', quest1))
             _, ack2079 = await client.expect_event(2079)
-            self.assertEqual(struct.unpack_from('<iI', ack2079[:8]), (0, quest1))
+            self.assertEqual(struct.unpack_from('<i', ack2079[:4])[0], 0)
+            self.assertEqual(ack2079[4:6], b'\x10\x81')
+            self.assertEqual(struct.unpack_from('<I', ack2079, 6)[0], quest1)
 
             # Fail quest 2 (2080 -> 2081)
             client.send_event(2080, struct.pack('<I', quest2))
             _, ack2081 = await client.expect_event(2081)
-            self.assertEqual(struct.unpack_from('<iI', ack2081[:8]), (0, quest2))
+            self.assertEqual(struct.unpack_from('<i', ack2081[:4])[0], 0)
+            self.assertEqual(ack2081[4:6], b'\x10\x81')
+            self.assertEqual(struct.unpack_from('<I', ack2081, 6)[0], quest2)
             return char_id
 
         char_id = self.run_async(self.with_server(scenario))

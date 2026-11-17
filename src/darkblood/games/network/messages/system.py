@@ -188,7 +188,7 @@ class AchieveGetListAck:
             return struct.pack('<i', self.result)
         # result (u32) + Tag 0x1E + Tag 0x17 (map) + Tag 0x17 (map) + Tag 0x0A (bool) + Tag 0x10 (vector)
         return (struct.pack('<i', self.result)
-                + b'\x1e\x17\x80\x17\x80\x0a\x00\x10\x80')
+                + b'\x17\x80\x17\x80\x0a\x00\x10\x80')
 
 @dataclass
 class AchieveChangeNot:
@@ -347,7 +347,7 @@ class UpdateCharInfoNot:
     layer_net_id: int = 0
 
     def encode(self) -> bytes:
-        return b'\x1e' + self.char_details + struct.pack('<q', self.layer_net_id)
+        return self.char_details + struct.pack('<q', self.layer_net_id)
 
 
 # --- Customization, Renaming & Keymapping (2310-2311, 2314-2315, 2319-2320, 2338-2339) ---

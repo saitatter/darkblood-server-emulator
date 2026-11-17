@@ -327,7 +327,7 @@ class GuildInfoNot:
     """Opcode 2157: eEGS_GUILD_INFO_NOT (0x00752FF0)."""
     def encode(self) -> bytes:
         # Tag 0x1E + dummy guild struct
-        return b'\x1e' + b'\x00' * 64
+        return b'\x00' * 64
 
 @dataclass
 class GuildPersonListNot:

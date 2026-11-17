@@ -32,6 +32,13 @@ def event(opcode, body=b'', correlation=0, compress=False):
             + (b'\x00' + body if body else b''))
 
 
+def strip_prefix(data: bytes, prefix: bytes = b'\xff\xff\xff\x7f') -> bytes:
+    """Strips client correlation/call prefix (e.g. 0x7FFFFFFF from 0x00408C60) if present."""
+    if data and data.startswith(prefix):
+        return data[len(prefix):]
+    return data
+
+
 class WireError(ValueError):
     pass
 

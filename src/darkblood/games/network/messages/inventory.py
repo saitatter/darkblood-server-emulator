@@ -184,9 +184,10 @@ class EquipItemReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'EquipItemReq':
-        offset = 4 if len(data) >= 16 and data[:4] == b'\xff\xff\xff\x7f' else 0
-        if len(data) >= offset + 12:
-            item_uid, equip_slot = struct.unpack_from('<qi', data, offset)
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
+        if len(data) >= 12:
+            item_uid, equip_slot = struct.unpack_from('<qi', data, 0)
             return cls(item_uid=item_uid, equip_slot=equip_slot)
         return cls()
 

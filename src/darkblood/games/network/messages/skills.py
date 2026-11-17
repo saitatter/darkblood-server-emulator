@@ -195,11 +195,11 @@ class LearnSkillListReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'LearnSkillListReq':
-        offset = 0
-        if len(data) >= 4 and data[:4] == b'\xff\xff\xff\x7f':
-            offset = 4
-        if offset >= len(data):
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
+        if not data:
             return cls()
+        offset = 0
         skills = []
         try:
             if data[offset] == 0x10:

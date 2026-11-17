@@ -163,12 +163,11 @@ class GameplayDieCharReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'GameplayDieCharReq':
-        offset = 0
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
         prefix = 0x7FFFFFFF
-        if len(data) >= 25 and data[:4] == b'\xff\xff\xff\x7f':
-            offset = 4
-        if len(data) >= offset + 21:
-            uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?iii', data, offset)
+        if len(data) >= 21:
+            uid, bDie, damage, cur_hp, max_hp = struct.unpack_from('<q?iii', data, 0)
             return cls(prefix=prefix, char_uid=uid, bDie=bDie, damage=damage, cur_hp=cur_hp, max_hp=max_hp)
         return cls()
 
@@ -277,7 +276,7 @@ class ChoiceRewardPartyRankAck:
 
     def encode(self) -> bytes:
         data = struct.pack('<iq', self.result, self.char_uid)
-        data += b'\x1e' + struct.pack('<IIHH', self.reward_uid, self.item_id, self.count, self.drop_type)
+        data += struct.pack('<IIHH', self.reward_uid, self.item_id, self.count, self.drop_type)
         data += struct.pack('<ii', self.box_type, self.box_cost)
         return data
 

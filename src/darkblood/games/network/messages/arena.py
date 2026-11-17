@@ -78,7 +78,7 @@ class DuelStartAck:
         blob = self.session_blob.ljust(36, b'\x00')[:36]
         return (
             struct.pack('<I', self.result)
-            + b'\x1e' + blob
+            + blob
             + b'\x17' + varuint(0)
         )
 
@@ -94,7 +94,7 @@ class DuelStartNot:
 
     def encode(self) -> bytes:
         blob = self.session_blob.ljust(36, b'\x00')[:36]
-        return b'\x1e' + blob
+        return blob
 
 
 @dataclass
@@ -126,7 +126,7 @@ class DuelResultAck:
 
     def encode(self) -> bytes:
         blob = self.result_blob.ljust(21, b'\x00')[:21]
-        return struct.pack('<I', self.result) + b'\x1e' + blob
+        return struct.pack('<I', self.result) + blob
 
 
 @dataclass
@@ -218,7 +218,7 @@ class ArenaSquareListAck:
             name = sq.get('name', 'Arena 1')
             load = sq.get('load', 50)
             sq_bytes.extend(
-                b'\x1e' + struct.pack('<q', sq_id)
+                struct.pack('<q', sq_id)
                 + wide_string(name)
                 + struct.pack('<III', 0, load, 0)
             )
@@ -336,7 +336,6 @@ class ArenaTeamCreateAck:
     def encode(self) -> bytes:
         return (
             struct.pack('<I', self.result)
-            + b'\x1e'
             + struct.pack('<qhii', self.team_id, self.team_type, self.score, self.member_count)
             + wide_string(self.team_name)
             + wide_string(self.leader_name)
@@ -378,7 +377,6 @@ class ArenaTeamJoinAck:
     def encode(self) -> bytes:
         return (
             struct.pack('<I', self.result)
-            + b'\x1e'
             + struct.pack('<qhii', self.team_id, self.team_type, self.score, self.member_count)
             + wide_string(self.team_name)
             + wide_string(self.leader_name)
@@ -407,7 +405,7 @@ class ArenaTeamLeaveAck:
     result: int = 0
 
     def encode(self) -> bytes:
-        return struct.pack('<I', self.result) + b'\x1e' + bytes(14)
+        return struct.pack('<I', self.result) + bytes(14)
 
 
 # ==============================================================================

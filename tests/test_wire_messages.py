@@ -165,7 +165,7 @@ class WireMessagesTest(unittest.TestCase):
         ack_buy = messages.BuyItemAck(result=0, gold=99800, items=[])
         enc_buy = ack_buy.encode()
         self.assertEqual(struct.unpack_from('<i', enc_buy)[0], 0)
-        self.assertEqual(enc_buy[4:5], b'\x1e')
+        self.assertEqual(struct.unpack_from('<i', enc_buy)[0], 0)
 
         raw_sell = struct.pack('<iqi', 1, 7777777, 1)
         req_sell = messages.SellItemReq.decode(raw_sell)
@@ -378,12 +378,16 @@ class WireMessagesTest(unittest.TestCase):
         req_gu = messages.QuestGiveupReq.decode(struct.pack('<I', 0x12345678))
         self.assertEqual(req_gu.quest_id, 0x12345678)
         ack_gu = messages.QuestGiveupAck(result=0, quest_id=0x12345678).encode()
-        self.assertEqual(struct.unpack_from('<iI', ack_gu[:8]), (0, 0x12345678))
+        self.assertEqual(struct.unpack_from('<i', ack_gu[:4])[0], 0)
+        self.assertEqual(ack_gu[4:6], b'\x10\x81')
+        self.assertEqual(struct.unpack_from('<I', ack_gu, 6)[0], 0x12345678)
 
         req_fl = messages.QuestFailReq.decode(struct.pack('<I', 0x87654321))
         self.assertEqual(req_fl.quest_id, 0x87654321)
         ack_fl = messages.QuestFailAck(result=0, quest_id=0x87654321).encode()
-        self.assertEqual(struct.unpack_from('<iI', ack_fl[:8]), (0, 0x87654321))
+        self.assertEqual(struct.unpack_from('<i', ack_fl[:4])[0], 0)
+        self.assertEqual(ack_fl[4:6], b'\x10\x81')
+        self.assertEqual(struct.unpack_from('<I', ack_fl, 6)[0], 0x87654321)
 
     def test_magic_enchant_and_upgrade_messages(self):
         req_enc = messages.MagicEnchantEnchantReq.decode(struct.pack('<qqq', 1, 2, 3))
@@ -431,7 +435,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<q?', not_disc), (777, True))
 
         not_info = messages.UpdateCharInfoNot(char_details=b'\x01\x02\x03', layer_net_id=555).encode()
-        self.assertEqual(not_info[0], 0x1E)
+        self.assertEqual(not_info[:3], b'\x01\x02\x03')
+        self.assertEqual(struct.unpack_from('<q', not_info[3:])[0], 555)
 
     def test_character_nick_change_encoding(self):
         req = messages.CharNickChangeReq.decode(jser.wide_string('NewHero') + struct.pack('<q', 123))
@@ -480,7 +485,7 @@ class WireMessagesTest(unittest.TestCase):
 
     def test_teaching_get_info_notification(self):
         not_info = messages.TeachingGetInfoNot().encode()
-        self.assertEqual(not_info, b'\x1e\x00')
+        self.assertEqual(len(not_info), 32)
 
     def test_citadel_and_treasure_notifications(self):
         not_ts = messages.TreasureStartNot(result=0).encode()
@@ -519,7 +524,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertIsInstance(req, messages.AchieveGetListReq)
         ack = messages.AchieveGetListAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack[:4])[0], 0)
-        self.assertEqual(ack[4:6], b'\x1e\x17')
+        self.assertEqual(ack[4:6], b'\x17\x80')
 
         not_change = messages.AchieveChangeNot().encode()
         self.assertEqual(not_change, b'\x17\x80\x17\x80\x17\x80')
@@ -697,7 +702,7 @@ class WireMessagesTest(unittest.TestCase):
         ack = messages.DuelStartAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack[:4]), (0,))
         not_start = messages.DuelStartNot().encode()
-        self.assertEqual(len(not_start), 37)  # tag 0x1e + 36 bytes
+        self.assertEqual(len(not_start), 36)
 
     def test_duel_result_and_giveup(self):
         req = messages.DuelResultReq.decode(struct.pack('<qq', 101, 202))

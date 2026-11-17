@@ -90,7 +90,7 @@ class BuyItemAck:
         if self.result != 0:
             return struct.pack('<i', self.result)
         return (struct.pack('<i', 0)
-                + b'\x1e' + (self.store_record[:32].ljust(32, b'\x00'))
+                + (self.store_record[:32].ljust(32, b'\x00'))
                 + struct.pack('<iq', self.u32_1, self.gold)
                 + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
                 + struct.pack('<iHqi', self.u32_2, self.u16_1, self.i64_1, self.u32_3))
@@ -132,7 +132,7 @@ class SellItemAck:
     def encode(self) -> bytes:
         if self.result != 0:
             return struct.pack('<i', self.result)
-        repurchase_record = b'\x1e' + Item(code='', uid=0).encode() + struct.pack('<iq', 0, 0)
+        repurchase_record = Item(code='', uid=0).encode() + struct.pack('<iq', 0, 0)
         return (struct.pack('<i', 0)
                 + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
                 + struct.pack('<q', self.gold)
@@ -426,7 +426,9 @@ class SteamInitBuyItemNot:
 
     @classmethod
     def decode(cls, data: bytes) -> 'SteamInitBuyItemNot':
-        offset = 4 if data[:4] == b'\xff\xff\xff\x7f' else 0
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
+        offset = 0
         if len(data) < offset + 9:
             return cls()
         steam_id = struct.unpack_from('<Q', data, offset)[0]

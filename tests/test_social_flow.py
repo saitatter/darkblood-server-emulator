@@ -242,12 +242,12 @@ class SocialFlowTest(ServerTestCase):
             # 43. Guild money in (2179 -> 2180)
             client.send_event(2179, struct.pack('<q', 15000))
             _, ack2180 = await client.expect_event(2180)
-            self.assertEqual(struct.unpack_from('<iq', ack2180), (0, 15000))
+            self.assertEqual(struct.unpack_from('<iq', ack2180), (0, 15300))
 
             # 44. Guild money out (2181 -> 2182)
             client.send_event(2181, struct.pack('<q', 5000))
             _, ack2182 = await client.expect_event(2182)
-            self.assertEqual(struct.unpack_from('<iq', ack2182), (0, 5000))
+            self.assertEqual(struct.unpack_from('<iq', ack2182), (0, 10300))
 
             # 45. Guild person grade modify (2164 -> 2165)
             client.send_event(2164, struct.pack('<qh', 888, 2))
@@ -257,7 +257,7 @@ class SocialFlowTest(ServerTestCase):
             # 46. Guild level up (2183 -> 2184)
             client.send_event(2183, b'')
             _, ack2184 = await client.expect_event(2184)
-            self.assertEqual(struct.unpack_from('<ih', ack2184), (0, 2))
+            self.assertEqual(struct.unpack_from('<ih', ack2184), (0, 3))
 
             # 47. Guild notice modify (2185 -> 2186)
             notice_text = 'Welcome allies'.encode('utf-16le') + b'\x00\x00'

@@ -33,7 +33,7 @@ class ArenaFlowTest(ServerTestCase):
             _, ack5098 = await client.expect_event(5098)
             self.assertEqual(struct.unpack_from('<i', ack5098[:4])[0], 0)
             _, not5099 = await client.expect_event(5099)
-            self.assertEqual(len(not5099), 37)  # tag 0x1e + 36 bytes
+            self.assertEqual(len(not5099), 36)  # 36-byte duel session blob
 
             # 4. 1v1 Duel Result (5105 -> 5106)
             client.send_event(5105, messages.DuelResultReq(winner_uid=char_id, loser_uid=target_uid).encode())
@@ -68,8 +68,7 @@ class ArenaFlowTest(ServerTestCase):
             client.send_event(5271, messages.ArenaTeamJoinReq(team_id=1).encode())
             _, ack5272 = await client.expect_event(5272)
             self.assertEqual(struct.unpack_from('<I', ack5272[:4])[0], 0)
-            self.assertEqual(ack5272[4], 0x1e)
-            self.assertEqual(struct.unpack_from('<q', ack5272, 5)[0], 1)
+            self.assertEqual(struct.unpack_from('<q', ack5272, 4)[0], 1)
 
             # 10. Arena Team Leave (5274 -> 5275)
             client.send_event(5274, messages.ArenaTeamLeaveReq().encode())
