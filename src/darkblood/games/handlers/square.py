@@ -1,4 +1,5 @@
 """Town (square) play: tutorial, layers, NPCs, waypoints."""
+from darkblood.games.entities.items import UPDATE_OWNER
 import struct
 
 from darkblood.core.serialization.jser import event
@@ -51,7 +52,7 @@ class SquareHandlers:
                 from darkblood.games.game_data.client_dict import tutorial_rewards
                 from darkblood.player_management.characters import add_reward_items
                 rewards = tutorial_rewards()['complete' if completed else 'skip']
-                items = [Item(owner=char.get('id', -1), **i) for i in add_reward_items(char, rewards)]
+                items = [Item(owner=UPDATE_OWNER, **i) for i in add_reward_items(char, rewards)]
             char['tutorial_cleared'] = True
             self.store().save()
         ack = ClearTutorialAck(elements=items).encode()

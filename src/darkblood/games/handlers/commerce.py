@@ -1,3 +1,4 @@
+from darkblood.games.entities.items import UPDATE_OWNER
 import struct
 
 from darkblood.core.hashing import jhash
@@ -148,7 +149,7 @@ class CommerceHandlers:
             # Dropped on its own cell: nothing moves. Sending the usual empty
             # record for the old cell would clear the item in the client
             # (live 2026-11-17: a repeated drag emptied the bag cell).
-            ack = DragItemAck(result=0, items=[Item(owner=char.get('id', -1), **dragged)]).encode()
+            ack = DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **dragged)]).encode()
             await self.transport.send_event(event(2037, ack, correlation), note='drag item ack (no move)')
             return
         if target:
@@ -167,16 +168,16 @@ class CommerceHandlers:
             # placing the dragged item into a cell it still sees occupied did
             # not take effect (live 2043 swap, 2026-11-17).
             wire_items = [
-                Item(owner=char.get('id', -1), **target),
-                Item(owner=char.get('id', -1), **dragged)
+                Item(owner=UPDATE_OWNER, **target),
+                Item(owner=UPDATE_OWNER, **dragged)
             ]
         else:
             dragged['container'] = req.to_container
             dragged['slot'] = req.to_slot
             self.store().save()
             wire_items = [
-                Item(owner=char.get('id', -1), **dragged),
-                Item(owner=char.get('id', -1), uid=0, code='', container=old_container, slot=old_slot, count=0)
+                Item(owner=UPDATE_OWNER, **dragged),
+                Item(owner=UPDATE_OWNER, uid=0, code='', container=old_container, slot=old_slot, count=0)
             ]
 
         ack = DragItemAck(result=0, items=wire_items).encode()
@@ -217,7 +218,7 @@ class CommerceHandlers:
             items.remove(used_item)
         else:
             used_item['count'] = count
-            updated.append(Item(owner=char.get('id', -1), **used_item))
+            updated.append(Item(owner=UPDATE_OWNER, **used_item))
         self.store().save()
 
         ack = UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count).encode()
@@ -264,8 +265,8 @@ class CommerceHandlers:
             target_item['slot'] = free_slot
             self.store().save()
             wire_items = [
-                Item(owner=char.get('id', -1), **target_item),
-                Item(owner=char.get('id', -1), uid=0, code='', container=EQUIPPED, slot=old_slot, count=0)
+                Item(owner=UPDATE_OWNER, **target_item),
+                Item(owner=UPDATE_OWNER, uid=0, code='', container=EQUIPPED, slot=old_slot, count=0)
             ]
         else:
             # Equip action: move from bag to equipped slot
@@ -294,16 +295,16 @@ class CommerceHandlers:
                 self.store().save()
                 # Vacate the equipment cell first (see the drag swap above).
                 wire_items = [
-                    Item(owner=char.get('id', -1), **previous_equipped),
-                    Item(owner=char.get('id', -1), **target_item)
+                    Item(owner=UPDATE_OWNER, **previous_equipped),
+                    Item(owner=UPDATE_OWNER, **target_item)
                 ]
             else:
                 target_item['container'] = EQUIPPED
                 target_item['slot'] = target_slot
                 self.store().save()
                 wire_items = [
-                    Item(owner=char.get('id', -1), **target_item),
-                    Item(owner=char.get('id', -1), uid=0, code='', container=old_container, slot=old_slot, count=0)
+                    Item(owner=UPDATE_OWNER, **target_item),
+                    Item(owner=UPDATE_OWNER, uid=0, code='', container=old_container, slot=old_slot, count=0)
                 ]
 
         ack = EquipItemAck(result=0, items=wire_items).encode()
@@ -507,7 +508,7 @@ class CommerceHandlers:
             char['u66'] = char_gold
             new_items = add_reward_items(char, [(item_code, count)])
             self.store().save()
-            wire_items = [Item(owner=char.get('id', -1), **i) for i in new_items]
+            wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
             ack = BuyItemAck(result=0, gold=char_gold, items=wire_items).encode()
             await self.transport.send_event(event(2068, ack, correlation),
                                             note=f'buy item ack (code={item_code} count={count} gold={char_gold})')
@@ -551,7 +552,7 @@ class CommerceHandlers:
         char['u66'] = char_gold
         self.store().save()
 
-        wire_items = [Item(owner=char.get('id', -1), **i) for i in items]
+        wire_items = [Item(owner=UPDATE_OWNER, **i) for i in items]
         ack = SellItemAck(result=0, gold=char_gold, items=wire_items).encode()
         await self.transport.send_event(event(2070, ack, correlation),
                                         note=f'sell item ack (uid={req.item_uid} del={del_cnt} gold={char_gold})')

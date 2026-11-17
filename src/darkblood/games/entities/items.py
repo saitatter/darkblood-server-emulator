@@ -9,6 +9,14 @@ from darkblood.core.serialization.jser import to_i32 as _i32, varuint, wide_stri
 EQUIPPED = 1  # item container id treated as "worn" by 0x008354D0
 
 
+# Owner for item records in incremental updates (2037, 2039, 2043, rewards,
+# shop). Per-item apply 0x008354D0 ignores a record whose i64 owner (+0xAB)
+# differs from the inventory owner 0x007F9330 unless either is -1. Live: the
+# records carried the character id 1, the client's own UID is 0 (2007 details
+# +0x1C), so every equip/drag update was dropped (2026-11-17 tracer).
+UPDATE_OWNER = -1
+
+
 @dataclass
 class Item:
     """Item struct 0x00A53F50 (0xE4 bytes in memory), used by 2007, 2077, 2116...

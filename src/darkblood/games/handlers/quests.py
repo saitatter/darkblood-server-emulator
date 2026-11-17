@@ -3,7 +3,7 @@ import struct
 
 from darkblood.core.serialization.jser import WireError, event, read_varuint
 from darkblood.games.entities.character import Character
-from darkblood.games.entities.items import Item
+from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.network.messages import (
     ChangeExpNot,
@@ -126,7 +126,7 @@ class QuestHandlers:
             reward_items = []
         self.transport.record('quest-rewards', b'', quest='%08x' % quest_id, exp=str(exp),
                               gold=str(gold), gp=str(gp), items=repr(items))
-        owner = char.get('id', -1) if char else -1
+        owner = UPDATE_OWNER  # see items.UPDATE_OWNER
         ack = QuestCompleteAck(quest_id=quest_id, total=total, exp=exp, gp=gp,
                                items=[Item(owner=owner, **i) for i in reward_items]).encode()
         await self.transport.send_event(event(2077, ack, correlation),
