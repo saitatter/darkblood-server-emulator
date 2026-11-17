@@ -57,6 +57,9 @@ from darkblood.games.state import selected_character
 
 
 
+PREFIX = bytes.fromhex('ffffff7f')
+
+
 class CommerceHandlers:
     """Stores, cash, roulette, pets and alarm settings."""
 
@@ -76,6 +79,78 @@ class CommerceHandlers:
         cash = self.store().account_cash(self.account)
         await self.transport.send_event(event(2370, CurrentCashAck(cash=cash).encode(), correlation),
                                         note='current cash ack (%d)' % cash)
+
+    async def on_2712(self, correlation, body):
+        # eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT. On Steam the overlay then
+        # authorizes the order, the MicroTxnAuthorizationResponse callback
+        # (0x004E6440) sends 2713 and waits for 2714. Offline there is no
+        # overlay, so the purchase completes here: products are free (prices
+        # are USD), items go to the bag and reach the client through an
+        # unsolicited 2037 (global handler 0x0077F570, owner -1), and 2714
+        # closes the shop's purchase flow (page dispatcher 0x004DCCC0).
+        from darkblood.games.game_data.client_dict import cash_products
+        from darkblood.player_management.characters import add_reward_items
+        from darkblood.games.network.messages.commerce import SteamFinalizeBuyItemAck, SteamInitBuyItemNot
+        req = SteamInitBuyItemNot.decode(body)
+        products = cash_products()
+        rewards = [products[p][:2] for p in req.product_ids if p in products]
+        char = self._shop_char()
+        stored = []
+        if char is not None and rewards:
+            stored = add_reward_items(char, rewards)
+            self.store().save()
+        if stored:
+            items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
+            await self.transport.send_event(event(2037, DragItemAck(result=0, items=items).encode()),
+                                            note='cash shop items (%s)' % ', '.join(i['code'] for i in stored))
+        ok = bool(stored)
+        await self.transport.send_event(event(2714, SteamFinalizeBuyItemAck(result=0 if ok else 1, applied=ok).encode()),
+                                        note='steam buy ack (products %s -> %d items)' % (req.product_ids, len(stored)))
+
+    async def on_2713(self, correlation, body):
+        # eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id,
+        # bool authorized). Not reached offline; acknowledge without items.
+        from darkblood.games.network.messages.commerce import SteamFinalizeBuyItemAck
+        await self.transport.send_event(event(2714, SteamFinalizeBuyItemAck(applied=False).encode(), correlation),
+                                        note='steam finalize ack (no order)')
+
+    async def _monster_card_empty(self, correlation, opcode):
+        from darkblood.games.network.messages.commerce import MonsterCardEmptyAck
+        await self.transport.send_event(event(opcode, MonsterCardEmptyAck(opcode=opcode).encode(), correlation),
+                                        note='monster card ack %d (empty)' % opcode)
+
+    async def on_2601(self, correlation, body):
+        # eEGS_MONSTERCARD_GET_LIST_REQ -> 2602.
+        await self._monster_card_empty(correlation, 2602)
+
+    async def on_2608(self, correlation, body):
+        # eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609.
+        await self._monster_card_empty(correlation, 2609)
+
+    async def on_2617(self, correlation, body):
+        # eEGS_MONSTERCARD_GET_ALBUM_REQ -> 2618.
+        await self._monster_card_empty(correlation, 2618)
+
+    async def on_2592(self, correlation, body):
+        # eEGS_BAG_CHANGE_SELL_ENABLE_REQ (sender 0x00550F70): ffffff7f + u64
+        # bag id + bool. Live: bag 200, false. The client has no handler for
+        # 2593, so the flag is stored and no reply is sent.
+        if len(body) >= 13 and body[:4] == PREFIX:
+            bag_id, enabled = struct.unpack_from('<Q?', body, 4)
+            char = self._shop_char()
+            if char is not None:
+                char.setdefault('bag_sell_enabled', {})[str(bag_id)] = enabled
+                self.store().save()
+            self.transport.record('bag-sell-enable', body, bag=bag_id, enabled=enabled)
+
+    def _shop_char(self):
+        char = None
+        if selected_character.get('id'):
+            char = self.store().get(self.account, selected_character['id'])
+        if not char:
+            chars = self.store().characters(self.account)
+            char = chars[0] if chars else None
+        return char
 
     async def on_2390(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0:

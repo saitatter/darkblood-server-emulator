@@ -1,3 +1,5 @@
+import struct
+
 from darkblood.core.serialization.jser import event
 from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck, PostListAck
 
@@ -457,6 +459,15 @@ class SocialHandlers:
         from darkblood.games.network.messages import AchieveGetListAck
         ack = AchieveGetListAck(result=0).encode()
         await self.transport.send_event(event(2328, ack, correlation), note='achieve get list ack')
+
+    async def on_2446(self, correlation, body):
+        # eEGS_ACHIEVE_DIV_UPDATE_REQ: tag 0x17 map of achievement progress
+        # (live: 17 84 0f 0e000000 05000000 00000000 ...; entry layout not
+        # recovered, recorded only) -> 2447 (0x0074B830 reads only the u32
+        # result).
+        self.transport.record('achieve-div-update', body)
+        await self.transport.send_event(event(2447, struct.pack('<I', 0), correlation),
+                                        note='achieve div update ack')
 
     async def on_5165(self, correlation, body):
         # eERC_ARENA_BACK_TO_SQUARE_REQ -> 5166 eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550).

@@ -411,3 +411,74 @@ class DepotLoadArAck:
             return struct.pack('<i', self.result)
         # result (u32) + Tag 0x17 map + i64 new_storage_gold
         return struct.pack('<i', self.result) + b'\x17\x80' + struct.pack('<q', self.new_gold)
+
+
+@dataclass
+class SteamInitBuyItemNot:
+    """Opcode 2712: eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT (sender Lua_BuyItem 0x004D1B10).
+
+    i32 prefix 0x7FFFFFFF, u64 SteamID (ISteamUser vf08), tag 0x10 vector of
+    u32 ProductID (writer 0x004C7C40; DictCash:LoadProductList in
+    item_cash.lua). Live: ffffff7f 0100000001001001 10 81 20010000 (product 288).
+    """
+    steam_id: int = 0
+    product_ids: list = field(default_factory=list)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SteamInitBuyItemNot':
+        offset = 4 if data[:4] == b'\xff\xff\xff\x7f' else 0
+        if len(data) < offset + 9:
+            return cls()
+        steam_id = struct.unpack_from('<Q', data, offset)[0]
+        offset += 8
+        ids = []
+        if data[offset] == 0x10:
+            count, offset = read_varuint(data, offset + 1)
+            for _ in range(count):
+                if offset + 4 > len(data):
+                    break
+                ids.append(struct.unpack_from('<I', data, offset)[0])
+                offset += 4
+        return cls(steam_id=steam_id, product_ids=ids)
+
+
+@dataclass
+class SteamFinalizeBuyItemAck:
+    """Opcode 2714: eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_ACK.
+
+    Read by JAppPageCashshop vf20 (0x004DCCC0) -> 0x004DB680: u32 result,
+    tag 0x10 vector of u32 (0x004D6E60; copied into inventory +0x38 by
+    0x00830300, meaning not recovered, sent empty), bool (selects the result
+    message text), bool applied (when set, the shop refreshes inventory/cash
+    views and shows the purchase message).
+    """
+    result: int = 0
+    values: list = field(default_factory=list)
+    flag: bool = False
+    applied: bool = True
+
+    def encode(self) -> bytes:
+        return (struct.pack('<I', self.result) + b'\x10' + varuint(len(self.values))
+                + b''.join(struct.pack('<I', v) for v in self.values)
+                + struct.pack('<??', self.flag, self.applied))
+
+
+@dataclass
+class MonsterCardEmptyAck:
+    """Opcodes 2602/2609/2618 (eEGS_MONSTERCARD_GET_LIST/GET_CHAR_DECK/GET_ALBUM_ACK).
+
+    Readers from JAppPageMonsterCard vf20 (0x0060B500), requests sent
+    together by 0x005E3620:
+      2602 -> 0x00603C40: u32 result, tag 0x10 card vector (0x004AFD30),
+              tag 0x17 map (0x005F6540)
+      2609 -> 0x00603F10: u32 result, tag 0x10 card vector (0x004AFD30)
+      2618 -> 0x006046A0: u32 result, tag 0x10 vector<u32> album (0x004D6E60)
+    No card system on the server yet: every container is sent empty.
+    """
+    opcode: int = 2602
+
+    def encode(self) -> bytes:
+        body = struct.pack('<I', 0) + b'\x10' + varuint(0)
+        if self.opcode == 2602:
+            body += b'\x17' + varuint(0)
+        return body

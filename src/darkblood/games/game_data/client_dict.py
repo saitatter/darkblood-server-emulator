@@ -310,3 +310,20 @@ def tutorial_rewards():
         end = text.find('}),', start)
         out[key] = [(item, int(n)) for n, item in TUTORIAL_REWARD_RE.findall(text[start:end])]
     return out
+
+
+PRODUCT_RE = re.compile(r'\{[^{}]*?ItemCount = (\d+),[^{}]*?ItemID = "([^"]+)",[^{}]*?Price = ([0-9.]+),[^{}]*?ProductID = (\d+),[^{}]*?\}')
+
+
+@lru_cache(maxsize=None)
+def cash_products():
+    """{ProductID: (ItemID, ItemCount, Price USD)} from item_cash.lua (DictCash:LoadProductList)."""
+    path = data_root() / 'item_cash.lua'
+    if not path.exists():
+        return {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    start = text.find('DictCash:LoadProductList(')
+    if start == -1:
+        return {}
+    return {int(pid): (item, int(count), float(price))
+            for count, item, price, pid in PRODUCT_RE.findall(text[start:])}
