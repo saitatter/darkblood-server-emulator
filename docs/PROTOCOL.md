@@ -124,7 +124,8 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 
 | Step | Client request | Server response | Handler / schema | Status |
 | --- | --- | --- | --- | --- |
-| Connect | — | 5020 `eERC_AUTHENTICATE_GAMEUSER_ACK` | `0x0096AF60`, body `0x00A519A0`; result 0 → success (`0x00640750`) | Verified |
+| Connect | — | 2 `eE_ACCEPT_NOT` (empty) | `0x007AE730` → `0x0078A160` sends 5386 | Verified live |
+| Login | 5386 `eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ` (SteamID from SteamUser `+8`, ticket from `+0x34`; live `00 88 "DBACC:<account>;" …`) | 5020 `eERC_AUTHENTICATE_GAMEUSER_ACK` (`u32 result, u64 account uid, wstring account, …`) | `0x0096AF60`, body `0x00A519A0`; result 0 → success (`0x00640750`) | Verified live (two accounts) |
 | Startup | 2203 `eEGS_COMPUTER_STAT_NOT` | none | hardware report | Logged |
 | Startup, title | 2402 `eEGS_DB_LIST_GET_REQ` | 2403 `eEGS_DB_LIST_GET_ACK` | `0x00775340`: u32 result, `0x17` map of {`0x0F`, u32 key, `0x00A496B0`: wstr name, u16, u64, bool ×3} | Verified: Server List "Offline / None" |
 | Server Ok | 2001 `eEGS_KNOCK_SQUARELIST_REQ` (i32, u32 server key) | 2002 | `0x00757810`: u32 result; 0 proceeds (`0x00626390`). 2003 queue NOT (`0x00757840`: u16, u16) unused | Verified |

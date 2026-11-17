@@ -2,7 +2,7 @@
 import struct
 import zlib
 
-from darkblood.core.serialization.jser import WireError, parse_event
+from darkblood.core.serialization.jser import WireError, event, parse_event
 from darkblood.games.handlers.arena import ArenaHandlers
 from darkblood.games.handlers.commerce import CommerceHandlers
 from darkblood.games.handlers.dungeon import DungeonHandlers
@@ -49,9 +49,41 @@ class GameSession(FrontendHandlers, SocialHandlers, SquareHandlers, CommerceHand
     async def on_connected(self):
         if getattr(self.transport.server, 'role', 'game') != 'game':
             return
-        await self.transport.send_event(welcome(), note='welcome 5020')
+        # Login: 2 eE_ACCEPT_NOT makes the client send 5386 with its Steam
+        # ticket (0x007AE730 -> 0x0078A160); on_5386 picks the account and
+        # sends the welcome. Clients that never answer (an old shim without
+        # GetAuthSessionTicket) get the default account after a short wait.
+        import asyncio
+        self.authenticated = False
+        await self.transport.send_event(event(2), note='accept not (login)')
+        self._welcome_fallback = asyncio.ensure_future(self._fallback_welcome())
+
+    async def _fallback_welcome(self):
+        import asyncio
+        await asyncio.sleep(3)
+        if not self.authenticated:
+            await self._send_welcome(self.account, note='welcome 5020 (no 5386, default account)')
+
+    async def _send_welcome(self, account, note):
+        self.authenticated = True
+        self.account = account
+        await self.transport.send_event(welcome(account, self.store().account_uid(account)), note=note)
+
+    async def on_5386(self, correlation, body):
+        from darkblood.games.handlers.frontend import account_from_auth
+        account = account_from_auth(body) or self.account
+        if getattr(self, 'authenticated', False):
+            return
+        fallback = getattr(self, '_welcome_fallback', None)
+        if fallback:
+            fallback.cancel()
+        self.transport.record('login', body, account=account)
+        await self._send_welcome(account, note='welcome 5020 (%s)' % account)
 
     async def on_disconnect(self):
+        fallback = getattr(self, '_welcome_fallback', None)
+        if fallback:
+            fallback.cancel()
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
             GameWorldManager.get().unregister_player(self.active_char_id)

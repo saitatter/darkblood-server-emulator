@@ -20,6 +20,14 @@ server and tiles them on the primary monitor (`tile`, `status`, `stop`). All win
 its own character. The selected character is now kept per game connection (`GameSession.char_id`); the relay connection takes the oldest
 pending selection on its first JoinGroup (`state.pending_relay`). Whether the client allows a second instance is not verified.
 
+Accounts (live-verified with two windows): the client logs in only after the server sends 2 `eE_ACCEPT_NOT`; it then sends 5386 with its
+SteamID and Steam auth ticket. The shim takes the account from `DARKBLOOD_ACCOUNT` (default `OfflinePlayer`), uses it as persona name
+and SteamID low dword, and returns the ticket `DBACC:<account>;` from SteamUser slot 13 (`GetAuthSessionTicket`, previously NULL). The
+server registers unknown names on first login (`accounts` table; OfflinePlayer = uid 1) and keeps characters per account. Without a 5386
+within 3 s it falls back to the default account. The client also has an unused NA-dev ID/password form on the server-select page
+(`MainLoginPage`, `TryLogin` `0x0063EB00` → the same 5386 sender; `OnRegister` is the shared stub `0x00464750`). The single-instance
+mutex is "DarkBlood Online" (`0x00472579`); `tools/multibox.py` closes it in running clients and sets one account per window.
+
 Open: inventory shows "Ar : 0" although 2007 details `+0x45` carries the gold; drag-unequip to an empty cell looked wrong live (2036 acked, then a 2042 re-equipped); dungeon gate list content (2010/5043) still to inspect with the player; learning skills does not charge SP/AR.
 
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)

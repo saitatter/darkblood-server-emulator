@@ -68,8 +68,9 @@ def oaep_encrypt(n, e, message, label=b''):
 
 
 class HeadlessClient:
-    def __init__(self, host='127.0.0.1', port=9400, timeout=5.0):
+    def __init__(self, host='127.0.0.1', port=9400, timeout=5.0, account='OfflinePlayer'):
         self.host, self.port, self.timeout = host, port, timeout
+        self.account = account
         self.buffer = bytearray()
         self.counter = 0
         self.aes = None
@@ -143,6 +144,10 @@ async def lobby_flow(client, char_id=None):
     Returns a dict opcode -> response body."""
     out = {}
     await client.connect()
+    # Login as the client does: 2 eE_ACCEPT_NOT -> 5386 with the shim's ticket.
+    await client.expect_event(2)
+    client.send_event(5386, bytes.fromhex('0088') + b'DBACC:' + getattr(client, 'account', 'OfflinePlayer').encode('ascii')
+                     + b';Message bytes=13 data=01472C68')
     _, out[5020] = await client.expect_event(5020)
     for request, response, body in (
             (2402, 2403, b''),

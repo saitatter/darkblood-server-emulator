@@ -94,6 +94,16 @@ class SqliteCharacterStore(ICharacterStore):
                     data_json TEXT NOT NULL
                 )
             ''')
+            # Accounts register on first login (5386); OfflinePlayer keeps uid 1.
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS accounts (
+                    uid INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                    created REAL NOT NULL
+                )
+            ''')
+            conn.execute('INSERT OR IGNORE INTO accounts (uid, name, created) '
+                         'VALUES (1, "OfflinePlayer", strftime("%s","now"))')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_char_account ON characters(account)')
             conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_char_name ON characters(name)')
             cur = conn.cursor()
@@ -109,6 +119,19 @@ class SqliteCharacterStore(ICharacterStore):
         val = int(cur.fetchone()['value'])
         conn.execute('UPDATE meta SET value = ? WHERE key = "next_id"', (str(val + 1),))
         return val
+
+    def account_uid(self, account: str) -> int:
+        """The account's uid, registering the name on its first login."""
+        with self.lock, self._get_connection() as conn:
+            conn.execute('INSERT OR IGNORE INTO accounts (name, created) VALUES (?, strftime("%s","now"))',
+                         (account,))
+            conn.commit()
+            row = conn.execute('SELECT uid FROM accounts WHERE name = ?', (account,)).fetchone()
+            return int(row['uid'])
+
+    def accounts(self) -> list:
+        with self.lock, self._get_connection() as conn:
+            return [(r['uid'], r['name']) for r in conn.execute('SELECT uid, name FROM accounts ORDER BY uid')]
 
     def characters(self, account: str) -> list:
         with self.lock, self._get_connection() as conn:

@@ -897,12 +897,49 @@ __declspec(dllexport) int __cdecl SteamAPI_IsSteamRunning() { return 1; }
 __declspec(dllexport) void __cdecl SteamAPI_Shutdown() {}
 __declspec(dllexport) void __cdecl SteamAPI_RunCallbacks() {}
 __declspec(dllexport) void __cdecl Steam_RunCallbacks() {}
+/* Local account: DARKBLOOD_ACCOUNT (set per window by tools/multibox.py),
+ * default "OfflinePlayer". It is the Steam persona name (startup login id),
+ * the low dword of the SteamID is derived from it, and the auth ticket sent
+ * in 5386 eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ (0x0078A160) carries it so
+ * the server can pick the account. */
+static char g_account[64];
+static const char* Account(void) {
+    if (!g_account[0]) {
+        DWORD n = GetEnvironmentVariableA("DARKBLOOD_ACCOUNT", g_account, sizeof(g_account));
+        if (n == 0 || n >= sizeof(g_account)) lstrcpyA(g_account, "OfflinePlayer");
+    }
+    return g_account;
+}
+static unsigned int AccountId(void) {
+    /* FNV-1a; "OfflinePlayer" keeps the old account id 1 */
+    const char* p = Account(); unsigned int h = 2166136261u;
+    if (!lstrcmpA(p, "OfflinePlayer")) return 1;
+    while (*p) { h ^= (unsigned char)*p++; h *= 16777619u; }
+    return h ? h : 2;
+}
 static int __fastcall UserHandle(void* self, void* unused) { return 1; }
 static int __fastcall UserLoggedOn(void* self, void* unused) { return 1; }
 static void* __fastcall UserSteamID(void* self, void* unused, unsigned __int64* out) {
-    *out=0x0110000100000001ULL; return out;
+    *out = 0x0110000100000000ULL | AccountId(); return out;
 }
-static const char* __fastcall PersonaName(void* self, void* unused) { return "OfflinePlayer"; }
+static const char* __fastcall PersonaName(void* self, void* unused) { return Account(); }
+/* Slot 13 (+0x34) GetAuthSessionTicket(void* ticket, int cbMax, uint32* pcb):
+ * the ticket is "DBACC:" + account name. */
+static unsigned int __fastcall UserAuthTicket(void* self, void* unused, char* ticket, int cbMax, unsigned int* pcb) {
+    const char* name = Account(); int len = 0;
+    (void)self; (void)unused;
+    if (ticket && cbMax > 6) {
+        lstrcpynA(ticket, "DBACC:", cbMax);
+        len = 6;
+        while (name[len - 6] && len < cbMax - 1) { ticket[len] = name[len - 6]; len++; }
+        /* 5386 copies the ticket without a terminator and other text
+         * follows it, so the name ends with ';'. */
+        ticket[len++] = ';';
+    }
+    if (pcb) *pcb = (unsigned int)len;
+    RawLogFmt("[STEAM] GetAuthSessionTicket account=%s (%d bytes)", name, len);
+    return 1;
+}
 /* Client 0x786B1B..0x786B28 calls SteamUser vtable +0x40 with one
  * stack argument. Preserve the x86 thiscall stack cleanup via fastcall.
  * This offline stub does not implement the remaining SteamUser methods. */
@@ -913,7 +950,7 @@ static void __fastcall UserSlot16(void* self, void* unused, unsigned int value) 
 static void* user_vtable[] = {
     UserHandle, UserLoggedOn, UserSteamID,
     NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, UserAuthTicket, NULL, NULL,
     UserSlot16
 };
 /* Offline ISteamUserStats (slot order of STEAMUSERSTATS_INTERFACE_VERSION011).

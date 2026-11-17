@@ -25,10 +25,36 @@ from darkblood.games.state import selected_character
 CHAR_DELETE_DELAY = 2 * 24 * 3600
 
 
-def welcome():
-    """Build initial session handshake greeting for 0x96AF60 / 0xA519A0."""
+DEFAULT_ACCOUNT = 'OfflinePlayer'
+ACCOUNT_TICKET = b'DBACC:'
+
+
+def account_from_auth(body: bytes):
+    """Account name from a 5386 eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ body.
+
+    Built by 0x0078A160 after 2 eE_ACCEPT_NOT (handler 0x007AE730): it holds
+    the SteamID (SteamUser +8) and the auth ticket (SteamUser +0x34). The
+    shim's ticket is "DBACC:" + account name (DARKBLOOD_ACCOUNT); the exact
+    field layout around it is not recovered, so the marker is searched.
+    """
+    pos = body.find(ACCOUNT_TICKET)
+    if pos < 0:
+        return None
+    name = bytearray()
+    # Live body (2026-11-17): 00 88 "DBACC:Player2;" then unrelated text
+    # ("... bytes=13 data=...") without a separator, so the shim ends the
+    # name with ';'.
+    for b in body[pos + len(ACCOUNT_TICKET):]:
+        if b == 0x3B or not 0x20 < b < 0x7f or len(name) >= 32:
+            break
+        name.append(b)
+    return name.decode('ascii') or None
+
+
+def welcome(account=DEFAULT_ACCOUNT, account_uid=1):
+    """5020 eERC_AUTHENTICATE_GAMEUSER_ACK greeting (0x96AF60 / 0xA519A0)."""
     now = datetime.datetime.now()
-    body = struct.pack('<IQ', 0, 1) + wide_string('OfflinePlayer')
+    body = struct.pack('<IQ', 0, account_uid) + wide_string(account)
     # Flag tuple: (nAccountID, nAuthLevel, bFlag1, m_bAdultUser, bFlag3, nReserved)
     # m_bAdultUser=True unlocks the Blood Effect in client options (JNetUserMgr+0x4C / 0x00577860).
     body += struct.pack('<II???Q', 0, 0, False, True, False, 0)

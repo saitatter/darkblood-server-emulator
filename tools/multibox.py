@@ -7,9 +7,8 @@
 The server must already be running (python run_server.py, or gamectl start
 --server-only). The client refuses a second instance through the named mutex
 "DarkBlood Online"; start() closes it inside each running client (also ones
-started by hand) before launching the next. Every client logs in as the same local account, so create one
-character per window and select a different one in each: the server keeps the
-selection per connection. Only clients started here (logs/multibox.json) are
+started by hand) before launching the next. Each window logs in to its own account (DARKBLOOD_ACCOUNT -> shim -> 5386);
+accounts register on first login. Default names: OfflinePlayer, Player2, ... Only clients started here (logs/multibox.json) are
 stopped. Windows only; standard library only.
 """
 import argparse
@@ -159,7 +158,13 @@ def tile(resize=True):
     return [pid for pid, _ in hwnds]
 
 
-def start(count=2, resize=True, timeout=90):
+def default_accounts(count, skip=0):
+    """OfflinePlayer (the existing characters), then Player2, Player3, ..."""
+    names = ['OfflinePlayer'] + ['Player%d' % i for i in range(2, count + skip + 2)]
+    return names[skip:skip + count]
+
+
+def start(count=2, resize=True, timeout=90, accounts=None):
     if gamectl._port_free():
         raise gamectl.GameError('Server is not listening on 127.0.0.1:%d; start it first' % gamectl.PORT)
     if gamectl.client_hash() != gamectl.CLIENT_SHA256:
@@ -170,8 +175,13 @@ def start(count=2, resize=True, timeout=90):
     # Clients already running (also ones started by hand) hold the mutexes.
     for pid in _running_clients():
         release_instance_mutexes(pid)
-    for _ in range(count):
-        proc = subprocess.Popen([str(gamectl.LAB / 'DarkBlood.exe')], cwd=str(gamectl.LAB), env=env)
+    accounts = list(accounts or default_accounts(count, skip=len(_running_clients())))
+    for i in range(count):
+        account = accounts[i] if i < len(accounts) else 'Player%d' % (i + 2)
+        # The shim logs in as DARKBLOOD_ACCOUNT (Steam persona + auth ticket in 5386).
+        proc = subprocess.Popen([str(gamectl.LAB / 'DarkBlood.exe')], cwd=str(gamectl.LAB),
+                                env=dict(env, DARKBLOOD_ACCOUNT=account))
+        state.setdefault('accounts', {})[str(proc.pid)] = account
         state['clients'].append(proc.pid)
         _save(state)
         deadline = time.time() + timeout
@@ -214,6 +224,7 @@ def main(argv=None):
     p_start = sub.add_parser('start')
     p_start.add_argument('-n', '--count', type=int, default=2)
     p_start.add_argument('--no-resize', action='store_true')
+    p_start.add_argument('--accounts', nargs='+', help='account per window (default: OfflinePlayer, Player2, ...)')
     p_tile = sub.add_parser('tile')
     p_tile.add_argument('--no-resize', action='store_true')
     sub.add_parser('status')
@@ -221,7 +232,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.cmd == 'start':
-            result = start(args.count, not args.no_resize)
+            result = start(args.count, not args.no_resize, accounts=args.accounts)
         elif args.cmd == 'tile':
             result = tile(not args.no_resize)
         elif args.cmd == 'status':
