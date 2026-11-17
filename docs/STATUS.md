@@ -1,5 +1,22 @@
 # Research status and handoff
 
+## Live play-test fixes — saita machine, 2026-11-17 (static + headless; live retest pending unless noted)
+
+Player reports from a live session, with the cause found in the wire log or client code:
+
+- Give up quest: 2078 is `J-wstring (timestamp text) + u32 quest id`. The id was read from offset 0; the ack (reader `0x00A559F0`) carried an unknown id and the client dropped it.
+- Character select "default town": `0x00704278` resolves the high dword of lobby `u64 +0x37` (nJoinLayerNetID) through `0x00990030`. Placeholder 17 → unknown → "default town".
+- Skills lost on relog: 2007 map `0x4B1240` (struct `+0x2D3`) uses the 2698 element reader `0x4ACB80`; now filled from the stored skills.
+- Bag equip (live verified: "Coarse Bag" appeared): 2026 = prefix + i64 bag item uid; 2027 (`0x00557860`) = `u32 result` + Bag struct (`0x00A1EC30`), bag id = item uid, capacity = item dict `BagSize`.
+- Shop "Not enough products": store record (32 raw bytes, `0x00A489D0`) is `+0 hash, +4 AR price, +8 / +0xC other-currency prices (player +0x268 / +0x27C), +0x18 i16 stock (0 → flag 8, JERI_STOREMAXNUM_00), +0x1A i16 (-1: max = item stack)`. Flags `0x0059A280`, disable `0x0059A5DC`.
+- Rewards "no space": reward placement only used the first bag and ignored its capacity; it now walks every bag's free cells.
+- Level 4 vs 5: `CLASS_SECTION_MAP` was 1-based while CharacterClass is 0-based, so Warrior used the fallback EXP formula (HUD showed `EXP 316 / 1536` at server level 5). The live character was recomputed from total EXP.
+- Lloyd quest (Q0008S01): 2113 eEGS_QUEST_UPDATE_MISSION_REQ (prefix + J-wstring mission id, `QM807`) was unhandled. Switch `0x00659F00` → 2114 handler `0x006481E0` reads only `u32 result`; progress goes through 2075.
+- Dungeon clear froze: 5018 looked up `char['char_uid']` (absent), so `mapSingleReward` was empty; it now uses the character id (player UID, details `+0x1C`).
+- Quickslots: 2007 vector `0x4B2C30` (struct `+0x2B3`, loaded by `0x00966080` at `0x007AA8A6`), element `0x00A49DC0` = `u8 type, u8 slot, i32 refID, i64 refUID, bool, i64, u16 0xFFFF`. Storage was keyed by slot only, so the item bar overwrote the skill bar.
+
+Open: inventory shows "Ar : 0" although 2007 details `+0x45` carries the gold; drag-unequip to an empty cell looked wrong live (2036 acked, then a 2042 re-equipped); dungeon gate list content (2010/5043) still to inspect with the player; learning skills does not charge SP/AR.
+
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)
 
 Report: the new Warrior looked wrong, and the tutorial sword did not show. `ensure_inventory` stored the default items in slots 0..7 in list order.

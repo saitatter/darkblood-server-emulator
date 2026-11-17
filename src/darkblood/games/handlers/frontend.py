@@ -64,6 +64,9 @@ def build_select_char_ack(char):
         skills=char.get('skills', {}) if isinstance(char, dict) else {},
         skill_speeches=char.get('skill_speeches', {}) if isinstance(char, dict) else {},
         locked_skills=char.get('locked_skills', []) if isinstance(char, dict) else [],
+        quickslots=[(q['type'], q['slot'], q['ref_id'], q['ref_uid'])
+                    for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()
+                    if 'slot' in q],
     ).encode()
 
 

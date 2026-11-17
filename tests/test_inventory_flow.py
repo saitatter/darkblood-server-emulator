@@ -66,6 +66,14 @@ class InventoryFlowTest(ServerTestCase):
             client.send_event(2044, bytes.fromhex('ffffff7f01019a010000ffffffffffffffff'))
             _, ack2045 = await client.expect_event(2045)
             self.assertEqual(struct.unpack_from('<iBBiq', ack2045), (0, 1, 1, 0x19a, -1))
+            # Item bar slot 1 must not overwrite skill bar slot 1.
+            client.send_event(2044, bytes.fromhex('ffffff7f0001') + struct.pack('<iq', 0x1234, 2))
+            await client.expect_event(2045)
+            # Both come back on the next selection (2007 vector 0x4B2C30).
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            for entry in ((1, 1, 0x19a, -1), (0, 1, 0x1234, 2)):
+                self.assertIn(struct.pack('<BBiq?qH', *entry, False, 0, 0xFFFF), ack2007)
 
             # 8. Switch quickslot (2046 -> 2047)
             client.send_event(2046, struct.pack('<BBB', 0, 0, 1))

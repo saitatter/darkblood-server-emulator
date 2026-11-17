@@ -307,7 +307,9 @@ class InventoryHandlers:
         char = self.current_char()
         if char:
             qs = char.setdefault('quickslots', {})
-            qs[str(req.slot_num)] = dict(type=req.slot_type, ref_id=req.ref_id, ref_uid=req.ref_uid)
+            # Item bar (type 0) and skill bar (type 1) share slot numbers.
+            qs['%d:%d' % (req.slot_type, req.slot_num)] = dict(
+                type=req.slot_type, slot=req.slot_num, ref_id=req.ref_id, ref_uid=req.ref_uid)
             self.store().save()
 
         ack = AssignQuickslotAck(result=0, slot_type=req.slot_type, slot_num=req.slot_num,
@@ -318,6 +320,16 @@ class InventoryHandlers:
     async def on_2046(self, correlation, body):
         # eEGS_SWITCH_QUCIKSLOT_REQ (0x00780000.c:8591) -> 2047 eEGS_SWITCH_QUCIKSLOT_ACK (0x0078C790).
         req = SwitchQuickslotReq.decode(body)
+        char = self.current_char()
+        if char:
+            qs = char.setdefault('quickslots', {})
+            a = qs.pop('%d:%d' % (req.slot_type, req.from_slot), None)
+            b = qs.pop('%d:%d' % (req.slot_type, req.to_slot), None)
+            if a:
+                qs['%d:%d' % (req.slot_type, req.to_slot)] = dict(a, slot=req.to_slot)
+            if b:
+                qs['%d:%d' % (req.slot_type, req.from_slot)] = dict(b, slot=req.from_slot)
+            self.store().save()
         ack = SwitchQuickslotAck(result=0, slot_type=req.slot_type,
                                  from_slot=req.from_slot, to_slot=req.to_slot).encode()
         await self.transport.send_event(event(2047, ack, correlation),

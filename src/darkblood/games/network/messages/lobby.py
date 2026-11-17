@@ -61,6 +61,7 @@ class SelectCharacterAck:
     skills: dict = field(default_factory=dict)  # {skill_index: level}
     skill_speeches: dict = field(default_factory=dict)  # {str(skill_index): text}
     locked_skills: list = field(default_factory=list)
+    quickslots: list = field(default_factory=list)  # [(type, slot, ref_id, ref_uid)]
 
     def encode(self) -> bytes:
         p = bytearray(struct.pack('<I', self.result))
@@ -79,7 +80,12 @@ class SelectCharacterAck:
         p += b'\x10' + varuint(len(self.bags)) + b''.join(bag.encode() for bag in self.bags)
         # 0x4b9830: item vector (+0x2A3), inserted by 0x00835990 after the bags.
         p += b'\x10' + varuint(len(self.items)) + b''.join(item.encode() for item in self.items)
-        p += b'\x10' + varuint(0)  # 0x4b2c30
+        # 0x4b2c30 (+0x2B3): quickslots, loaded by 0x00966080 at 0x007AA8A6.
+        # Element 0x00A49DC0 (25 bytes, defaults 0x0049F690): u8 type (0 item,
+        # 1 skill), u8 slot, i32 nRefID, i64 nRefUID, bool, i64, u16 0xFFFF.
+        p += b'\x10' + varuint(len(self.quickslots))
+        for stype, slot, ref_id, ref_uid in sorted(self.quickslots):
+            p += struct.pack('<BBiq?qH', stype, slot, ref_id, ref_uid, False, 0, 0xFFFF)
         p += b'\x10' + varuint(0)  # 0xa3eec0
         # 0x4b1240: learned skills, same element reader (0x4ACB80) as 2698.
         p += encode_skill_map(self.skills, self.skill_speeches, self.locked_skills)
