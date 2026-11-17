@@ -121,21 +121,6 @@ class DungeonHandlers:
         except (struct.error, ValueError):
             pass
 
-    async def on_5017(self, correlation, body):
-        # eERC_FINISH_GAME_REQ (live at the end of Act1_G1: 01 17 81 0f ...;
-        # first byte read as the clear flag, rest is a 0x17 map not decoded).
-        # -> 5018 eERC_FINISH_GAME_ACK (global handler 0x007ADB60): u32 result
-        # (non-zero shows an error), then bool bClear (cStack_e5: selects the
-        # clear path and the clear-time display 0x00794A60), J-wstring, bool,
-        # tag 0x17 map (0x005EAAC0, per-player results/rewards). Sent empty:
-        # no reward screen data yet.
-        cleared = body[0] == 1 if body else True
-        self.transport.record('finish-game', body, cleared=cleared)
-        ack = (struct.pack('<I?', 0, cleared) + wide_string('') + struct.pack('<?', False)
-               + b'\x17' + varuint(0))
-        await self.transport.send_event(event(5018, ack, correlation),
-                                        note='finish game ack (clear=%d, no rewards)' % cleared)
-
     async def on_2509(self, correlation, body):
         # eEGS_MONSTER_LAYER_MOVE_NOT: notification without an ACK opcode
         # (2510 is PET_NICK_CHANGE_REQ). Live: ffffff7f 13270006 + two
@@ -208,7 +193,9 @@ class DungeonHandlers:
         req = FinishGameReq.decode(body)
         self.transport.record('finish-game-req', body, is_clear=req.is_clear)
         map_code = getattr(self, 'map_code', '')
-        ack = FinishGameAck(result=0, is_clear=req.is_clear, map_code=map_code).encode()
+        char = self.current_char()
+        char_uid = char.get('char_uid', 0) if char else 0
+        ack = FinishGameAck(result=0, is_clear=req.is_clear, map_code=map_code, char_uid=char_uid).encode()
         await self.transport.send_event(event(5018, ack, correlation),
                                         note=f'finish game ack ({map_code} clear={req.is_clear})')
 

@@ -120,6 +120,7 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5018 = await client.expect_event(5018)
             res, is_clear = struct.unpack_from('<I?', ack5018, 0)
             self.assertEqual((res, is_clear), (0, True))
+            self.assertTrue(ack5018.endswith(b'\x10\x80'))
 
         self.run_async(self.with_server(scenario))
 

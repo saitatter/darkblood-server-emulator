@@ -117,6 +117,14 @@ class WireMessagesTest(unittest.TestCase):
         not_5064 = messages.DropItemNot(source_id=42, drops=[drop])
         self.assertEqual(not_5064.encode()[:6], struct.pack('<I', 42) + bytes.fromhex('1081'))
 
+        # FinishGameReq and FinishGameAck (5017 / 5018)
+        req_5017 = messages.FinishGameReq.decode(b'\x01\x17\x81\x0f')
+        self.assertTrue(req_5017.is_clear)
+
+        ack_5018 = messages.FinishGameAck(result=0, is_clear=True, map_code='Act1_G1_A10', char_uid=123).encode()
+        self.assertEqual(struct.unpack_from('<I?', ack_5018[:5]), (0, True))
+        self.assertTrue(ack_5018.endswith(b'\x10\x80'))
+
     def test_item_encoding_includes_count_at_offset_zero(self):
         item = Item(code='AbodT1N', uid=123, owner=1, container=1, slot=0, count=5)
         enc = item.encode()

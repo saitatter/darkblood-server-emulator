@@ -324,21 +324,53 @@ class FinishGameReq:
 class FinishGameAck:
     """Opcode 5018: eERC_FINISH_GAME_ACK (handler 0x007ADB60).
 
-    u32 result (0 = success)
-    bool is_clear (1 = dungeon clear)
-    wstring map_code
-    bool flag
-    tag 0x17 map (reward data; 0x17 + varuint(0) = empty map)
+    Wire format:
+      u32 result (0 = success)
+      bool is_clear (1 = dungeon clear / victory)
+      wstring map_code
+      bool flag (bSamePerson: False)
+      tag 0x17 map (mapGuildPersonCnt: empty -> 0x17 + varuint(0))
+      If is_clear:
+        tag 0x17 map (mapSingleReward: 0x17 + varuint(1) + 0x0f + i64 char_uid + 40 bytes)
+        i32 nPartyRankFirst (1)
+        i32 nPartyRankFinal (1)
+        i32 nBoxGrade (1)
+        i32 nExtraBoxCost (0)
+        tag 0x10 vector (vecBonusMonster: empty -> 0x10 + varuint(0))
     """
     result: int = 0
     is_clear: bool = True
     map_code: str = ''
     flag: bool = False
+    char_uid: int = 0
+    rank_first: int = 1
+    rank_final: int = 1
+    box_grade: int = 1
+    extra_box_cost: int = 0
 
     def encode(self) -> bytes:
-        return (struct.pack('<I?', self.result, self.is_clear)
-                + wide_string(self.map_code)
-                + struct.pack('<?', self.flag)
-                + b'\x17' + varuint(0))
+        buf = bytearray()
+        buf.extend(struct.pack('<I?', self.result, self.is_clear))
+        buf.extend(wide_string(self.map_code))
+        buf.extend(struct.pack('<?', self.flag))
+        # mapGuildPersonCnt
+        buf.append(0x17)
+        buf.extend(varuint(0))
+        if self.is_clear:
+            # mapSingleReward
+            buf.append(0x17)
+            if self.char_uid:
+                buf.extend(varuint(1))
+                buf.append(0x0f)
+                buf.extend(struct.pack('<q', self.char_uid))
+                buf.extend(b'\x00' * 40)
+            else:
+                buf.extend(varuint(0))
+            # nPartyRankFirst, nPartyRankFinal, nBoxGrade, nExtraBoxCost
+            buf.extend(struct.pack('<iiii', self.rank_first, self.rank_final, self.box_grade, self.extra_box_cost))
+            # vecBonusMonster
+            buf.append(0x10)
+            buf.extend(varuint(0))
+        return bytes(buf)
 
 

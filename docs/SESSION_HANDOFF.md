@@ -53,7 +53,7 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   Simulation: ~4.4% drop per normal hog, ~4.3 items per `1fpi03U0`.
 - Cash packages (Type 36, PACKAGEnnn -> DictItem:LoadPackage) and random boxes (DictRandomBox) open on use;
   bag capacity (`free_bag_slots`, bag `b29`) is enforced for opening, buying and picking up.
-- 5017 finish game -> 5018 (u32, bool clear, wstring map_code, bool flag, empty 0x17 map): implemented in `dungeon.py`.
+- 5017 finish game -> 5018: full victory payload implemented in `dungeon.py` / `messages/dungeon.py` (u32 result, bool bVictory, wstring map_code, bool bSamePerson, tag 0x17 mapGuildPersonCnt, tag 0x17 mapSingleReward with 40-byte stats, 4x i32 ranks/box, tag 0x10 vecBonusMonster). Fixed client dropping out of 0x007ADB60 on truncated read.
 - Blood effect unlocked in options: `m_bAdultUser = True` in welcome 5020 ungrays `Btn_ShowBlood` (JNetUserMgr+0x4C / 0x00577860).
 - Quest monster kill tracking: 5063 now resolves active quest objectives via `quest_monster_objectives()` and broadcasts 2075 progress updates.
 - Learn skill list (2697 -> 2698): resolved UI freeze in `Lua_OnVirtualLearnSkill` (waiting for 0x0A8A in `0x0094E1F0`). Decoded wire format: 2697 prefix + tag 0x10 vector, 2698 result + tag 0x17 map + remain SP + remain Gold.
