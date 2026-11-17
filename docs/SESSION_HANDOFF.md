@@ -64,14 +64,21 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - Shared `strip_prefix(data, prefix=b'\xff\xff\xff\x7f')` in `jser.py` adopted across all handler decoders.
 - Audited and eliminated invalid literal `b'\x1e'` from encoders across all domain messages where client `0x00B35010` returns immediately without consuming wire bytes.
 - The live character's bag was upgraded once to Ibaga0003 (20 slots) in `data/darkblood.db` (backup in scratchpad).
+- **Pets, Mounts & Monster Taming Subsystem**: Opcodes 2348-2351 (Taming), 2434-2438 (Mount summon/dismiss/speed), 2464-2474 (Pet summon/dismiss/feed/rename/level) with SQLite persistence (`mounts`, `pets` tables) and automated flow tests (`test_pets_flow.py`).
+- **PvP Arena, Duels, Teams & League Season Rankings**: Opcodes 5100-5113 (Duels), 5145-5154 & 2306/2307 (Arena rooms), 5269-5275 (Arena teams), 2550-2553 & 2475-2478 (League season rankings), 2709/2710 (Arena SP items) with dedicated tests (`test_arena_flow.py`).
+- **Mailbox System (Post Office)**: Opcodes 2219-2227, 2234-2237 (list, read, send with attached gold and items, claim append items, delete, return, new arrival notice) with full persistence and tests (`test_mail_flow.py`).
+- **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**: All 34 sequential chunks mapped and documented, including mailbox substructure at `0x0074C1D0` -> `0x00A3E760`.
+- **Master Opcode Registry**: Created `docs/OPCODE_REGISTRY.md` detailing 501 tracked opcodes, 298 client handler virtual addresses, 140 implemented server handlers, wire formats and packet semantics.
+- **C# Composition Blueprint & Packet Dispatcher**: Created `docs/ARCHITECTURE_REFACTOR_CSHARP.md`, `src/darkblood/games/dispatcher.py` (`PacketDispatcher`), and `src/darkblood/games/handlers/base.py` (`BaseDomainService`) replacing multiple inheritance with clean composition.
+- Test suite expanded to **150 automated tests** passing 100%.
 
 ## Open items (priority order)
 
-1. **Live verification of Depot / Warehouse**: test opening storage, depositing/withdrawing gold (2228/2230), and slot extension (2461) in game UI.
-2. **Crash at `0x00650DB4`** (FUN_00650D00 from `Lua_OnUseBtnDown_Inven` / `Lua_OnBtn_Drop`): `0x00938C70(-1,-1)`
-   (manager `0x0054AF50`, lookup by the current UID) returned NULL. Expected to be fixed by the UID fix; retest.
-3. Mounts (`ridecall`), pets (`PetCall`), CashWG/CashAG/Zam boxes are consumed without effect.
-4. 5030 layer id is parsed as i64 at +4; live body suggests u32 at +8.
+1. **GameSession Composition Refactoring**: Complete migration of `GameSession` from 11 mixins to composition via `PacketDispatcher` (`self.dispatcher`).
+2. **Multiplayer Movement & Spatial Broadcasting (P6)**: Broadcast player position updates (`5030/5031 eERC_USER_MOVE_NOT`) to nearby players in square/dungeon and handle join/leave (`5021/5022`).
+3. **Party System & Co-op Dungeons (P6)**: Party invite, join, leave, kick (2100-2106), synchronized party dungeon entry and instance state.
+4. **Live verification of Depot / Warehouse, Mailbox, and Pets**: In-game client verification of storage, mail send/receive with attachments, and pet summoning.
+5. **C# / .NET 8 Server Scaffolding (P10)**: Initialize `DarkBloodServer.sln` matching MHServerEmu architecture.
 
 ## Environment notes (saita machine)
 

@@ -12,14 +12,15 @@ Final objective: launch without the original services, establish a local session
 |---|---|---|---|
 | **P0: Enter the World** | Handshake, Auth, Lobby, Selection, Town entry | **Verified** | Town rendered, character visible, movement confirmed |
 | **P1: Transport & Serialization** | ProudNet framing, JSerBuffer, crypto, compression | **Verified** | Full regression test suite (`test_transport.py`), 11 tests |
-| **P2: Lobby & Account** | Character list, create, delete, versioned persistence | **Verified** | Name validation, persistent JSON store, default gear |
-| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **In Progress (~85%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop; drops/EXP headless only |
-| **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~75%)** | Validated decoder, store/quest/stat tables parsed |
-| **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~80%)** | Clean headless test runner, process cleanup |
-| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **Planned** | Relay PIDL JoinGroup verified; multi-client next |
-| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, auction | **In Progress** | Trade/mail handlers exist; depot (warehouse) NOT implemented; Steam cash shop offline purchases live |
-| **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~85%)** | Guild banking/notice/level/grades wired; arena rooms next |
-| **P9: Refactoring & Tools Dashboard** | Modular messages, GM dashboard, semantic architecture | **Verified** | Monolith split into 10 domains; GM web dashboard added; 105 tests |
+| **P2: Lobby & Account** | Character list, create, delete, versioned persistence | **Verified** | Name validation, persistent SQLite store, default gear |
+| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot |
+| **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~80%)** | Validated decoder, store/quest/stat/cash/monster tables parsed |
+| **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
+| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress (~50%)** | Relay JoinGroup verified; world manager spatial presence & 5096 mutual spawn; movement sync & party next |
+| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **In Progress (~85%)** | P2P trade, full mailbox system with attachments, depot AR & slot extension live; personal shop next |
+| **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
+| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode registry | **Verified (~95%)** | 150 tests; opcode registry (501 entries); C# composition architecture blueprint & PacketDispatcher |
+| **P10: C# / .NET 8 Server Port** | High-performance C# server (MHServerEmu alignment) | **Planned** | Composition architecture, ProudNet wire layer, entity model, domain services |
 
 ---
 
@@ -65,13 +66,13 @@ Final objective: launch without the original services, establish a local session
 - [x] Implement shop transactions: buy item (2067/2068), sell item (2069/2070), and repurchase (2071/2072) with gold & inventory persistence.
 - [x] Inventory operations live 2026-11-17: drag (2036/2037), equip/unequip/swap (2042/2043), use (2038/2039), delete (2040/2041). Fixes: request prefix, owner -1, empty cells uid/code -1, equipment slot validation, bag capacity.
 - [x] Item stats: Quality 0 (was 0xFFFF -> every item stat -1.0), integer max durability.
-- [ ] Depot / warehouse (container convention, 2229/2231, 2401, 2461/2462; cash items Ikee*/lSto*).
+- [x] Depot / warehouse: gold storage save/load (2228-2231 `DEPOT_SAVE_AR`/`DEPOT_LOAD_AR`) and container slot expansion (2461/2462 `DEPOT_SLOT_EXTEND`).
 - [x] Implement skill management: learn skill (2050/2051), lock skill (2117/2118), and custom speech shout (2053/2054, 2055/2056).
 - [x] Implement guild economy: money deposit (2179/2180), money withdraw (2181/2182), level up (2183/2184), notice modify/delete (2185/2186, 2188/2189), and skill init (2214/2215).
 - [ ] Implement monster AI aggro and damage calculation algorithms from client property tables.
 - [ ] Implement item enhancement/refining system (2115/2116 `ITEM_UPGRADE_REQ/ACK`) with success/break rates.
 - [x] Cash shop offline: Steam purchase 2712 -> 2037 + 2714; packages (PACKAGEnnn) and random boxes open on use.
-- [ ] Mounts (`ridecall`), pets (`PetCall`), CashWG/CashAG/Zam boxes.
+- [x] Mounts (`ridecall`, 2434-2438), pets (`PetCall`, 2464-2474), monster taming (2348-2351), CashWG/CashAG/Zam boxes.
 
 ### Wire-correctness audit (from the 2026-11-17 session)
 - [x] Remove literal `0x1E`/`0x0D` struct tags where the reader uses `0x00B35010` (2075, 2074/2077, 5086, 5087, 5064, 5068).
@@ -184,7 +185,7 @@ Final objective: launch without the original services, establish a local session
 
 ### P9 — Architecture Refactoring & C# Migration Preparation
 - [x] **Modularize Message Schemas**:
-  - Split monolithic `src/darkblood/games/network/messages.py` into 11 domain-specific modules:
+  - Split monolithic `src/darkblood/games/network/messages.py` into 13 domain-specific modules:
     - `darkblood.games.network.messages.lobby`
     - `darkblood.games.network.messages.inventory`
     - `darkblood.games.network.messages.skills`
@@ -196,6 +197,8 @@ Final objective: launch without the original services, establish a local session
     - `darkblood.games.network.messages.events`
     - `darkblood.games.network.messages.system`
     - `darkblood.games.network.messages.arena`
+    - `darkblood.games.network.messages.mail`
+    - `darkblood.games.network.messages.pets`
   - Re-exported all dataclasses in `messages/__init__.py` with 100% backward compatibility.
 - [x] **Standalone GM & Server Web Dashboard**:
   - Built `tools/dashboard.py` (port 9494) providing live telemetry for port 9400 & 9401.
@@ -205,7 +208,7 @@ Final objective: launch without the original services, establish a local session
   - Replaced raw opcode identifiers with semantic method names (`handle_*`) across all handler domains.
   - Added opcode backward-compatibility aliases and rich reverse-engineering docstrings.
 - [x] **Granular Unit Testing**:
-  - Unbundled multi-opcode tests in `tests/test_wire_messages.py` into 114 dedicated unit tests (100% passing).
+  - Expanded test suite to **150 automated tests** covering wire codecs, flows, database persistence, and edge cases.
 - [x] **Database & Storage Abstraction**:
   - Introduce `ICharacterStore` interface with abstract async methods.
   - Implement SQLite backend (`data/darkblood.db`) for high reliability and SQL querying (`src/darkblood/player_management/store.py`).
@@ -214,9 +217,32 @@ Final objective: launch without the original services, establish a local session
 - [x] **Domain Entity Decoupling & Multi-client World Management**:
   - Introduced `GameWorldManager` managing player presence, square instances, and mutual character spawns via Opcode 5096 (`UpdateCharInfoNot`).
   - Automated mutual spawning between players entering square channels (`test_world_flow.py`).
-- [ ] **C# Port Specification (MHServerEmu Alignment)**:
-  - Document all packet schemas in C# record / struct format with endianness attributes.
-  - Define C# interface contracts matching `DarkBloodServer` architecture.
+- [x] **Master Opcode Registry**:
+  - Created `docs/OPCODE_REGISTRY.md` compiling 501 tracked opcodes, reverse-engineered client virtual addresses (298 found), implemented server handlers (140), directions, and wire notes.
+- [x] **C# Architectural Blueprint & Packet Dispatcher**:
+  - Documented complete composition transition in `docs/ARCHITECTURE_REFACTOR_CSHARP.md`.
+  - Created prototype `PacketDispatcher` (`src/darkblood/games/dispatcher.py`) and `BaseDomainService` (`src/darkblood/games/handlers/base.py`).
+- [ ] **Server Session Composition Transition (Immediate Goal)**:
+  - Migrate `GameSession` from 11 multiple inheritance mixins (`FrontendHandlers`, `SocialHandlers`, `MailHandlers`, `SquareHandlers`, `CommerceHandlers`, `InventoryHandlers`, `SkillHandlers`, `QuestHandlers`, `DungeonHandlers`, `ArenaHandlers`, `PetHandlers`) to composition using `PacketDispatcher`.
+  - Validate all 150 tests pass without regression.
+
+### P10 — C# / .NET 8 Server Port (MHServerEmu Architecture)
+- [ ] **Solution & Project Scaffolding**:
+  - Create `DarkBloodServer.sln` targeting .NET 8:
+    - `DarkBlood.Core`: Binary primitives, endianness helpers, JSerBuffer reader/writer, cryptographic handshakes.
+    - `DarkBlood.Network`: ProudNet framing, packet serialization, session lifecycle, encryption pipelines.
+    - `DarkBlood.Database`: Entity Framework Core / SQLite entities, repositories, database migration tools.
+    - `DarkBlood.GameServer`: PacketDispatcher, session controller, domain services (Lobby, Inventory, Skills, Combat, Quests, Social, Mail, Guild, Arena, Pets).
+- [ ] **Network Protocol & Handshake Parity**:
+  - Implement ProudNet RSA 1024 + AES-128-CBC key exchange and packet framing in C#.
+  - Implement JSerBuffer varuint & wide-string serialization matching Python implementation and client binary layout.
+- [ ] **Domain Services & Handlers**:
+  - Port attribute-based packet routing: `[PacketHandler(Opcode.eEGS_CHAR_LIST_REQ)]`.
+  - Port character selection payload builder matching struct `0x00A40760` (all 34 sequential chunks).
+  - Port game asset loaders for `.lua` dictionaries (`storelist.lua`, `questlist.lua`, `charstat.lua`, `monster.lua`, `itemlooting.lua`).
+- [ ] **End-to-End Verification**:
+  - Replicate integration tests in xUnit.
+  - Connect live game client to C# server: verify authentication, character select, town movement, inventory manipulation, dungeon combat, and SQLite persistence.
 
 ---
 
@@ -360,27 +386,76 @@ Below is the structured roadmap of client opcodes, categorized by gameplay subsy
 | 2221 / 2222 | `eEGS_POST_SEND_REQ / ACK` | **Implemented** | Compose and send mail (`0x00795F40`) |
 | 2223 / 2224 | `eEGS_POST_READ_REQ / ACK` | **Implemented** | Read mail content (`0x0075A660`) |
 | 2225 / 2226 | `eEGS_POST_GET_APPEND_ITEM_REQ / ACK` | **Implemented** | Claim attached items and gold (`0x0077F8E0`) |
+| 2227 | `eEGS_POST_NEW_ARRIVAL_NOT` | **Implemented** | Notification when new letter arrives (`0x007965B0`) |
+| 2234 / 2235 | `eEGS_POST_RETURN_REQ / ACK` | **Implemented** | Return letter with items to sender (`0x00771470`) |
 | 2236 / 2237 | `eEGS_POST_DELETE_REQ / ACK` | **Implemented** | Batch delete letters (`0x007715F0`) |
+| 2228 / 2229 | `eEGS_DEPOT_SAVE_AR_REQ / ACK` | **Implemented** | Deposit gold into personal warehouse (`0x00795220`) |
+| 2230 / 2231 | `eEGS_DEPOT_LOAD_AR_REQ / ACK` | **Implemented** | Withdraw gold from personal warehouse (`0x00795490`) |
+| 2461 / 2462 | `eEGS_DEPOT_SLOT_EXTEND_REQ / ACK` | **Implemented** | Expand depot storage tab slots (`0x007A3E20`) |
 | 2310 / 2311 | `eEGS_CHAR_NICK_CHANGE_REQ / ACK` | **Implemented** | Character rename scroll (`0x00780200`) |
 | 2314 / 2315 | `eEGS_GUILD_NAME_CHANGE_REQ / ACK` | **Implemented** | Guild rename scroll (`0x00780590`) |
 | 2319 / 2320 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ/ACK` | **Implemented** | Custom keybindings mapping (`0x00753960`) |
 | 2569 / 2570 | `eEGS_ATTENDANCE_CHECK_REQ / ACK` | **Implemented** | Daily attendance reward check |
 | 2594 / 2595 | `eEGS_HTTPNOTICE_CHECK_REQ / ACK` | **Implemented** | Web event notice check (`0x005A5110`) |
 
+### 7. Pets, Mounts & Monster Taming (Opcodes 2348 - 2351, 2434 - 2438, 2464 - 2474)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 2348 / 2349 | `eEGS_TAMEING_MONSTER_INSERT_REQ / ACK` | **Implemented** | Capture/tame monster (`0x00771A00`) |
+| 2350 / 2351 | `eEGS_TAMEING_MONSTER_DELETE_REQ / ACK` | **Implemented** | Release tamed monster (`0x00771BB0`) |
+| 2434 / 2435 | `eEGS_RIDING_CALL_REQ / ACK` | **Implemented** | Summon mount (`0x007A3820`) |
+| 2436 / 2437 | `eEGS_RIDING_DISMISS_REQ / ACK` | **Implemented** | Dismiss mount (`0x007A3B10`) |
+| 2438 | `eEGS_RIDING_SPEED_SYNC` | **Implemented** | Mount movement speed synchronization (`0x007A3DA0`) |
+| 2464 / 2465 | `eEGS_PET_CALL_REQ / ACK` | **Implemented** | Summon pet (`0x007A4100`) |
+| 2466 / 2467 | `eEGS_PET_DISMISS_REQ / ACK` | **Implemented** | Dismiss pet (`0x007A4390`) |
+| 2468 / 2469 | `eEGS_PET_INFO_REQ / ACK` | **Implemented** | Query pet status and stats (`0x007A4620`) |
+| 2470 / 2471 | `eEGS_PET_FEED_REQ / ACK` | **Implemented** | Feed pet to replenish satiety (`0x007A4950`) |
+| 2472 / 2473 | `eEGS_PET_NAME_CHANGE_REQ / ACK` | **Implemented** | Rename pet scroll (`0x007A4C80`) |
+| 2474 | `eEGS_PET_LEVEL_UP_NOT` | **Implemented** | Pet level-up event notification (`0x007A4F10`) |
+
+### 8. PvP Arena, Duels & League Ladders (Opcodes 2304 - 2309, 2446 - 2457, 2475 - 2478, 2550 - 2553, 5097 - 5113, 5138 - 5166, 5269 - 5275)
+| Opcode Pair | Name | Status | Function / Handler |
+|---|---|---|---|
+| 5097 / 5098 | `eERC_DUEL_START_REQ / ACK` | **Implemented** | Start 1v1 duel (`0x006CBE60`) |
+| 5099 | `eERC_DUEL_START_NOT` | **Implemented** | Broadcast duel start in town (`0x006CCDF0`) |
+| 5100 / 5101 | `eERC_DUEL_REQUEST / ACK` | **Implemented** | Challenge player to duel (`0x006C0A10`) |
+| 5105 / 5106 | `eERC_DUEL_RESULT / ACK` | **Implemented** | Duel match result (`0x006CC6B0`) |
+| 5108 | `eERC_DUEL_GIVEUP_NOT` | **Implemented** | Duel forfeit / surrender (`0x006CC8E0`) |
+| 5112 / 5113 | `eERC_DUEL_REFUSE / ACK` | **Implemented** | Decline duel request (`0x006B4120`) |
+| 2304 / 2305 | `eEGS_ARENA_SQUARELIST_REQ / ACK` | **Implemented** | List arena channels (`0x004B67F0`) |
+| 2306 / 2307 | `eEGS_ARENA_GET_ROOMLIST_REQ / ACK` | **Implemented** | List active arena rooms (`0x004B96D0`) |
+| 2308 / 2309 | `eEGS_ARENA_GET_INVITELIST_REQ / ACK`| **Implemented** | List arena invitations (`0x004B4680`) |
+| 5138 | `eERC_ARENA_JOIN_SQUARE_ACK` | **Implemented** | Enter arena lobby square (`0x007584A0`) |
+| 5145 / 5146 | `eERC_ARENA_JOIN_ROOM_REQ / ACK` | **Implemented** | Join arena match room (`0x004B4CD0`) |
+| 5148 / 5149 | `eERC_ARENA_LEAVE_ROOM_REQ / ACK` | **Implemented** | Leave arena match room (`0x004B5030`) |
+| 5153 / 5154 | `eERC_ARENA_CREATE_ROOM_REQ / ACK` | **Implemented** | Create new arena room (`0x004B58E0`) |
+| 5165 / 5166 | `eERC_ARENA_BACK_TO_SQUARE_ACK` | **Implemented** | Return from arena to town square (`0x00758550`) |
+| 5269 / 5270 | `eERC_ARENA_TEAM_CREATE_REQ / ACK` | **Implemented** | Create arena team (`0x0049BEF0`) |
+| 5271 / 5272 | `eERC_ARENA_TEAM_JOIN_REQ / ACK` | **Implemented** | Join arena team (`0x0049C4B0`) |
+| 5274 / 5275 | `eERC_ARENA_TEAM_LEAVE_REQ / ACK` | **Implemented** | Leave arena team (`0x00490100`) |
+| 2550 / 2551 | `eEGS_LEAGUE_SEASON_ARENA_GET_RANK_REQ/ACK` | **Implemented** | Arena season ladder rankings (`0x00499DC0`) |
+| 2552 / 2553 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_REQ/ACK`| **Implemented** | Player's arena rank and score (`0x00492A10`) |
+| 2709 / 2710 | `eEGS_USE_ARENA_SP_ITEM_REQ / ACK` | **Implemented** | Consume arena SP item (`0x007A7CA0`) |
+
 ---
 
 ## Rigorous Verification & Testing Strategy
 
 ### 1. Headless Continuous Integration Matrix
-All emulator functions must execute headless through `python -m unittest discover -s tests -v`:
-- `test_character_store.py`: CRUD, case-insensitive duplicate prevention, inventory initialization.
+All emulator functions must execute headless through `python -m unittest discover -s tests -v` (150 tests):
+- `test_character_store.py`: CRUD, case-insensitive duplicate prevention, inventory initialization, SQLite repository.
 - `test_transport.py`: Scalar boundaries, fragmented/coalesced TCP frames, varuint limits, zlib compression.
 - `test_wire_messages.py`: Unit encode/decode matching disassembled client schemas for all opcodes.
 - `test_lobby_flow.py`: Full login, server list, channel list, character list, creation, deletion, selection.
 - `test_inventory_flow.py`: Drag, equip, consume, bag switch, bag rename, quickslots, skill learn, buy, sell, repurchase.
 - `test_dungeon_flow.py`: Gate select, map code, dungeon start, layer switch, combat, dead/revive, card rewards, back to square.
 - `test_quest_flow.py`: Quest acceptance, reward calculation, level-up progression, SP boost, active tracker restore.
-- `test_social_flow.py`: Mailbox, friends, guild creation, guild bank deposit/withdraw, guild level up, notice edit/delete, skills reset.
+- `test_social_flow.py`: Friends, guild creation, guild bank deposit/withdraw, guild level up, notice edit/delete, skills reset.
+- `test_mail_flow.py`: Mailbox lifecycle, multiple item & gold attachments, read, claim, delete, return.
+- `test_pets_flow.py`: Mount summon/dismiss/speed, pet summon/feed/rename/level, monster taming capture/release.
+- `test_arena_flow.py`: Arena rooms, join/leave, team creation/switching, league season ladder rankings, duels.
+- `test_world_flow.py`: Spatial grid management, multi-client square presence, Opcode 5096 mutual character visual updates.
+- `test_cash_shop_flow.py`: Offline Steam Cash Shop purchase (2712/2714), package unboxing, random boxes.
 - `test_relay_flow.py`: Relay server PIDL handshake, group join isolation.
 - `test_jpk.py`: Archive unpacking, byte-identical repack, key cipher verification.
 - `test_hashing.py`: Client DJB2 hashing parity.

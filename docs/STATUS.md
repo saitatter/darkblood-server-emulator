@@ -1,5 +1,28 @@
 # Research status and handoff
 
+## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 150 tests passing)
+
+Major subsystems implemented, integrated, and verified with 150 automated tests:
+- **Pets, Mounts & Monster Taming Subsystem**:
+  - Implemented `PetHandlers` (`src/darkblood/games/handlers/pets.py`) and wire messages (`src/darkblood/games/network/messages/pets.py`).
+  - Opcodes 2348-2351 (Taming), 2434-2438 (Mount summon/dismiss/speed), 2464-2474 (Pet summon/dismiss/feed/rename/level).
+  - SQLite tables `mounts` and `pets` in `data/darkblood.db`. End-to-end verified in `tests/test_pets_flow.py`.
+- **PvP Arena, Duels, Teams & League Season Rankings**:
+  - Implemented `ArenaHandlers` (`src/darkblood/games/handlers/arena.py`) and wire messages (`src/darkblood/games/network/messages/arena.py`).
+  - Opcodes 5100-5113 (Duels), 5145-5154 & 2306/2307 (Arena rooms), 5269-5275 (Arena teams), 2550-2553 & 2475-2478 (League season rankings), 2709/2710 (Arena SP items).
+  - Verified in `tests/test_arena_flow.py`.
+- **Mailbox System with Attachments**:
+  - Implemented `MailHandlers` (`src/darkblood/games/handlers/mail.py`) and wire messages (`src/darkblood/games/network/messages/mail.py`).
+  - Opcodes 2219-2227, 2234-2237 (Mail listing, send with attached gold and items, read, claim items into inventory, delete, return, new arrival notice).
+  - Verified in `tests/test_mail_flow.py`.
+- **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**:
+  - All 34 sequential chunks mapped and documented, including mailbox substructure at `0x0074C1D0` -> `0x00A3E760`.
+- **Master Opcode Registry**:
+  - Created `docs/OPCODE_REGISTRY.md`: 501 tracked opcodes, 298 client handler virtual addresses, 140 implemented server handlers, wire formats and packet semantics.
+- **C# Architectural Refactoring & Packet Dispatcher**:
+  - Blueprint in `docs/ARCHITECTURE_REFACTOR_CSHARP.md` detailing migration from Python multiple inheritance mixins to composition.
+  - Implemented prototype `PacketDispatcher` (`src/darkblood/games/dispatcher.py`) and `BaseDomainService` (`src/darkblood/games/handlers/base.py`).
+
 ## Live play-test fixes — saita machine, 2026-11-17 (static + headless; live retest pending unless noted)
 
 Player reports from a live session, with the cause found in the wire log or client code:
