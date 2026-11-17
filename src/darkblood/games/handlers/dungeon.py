@@ -161,10 +161,11 @@ class DungeonHandlers:
         # report the remaining count in the trailing u16.
         req = GameplayDieCharReq.decode(body)
         char = self._current_char()
-        player_uid = selected_character.get('id', 0)
-        if char is not None:
-            player_uid = char.get('id', player_uid)
-        char_uid = req.char_uid if req.char_uid != 0 else player_uid
+        # Echo the client's own UID unchanged (0x00946570; live: 0, because
+        # details +0x1C is 0). Substituting the character id (1) made the
+        # death page 0x0055BEF0 look up an unknown user through 0x00966470,
+        # get NULL and read [0x10] (live crash at 0x0055BF71, 2026-11-17).
+        char_uid = req.char_uid
 
         coins = 0
         if char is not None:

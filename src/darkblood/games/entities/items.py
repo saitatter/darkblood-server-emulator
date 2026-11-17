@@ -49,7 +49,9 @@ class Item:
         maximum = item_max_durability(self.code)
         # Unknown items (tables absent, or non-equipment) get a positive value
         # so equipment is never reported as broken.
-        return maximum if maximum is not None else 100.0
+        # The client keeps the max as an i16 (prop +0xBE, used by 0x00A49920),
+        # so a fractional table value (helmet 18.525) showed as "19/18" live.
+        return float(int(maximum)) if maximum is not None else 100.0
 
     def encode(self) -> bytes:
         # 0x00A4B250 x2 (+0x0C, +0x6B): varint count (max 2) of 10-byte
