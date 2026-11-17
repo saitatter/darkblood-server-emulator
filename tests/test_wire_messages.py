@@ -93,10 +93,14 @@ class WireMessagesTest(unittest.TestCase):
         msg_5063 = messages.MonsterDeadReq.decode(struct.pack('<iII', 0x7fffffff, 42, 1))
         self.assertEqual((msg_5063.monster_id, msg_5063.param), (42, 1))
 
-        drop = messages.ItemDropEntry(drop_uid=1, item_id=hashing.jhash('Ihppa0024'), count=1, x=100.0, y=-2000.0, z=0.0)
+        drop = messages.ItemDropEntry(drop_uid=1, item_id=hashing.jhash('Ihppa0024'), count=1)
+        enc_entry = drop.encode()
+        # u32 uid, u32 code, u16 0, u16 count, tag 0x13 + empty set, u16 0xFFFF (no 0x1E byte).
+        self.assertEqual(len(enc_entry), 16)
+        self.assertEqual(struct.unpack_from('<IIHH', enc_entry), (1, hashing.jhash('Ihppa0024') & 0xFFFFFFFF, 0, 1))
+        self.assertEqual(enc_entry[12:], bytes.fromhex('1380ffff'))
         not_5064 = messages.DropItemNot(source_id=42, drops=[drop])
-        enc_drop = not_5064.encode()
-        self.assertTrue(enc_drop.startswith(struct.pack('<I', 42) + b'\x10'))
+        self.assertEqual(not_5064.encode()[:6], struct.pack('<I', 42) + bytes.fromhex('1081'))
 
     def test_item_encoding_includes_count_at_offset_zero(self):
         item = Item(code='AbodT1N', uid=123, owner=1, container=1, slot=0, count=5)
@@ -385,12 +389,12 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', ack_fix)[0], 0)
 
     def test_item_pickup_and_drop_messages(self):
-        req_p = messages.PickUpItemReq.decode(struct.pack('<q', 999))
+        req_p = messages.PickUpItemReq.decode(struct.pack('<iI', 0x7fffffff, 999))  # live form
         self.assertEqual(req_p.drop_uid, 999)
         ack_p = messages.PickUpItemAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_p)[0], 0)
 
-        ack_res = messages.PickUpItemResultAck(result=0, picker_uid=123, item=None).encode()
+        ack_res = messages.PickUpItemResultAck(result=0, picker_uid=123).encode()
         self.assertEqual(struct.unpack_from('<iq', ack_res[:12]), (0, 123))
 
         not_ar = messages.GetDropArNot(result=0, gold=500, drop_id=1, picker_uid=123).encode()

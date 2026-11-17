@@ -406,7 +406,7 @@ def random_boxes():
             continue
         grades = []
         for grade in 'NSRUM':
-            prob = re.search(r'\b%s_Item_Prob = ([0-9.e-]+)' % grade, entry)
+            prob = re.search(r'\b%s_Item_Prob = ([0-9.eE+-]+)' % grade, entry)
             glist = re.findall(r'\b%s_ItemGroup = \{([^}]*)\}' % grade, entry)
             names = re.findall(r'"([^"]+)"', ' '.join(glist))
             if prob and float(prob.group(1)) > 0 and names:
@@ -433,7 +433,82 @@ def monsters():
         exp = re.search(r'\bExp = ([0-9.]+)', entry)
         lv = re.search(r'\bLv = (\d+)', entry)
         drop = re.search(r'\bDropCnt = (\d+)', entry)
+        hp = re.search(r'\bHP = ([0-9.]+)', entry)
         out[jhash(mid.group(1)) & 0xFFFFFFFF] = {
             'id': mid.group(1), 'exp': float(exp.group(1)) if exp else 0.0,
-            'lv': int(lv.group(1)) if lv else 1, 'drop_cnt': int(drop.group(1)) if drop else 0}
+            'lv': int(lv.group(1)) if lv else 1, 'drop_cnt': int(drop.group(1)) if drop else 0,
+            'hp': float(hp.group(1)) if hp else 0.0}
+    return out
+
+
+@lru_cache(maxsize=None)
+def looting():
+    """Loot tables from itemlooting.lua (DictItemDrop).
+
+    Returns (mon_looting, looting_items, groups):
+      mon_looting   {DungeonID: [{'looting_id', 'prob', 'ave_hp', 'adjust_hp', 'rotate'}]}
+      looting_items {LootingID: (OneItemID or '', [GroupID])}
+      groups        {GroupID: [ItemID]}
+    """
+    path = data_root() / 'itemlooting.lua'
+    if not path.exists():
+        return {}, {}, {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    groups = {}
+    for entry in _top_entries(_section(text, 'DictItemDrop:LoadLootingItemGroup')):
+        gid = re.search(r'GroupID = "([^"]+)"', entry)
+        if gid:
+            groups[gid.group(1)] = re.findall(r'"([^"]+)",\s*\d+', entry.split('Item = {', 1)[-1])
+    items = {}
+    for entry in _top_entries(_section(text, 'DictItemDrop:LoadLootingItem')):
+        lid = re.search(r'LootingID = "([^"]+)"', entry)
+        if not lid:
+            continue
+        one = re.search(r'OneItemID = "([^"]*)"', entry)
+        glist = re.search(r'ItemGroup = \{([^}]*)\}', entry)
+        items[lid.group(1)] = (one.group(1) if one else '',
+                               re.findall(r'"([^"]+)"', glist.group(1)) if glist else [])
+    mon = {}
+    pos = 0
+    while True:
+        section = _section(text[pos:], 'DictItemDrop:LoadMonLooting')
+        if not section:
+            break
+        for entry in _top_entries(section):
+            did = re.search(r'DungeonID = "([^"]+)"', entry)
+            lid = re.search(r'LootingID = "([^"]+)"', entry)
+            prob = re.search(r'UsuallyProb = ([0-9.eE+-]+)', entry)
+            if not (did and lid and prob):
+                continue
+            ave = re.search(r'AveMonHP = ([0-9.]+)', entry)
+            adj = re.search(r'AdjustProbByMonHP = (\d+)', entry)
+            rot = re.search(r'\bRotateCount = (\d+)', entry)
+            mon_id = re.search(r'MonID = "([^"]+)"', entry)
+            mon.setdefault(did.group(1), []).append({
+                'mon_id': mon_id.group(1) if mon_id else '',
+                'looting_id': lid.group(1), 'prob': float(prob.group(1)),
+                'ave_hp': float(ave.group(1)) if ave else 0.0,
+                'adjust_hp': bool(adj and adj.group(1) == '1'),
+                'rotate': int(rot.group(1)) if rot else 1})
+        pos = text.find(section, pos) + len(section)
+    return mon, items, groups
+
+
+@lru_cache(maxsize=None)
+def equip_index():
+    """[(ItemID, Grade, DemandLv, Demand1Class)] for every item_equip*.lua entry."""
+    out = []
+    for name in ITEM_EQUIP_FILES:
+        path = data_root() / name
+        if not path.exists():
+            continue
+        for entry in _top_entries(path.read_text(encoding='utf-8', errors='replace')):
+            iid = re.search(r'ItemID = "([^"]+)"', entry)
+            if not iid:
+                continue
+            grade = re.search(r'\bGrade = (\d+)', entry)
+            lv = re.search(r'\bDemandLv = (\d+)', entry)
+            cls = re.search(r'Demand1Class = "([01]+)"', entry)
+            out.append((iid.group(1), int(grade.group(1)) if grade else 0,
+                        int(lv.group(1)) if lv else 1, cls.group(1) if cls else ''))
     return out

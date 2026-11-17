@@ -12,19 +12,23 @@ PREFIX = bytes.fromhex('ffffff7f')
 
 @dataclass
 class ItemDropEntry:
-    """A dropped item entity on the dungeon floor (client struct 0x00A509E0, 26 bytes)."""
+    """A dropped item (struct 0x1A bytes, ctor 0x00A4FBA0, reader 0x00A509E0).
+
+    The element reader 0x004C7F80 checks tag 0x1E through 0x00B35010 (no
+    byte on the wire). Fields in read order: u32 +0 drop uid, u32 +4 item
+    code (jhash), u16 +8 (ctor 0), u16 +10 (ctor 0xFFFF; passed with the
+    item code to the drop message 0x004C8CA0, taken as the amount), tag 0x13
+    set at +0xE (0x006B9F80, meaning not recovered, sent empty), u16 +0xC
+    (ctor 0xFFFF). The client places the drop at the source monster
+    (5064 header id, 0x00859C60), so no position is sent.
+    """
     drop_uid: int
     item_id: int
     count: int = 1
-    drop_type: int = 0
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    flags: int = 0
 
     def encode(self) -> bytes:
-        return (b'\x1e' + struct.pack('<IIHH', self.drop_uid, self.item_id, self.count, self.drop_type)
-                + b'\x13' + struct.pack('<fffH', self.x, self.y, self.z, self.flags))
+        return (struct.pack('<IIHH', self.drop_uid, self.item_id & 0xFFFFFFFF, 0, self.count)
+                + b'\x13' + varuint(0) + struct.pack('<H', 0xFFFF))
 
 @dataclass
 class DropItemNot:
@@ -554,13 +558,18 @@ class FixItemUpgradeAck:
 
 @dataclass
 class PickUpItemReq:
-    """Opcode 5065: eERC_PICK_UP_ITEM_REQ."""
+    """Opcode 5065: eERC_PICK_UP_ITEM_REQ (JUserClient::PickUpItemREQ, push at 0x0078AC3F).
+
+    Event header 0x00408C60(0x13C9, -1, -1) (the ffffff7f prefix) + u32 drop
+    uid (0x00B352B0).
+    """
     drop_uid: int = 0
 
     @classmethod
     def decode(cls, data: bytes) -> 'PickUpItemReq':
-        if len(data) >= 8:
-            return cls(drop_uid=struct.unpack_from('<q', data, 0)[0])
+        offset = 4 if len(data) >= 8 and data[:4] == PREFIX else 0
+        if len(data) >= offset + 4:
+            return cls(drop_uid=struct.unpack_from('<I', data, offset)[0])
         return cls()
 
 @dataclass
@@ -573,14 +582,20 @@ class PickUpItemAck:
 
 @dataclass
 class PickUpItemResultAck:
-    """Opcode 5068: eERC_PICK_UP_ITEM_RESULT_ACK (0x0078AD80)."""
+    """Opcode 5068: eERC_PICK_UP_ITEM_RESULT_ACK (global handler 0x0078AD80).
+
+    u32 result, i64 picker character UID (0x00866CF0 lookup), then the drop
+    struct (tag 0x1E checked without a byte, reader 0x00A509E0). The handler
+    removes the drop from the floor (0x0086AFF0) and prints the pick-up
+    message; inventory changes come separately (unsolicited 2037).
+    """
     result: int = 0
     picker_uid: int = 0
-    item: object = None
+    drop: 'ItemDropEntry' = None
 
     def encode(self) -> bytes:
-        item_bytes = b'\x1e\x00' if self.item is None else (b'\x1e' + self.item.encode())
-        return struct.pack('<iq', self.result, self.picker_uid) + item_bytes
+        drop = self.drop or ItemDropEntry(drop_uid=0, item_id=0xFFFFFFFF, count=0)
+        return struct.pack('<iq', self.result, self.picker_uid) + drop.encode()
 
 @dataclass
 class GetDropArNot:

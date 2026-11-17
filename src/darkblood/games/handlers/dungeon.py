@@ -85,6 +85,7 @@ class DungeonHandlers:
             flag = body[offset + length:offset + length + 1] == bytes([1])
         except (WireError, UnicodeDecodeError):
             pass
+        self.map_code = code
         ack = ChangeMapCodeAck(map_code=code, flag=flag).encode()
         await self.transport.send_event(event(5010, ack, correlation),
                                         note='change mapcode ack (%s)' % code)
@@ -174,6 +175,29 @@ class DungeonHandlers:
         if info and char is not None and hasattr(self, '_grant_exp'):
             await self._grant_exp(char, max(1, int(round(info['exp']))))
             self.store().save()
+        if info and char is not None:
+            await self._drop_loot(msg.param, info, char)
+
+    async def _drop_loot(self, source_id, monster, char):
+        """Roll itemlooting.lua drops for a kill and announce them with 5064.
+
+        source_id is the 5063 instance id: 0x0078A870 looks the monster up by
+        it (0x00859C60) and spawns the drops there. Drop uids are kept per
+        session until picked up (5065).
+        """
+        from darkblood.games import loot
+        from darkblood.games.network.messages import DropItemNot, ItemDropEntry
+        codes = loot.roll_drops(getattr(self, 'map_code', ''), monster, int(char.get('char_class', 0)))
+        if not codes:
+            return
+        drops = self.__dict__.setdefault('floor_drops', {})
+        entries = []
+        for code in codes:
+            self.next_drop_uid = getattr(self, 'next_drop_uid', 0) + 1
+            drops[self.next_drop_uid] = code
+            entries.append(ItemDropEntry(drop_uid=self.next_drop_uid, item_id=jhash(code)))
+        await self.transport.send_event(event(5064, DropItemNot(source_id=source_id, drops=entries).encode()),
+                                        note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
 
     def _current_char(self):
         char = None
@@ -310,15 +334,32 @@ class DungeonHandlers:
         await self.transport.send_event(event(5016, ack, correlation), note=f'change team ack (team={req.team_id})')
 
     async def on_5065(self, correlation, body):
-        # eERC_PICK_UP_ITEM_REQ -> 5066 eERC_PICK_UP_ITEM_ACK & 5068 eERC_PICK_UP_ITEM_RESULT_ACK (0x0078AD80).
-        from darkblood.games.network.messages import PickUpItemAck, PickUpItemReq, PickUpItemResultAck
+        # eERC_PICK_UP_ITEM_REQ (prefix + u32 drop uid). 5066 has no client
+        # handler; 5068 (global 0x0078AD80) removes the drop and prints the
+        # message, and an unsolicited 2037 puts the item into the bag.
+        from darkblood.games.entities.items import UPDATE_OWNER, Item
+        from darkblood.games.network.messages import DragItemAck, ItemDropEntry, PickUpItemReq, PickUpItemResultAck
+        from darkblood.player_management.characters import add_reward_items, free_bag_slots, slots_needed
         req = PickUpItemReq.decode(body)
-        self.transport.record('pick-up-item-req', body, drop_uid=req.drop_uid)
-        char_uid = selected_character.get('id', 1)
-        ack = PickUpItemAck(result=0).encode()
-        await self.transport.send_event(event(5066, ack, correlation), note=f'pick up item ack (drop={req.drop_uid})')
-        res_ack = PickUpItemResultAck(result=0, picker_uid=char_uid, item=None).encode()
-        await self.transport.send_event(event(5068, res_ack), note=f'pick up item result ack (drop={req.drop_uid})')
+        drops = getattr(self, 'floor_drops', {})
+        code = drops.get(req.drop_uid)
+        char = self._current_char()
+        self.transport.record('pick-up-item-req', body, drop_uid=req.drop_uid, code=code or '')
+        if not code or char is None:
+            return
+        free = free_bag_slots(char)
+        if free is not None and slots_needed([(code, 1)]) > free:
+            await self.transport.send_event(event(5068, PickUpItemResultAck(result=1, picker_uid=char['id']).encode()),
+                                            note='pick up item refused (bag full, drop %d)' % req.drop_uid)
+            return
+        del drops[req.drop_uid]
+        stored = add_reward_items(char, [(code, 1)])
+        self.store().save()
+        entry = ItemDropEntry(drop_uid=req.drop_uid, item_id=jhash(code))
+        await self.transport.send_event(event(5068, PickUpItemResultAck(result=0, picker_uid=char['id'], drop=entry).encode()),
+                                        note='pick up item result (drop %d: %s)' % (req.drop_uid, code))
+        await self.transport.send_event(event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
+                                        note='picked item into bag (%s)' % code)
 
     async def on_5363(self, correlation, body):
         # eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10).

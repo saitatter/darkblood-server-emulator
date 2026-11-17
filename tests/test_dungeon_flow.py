@@ -103,12 +103,7 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5016 = await client.expect_event(5016)
             self.assertEqual(struct.unpack_from('<ii', ack5016), (0, 1))
 
-            # 15. Pick up item (5065 -> 5066 & 5068)
-            client.send_event(5065, struct.pack('<q', 8888))
-            _, ack5066 = await client.expect_event(5066)
-            self.assertEqual(struct.unpack_from('<i', ack5066)[0], 0)
-            _, ack5068 = await client.expect_event(5068)
-            self.assertEqual(struct.unpack_from('<i', ack5068)[0], 0)
+            # 15. Pick up item: covered by tests/test_monster_exp.py (drop + pick-up).
 
             # 16. Gold goblin attack (5363 -> 5364)
             client.send_event(5363, struct.pack('<ii', 1, 100))
