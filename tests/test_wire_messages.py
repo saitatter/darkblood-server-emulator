@@ -188,7 +188,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', enc_re)[0], 0)
 
     def test_friend_list_management_messages(self):
-        req_add = messages.FriendListAddReq.decode('BestFriend'.encode('utf-16le'))
+        # Live shape: prefix + J-wstring name.
+        req_add = messages.FriendListAddReq.decode(bytes.fromhex('ffffff7f') + jser.wide_string('BestFriend'))
         self.assertEqual(req_add.char_name, 'BestFriend')
 
         ack_add = messages.FriendListAddAck(result=0xCE)

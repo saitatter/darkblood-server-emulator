@@ -62,6 +62,34 @@ class TwoClientsTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_add_friend_on_another_account(self):
+        async def scenario(first):
+            second = HeadlessClient(port=first.port, account='Player2')
+            try:
+                a, _ = await _enter(first, 'Echo')
+                b, _ = await _enter(second, 'Foxtrot')
+                # Live 2139 shape: prefix + J-wstring name.
+                first.send_event(2139, bytes.fromhex('ffffff7f') + jser.wide_string('foxtrot'))
+                _, ack = await first.expect_event(2140)
+                self.assertEqual(struct.unpack_from('<iq', ack), (0, b))
+                length, offset = jser.read_varuint(ack, 12)
+                self.assertEqual(ack[offset:offset + length].decode('utf-16le'), 'Foxtrot')
+                online = struct.unpack_from('<q', ack, offset + length + 2)[0]
+                self.assertNotEqual(online, -1)
+
+                first.send_event(2131)
+                _, lst = await first.expect_event(2132)
+                self.assertEqual(lst[4:6], b'\x17\x81')
+                self.assertEqual(struct.unpack_from('<q', lst, 7)[0], b)
+
+                first.send_event(2139, bytes.fromhex('ffffff7f') + jser.wide_string('Nobody'))
+                _, ack = await first.expect_event(2140)
+                self.assertEqual(struct.unpack_from('<i', ack)[0], 0xCE)
+            finally:
+                await second.close()
+
+        self.run_async(self.with_server(scenario))
+
     def test_client_without_ticket_gets_default_account(self):
         async def scenario(client):
             await client.connect()

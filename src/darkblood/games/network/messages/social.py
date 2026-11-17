@@ -8,17 +8,42 @@ from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 
 @dataclass
+class FriendEntry:
+    """Friend struct, reader 0x00A49450 (2140 and the 2132 map).
+
+    +0x00 i64 char uid, +0x08 wstring name, +0x24 u8, +0x25 u8 (sent as
+    level, class like the lobby entry; not confirmed), +0x26 i64 location:
+    the friend list (0x00926800) counts a friend online when it is not -1,
+    +0x2E wstring (sent empty), +0x4A i64 (0), +0x52 bool (sent 1).
+    """
+    uid: int = 0
+    name: str = ''
+    level: int = 1
+    char_class: int = 0
+    online: bool = False
+
+    def encode(self) -> bytes:
+        return (struct.pack('<q', self.uid) + wide_string(self.name)
+                + struct.pack('<BBq', self.level & 0xFF, self.char_class & 0xFF, 1 if self.online else -1)
+                + wide_string('') + struct.pack('<q?', 0, True))
+
+
+@dataclass
 class FriendListAck:
     """Opcode 2132: eEGS_FRIEND_LIST_REQUEST_ACK response.
 
     Binary schema: Reader 0x007712E0.
-    u32 result (0 = success) + tag 0x17 map (0x76AE20).
+    u32 result (0 = success) + tag 0x17 map (0x76AE20): entries tag 0x0F,
+    i64 uid (key, 0x0074D520), FriendEntry.
     """
     result: int = 0
-    friends: list = field(default_factory=list)
+    friends: list = field(default_factory=list)  # [FriendEntry]
 
     def encode(self) -> bytes:
-        return struct.pack('<I', self.result) + b'\x17' + varuint(len(self.friends))
+        body = struct.pack('<I', self.result) + b'\x17' + varuint(len(self.friends))
+        for f in self.friends:
+            body += b'\x0f' + struct.pack('<q', f.uid) + f.encode()
+        return body
 
 @dataclass
 class PostListAck:
@@ -41,24 +66,35 @@ class PostListAck:
 class FriendListAddReq:
     """Opcode 2139: eEGS_FRIEND_LIST_ADD_REQ (0x00790000.c:1595).
 
-    Wire format: wide string char_name.
+    Observed live: ffffff7f + J-wstring character name ("Mage1").
     """
     char_name: str = ''
 
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListAddReq':
-        return cls(char_name=data.decode('utf-16le', errors='replace'))
+        from darkblood.core.serialization.jser import WireError, strip_prefix
+        data = strip_prefix(data)
+        try:
+            length, offset = read_varuint(data, 0)
+            return cls(char_name=data[offset:offset + length].decode('utf-16le', errors='replace'))
+        except WireError:
+            return cls()
 
 @dataclass
 class FriendListAddAck:
     """Opcode 2140: eEGS_FRIEND_LIST_ADD_ACK (On_eEGS_FRIEND_LIST_ADD_ACK 0x007591A0).
 
-    Wire format: i32 result (0xCE = player offline/not found).
+    i32 result (0xCE: not found, shown via 0x00AB29C0; 0x1A5 another
+    error), then on success the FriendEntry (tag 0x1E implicit), which the
+    client adds to its list (0x00926800).
     """
     result: int = 0xCE
+    friend: 'FriendEntry' = None
 
     def encode(self) -> bytes:
-        return struct.pack('<i', self.result)
+        if self.result != 0 or self.friend is None:
+            return struct.pack('<i', self.result or 0xCE)
+        return struct.pack('<i', 0) + self.friend.encode()
 
 @dataclass
 class FriendListDeleteReq:
@@ -70,6 +106,8 @@ class FriendListDeleteReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListDeleteReq':
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)  # requests usually carry the 0x7FFFFFFF prefix
         if len(data) >= 8:
             return cls(char_uid=struct.unpack_from('<q', data, 0)[0])
         return cls()

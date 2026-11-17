@@ -18,8 +18,23 @@ class SocialHandlers:
     async def on_2131(self, correlation, body):
         # eEGS_FRIEND_LIST_REQUEST_REQ -> eEGS_FRIEND_LIST_REQUEST_ACK (2132), handler 0x7712E0:
         # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
-        ack = FriendListAck().encode()
-        await self.transport.send_event(event(2132, ack, correlation), note='friend list ack')
+        char = self.current_char()
+        friends = [self._friend_entry(uid) for uid in (char or {}).get('friends', [])]
+        friends = [f for f in friends if f]
+        ack = FriendListAck(friends=friends).encode()
+        await self.transport.send_event(event(2132, ack, correlation),
+                                        note='friend list ack (%d)' % len(friends))
+
+    def _friend_entry(self, uid):
+        """FriendEntry for a character of any account, or None."""
+        from darkblood.games.network.messages import FriendEntry
+        from darkblood.games.world import GameWorldManager
+        for _, char in self.store().all_characters():
+            if char.get('id') == uid:
+                return FriendEntry(uid=uid, name=char.get('name', ''), level=int(char.get('level', 1)),
+                                   char_class=int(char.get('char_class', 0)),
+                                   online=uid in GameWorldManager.get().players)
+        return None
 
     async def on_2569(self, correlation, body):
         # Opcode 2569 -> 2570 ACK, handler 0x772160:
@@ -50,8 +65,18 @@ class SocialHandlers:
         from darkblood.games.network.messages import FriendListAddAck, FriendListAddReq
         req = FriendListAddReq.decode(body)
         self.transport.record('friend-add', body, name=req.char_name)
-        # Default response: 0xCE (player not found or offline)
-        ack = FriendListAddAck(result=0xCE).encode()
+        char = self.current_char()
+        target = next((c for _, c in self.store().all_characters()
+                       if c.get('name', '').lower() == req.char_name.lower()), None)
+        if not char or not target or target.get('id') == char.get('id'):
+            await self.transport.send_event(event(2140, FriendListAddAck(result=0xCE).encode(), correlation),
+                                            note=f'friend add fail ({req.char_name} not found)')
+            return
+        friends = char.setdefault('friends', [])
+        if target['id'] not in friends:
+            friends.append(target['id'])
+            self.store().save()
+        ack = FriendListAddAck(result=0, friend=self._friend_entry(target['id'])).encode()
         await self.transport.send_event(event(2140, ack, correlation), note=f'friend add ack ({req.char_name})')
 
     async def on_2135(self, correlation, body):
@@ -59,6 +84,10 @@ class SocialHandlers:
         from darkblood.games.network.messages import FriendListDeleteAck, FriendListDeleteReq
         req = FriendListDeleteReq.decode(body)
         self.transport.record('friend-delete', body, char_uid=req.char_uid)
+        char = self.current_char()
+        if char and req.char_uid in char.get('friends', []):
+            char['friends'].remove(req.char_uid)
+            self.store().save()
         ack = FriendListDeleteAck(result=0, char_uid=req.char_uid).encode()
         await self.transport.send_event(event(2136, ack, correlation), note=f'friend delete ack ({req.char_uid})')
 

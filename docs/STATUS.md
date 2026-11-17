@@ -37,6 +37,14 @@ Options (`tools/patcher.py` GUI → `research/client/darkblood_options.ini`; sta
   `skip_logos` turns `je` at `0x006F39AB` into `jmp`. Whether a separate intro movie follows is not checked yet.
 - `adult_content` (server) drives `m_bAdultUser` in the welcome.
 
+Friends (static + headless): 2139 is `ffffff7f + J-wstring name` (live). 2140 (`0x007591A0`) = `u32 result` (0xCE not found) + friend
+struct `0x00A49450` (`i64 uid, wstring name, u8, u8, i64 location (-1 = offline, counted by 0x00926800), wstring, i64, bool`); 2132 map
+entries are `0x0F, i64 uid, struct`. Friends are stored per character and resolved across accounts.
+
+Players do not see each other yet (live, two accounts in the same square). JoinGroupACK (3001) lists only the local character, while
+`0x0096BC60` expects a P2P link to every other member; ProudNet P2P group membership and relayed P2P messages are not emulated. 5096 spawn
+notices on the game connection do not make the other player appear.
+
 Open: inventory shows "Ar : 0" although 2007 details `+0x45` carries the gold; drag-unequip to an empty cell looked wrong live (2036 acked, then a 2042 re-equipped); dungeon gate list content (2010/5043) still to inspect with the player; learning skills does not charge SP/AR.
 
 ## Default equipment slots — saita machine, 2026-11-16 ~22:30 (static + headless; live retest pending)
