@@ -101,6 +101,20 @@ ARMOR_SLOTS = {'Abod': 2, 'Aglo': 3, 'Asho': 4, 'Abel': 5, 'Ader': 6, 'Ahel': 13
 # Accessories by prefix, from each item's DropImgFilePath in item_equip*.lua
 # (Cloak_*, Necklace_*, Earring_*, Ring_*).
 ACCESSORY_SLOTS = {'Aclo': (7,), 'Anec': (8,), 'Aear': (9, 10), 'Arin': (11, 12)}
+# Avatar (costume) parts live in the same equipment container. Slot ->
+# widget map from the character window builder (0x009E3A50 calls): 14
+# HairStyle, 15 FaceType, 16 Armor_Avatar, 17 Helmet_Avatar, 18 Glove_Avatar,
+# 19 FootWear_Avatar, 20 Belt_Avatar, 21 Shoulder_Avatar, 22 Cloak_Avatar,
+# 23-30 rune slots. Costume ids are C + part (CbodW1N808 ... CderW1N814), also
+# Cmag + part for the magic variants (CmagbodCash5).
+AVATAR_SLOTS = {'bod': 16, 'hel': 17, 'glo': 18, 'sho': 19, 'bel': 20, 'der': 21, 'clo': 22}
+
+
+def avatar_slot(code):
+    if not code.startswith('C'):
+        return None
+    part = code[4:7] if code.startswith('Cmag') else code[1:4]
+    return AVATAR_SLOTS.get(part)
 WEAPON_RIGHT, WEAPON_LEFT = 0, 1
 OFFHAND_PREFIXES = ('Ashi', 'Abok', 'Wshu', 'WTof')  # shield (Knight), book (Mage), shuriken (Thief), tonfa (Fighter)
 
@@ -133,6 +147,9 @@ def fits_equip_slot(code, slot):
     part = ARMOR_SLOTS.get(code[:4])
     if part is not None:
         return slot == part
+    avatar = avatar_slot(code)
+    if avatar is not None:
+        return slot == avatar
     if code[:4] in ACCESSORY_SLOTS:
         return slot in ACCESSORY_SLOTS[code[:4]]
     if code.startswith(OFFHAND_PREFIXES):

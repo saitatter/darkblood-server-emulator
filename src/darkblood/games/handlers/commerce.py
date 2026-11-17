@@ -389,7 +389,7 @@ class CommerceHandlers:
                 # Right-click: the item's own slot (swapping out what is there);
                 # accessories take the first free of slots 7-12.
                 taken = {i.get('slot') for i in items if i.get('container') == EQUIPPED}
-                fitting = [s for s in range(14) if fits_equip_slot(code, s)]
+                fitting = [s for s in range(31) if fits_equip_slot(code, s)]
                 free = [s for s in fitting if s not in taken]
                 target_slot = (free or fitting or [None])[0]
             if target_slot is None or not fits_equip_slot(code, target_slot):
