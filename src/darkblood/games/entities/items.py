@@ -24,7 +24,7 @@ class Item:
     Wire order (all untagged except the 0x10 vectors), defaults from the
     client constructors 0x004AAA00/0x004AAB20:
       0x00A539A0 base: two arrays 0x00A4B250 (+0x0C, +0x6B: varint count
-        <= 2 of 10-byte 0x00A49BB0 u16/u32/u32 entries), u16 +0, u16 +2, u16 +4 (0xFFFF), f32 +7 (0), bool +6,
+        <= 2 of 10-byte 0x00A49BB0 u16/u32/u32 entries), u16 +0 Amount, u16 +2 UpgStep (0xFFFF), u16 +4 Quality (sent 0, see encode), f32 +7 Durability, bool +6,
         u16 +0x20 (0xFFFF), vector +0x22 (0x0084FC60), vector +0x32
         (0x004D9610), u32 +0x97 (0), i64 +0x9B (0), time64 +0xA3 (0),
         struct 0x00A53630 {bool, vector 0x00A52330}, vector +0x53,
@@ -65,7 +65,13 @@ class Item:
         # 0x00A4B250 x2 (+0x0C, +0x6B): varint count (max 2) of 10-byte
         # 0x00A49BB0 entries (u16, u32, u32); sent empty.
         b = varuint(0) + varuint(0)
-        b += struct.pack('<HHHf?H', self.count, 0xFFFF, 0xFFFF, self.current_durability(), False, 0xFFFF)
+        # +4 Quality must be >= 0: 0x00984A40 maps it to a tier (q/10*5 +
+        # q%10) only when non-negative, and 0x009D7A50 returns -1.0 for every
+        # item stat while the tier is unset ((tier + 75) / 75 * base
+        # otherwise). Quality 0xFFFF made each armour piece -1 defense and the
+        # weapon -1 attack (live: Defense -44, 2 damage). 0 = base tier.
+        # +2 UpgStep stays 0xFFFF (0x00AB2750: <= 0 -> multiplier 1).
+        b += struct.pack('<HHHf?H', self.count, 0xFFFF, 0, self.current_durability(), False, 0xFFFF)
         b += b'\x10' + varuint(0) + b'\x10' + varuint(0)
         b += struct.pack('<Iqq', 0, 0, 0)
         b += struct.pack('<?', False) + b'\x10' + varuint(0)
