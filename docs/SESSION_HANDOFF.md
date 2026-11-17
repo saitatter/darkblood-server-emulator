@@ -53,26 +53,25 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   Simulation: ~4.4% drop per normal hog, ~4.3 items per `1fpi03U0`.
 - Cash packages (Type 36, PACKAGEnnn -> DictItem:LoadPackage) and random boxes (DictRandomBox) open on use;
   bag capacity (`free_bag_slots`, bag `b29`) is enforced for opening, buying and picking up.
-- 5017 finish game -> 5018: full victory payload implemented in `dungeon.py` / `messages/dungeon.py` (u32 result, bool bVictory, wstring map_code, bool bSamePerson, tag 0x17 mapGuildPersonCnt, tag 0x17 mapSingleReward with 40-byte stats, 4x i32 ranks/box, tag 0x10 vecBonusMonster). Fixed client dropping out of 0x007ADB60 on truncated read.
+- 5017 finish game -> 5018: full victory payload implemented in `dungeon.py` / `messages/dungeon.py` (u32 result, bool bVictory, wstring map_code, bool bSamePerson, tag 0x17 mapGuildPersonCnt, tag 0x17 mapSingleReward with 40-byte stats, 4x i32 ranks/box, tag 0x10 vecBonusMonster). Fixed client dropping out of 0x007ADB60 on truncated read. Dynamic rank calculation (SSS/SS/S/A) based on kills/score and reward statistics payload.
 - Blood effect unlocked in options: `m_bAdultUser = True` in welcome 5020 ungrays `Btn_ShowBlood` (JNetUserMgr+0x4C / 0x00577860).
 - Quest monster kill tracking: 5063 now resolves active quest objectives via `quest_monster_objectives()` and broadcasts 2075 progress updates.
 - Learn skill list (2697 -> 2698): resolved UI freeze in `Lua_OnVirtualLearnSkill` (waiting for 0x0A8A in `0x0094E1F0`). Decoded wire format: 2697 prefix + tag 0x10 vector, 2698 result + tag 0x17 map + remain SP + remain Gold.
 - Empty/record-only handlers: 2242->2243, 2446->2447, 2592 (no client handler), 2509, monster cards 2601/2608/2617.
 - `GameSession.current_char()` replaces 26 copied character lookups.
+- Depot / warehouse: 2228/2229 (DepotSaveArReq/Ack), 2230/2231 (DepotLoadArReq/Ack), 2242/2243 (DepotShareExpireTimeGetReq/Ack), 2461/2462 (DepotSlotExtendReq/Ack) fully wired to character store persistence.
+- Codebase modularization: split monolithic `commerce.py` (~940 lines) into dedicated domain mixins: `src/darkblood/games/handlers/skills.py` (`SkillHandlers`), `src/darkblood/games/handlers/inventory.py` (`InventoryHandlers`), and streamlined `commerce.py` (`CommerceHandlers`).
+- Shared `strip_prefix(data, prefix=b'\xff\xff\xff\x7f')` in `jser.py` adopted across all handler decoders.
+- Audited and eliminated invalid literal `b'\x1e'` from encoders across all domain messages where client `0x00B35010` returns immediately without consuming wire bytes.
 - The live character's bag was upgraded once to Ibaga0003 (20 slots) in `data/darkblood.db` (backup in scratchpad).
 
 ## Open items (priority order)
 
-1. **Depot / warehouse**: not implemented. Cash items Ikee*Cash (Type 7, warehouse rental) and lSto1Cash18
-   (Type 29, remote warehouse) are consumed without effect. Recover the depot container convention (bag entries in
-   2007), handlers 2229/2231 (AR save/load), 2401 size increase, 2461/2462 slot extend.
+1. **Live verification of Depot / Warehouse**: test opening storage, depositing/withdrawing gold (2228/2230), and slot extension (2461) in game UI.
 2. **Crash at `0x00650DB4`** (FUN_00650D00 from `Lua_OnUseBtnDown_Inven` / `Lua_OnBtn_Drop`): `0x00938C70(-1,-1)`
    (manager `0x0054AF50`, lookup by the current UID) returned NULL. Expected to be fixed by the UID fix; retest.
-3. Audit the remaining literal `0x1e` encoders (rule 1).
-4. 5018 rewards (0x17 map `0x005EAAC0`), gold/AR drops (5114), upgrade probabilities in drops.
-5. Mounts (`ridecall`), pets (`PetCall`), CashWG/CashAG/Zam boxes are consumed without effect.
-6. 5030 layer id is parsed as i64 at +4; live body suggests u32 at +8.
-7. Duplicate-prone decoders: a shared `strip_prefix()` for the ffffff7f header would remove ~30 ad-hoc checks.
+3. Mounts (`ridecall`), pets (`PetCall`), CashWG/CashAG/Zam boxes are consumed without effect.
+4. 5030 layer id is parsed as i64 at +4; live body suggests u32 at +8.
 
 ## Environment notes (saita machine)
 

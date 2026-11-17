@@ -151,8 +151,11 @@ class DungeonHandlers:
         except (struct.error, ValueError):
             return
         self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
+        self.dungeon_kill_count = getattr(self, 'dungeon_kill_count', 0) + 1
         from darkblood.games.game_data.client_dict import monsters
         info = monsters().get(msg.monster_id)
+        if info:
+            self.dungeon_score = getattr(self, 'dungeon_score', 0) + max(1, int(round(info['exp']))) * 10
         char = self._current_char()
         if info and char is not None and hasattr(self, '_grant_exp'):
             await self._grant_exp(char, max(1, int(round(info['exp']))))
@@ -195,9 +198,40 @@ class DungeonHandlers:
         map_code = getattr(self, 'map_code', '')
         char = self.current_char()
         char_uid = char.get('char_uid', 0) if char else 0
-        ack = FinishGameAck(result=0, is_clear=req.is_clear, map_code=map_code, char_uid=char_uid).encode()
+
+        kill_count = getattr(self, 'dungeon_kill_count', 0)
+        max_combo = getattr(self, 'dungeon_max_combo', 0)
+        score = getattr(self, 'dungeon_score', 0)
+
+        # Ranks: 1=SSS, 2=SS, 3=S, 4=A, 5=B, 6=C, 7=D
+        if score >= 50000 or kill_count >= 20:
+            rank = 1
+            box_grade = 4
+        elif score >= 20000 or kill_count >= 10:
+            rank = 2
+            box_grade = 3
+        elif score >= 5000 or kill_count >= 5:
+            rank = 3
+            box_grade = 2
+        else:
+            rank = 4
+            box_grade = 1
+
+        ack = FinishGameAck(
+            result=0,
+            is_clear=req.is_clear,
+            map_code=map_code,
+            char_uid=char_uid,
+            rank_first=rank,
+            rank_final=rank,
+            box_grade=box_grade,
+            extra_box_cost=0,
+            score=score,
+            kill_count=kill_count,
+            max_combo=max_combo,
+        ).encode()
         await self.transport.send_event(event(5018, ack, correlation),
-                                        note=f'finish game ack ({map_code} clear={req.is_clear})')
+                                        note=f'finish game ack ({map_code} clear={req.is_clear} rank={rank})')
 
     async def _drop_loot(self, source_id, monster, char):
         """Roll itemlooting.lua drops for a kill and announce them with 5064.

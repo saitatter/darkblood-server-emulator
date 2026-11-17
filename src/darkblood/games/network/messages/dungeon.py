@@ -346,6 +346,12 @@ class FinishGameAck:
     rank_final: int = 1
     box_grade: int = 1
     extra_box_cost: int = 0
+    reward_stats: bytes = b''
+    score: int = 0
+    kill_count: int = 0
+    max_combo: int = 0
+    clear_time: int = 0
+    damage_dealt: int = 0
 
     def encode(self) -> bytes:
         buf = bytearray()
@@ -362,7 +368,15 @@ class FinishGameAck:
                 buf.extend(varuint(1))
                 buf.append(0x0f)
                 buf.extend(struct.pack('<q', self.char_uid))
-                buf.extend(b'\x00' * 40)
+                if self.reward_stats and len(self.reward_stats) == 40:
+                    buf.extend(self.reward_stats)
+                elif any((self.score, self.kill_count, self.max_combo, self.clear_time, self.damage_dealt)):
+                    buf.extend(struct.pack('<iiiiiiiiii',
+                                           self.score, self.kill_count, self.max_combo,
+                                           self.clear_time, self.damage_dealt,
+                                           0, 0, 0, 0, 0))
+                else:
+                    buf.extend(b'\x00' * 40)
             else:
                 buf.extend(varuint(0))
             # nPartyRankFirst, nPartyRankFinal, nBoxGrade, nExtraBoxCost

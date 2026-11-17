@@ -762,3 +762,49 @@ class RandomboxResultItemNot:
         if self.result != 0:
             return struct.pack('<i', self.result)
         return struct.pack('<iih?', self.result, self.item_code, self.count, self.is_jackpot)
+
+
+# =========================================================================
+# Depot / Storage Slot Extension (2461 - 2462)
+# =========================================================================
+
+@dataclass
+class DepotSlotExtendReq:
+    """Opcode 2461: eEGS_DEPOT_SLOT_EXTEND_REQ (0x00651718).
+
+    Wire format: i64 nExtendItemUID + i16 sSlotIndex (10 bytes).
+    """
+    item_uid: int = 0
+    slot_index: int = 0
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'DepotSlotExtendReq':
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
+        if len(data) >= 10:
+            uid, sidx = struct.unpack_from('<qh', data, 0)
+            return cls(item_uid=uid, slot_index=sidx)
+        return cls()
+
+
+@dataclass
+class DepotSlotExtendAck:
+    """Opcode 2462: eEGS_DEPOT_SLOT_EXTEND_ACK (0x00651B20).
+
+    Wire format:
+      i32 result (0 = success)
+      i16 sSlotIndex
+      i64 tExtendExpireTime
+      tag 0x10 vector of updated Item structs (0x004B9210)
+    """
+    result: int = 0
+    slot_index: int = 0
+    expire_time: int = 0
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        if self.result != 0:
+            return struct.pack('<i', self.result)
+        return (struct.pack('<ihq', self.result, self.slot_index, self.expire_time)
+                + b'\x10' + varuint(len(self.items))
+                + b''.join(item.encode() for item in self.items))

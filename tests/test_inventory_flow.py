@@ -259,6 +259,16 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2231 = await client.expect_event(2231)
             self.assertEqual(struct.unpack_from('<i', ack2231[:4])[0], 0)
 
+            # 44. Depot share expire time get (2242 -> 2243)
+            client.send_event(2242, b'')
+            _, ack2243 = await client.expect_event(2243)
+            self.assertEqual(struct.unpack_from('<i', ack2243)[0], 0)
+
+            # 45. Depot slot extend (2461 -> 2462)
+            client.send_event(2461, struct.pack('<qh', 1, 5))
+            _, ack2462 = await client.expect_event(2462)
+            self.assertEqual(struct.unpack_from('<ihq', ack2462[:14]), (0, 5, 0))
+
         self.run_async(self.with_server(scenario))
 
 

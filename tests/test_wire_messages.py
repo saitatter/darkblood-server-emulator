@@ -666,6 +666,16 @@ class WireMessagesTest(unittest.TestCase):
         ack_load = messages.DepotLoadArAck(result=0, new_gold=5000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_load[:4])[0], 0)
 
+    def test_depot_slot_extend_messages(self):
+        req = messages.DepotSlotExtendReq.decode(struct.pack('<qh', 987654321, 5))
+        self.assertEqual(req.item_uid, 987654321)
+        self.assertEqual(req.slot_index, 5)
+
+        ack = messages.DepotSlotExtendAck(result=0, slot_index=5, expire_time=1700000000).encode()
+        res, sidx, exp = struct.unpack_from('<ihq', ack, 0)
+        self.assertEqual((res, sidx, exp), (0, 5, 1700000000))
+        self.assertEqual(ack[14:16], b'\x10\x80')
+
     def test_mail_arrival_and_return(self):
         not_mail = messages.PostNewArrivalNot().encode()
         self.assertEqual(not_mail, b'')
