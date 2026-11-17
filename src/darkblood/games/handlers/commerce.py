@@ -96,6 +96,10 @@ class CommerceHandlers:
         rewards = [products[p][:2] for p in req.product_ids if p in products]
         char = self._shop_char()
         stored = []
+        from darkblood.player_management.characters import free_bag_slots, slots_needed
+        free = free_bag_slots(char) if char is not None else None
+        if free is not None and slots_needed(rewards) > free:
+            rewards = []  # bag full: refuse instead of storing past the bag's capacity
         if char is not None and rewards:
             stored = add_reward_items(char, rewards)
             self.store().save()
@@ -292,6 +296,18 @@ class CommerceHandlers:
             ack = UseItemAck(result=1).encode()
             await self.transport.send_event(event(2039, ack, correlation), note='use item fail (not found)')
             return
+        # Cash packages / random boxes: compute the contents first so a full
+        # bag refuses the use before anything is consumed.
+        contents = self._cash_box_contents(used_item.get('code', ''))
+        if contents:
+            from darkblood.player_management.characters import free_bag_slots, slots_needed
+            free = free_bag_slots(char)
+            if free is not None and slots_needed(contents) > free:
+                ack = UseItemAck(result=1).encode()
+                await self.transport.send_event(event(2039, ack, correlation),
+                                                note='use item fail (bag full: need %d, free %d)'
+                                                % (slots_needed(contents), free))
+                return
         # Consumable items decrement count or remove if exhausted
         item_code = jhash(used_item.get('code', ''))
         count = used_item.get('count', 1) - req.use_count
@@ -306,6 +322,40 @@ class CommerceHandlers:
         ack = UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count).encode()
         await self.transport.send_event(event(2039, ack, correlation),
                                         note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
+        if contents:
+            from darkblood.player_management.characters import add_reward_items
+            stored = add_reward_items(char, contents)
+            self.store().save()
+            items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
+            await self.transport.send_event(event(2037, DragItemAck(result=0, items=items).encode()),
+                                            note='cash box opened (%s -> %s)' % (
+                                                used_item.get('code'), ', '.join(i['code'] for i in stored)))
+
+    def _cash_box_contents(self, code):
+        """[(item, count)] granted by opening a cash item, or [] if it is not a box.
+
+        item_cash.lua: Type 36 items carry AdjValue "PACKAGEnnn" (all items of
+        DictItem:LoadPackage group); random boxes carry a DictRandomBox
+        RandomID (ZemBoxCode*, RboxEEtc*): pick a grade by its *_Item_Prob,
+        then one entry of that grade's group(s). Mounts (ridecall), pets and
+        the CashWG/CashAG/Zam* boxes are not handled here.
+        """
+        import random
+        from darkblood.games.game_data import client_dict
+        info = client_dict.cash_items().get(code)
+        if not info or not info['adj']:
+            return []
+        adj = info['adj']
+        if adj.startswith('PACKAGE'):
+            return list(client_dict.cash_packages().get(adj, []))
+        states, groups = client_dict.random_boxes()
+        grades = states.get(adj)
+        if not grades:
+            return []
+        weights = [p for p, _ in grades]
+        _, names = random.choices(grades, weights=weights)[0]
+        pool = [entry for name in names for entry in groups.get(name, [])]
+        return [random.choice(pool)] if pool else []
 
     async def on_2042(self, correlation, body):
         # eEGS_EQUIP_ITEM_REQ (0x00800000.c:500) -> 2043 eEGS_EQUIP_ITEM_ACK (0x007AE940).

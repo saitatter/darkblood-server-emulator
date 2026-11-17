@@ -149,6 +149,23 @@ def next_item_uid(char):
     return uid
 
 
+def slots_needed(items):
+    """Bag cells add_reward_items would use for [(code, count)]."""
+    from darkblood.games.game_data.client_dict import item_max_durability
+    return sum(max(1, int(n)) if item_max_durability(code) is not None else 1 for code, n in items)
+
+
+def free_bag_slots(char):
+    """Free cells in the reward bag (first non-equipment bag; its capacity is
+    the bag entry's b29, e.g. 5 for Ibaga0004). None when there is no bag."""
+    bags = [b for b in char.get('bags', []) if b.get('bag_id') != EQUIP_CONTAINER]
+    if not bags:
+        return None
+    capacity = int(bags[0].get('b29', DEFAULT_BAG_CAPACITY))
+    used = {i['slot'] for i in char.get('items', []) if i.get('container') == bags[0]['bag_id']}
+    return sum(1 for s in range(capacity) if s not in used)
+
+
 def add_reward_items(char, items):
     """Store reward items in the first non-equipment bag, next free slots.
 

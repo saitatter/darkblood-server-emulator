@@ -48,6 +48,46 @@ class CashShopFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_cash_package_opens_into_bag(self):
+        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
+        dict_dir.mkdir(parents=True, exist_ok=True)
+        path = dict_dir / 'item_cash.lua'
+        # Shapes copied from the client's item_cash.lua (LoadItem / LoadPackage).
+        path.write_text(chr(10).join([
+            'assert(DictItem:LoadItem({', '  {', '    AdjValue = "PACKAGE9",', '    ItemID = "CPkgTest",',
+            '    Type = 36,', '  }', '}), "DictItem:LoadItem")',
+            'assert(DictItem:LoadPackage({', '  {', '    GroupID = "PACKAGE9",', '    ItemID = {',
+            '      {', '        "Ihppa0000",', '        2,', '        0', '      },',
+            '      {', '        "Imppa0000",', '        1,', '        0', '      }', '    }', '  }',
+            '}), "DictItem:LoadPackage")', '']), encoding='utf-8')
+        for fn in (client_dict.cash_items, client_dict.cash_packages):
+            fn.cache_clear()
+            self.addCleanup(fn.cache_clear)
+        self.addCleanup(path.unlink)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Opener', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
+            char['items'] = [dict(code='CPkgTest', uid=50, container=bag, slot=0)]
+            session.GameSession.store().save()
+
+            # Live 2038 shape: prefix + i64 uid + i32 count.
+            client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 50, 1))
+            _, ack = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            _, items = await client.expect_event(2037)
+            self.assertEqual(items[4:6], bytes.fromhex('1082'))
+            codes = sorted(i['code'] for i in char['items'])
+            self.assertEqual(codes, ['Ihppa0000', 'Imppa0000'])
+
+        self.run_async(self.with_server(scenario))
+
     def test_monster_card_requests_get_empty_lists(self):
         async def scenario(client):
             await lobby_flow(client)

@@ -327,3 +327,89 @@ def cash_products():
         return {}
     return {int(pid): (item, int(count), float(price))
             for count, item, price, pid in PRODUCT_RE.findall(text[start:])}
+
+
+def _section(text, loader):
+    """Body of `assert(<loader>({ ... }), "<loader>")` (first occurrence)."""
+    start = text.find(loader + '({')
+    if start == -1:
+        return ''
+    end = text.find('}), "%s")' % loader, start)
+    return text[start:end if end != -1 else len(text)]
+
+
+def _top_entries(section):
+    """Split a dict section into its top-level `  {` ... `  },` entries."""
+    return re.split(r'\n  \{\n', section)[1:]
+
+
+ENTRY_ITEM_RE = re.compile(r'"([^"]+)",\s*(-?\d+),\s*(-?\d+)')
+
+
+@lru_cache(maxsize=None)
+def cash_items():
+    """{ItemID: {'type': int, 'adj': str}} for item_cash.lua DictItem:LoadItem entries."""
+    path = data_root() / 'item_cash.lua'
+    if not path.exists():
+        return {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    out = {}
+    pos = 0
+    while True:
+        section = _section(text[pos:], 'DictItem:LoadItem')
+        if not section:
+            break
+        for entry in _top_entries(section):
+            iid = re.search(r'ItemID = "([^"]+)"', entry)
+            if not iid:
+                continue
+            adj = re.search(r'AdjValue = "([^"]*)"', entry)
+            typ = re.search(r'\bType = (\d+)', entry)
+            out[iid.group(1)] = {'type': int(typ.group(1)) if typ else -1,
+                                 'adj': adj.group(1) if adj else ''}
+        pos = text.find(section, pos) + len(section)
+    return out
+
+
+@lru_cache(maxsize=None)
+def cash_packages():
+    """{GroupID: [(ItemID, count)]} from DictItem:LoadPackage (PACKAGEnnn)."""
+    path = data_root() / 'item_cash.lua'
+    if not path.exists():
+        return {}
+    section = _section(path.read_text(encoding='utf-8', errors='replace'), 'DictItem:LoadPackage')
+    out = {}
+    for entry in _top_entries(section):
+        gid = re.search(r'GroupID = "([^"]+)"', entry)
+        if gid:
+            out[gid.group(1)] = [(i, int(n)) for i, n, _ in ENTRY_ITEM_RE.findall(entry)]
+    return out
+
+
+@lru_cache(maxsize=None)
+def random_boxes():
+    """(states, groups) from DictRandomBox: states = {RandomID: [(prob, [GroupID])]},
+    groups = {GroupID: [(ItemID, count)]}."""
+    path = data_root() / 'item_cash.lua'
+    if not path.exists():
+        return {}, {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    groups = {}
+    for entry in _top_entries(_section(text, 'DictRandomBox:LoadRandomBoxGroup')):
+        gid = re.search(r'GroupID = "([^"]+)"', entry)
+        if gid:
+            groups[gid.group(1)] = [(i, int(n)) for i, n, _ in ENTRY_ITEM_RE.findall(entry)]
+    states = {}
+    for entry in _top_entries(_section(text, 'DictRandomBox:LoadRandomBoxState')):
+        rid = re.search(r'RandomID = "([^"]+)"', entry)
+        if not rid:
+            continue
+        grades = []
+        for grade in 'NSRUM':
+            prob = re.search(r'\b%s_Item_Prob = ([0-9.e-]+)' % grade, entry)
+            glist = re.findall(r'\b%s_ItemGroup = \{([^}]*)\}' % grade, entry)
+            names = re.findall(r'"([^"]+)"', ' '.join(glist))
+            if prob and float(prob.group(1)) > 0 and names:
+                grades.append((float(prob.group(1)), names))
+        states[rid.group(1)] = grades
+    return states, groups
