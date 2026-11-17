@@ -98,6 +98,8 @@ def quests():
 
     Rewards: RewardExp, RewardGold, RewardGP, RewardItemG (group given in
     full) and RewardSelectG (group the player picks one entry from).
+    OfferItemG ('offer') is the group handed over when the quest is accepted
+    (e.g. LLQ0008S01o = Iquea0310, delivered for Q0008S01's mission QM815).
     """
     out = {}
     for path in _quest_files():
@@ -117,7 +119,8 @@ def quests():
                         id=entry['ID'], exp=int(float(entry.get('RewardExp', 0))),
                         gold=int(float(entry.get('RewardGold', 0))),
                         gp=int(float(entry.get('RewardGP', 0))),
-                        items=entry.get('RewardItemG'), select=entry.get('RewardSelectG'))
+                        items=entry.get('RewardItemG'), select=entry.get('RewardSelectG'),
+                        offer=entry.get('OfferItemG'))
                 continue
             m = QUEST_KEY_RE.match(line)
             if m:
@@ -550,6 +553,59 @@ def equip_index():
             out.append((iid.group(1), int(grade.group(1)) if grade else 0,
                         int(lv.group(1)) if lv else 1, cls.group(1) if cls else ''))
     return out
+
+
+@lru_cache(maxsize=None)
+def money_drops():
+    """{item id: (GoldMin, GoldMax)} for the AR drop items (Gmara*) of
+    item_moneysetting.lua. Picking one up adds AR instead of an item."""
+    path = data_root() / 'item_moneysetting.lua'
+    if not path.exists():
+        return {}
+    out = {}
+    for entry in _top_entries(path.read_text(encoding='utf-8', errors='replace')):
+        iid = re.search(r'ItemID = "([^"]+)"', entry)
+        lo = re.search(r'GoldMin = ([0-9.]+)', entry)
+        hi = re.search(r'GoldMax = ([0-9.]+)', entry)
+        if iid and lo and hi:
+            out[iid.group(1)] = (float(lo.group(1)), float(hi.group(1)))
+    return out
+
+
+@lru_cache(maxsize=None)
+def skill_costs():
+    """{(skill index, level): (DemandPoint SP, DemandAr)} from skill.lua LoadSkill.
+
+    The wire skill index (2050/2697, sKindNameIndex) is the entry's NameIndex,
+    which unluac writes as "005" or 254. Every DemandAr in the shipped table
+    is 0, so learning costs SP only.
+    """
+    path = data_root() / 'skill.lua'
+    if not path.exists():
+        return {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    end = text.find('assert(DictSkill:LoadSummonSkill')
+    out = {}
+    for entry in re.split(r'\n  \{\n', text[:end if end != -1 else len(text)])[1:]:
+        idx = re.search(r'\n    NameIndex = "?(\d+)"?,', entry)
+        lv = re.search(r'\n    Lv = (\d+)', entry)
+        if not (idx and lv):
+            continue
+        sp = re.search(r'\n    DemandPoint = (\d+)', entry)
+        ar = re.search(r'\n    DemandAr = (\d+)', entry)
+        out[(int(idx.group(1)), int(lv.group(1)))] = (int(sp.group(1)) if sp else 0,
+                                                       int(ar.group(1)) if ar else 0)
+    return out
+
+
+def skill_learn_cost(skill_index: int, current: int, target: int):
+    """(SP, AR) to raise a skill from level current to target."""
+    costs = skill_costs()
+    sp = ar = 0
+    for level in range(current + 1, target + 1):
+        s, a = costs.get((skill_index, level), (0, 0))
+        sp, ar = sp + s, ar + a
+    return sp, ar
 
 
 @lru_cache(maxsize=None)

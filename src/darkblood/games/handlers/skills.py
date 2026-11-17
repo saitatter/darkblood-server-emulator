@@ -19,18 +19,38 @@ from darkblood.games.network.messages import (
 class SkillHandlers:
     """Skill learning, skill trees, quickslots and skill custom speech."""
 
+    def _charge_skills(self, char, wanted):
+        """Deduct the SP/AR (skill.lua DemandPoint/DemandAr) for raising each
+        (skill index, level) from its stored level. False, and nothing
+        charged, when the character cannot pay."""
+        from darkblood.games.game_data.client_dict import skill_learn_cost
+        skills = char.get('skills', {})
+        sp = ar = 0
+        for sidx, lvl in wanted:
+            s, a = skill_learn_cost(int(sidx), int(skills.get(str(sidx), 0)), int(lvl))
+            sp, ar = sp + s, ar + a
+        if sp > char.get('sp', 0) or ar > char.get('gold', 0):
+            return False
+        char['sp'] = char.get('sp', 0) - sp
+        if ar:
+            char['gold'] = char.get('gold', 0) - ar
+            char['u66'] = char['gold']
+        return True
+
     async def on_2050(self, correlation, body):
         # eEGS_LEARN_SKILL_REQ (0x00780000.c:9504) -> 2051 eEGS_LEARN_SKILL_ACK (0x0078DBE0).
         req = LearnSkillReq.decode(body)
         char = self.current_char()
-        remain_sp = 100
-        remain_gold = 10000
+        remain_sp = remain_gold = 0
         if char:
-            skills = char.setdefault('skills', {})
-            skills[str(req.skill_index)] = req.level
+            if not self._charge_skills(char, [(req.skill_index, req.level)]):
+                await self.transport.send_event(event(2051, LearnSkillAck(result=1).encode(), correlation),
+                                                note='learn skill fail (not enough SP/AR)')
+                return
+            char.setdefault('skills', {})[str(req.skill_index)] = req.level
             self.store().save()
-            remain_gold = char.get('gold', 10000)
-            remain_sp = char.get('sp', 100)
+            remain_gold = char.get('gold', 0)
+            remain_sp = char.get('sp', 0)
         ack = LearnSkillAck(result=0, skill_index=req.skill_index, level=req.level,
                             remain_sp=remain_sp, remain_gold=remain_gold).encode()
         await self.transport.send_event(event(2051, ack, correlation),
@@ -40,17 +60,20 @@ class SkillHandlers:
         # eEGS_LEARN_SKILL_LIST_REQ (0x007A73D0) -> 2698 eEGS_LEARN_SKILL_LIST_ACK (0x007A74A0).
         req = LearnSkillListReq.decode(body)
         char = self.current_char()
-        remain_sp = 100
-        remain_gold = 10000
+        remain_sp = remain_gold = 0
         learned_skills = {}
         if char:
+            if not self._charge_skills(char, req.skills):
+                await self.transport.send_event(event(2698, LearnSkillListAck(result=1).encode(), correlation),
+                                                note='learn skill list fail (not enough SP/AR)')
+                return
             skills = char.setdefault('skills', {})
             for sidx, lvl in req.skills:
                 skills[str(sidx)] = lvl
                 learned_skills[sidx] = lvl
             self.store().save()
-            remain_gold = char.get('gold', 10000)
-            remain_sp = char.get('sp', 100)
+            remain_gold = char.get('gold', 0)
+            remain_sp = char.get('sp', 0)
         else:
             learned_skills = {sidx: lvl for sidx, lvl in req.skills}
         ack = LearnSkillListAck(result=0, skills=learned_skills,

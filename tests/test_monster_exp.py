@@ -90,6 +90,52 @@ class MonsterExpTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_ar_drop_adds_gold(self):
+        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
+        dict_dir.mkdir(parents=True, exist_ok=True)
+        (dict_dir / 'monster.lua').write_text(MONSTER_LUA, encoding='utf-8')
+        # Shapes copied from itemlooting.lua / item_moneysetting.lua; probability 1.
+        (dict_dir / 'itemlooting.lua').write_text('\n'.join([
+            'assert(DictItemDrop:LoadLootingItem({', '  {', '    LootingID = "1N_Ar",',
+            '    OneItemID = "Gmara0007",', '    ItemGroup = {}', '  }', '}), "DictItemDrop:LoadLootingItem")',
+            'assert(DictItemDrop:LoadMonLooting({', '  {', '    AdjustProbByMonHP = 0,', '    DungeonID = "Act1_G1_A1",',
+            '    LootingID = "1N_Ar",', '    RotateCount = 1,', '    UsuallyProb = 1', '  }',
+            '}), "DictItemDrop:LoadMonLooting")', '']), encoding='utf-8')
+        (dict_dir / 'item_moneysetting.lua').write_text('\n'.join([
+            'assert(DictItem:LoadMoneySetting({', '  {', '    GoldMax = 40.5,', '    GoldMin = 40.2,',
+            '    ItemID = "Gmara0007",', '    Name = "Gmara0000_Ar"', '  }', '}), "DictItem:LoadMoneySetting")', '']),
+            encoding='utf-8')
+        for fn in (client_dict.monsters, client_dict.looting, client_dict.money_drops):
+            fn.cache_clear()
+            self.addCleanup(fn.cache_clear)
+        for name in ('monster.lua', 'itemlooting.lua', 'item_moneysetting.lua'):
+            self.addCleanup((dict_dir / name).unlink)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Miser', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['gold'] = 100
+            session.GameSession.store().save()
+            code = 'Act1_G1_A10'.encode('utf-16le')
+            client.send_event(5009, struct.pack('<i', 0x7fffffff) + bytes([0x80 | len(code)]) + code + b'\x00')
+            await client.expect_event(5010)
+            client.send_event(5063, struct.pack('<iII', 0x7fffffff, jhash('1npi01n0') & 0xFFFFFFFF, 77))
+            _, drop = await client.expect_event(5064)
+            drop_uid = struct.unpack_from('<I', drop, 6)[0]
+
+            client.send_event(5065, struct.pack('<iI', 0x7fffffff, drop_uid))
+            _, note = await client.expect_event(5114)
+            self.assertEqual(struct.unpack_from('<iiiq', note), (0, 40, drop_uid, char_id))
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertEqual(char['gold'], 140)
+            self.assertNotIn('Gmara0007', [i['code'] for i in char.get('items', [])])
+
+        self.run_async(self.with_server(scenario))
 
 if __name__ == '__main__':
     unittest.main()

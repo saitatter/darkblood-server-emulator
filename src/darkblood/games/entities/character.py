@@ -70,6 +70,7 @@ class Character:
     # 0x00990030 (DictMap+0x3C) for "Text_Town"; unknown ids show "default town"
     # (0x00704278).
     join_layer_net_id: int = field(default_factory=layer_net_id)
+    sp: int = 0  # skill points: details u32 array +0x51 -> player +0x8C
     s49: Tuple[int, int, int] = (23, 25, 27)
     s53: Tuple[int, int, int] = (29, 31, 33)
     b5d: bool = False
@@ -113,6 +114,7 @@ class Character:
             u09=data.get('u09', 0),
             u2e=data.get('u2e', 7),
             join_layer_net_id=data.get('join_layer_net_id', layer_net_id()),
+            sp=data.get('sp', 0),
             s49=tuple(data.get('s49', (23, 25, 27))),
             s53=tuple(data.get('s53', (29, 31, 33))),
             # +0x5D / +0x5E: pending deletion flag and seconds left
@@ -149,6 +151,7 @@ class Character:
             'u09': self.u09,
             'u2e': self.u2e,
             'join_layer_net_id': self.join_layer_net_id,
+            'sp': self.sp,
             's49': list(self.s49),
             's53': list(self.s53),
             'b5d': self.b5d,
@@ -188,7 +191,10 @@ class Character:
         b = bytearray()
         sliders = self.visuals.body_sliders[:5]
         b += varuint(len(sliders)) + bytes(sliders)  # 0xa48dd0
-        b += varuint(0)  # 0xa48d50 (u32 array max 2)
+        # 0xa48d50: u32 array (max 2) at +0x51. 0x0095A150 sets the player's
+        # skill points (+0x8C, also written by 2698 via 0x0096B9F0) from
+        # element [details +0x18A] (u16, sent 0). Both entries carry SP.
+        b += varuint(2) + struct.pack('<II', self.sp, self.sp)
         b += wide_string(self.name)
         # Reader 0x00A52630: i64 +0x1C, i64 +0x24, +0x2C (0x00B356F0).
         # 0x0095A150 copies +0x1C into the player's UID (+0x10), which

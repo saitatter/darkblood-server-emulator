@@ -39,10 +39,33 @@ class QuestHandlers:
         objective counters, and persists in character's active quest list.
         """
         quest_id = _quest_id_after_tag(body)
+        char = self.store().get(self.account, selected_character.get('id', 1))
+        is_new = bool(char) and str(quest_id) not in char.get('quests_active', {})
         uid = self._activate_quest(quest_id)
         ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
+        if is_new:
+            await self._give_offer_items(char, quest_id)
+
+    async def _give_offer_items(self, char, quest_id):
+        """Hand over the quest's OfferItemG items (e.g. a letter to deliver).
+
+        2074's own item vector (reader 0x4B9210) is not recovered, so the items
+        go out as an unsolicited 2037 like floor pick-ups.
+        """
+        from darkblood.games.game_data.client_dict import item_groups, quests
+        from darkblood.games.network.messages import DragItemAck
+        from darkblood.player_management.characters import add_reward_items
+        group = (quests().get(quest_id) or {}).get('offer')
+        offered = [(code, count) for code, _, count in item_groups().get(group or '', [])]
+        if not offered:
+            return
+        stored = add_reward_items(char, offered)
+        self.store().save()
+        await self.transport.send_event(
+            event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
+            note='quest offer items (%s: %s)' % (group, ', '.join(c for c, _ in offered)))
 
     def _activate_quest(self, quest_id: int) -> int:
         """Add quest_id to the selected character's active quests; return its UID."""

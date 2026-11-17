@@ -37,6 +37,45 @@ class QuestFlowTest(ServerTestCase):
         char = session.GameSession.store().get('OfflinePlayer', char_id)
         self.assertIn(quest, char.get('quests_done', []))
 
+    def test_quest_start_hands_over_offer_items(self):
+        from darkblood.games.game_data import client_dict
+        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
+        dict_dir.mkdir(parents=True, exist_ok=True)
+        # Shapes copied from quest_act1.lua (Q0008S01 / LLQ0008S01o).
+        (dict_dir / 'quest_act1.lua').write_text('\n'.join([
+            'assert(DictQuest:LoadQuest({', '  {', '    ID = "Q0008S01",', '    OfferItemG = "LLQ0008S01o",',
+            '    RewardExp = 300,', '  }', '}), "DictQuest:LoadQuest")', 'assert(DictQuest:LoadItemGroup({', '  {',
+            '    GroupID = "LLQ0008S01o",', '    ItemUnit = {', '      {', '        "Iquea0310",',
+            '        0,', '        1', '      }', '    }', '  }', '}), "DictQuest:LoadItemGroup")', '']),
+            encoding='utf-8')
+        for fn in (client_dict.quests, client_dict.item_groups):
+            fn.cache_clear()
+            self.addCleanup(fn.cache_clear)
+        self.addCleanup((dict_dir / 'quest_act1.lua').unlink)
+        stamp = 'x'.encode('utf-16le')
+        req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', hashing.jhash('Q0008S01'), -1)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Courier'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            client.send_event(2073, req, compressed=True)
+            await client.expect_event(2074)
+            _, items = await client.expect_event(2037)
+            self.assertEqual(items[4:6], b'\x10\x81')
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertEqual([i['code'] for i in char['items']].count('Iquea0310'), 1)
+            # Accepting again (already active) hands nothing over.
+            client.send_event(2073, req, compressed=True)
+            await client.expect_event(2074)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertEqual([i['code'] for i in char['items']].count('Iquea0310'), 1)
+
+        self.run_async(self.with_server(scenario))
+
     def test_quest_rewards_from_client_dict(self):
         import os
         from pathlib import Path

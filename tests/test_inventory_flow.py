@@ -23,6 +23,8 @@ class InventoryFlowTest(ServerTestCase):
                 dict(code='AbodT1N', uid=1, container=1, slot=0, count=10),
                 dict(code='AbodT1N', uid=2, container=3, slot=1, count=5),
             ]
+            char['sp'] = 7
+            char['gold'] = 500
             selected_character['id'] = char_id
             session.GameSession.store().save()
 
@@ -92,8 +94,8 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2698[:4])[0], 0)
             self.assertEqual(ack2698[4], 0x17)  # map tag
             sp, gold = struct.unpack_from('<iq', ack2698[-12:])
-            self.assertEqual(sp, 100)
-            self.assertEqual(gold, 10000)
+            # No skill.lua in the test data: every level is free.
+            self.assertEqual((sp, gold), (7, 500))
 
             # 10. Change bag property (2048 -> 2049)
             client.send_event(2048, struct.pack('<qB', 2, 3))
@@ -282,3 +284,57 @@ class InventoryFlowTest(ServerTestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SkillCostTest(ServerTestCase):
+    def test_learning_charges_skill_points(self):
+        import os
+        from pathlib import Path
+        from darkblood.games.game_data import client_dict
+        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
+        dict_dir.mkdir(parents=True, exist_ok=True)
+        path = dict_dir / 'skill.lua'
+        # Entry shape copied from the client's skill.lua (NameIndex as "005" or 254).
+        entries = [('"005"', 1, 0), ('"005"', 2, 2), ('254', 1, 1)]
+        path.write_text('assert(DictSkill:LoadSkill({\n' + ''.join(
+            '  {\n    DemandAr = 0,\n    DemandPoint = %d,\n    Lv = %d,\n    NameIndex = %s,\n  },\n'
+            % (sp, lv, idx) for idx, lv, sp in entries) + '}), "DictSkill:LoadSkill")\n', encoding='utf-8')
+        client_dict.skill_costs.cache_clear()
+        self.addCleanup(client_dict.skill_costs.cache_clear)
+        self.addCleanup(path.unlink)
+        self.assertEqual(client_dict.skill_learn_cost(5, 0, 2), (2, 0))
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Learner', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['sp'] = 3
+            selected_character['id'] = char_id
+            session.GameSession.store().save()
+
+            # skill 5 -> level 2 (0 + 2 SP) and skill 254 -> level 1 (1 SP)
+            body = bytes.fromhex('ffffff7f') + b'\x10\x82' + b'\x0f' + struct.pack('<HB', 5, 2) \
+                + b'\x0f' + struct.pack('<HB', 254, 1)
+            client.send_event(2697, body)
+            _, ack = await client.expect_event(2698)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            self.assertEqual(struct.unpack_from('<i', ack, len(ack) - 12)[0], 0)
+
+            # A level the skill already has costs nothing, even with 0 SP left.
+            client.send_event(2050, struct.pack('<HB', 5, 2))
+            _, ack = await client.expect_event(2051)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)  # already level 2: free
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertEqual(char['sp'], 0)
+            self.assertEqual(char['skills'], {'5': 2, '254': 1})
+
+            # SP reaches the client at login (details u32 array +0x51).
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            self.assertIn(b'\x82' + struct.pack('<II', 0, 0), ack2007)
+
+        self.run_async(self.with_server(scenario))

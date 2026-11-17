@@ -400,6 +400,22 @@ class DungeonHandlers:
         self.transport.record('pick-up-item-req', body, drop_uid=req.drop_uid, code=code or '')
         if not code or char is None:
             return
+        from darkblood.games.game_data.client_dict import money_drops
+        money = money_drops().get(code)
+        if money:
+            # AR drop: 5114 eERC_GET_DROP_AR_NOT (0x00792700) adds the amount
+            # to player +0x70, removes the drop (0x0086AFF0) and prints it.
+            import random
+            from darkblood.games.network.messages import GetDropArNot
+            del drops[req.drop_uid]
+            amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
+            char['gold'] = char.get('gold', 0) + amount
+            char['u66'] = char['gold']
+            self.store().save()
+            ack = GetDropArNot(result=0, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
+            await self.transport.send_event(event(5114, ack),
+                                            note='picked AR (%s: +%d, total %d)' % (code, amount, char['gold']))
+            return
         free = free_bag_slots(char)
         if free is not None and slots_needed([(code, 1)]) > free:
             await self.transport.send_event(event(5068, PickUpItemResultAck(result=1, picker_uid=char['id']).encode()),
