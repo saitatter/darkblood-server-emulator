@@ -803,16 +803,70 @@ class WireMessagesTest(unittest.TestCase):
         ack_leave = messages.ArenaTeamLeaveAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_leave[:4]), (0,))
 
+    def test_arena_room_management_messages(self):
+        room = messages.ArenaRoomInfo(
+            room_id=42, room_name="Deathmatch Colosseum", map_id=3,
+            game_mode=2, max_players=6, host_uid=1001, team_id=2001,
+            password="secret_pass", notice="High level gladiators"
+        )
+        encoded_room = room.encode()
+        decoded_room, _ = messages.ArenaRoomInfo.decode(encoded_room)
+        self.assertEqual(decoded_room.room_id, 42)
+        self.assertEqual(decoded_room.room_name, "Deathmatch Colosseum")
+        self.assertEqual(decoded_room.map_id, 3)
+        self.assertEqual(decoded_room.game_mode, 2)
+        self.assertEqual(decoded_room.host_uid, 1001)
+
+        # Create room req/ack
+        create_req = messages.ArenaCreateRoomReq(room=room)
+        dec_create_req = messages.ArenaCreateRoomReq.decode(create_req.encode())
+        self.assertEqual(dec_create_req.room.room_id, 42)
+
+        create_ack = messages.ArenaCreateRoomAck(result=0, room=room)
+        dec_create_ack = messages.ArenaCreateRoomAck.decode(create_ack.encode())
+        self.assertEqual(dec_create_ack.result, 0)
+        self.assertEqual(dec_create_ack.room.room_id, 42)
+
+        # Join room req/ack
+        join_req = messages.ArenaJoinRoomReq(room_id=42, password="secret_pass")
+        dec_join_req = messages.ArenaJoinRoomReq.decode(join_req.encode())
+        self.assertEqual(dec_join_req.room_id, 42)
+        self.assertEqual(dec_join_req.password, "secret_pass")
+
+        join_ack = messages.ArenaJoinRoomAck(result=0, room=room, host_uid=1001)
+        dec_join_ack = messages.ArenaJoinRoomAck.decode(join_ack.encode())
+        self.assertEqual(dec_join_ack.result, 0)
+        self.assertEqual(dec_join_ack.host_uid, 1001)
+
+        # Leave room req/ack
+        leave_req = messages.ArenaLeaveRoomReq()
+        self.assertEqual(leave_req.encode(), b'')
+        leave_ack = messages.ArenaLeaveRoomAck(result=0)
+        dec_leave_ack = messages.ArenaLeaveRoomAck.decode(leave_ack.encode())
+        self.assertEqual(dec_leave_ack.result, 0)
+
     def test_league_season_arena_ranks(self):
         req_rank = messages.LeagueSeasonArenaGetRankReq.decode(struct.pack('<i', 2026))
         self.assertEqual(req_rank.season_id, 2026)
-        ack_rank = messages.LeagueSeasonArenaGetRankAck(result=0, season_id=2026).encode()
+
+        entry1 = messages.LeagueRankEntry(rank=1, char_uid=101, char_name="GladiatorOne", score=2400)
+        entry2 = messages.LeagueRankEntry(rank=2, char_uid=102, char_name="GladiatorTwo", score=2300)
+        ack_rank = messages.LeagueSeasonArenaGetRankAck(result=0, season_id=2026, ranks=[entry1, entry2]).encode()
         self.assertEqual(struct.unpack_from('<i', ack_rank[:4]), (0,))
+
+        dec_rank = messages.LeagueSeasonArenaGetRankAck.decode(ack_rank)
+        self.assertEqual(dec_rank.result, 0)
+        self.assertEqual(dec_rank.season_id, 2026)
+        self.assertEqual(len(dec_rank.ranks), 2)
+        self.assertEqual(dec_rank.ranks[0].char_name, "GladiatorOne")
+        self.assertEqual(dec_rank.ranks[1].char_name, "GladiatorTwo")
 
         req_my_rank = messages.LeagueSeasonArenaGetMyRankReq.decode(struct.pack('<i', 2026))
         self.assertEqual(req_my_rank.season_id, 2026)
         ack_my_rank = messages.LeagueSeasonArenaGetMyRankAck(result=0, my_rank=1).encode()
         self.assertEqual(struct.unpack_from('<i', ack_my_rank[:4]), (0,))
+        dec_my_rank = messages.LeagueSeasonArenaGetMyRankAck.decode(ack_my_rank)
+        self.assertEqual(dec_my_rank.my_rank, 1)
 
 
 

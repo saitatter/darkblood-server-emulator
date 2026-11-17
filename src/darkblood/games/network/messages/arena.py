@@ -397,7 +397,7 @@ class ArenaRoomInfo:
             + wide_string(self.password)
             + wide_string(self.notice)
             + struct.pack('<?', self.has_custom_map)
-            + (self.custom_map_bytes if self.has_custom_map else b'\x17\x00')
+            + (self.custom_map_bytes if self.has_custom_map else b'\x17' + varuint(0))
             + struct.pack('<HIB', self.field22, self.field23, self.field24)
         )
         return b'\x1e' + base + extra
@@ -428,14 +428,14 @@ class ArenaRoomInfo:
         st = cls.state
         min_lvl = cls.min_level
         f10 = cls.field10
-        if curr + 32 <= len(data):
+        if curr + struct.calcsize('<HHIQQIIH') <= len(data):
             map_id, mode, max_p, host, team, st, min_lvl, f10 = struct.unpack_from('<HHIQQIIH', data, curr)
-            curr += 32
+            curr += struct.calcsize('<HHIQQIIH')
 
         f11 = f12 = f13 = f14 = f15 = f16 = f17 = 0
-        if curr + 22 <= len(data):
+        if curr + struct.calcsize('<HHHIIIH') <= len(data):
             f11, f12, f13, f14, f15, f16, f17 = struct.unpack_from('<HHHIIIH', data, curr)
-            curr += 22
+            curr += struct.calcsize('<HHHIIIH')
 
         pw = ""
         notice = ""
@@ -462,9 +462,9 @@ class ArenaRoomInfo:
             except Exception:
                 pass
         f22 = f23 = f24 = 0
-        if curr + 7 <= len(data):
+        if curr + struct.calcsize('<HIB') <= len(data):
             f22, f23, f24 = struct.unpack_from('<HIB', data, curr)
-            curr += 7
+            curr += struct.calcsize('<HIB')
         return cls(
             room_id=room_id, room_name=name, map_id=map_id, game_mode=mode,
             max_players=max_p, host_uid=host, team_id=team, state=st,
