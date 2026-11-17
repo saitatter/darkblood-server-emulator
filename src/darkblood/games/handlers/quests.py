@@ -160,6 +160,43 @@ class QuestHandlers:
         await self.transport.send_event(event(2074, start),
                                         note='tutorial quest start -> quest start ack (%08x)' % quest_id)
 
+    async def on_2113(self, correlation: int, body: bytes):
+        """Opcode 2113 (eEGS_QUEST_UPDATE_MISSION_REQ) -> 2114 (eEGS_QUEST_UPDATE_MISSION_ACK).
+
+        Observed body: 0x7FFFFFFF prefix + J-wstring mission id ("QM807",
+        MissionType 5, sent after meeting the NPC). The ack (JAppPageTalkBox
+        case 0x00659F00 -> 0x006481E0) reads only u32 result. Progress is
+        reported like kill counters: 2075 with (quest, objective, count).
+        """
+        from darkblood.games.game_data.client_dict import quest_mission_objectives
+        from darkblood.games.network.messages import QuestUpdateNot
+        from darkblood.core.serialization.jser import strip_prefix
+        mission = ''
+        try:
+            data = strip_prefix(body)
+            length, offset = read_varuint(data, 0)
+            mission = data[offset:offset + length].decode('utf-16le')
+        except (WireError, UnicodeDecodeError):
+            pass
+        char = self.current_char()
+        active = char.get('quests_active', {}) if char else {}
+        updates = []
+        for q_hash, idx, target in quest_mission_objectives().get(mission, []):
+            record = active.get(str(q_hash))
+            if record is None:
+                continue
+            counters = record.setdefault('counters', [])
+            while len(counters) <= idx:
+                counters.append(0)
+            counters[idx] = target
+            updates.append((q_hash, idx, target))
+        if updates:
+            self.store().save()
+            await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
+                                            note='quest update not (mission %s: %s)' % (mission, updates))
+        await self.transport.send_event(event(2114, struct.pack('<I', 0), correlation),
+                                        note='quest update mission ack (%s, %d quests)' % (mission, len(updates)))
+
     async def handle_quest_giveup(self, correlation: int, body: bytes):
         """Opcode 2078 (eEGS_QUEST_GIVEUP_REQ) -> 2079 (eEGS_QUEST_GIVEUP_ACK).
 

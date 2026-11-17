@@ -553,6 +553,39 @@ def equip_index():
 
 
 @lru_cache(maxsize=None)
+def quest_mission_objectives():
+    """Mapping: mission id ("QM807") -> [(quest_id_hash, objective_index, target_value)].
+
+    Every LoadMission entry of quest_act*.lua, whatever its MissionType; the
+    objective index is the mission's position in its quest's MissionID list.
+    """
+    root = data_root()
+    if not root.exists():
+        return {}
+    targets, quest_missions = {}, {}
+    for p in _quest_files():
+        txt = p.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', txt):
+            if block.startswith('LoadMission'):
+                for m_block in re.split(r'\n  \{', block):
+                    mid = re.search(r'MissionID\s*=\s*"([^"]+)"', m_block)
+                    tval = re.search(r'TargetValue\s*=\s*(\d+)', m_block)
+                    if mid:
+                        targets[mid.group(1)] = int(tval.group(1)) if tval else 1
+            elif block.startswith('LoadQuest'):
+                for q_block in re.split(r'\n  \{', block):
+                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+                    mids = re.search(r'MissionID = \{([^}]*)\}', q_block)
+                    if qid and mids:
+                        quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = re.findall(r'"([^"]+)"', mids.group(1))
+    out = {}
+    for q_hash, mids in quest_missions.items():
+        for idx, mid in enumerate(mids):
+            out.setdefault(mid, []).append((q_hash, idx, targets.get(mid, 1)))
+    return out
+
+
+@lru_cache(maxsize=None)
 def quest_monster_objectives():
     """Mapping: monster_id (str) -> [(quest_id_hash, objective_index, target_count)].
 

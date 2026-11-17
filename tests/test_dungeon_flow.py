@@ -121,6 +121,8 @@ class DungeonFlowTest(ServerTestCase):
             res, is_clear = struct.unpack_from('<I?', ack5018, 0)
             self.assertEqual((res, is_clear), (0, True))
             self.assertTrue(ack5018.endswith(b'\x10\x80'))
+            # mapSingleReward must hold the player's own entry (uid = char id).
+            self.assertIn(b'\x17\x81\x0f' + struct.pack('<q', char_id), ack5018)
 
         self.run_async(self.with_server(scenario))
 

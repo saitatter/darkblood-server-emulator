@@ -197,7 +197,10 @@ class DungeonHandlers:
         self.transport.record('finish-game-req', body, is_clear=req.is_clear)
         map_code = getattr(self, 'map_code', '')
         char = self.current_char()
-        char_uid = char.get('char_uid', 0) if char else 0
+        # The player's UID is the character id (2007 details +0x1C, copied to
+        # player +0x10 by 0x0095A150). Characters have no 'char_uid' key, so
+        # mapSingleReward used to go out empty and the result screen froze.
+        char_uid = char.get('id', 0) if char else 0
 
         kill_count = getattr(self, 'dungeon_kill_count', 0)
         max_combo = getattr(self, 'dungeon_max_combo', 0)
