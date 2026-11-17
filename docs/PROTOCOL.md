@@ -173,6 +173,12 @@ u32 +0x26 face   u32 +0x2A hair     u32 +0x2E      u64 +0x37
 bool +0x5D  u32 +0x5E  u64 +0x3F  u16 +0x47  4 bytes +0x62  u64 +0x66  u32 +0x6E  bool +0x72 +0x73 +0x74
 ```
 
+Meanings recovered from character select `0x00703EB0` and the delete check `0x006F1DD0`:
+`+0x08` level ("Level %d", Text_Level), `+0x09` class (Text_Job; also the max-level lookup), `+0x37` nJoinLayerNetID (Text_Town),
+`+0x5D`/`+0x5E` pending deletion + seconds left ("Deleted in %s", RemainTime), `+0x3F` guild UID (-1 none) and `+0x47` guild grade
+(4 = master: deletion refused with MB_DeleteCharacter_GuildMaster), `+0x62` f32 rate and `+0x66` i64: "bonus" of rate - 1.0 shown
+when `+0x66 > 0`, `+0x74` "Block Status" (UI_3087). Still unknown: `+0x2E`, `+0x49`/`+0x53` (0xA49BB0), `+0x6E`, `+0x72`, `+0x73`.
+
 Location on character select: `0x00704278` resolves the high dword of `u64 +0x37` (nJoinLayerNetID, same encoding as `layer_net_id`: jhash(SquareID) << 32 | layer) through `0x00990030` (DictMap+0x3C) and shows its name in `Text_Town`; an unknown id (the old placeholder 17) shows "default town". Level on character select is read from `+0x09` (`0x00704194`).
 
 Correction to the first handoff: the pushes at `0x007B2C40` (`0x951`, `0x95E`, `0x95F`, `0x963`, `0x965`, `0x967`) are not login or server-list opcodes. The client names them `eEGS_INIT_PROFICIENCY_ACK`, `eEGS_BROKER_CHANGE_REGIST_COUNT`, `eEGS_POST_DAILY_SEND_RECOVER_NOT`, `eEGS_DB_LIST_GET_ACK`, `eEGS_EVENT_DELETE_CHARACTER_ACK`, `eEGS_CHAR_VERIFY_STAT_ACK`.

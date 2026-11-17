@@ -73,16 +73,29 @@ class Character:
     sp: int = 0  # skill points: details u32 array +0x51 -> player +0x8C
     s49: Tuple[int, int, int] = (23, 25, 27)
     s53: Tuple[int, int, int] = (29, 31, 33)
+    # Lobby +0x5D / +0x5E: pending deletion and seconds left, shown by
+    # character select (0x00703EB0) as "Deleted in %s" (UI_1531, RemainTime).
     b5d: bool = False
     u5e: int = 9
-    u3f: int = 19
-    u47: int = 11
+    # Lobby +0x3F guild UID (-1 = none) and +0x47 guild grade: the delete
+    # check 0x006F1DD0 refuses a guild master (grade 4) with
+    # MB_DeleteCharacter_GuildMaster. The old placeholders put every
+    # character in guild 19.
+    guild_uid: int = -1
+    guild_grade: int = 0
+    # 2007 details +0x41 EXP and +0x45 gold (player +0x78 / +0x70). Not part
+    # of the lobby entry, whose +0x62 / +0x66 are the bonus fields below.
     u62: int = 13
     u66: int = 21
+    # Lobby +0x62 f32 rate and +0x66 i64: when +0x66 > 0, character select
+    # shows a "bonus" of (rate - 1.0) (0x007045B4). Meaning of the amount
+    # (rest EXP?) not recovered; sent as no bonus.
+    lobby_bonus_rate: float = 1.0
+    lobby_bonus: int = 0
     u6e: int = 15
     b72: bool = False
     b73: bool = False
-    b74: bool = False
+    blocked: bool = False  # lobby +0x74: "Block Status" (UI_3087)
     tutorial_cleared: bool = False
     # Details +0x59 / +0x5B, copied by 0x0095A150 to player +0x7C / +0x7E:
     # rebirth coins owned and daily rebirth coins already received (the
@@ -124,14 +137,14 @@ class Character:
             b5d=bool(data.get('delete_time')),
             u5e=(delete_seconds_left(data['delete_time']) if data.get('delete_time')
                  else data.get('u5e', 9)),
-            u3f=data.get('u3f', 19),
-            u47=data.get('u47', 11),
+            guild_uid=data.get('guild_uid', -1),
+            guild_grade=data.get('guild_grade', 0),
             u62=data.get('u62', 13),
             u66=data.get('u66', 21),
             u6e=data.get('u6e', 15),
             b72=data.get('b72', False),
             b73=data.get('b73', False),
-            b74=data.get('b74', False),
+            blocked=data.get('blocked', False),
             tutorial_cleared=data.get('tutorial_cleared', False),
             rebirth_coins=data.get('rebirth_coins', 3),
             daily_rebirth_recv=data.get('daily_rebirth_recv', 0)
@@ -156,14 +169,14 @@ class Character:
             's53': list(self.s53),
             'b5d': self.b5d,
             'u5e': self.u5e,
-            'u3f': self.u3f,
-            'u47': self.u47,
+            'guild_uid': self.guild_uid,
+            'guild_grade': self.guild_grade,
             'u62': self.u62,
             'u66': self.u66,
             'u6e': self.u6e,
             'b72': self.b72,
             'b73': self.b73,
-            'b74': self.b74,
+            'blocked': self.blocked,
             'tutorial_cleared': self.tutorial_cleared,
             'rebirth_coins': self.rebirth_coins,
             'daily_rebirth_recv': self.daily_rebirth_recv
@@ -180,9 +193,9 @@ class Character:
         out += struct.pack('<HII', *self.s49)
         out += struct.pack('<HII', *self.s53)
         out += struct.pack('<?I', bool(self.b5d), self.u5e)
-        out += struct.pack('<QH', self.u3f, self.u47)
-        out += struct.pack('<IQI', self.u62, self.u66, self.u6e)
-        out += struct.pack('<???', bool(self.b72), bool(self.b73), bool(self.b74))
+        out += struct.pack('<qH', self.guild_uid, self.guild_grade)
+        out += struct.pack('<fqI', self.lobby_bonus_rate, self.lobby_bonus, self.u6e)
+        out += struct.pack('<???', bool(self.b72), bool(self.b73), bool(self.blocked))
         return out
 
     def encode_world_details(self) -> bytes:
