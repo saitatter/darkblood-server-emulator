@@ -173,7 +173,7 @@ u32 +0x26 face   u32 +0x2A hair     u32 +0x2E      u64 +0x37
 bool +0x5D  u32 +0x5E  u64 +0x3F  u16 +0x47  4 bytes +0x62  u64 +0x66  u32 +0x6E  bool +0x72 +0x73 +0x74
 ```
 
-Level and location on character select ("Level 0", "default town") did not change when any of these u16/u32/u64 fields were set; they come from another source (probably the second vector or the map in 2009).
+Location on character select: `0x00704278` resolves the high dword of `u64 +0x37` (nJoinLayerNetID, same encoding as `layer_net_id`: jhash(SquareID) << 32 | layer) through `0x00990030` (DictMap+0x3C) and shows its name in `Text_Town`; an unknown id (the old placeholder 17) shows "default town". Level on character select is read from `+0x09` (`0x00704194`).
 
 Correction to the first handoff: the pushes at `0x007B2C40` (`0x951`, `0x95E`, `0x95F`, `0x963`, `0x965`, `0x967`) are not login or server-list opcodes. The client names them `eEGS_INIT_PROFICIENCY_ACK`, `eEGS_BROKER_CHANGE_REGIST_COUNT`, `eEGS_POST_DAILY_SEND_RECOVER_NOT`, `eEGS_DB_LIST_GET_ACK`, `eEGS_EVENT_DELETE_CHARACTER_ACK`, `eEGS_CHAR_VERIFY_STAT_ACK`.
 
@@ -488,10 +488,10 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `team_id: i32` -> `result: i32 (0), team_id: i32`.
 - `5040 eERC_CHAT_REQ` (`0x007AC5E0`) -> `5041 eERC_CHAT_ACK` (`0x007AC890`):
   Tag `0x1E` chat struct (`channel: u8, sender: wstring, target: wstring, message: wstring`). Intercepts GM console commands (`/gold`, `/levelup`, `/sp`, `/item`).
-- `2078 eEGS_QUEST_GIVEUP_REQ` -> `2079 eEGS_QUEST_GIVEUP_ACK` (`0x006223B0`):
-  `quest_id: u32` -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
+- `2078 eEGS_QUEST_GIVEUP_REQ` -> `2079 eEGS_QUEST_GIVEUP_ACK` (`0x006223B0`, reader `0x00A559F0`):
+  observed request `J-wstring (timestamp text, meaning unknown), u32 quest_id` (same shape as 2073) -> `result: i32 (0)`, tag `0x10` i32 quest-id vector, 18-byte jInfo, tag `0x10` i32 vector, tag `0x10` item vector. Removes quest from active storage. The client looks each id up (`0x00A7B390`) and drops the ack if it is unknown.
 - `2080 eEGS_QUEST_FAIL_REQ` -> `2081 eEGS_QUEST_FAIL_ACK` (`0x006223B0`):
-  `quest_id: u32` -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
+  `quest_id: u32` (request assumed to share the 2078 J-wstring prefix; not yet observed) -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
 - `2254 eEGS_MAGICENCHANT_ENCHANT_REQ` -> `2255 eEGS_MAGICENCHANT_ENCHANT_ACK` (`0x00796DC0`):
   `item_uid: i64, catalyst_uid: i64, scroll_uid: i64` -> `result: i32 (0), items: tag 0x10 vector, gold: i64`.
 - `2256 eEGS_MAGICENCHANT_ERASE_OPTION_REQ` -> `2257 eEGS_MAGICENCHANT_ERASE_OPTION_ACK` (`0x00797120`):

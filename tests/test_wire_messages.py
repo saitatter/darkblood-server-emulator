@@ -374,15 +374,27 @@ class WireMessagesTest(unittest.TestCase):
         ack_chat = messages.ChatAck(result=0, channel=0, sender='Tester', message='Hello world').encode()
         self.assertEqual(struct.unpack_from('<iB', ack_chat[:5]), (0, 0))
 
+    def test_lobby_entry_town_is_join_layer(self):
+        # Character select resolves the high dword of +0x37 as the town
+        # (0x00704278); 0 shows "default town".
+        from darkblood.games.entities.character import Character
+        char = Character(name='T')
+        out = char.encode_lobby_entry()
+        name_end = 1 + 5 + 10 + 1 + len('T'.encode('utf-16le'))
+        town = struct.unpack_from('<Q', out, name_end + 12)[0]
+        self.assertEqual(town >> 32, hashing.jhash('Act1'))
+        self.assertEqual(town, layer_net_id())
+
     def test_quest_giveup_fail_messages(self):
-        req_gu = messages.QuestGiveupReq.decode(struct.pack('<I', 0x12345678))
+        req_gu = messages.QuestGiveupReq.decode(
+            bytes.fromhex('aa') + '2015-02-23 15:42:11, '.encode('utf-16le') + struct.pack('<I', 0x12345678))
         self.assertEqual(req_gu.quest_id, 0x12345678)
         ack_gu = messages.QuestGiveupAck(result=0, quest_id=0x12345678).encode()
         self.assertEqual(struct.unpack_from('<i', ack_gu[:4])[0], 0)
         self.assertEqual(ack_gu[4:6], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<I', ack_gu, 6)[0], 0x12345678)
 
-        req_fl = messages.QuestFailReq.decode(struct.pack('<I', 0x87654321))
+        req_fl = messages.QuestFailReq.decode(bytes.fromhex('82') + 'x'.encode('utf-16le') + struct.pack('<I', 0x87654321))
         self.assertEqual(req_fl.quest_id, 0x87654321)
         ack_fl = messages.QuestFailAck(result=0, quest_id=0x87654321).encode()
         self.assertEqual(struct.unpack_from('<i', ack_fl[:4])[0], 0)

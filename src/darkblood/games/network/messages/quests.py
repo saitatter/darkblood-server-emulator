@@ -3,9 +3,18 @@ from dataclasses import dataclass, field
 import struct
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
+from darkblood.core.serialization.jser import WireError, read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
+
+def _quest_id_after_wstring(data: bytes) -> int:
+    """J-wstring, then u32 quest id; 0 if malformed."""
+    try:
+        length, offset = read_varuint(data, 0)
+        return struct.unpack_from('<I', data, offset + length)[0]
+    except (WireError, struct.error):
+        return 0
+
 
 @dataclass
 class QuestStartAck:
@@ -114,14 +123,16 @@ class TutorialQuestStartAck:
 
 @dataclass
 class QuestGiveupReq:
-    """Opcode 2078: eEGS_QUEST_GIVEUP_REQ."""
+    """Opcode 2078: eEGS_QUEST_GIVEUP_REQ.
+
+    Observed body: J-wstring (a timestamp text, e.g. "2015-02-23 15:42:11, ";
+    meaning unknown) followed by u32 quest id (jhash), same shape as 2073.
+    """
     quest_id: int = 0
 
     @classmethod
     def decode(cls, data: bytes) -> 'QuestGiveupReq':
-        if len(data) >= 4:
-            return cls(quest_id=struct.unpack_from('<I', data, 0)[0])
-        return cls()
+        return cls(quest_id=_quest_id_after_wstring(data))
 
 @dataclass
 class QuestGiveupAck:
@@ -137,14 +148,16 @@ class QuestGiveupAck:
 
 @dataclass
 class QuestFailReq:
-    """Opcode 2080: eEGS_QUEST_FAIL_REQ."""
+    """Opcode 2080: eEGS_QUEST_FAIL_REQ.
+
+    Assumed to share the 2073/2078 shape (J-wstring + u32 quest id); not yet
+    observed on the wire.
+    """
     quest_id: int = 0
 
     @classmethod
     def decode(cls, data: bytes) -> 'QuestFailReq':
-        if len(data) >= 4:
-            return cls(quest_id=struct.unpack_from('<I', data, 0)[0])
-        return cls()
+        return cls(quest_id=_quest_id_after_wstring(data))
 
 @dataclass
 class QuestFailAck:

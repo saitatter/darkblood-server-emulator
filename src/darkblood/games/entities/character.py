@@ -62,12 +62,14 @@ class Character:
     char_class: CharacterClass = CharacterClass.WARRIOR
     visuals: CharacterVisuals = field(default_factory=CharacterVisuals)
     level: int = 1
-    location: str = "default town"
 
     # Low-level fields mapped by offset in client object 0x00A4AB30
     u09: int = 0
     u2e: int = 7
-    u37: int = 17
+    # +0x37 nJoinLayerNetID: character select resolves its high dword through
+    # 0x00990030 (DictMap+0x3C) for "Text_Town"; unknown ids show "default town"
+    # (0x00704278).
+    join_layer_net_id: int = field(default_factory=layer_net_id)
     s49: Tuple[int, int, int] = (23, 25, 27)
     s53: Tuple[int, int, int] = (29, 31, 33)
     b5d: bool = False
@@ -108,10 +110,9 @@ class Character:
             char_class=char_class,
             visuals=visuals,
             level=data.get('level', 1),
-            location=data.get('location', 'default town'),
             u09=data.get('u09', 0),
             u2e=data.get('u2e', 7),
-            u37=data.get('u37', 17),
+            join_layer_net_id=data.get('join_layer_net_id', layer_net_id()),
             s49=tuple(data.get('s49', (23, 25, 27))),
             s53=tuple(data.get('s53', (29, 31, 33))),
             # +0x5D / +0x5E: pending deletion flag and seconds left
@@ -145,10 +146,9 @@ class Character:
             'body': self.visuals.body_sliders,
             'extra': self.visuals.extra,
             'level': self.level,
-            'location': self.location,
             'u09': self.u09,
             'u2e': self.u2e,
-            'u37': self.u37,
+            'join_layer_net_id': self.join_layer_net_id,
             's49': list(self.s49),
             's53': list(self.s53),
             'b5d': self.b5d,
@@ -173,7 +173,7 @@ class Character:
         out += struct.pack('<QBB', self.id, self.level, int(self.char_class))
         out += wide_string(self.name)
         out += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
-        out += struct.pack('<Q', self.u37)
+        out += struct.pack('<Q', self.join_layer_net_id)
         out += struct.pack('<HII', *self.s49)
         out += struct.pack('<HII', *self.s53)
         out += struct.pack('<?I', bool(self.b5d), self.u5e)

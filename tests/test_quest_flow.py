@@ -197,14 +197,14 @@ class QuestFlowTest(ServerTestCase):
             await client.expect_event(2074)
 
             # Give up quest 1 (2078 -> 2079)
-            client.send_event(2078, struct.pack('<I', quest1))
+            client.send_event(2078, jser.varuint(len(stamp)) + stamp + struct.pack('<I', quest1), compressed=True)
             _, ack2079 = await client.expect_event(2079)
             self.assertEqual(struct.unpack_from('<i', ack2079[:4])[0], 0)
             self.assertEqual(ack2079[4:6], b'\x10\x81')
             self.assertEqual(struct.unpack_from('<I', ack2079, 6)[0], quest1)
 
             # Fail quest 2 (2080 -> 2081)
-            client.send_event(2080, struct.pack('<I', quest2))
+            client.send_event(2080, jser.varuint(len(stamp)) + stamp + struct.pack('<I', quest2), compressed=True)
             _, ack2081 = await client.expect_event(2081)
             self.assertEqual(struct.unpack_from('<i', ack2081[:4])[0], 0)
             self.assertEqual(ack2081[4:6], b'\x10\x81')
