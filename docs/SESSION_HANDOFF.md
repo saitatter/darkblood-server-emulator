@@ -69,17 +69,17 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - **Mailbox System (Post Office)**: Opcodes 2219-2227, 2234-2237 (list, read, send with attached gold and items, claim append items, delete, return, new arrival notice) with full persistence and tests (`test_mail_flow.py`).
 - **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**: All 34 sequential chunks mapped and documented, including mailbox substructure at `0x0074C1D0` -> `0x00A3E760`.
 - **Master Opcode Registry**: Created `docs/OPCODE_REGISTRY.md` detailing 501 tracked opcodes, 298 client handler virtual addresses, 140 implemented server handlers, wire formats and packet semantics.
-- **C# Composition Blueprint & Packet Dispatcher**: Created `docs/ARCHITECTURE_REFACTOR_CSHARP.md`, `src/darkblood/games/dispatcher.py` (`PacketDispatcher`), and `src/darkblood/games/handlers/base.py` (`BaseDomainService`) replacing multiple inheritance with clean composition.
-- **Multiplayer Movement & Spatial Broadcasting (P6)**: Opcodes 5030 / 5031 (`eERC_USER_MOVE_NOT`), 5021 (`eERC_USER_JOIN_SQUARE_NOT`), and 5022 (`eERC_USER_LEAVE_SQUARE_NOT`) wired to `GameWorldManager` spatial presence. Decodes coordinates (x, y, z), heading/angle, move state, updates `WorldPlayer`, and broadcasts updates to square occupants.
-- **Party Management Subsystem (P6)**: `PartyManager` singleton with party lifecycle: invite (2100/2101, 5049/5050), invite notification (5051), join/accept (2102/2103, 5054/5055), accept notification (5056), leave (2104/2105) with auto leader re-election, and kick (2106/2107) with notice delivery. End-to-end verified in `tests/test_party_flow.py`.
-- Test suite expanded to **155 automated tests** passing 100%.
+- **GameSession Pure Composition Refactoring**: Eliminated multiple inheritance mixins from `GameSession`. Replaced with central `PacketDispatcher` (`self.dispatcher`) and 11 domain service instances (`self.frontend`, `self.social`, `self.mail`, `self.square`, `self.commerce`, `self.inventory`, `self.skills`, `self.quests`, `self.dungeon`, `self.arena`, `self.pets`) inheriting from `BaseDomainService`. Two-way dynamic delegation preserves 100% backward compatibility for all existing tests and callers.
+- **Personal Shop (Player Stalls in town) & Broker Marketplace (P7)**:
+  - Personal stalls: Opcodes 2340/2341 (Start/Open, alias 2078/2079), 2342/2343 (Close, alias 2088/2089), 5242/5243 (Buy Stall Item, alias 2080/2081), 2090/2091 (Change Title), 6021/6022 (Get Products), and town broadcasts (5250, 5254, 5255). Atomic gold deduction/credit, inventory item transfer, and SQLite persistence managed by `PersonalShopManager`.
+  - Broker Marketplace / Auction House: Opcodes 2262/2263 (List), 2264/2265 (MyList), 2266/2267 (Register Item), 2268/2269 (Buy Item), 2270/2271 (Cancel Listing), 2272/2273 (Price History) managed by `BrokerManager`. Verified by `tests/test_stall_flow.py`.
+- Test suite expanded to **164 automated tests** passing 100% (0 failures, 0 errors).
 
 ## Open items (priority order)
 
-1. **GameSession Composition Refactoring**: Complete migration of `GameSession` from 11 mixins to composition via `PacketDispatcher` (`self.dispatcher`).
-2. **Co-op Dungeons Instance Synchronization (P6)**: Synchronized party dungeon entry and instance state across party members.
-3. **Live verification of Depot / Warehouse, Mailbox, Pets, and Party**: In-game client verification of storage, mail send/receive with attachments, pet summoning, and party invites.
-4. **C# / .NET 8 Server Scaffolding (P10)**: Initialize `DarkBloodServer.sln` matching MHServerEmu architecture.
+1. **Co-op Dungeons Instance Synchronization (P6)**: Synchronized party dungeon entry and instance state across party members.
+2. **Live verification of Depot / Warehouse, Mailbox, Pets, Stalls, and Party**: In-game client verification of storage, mail send/receive with attachments, pet summoning, personal stalls, and party invites.
+3. **C# / .NET 8 Server Scaffolding (P10)**: Initialize `DarkBloodServer.sln` matching MHServerEmu architecture.
 
 ## Environment notes (saita machine)
 

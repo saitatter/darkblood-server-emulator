@@ -16,10 +16,10 @@ Final objective: launch without the original services, establish a local session
 | **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot |
 | **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~80%)** | Validated decoder, store/quest/stat/cash/monster tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
-| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress (~85%)** | Relay JoinGroup verified; world manager spatial presence & 5096 spawn; movement (5030/5031), join/leave (5021/5022), party subsystem (2100-2107, 5049-5056) verified in test suite |
-| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **In Progress (~85%)** | P2P trade, full mailbox system with attachments, depot AR & slot extension live; personal shop next |
+| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress (~85%)** | Spatial movement sync (5030/5031), join/leave (5021/5022), party subsystem (2100-2107, 5049-5056) verified; co-op dungeon instances next |
+| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **Verified (~95%)** | P2P trade, full mailbox with attachments, depot AR/slots, player stalls & broker marketplace live |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
-| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode registry | **Verified (~95%)** | 150 tests; opcode registry (501 entries); C# composition architecture blueprint & PacketDispatcher |
+| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode registry | **Verified (100%)** | 164 tests; pure composition `PacketDispatcher` & `BaseDomainService`; opcode registry (501 entries) |
 | **P10: C# / .NET 8 Server Port** | High-performance C# server (MHServerEmu alignment) | **Planned** | Composition architecture, ProudNet wire layer, entity model, domain services |
 
 ---
@@ -133,13 +133,18 @@ Final objective: launch without the original services, establish a local session
   - Read mail, claim attached gold/items (`2223/2224 eEGS_POST_READ_REQ/ACK` `0x0075A660`, `2225/2226 eEGS_POST_GET_APPEND_ITEM_REQ/ACK` `0x0077F8E0`).
   - Send mail with gold and item attachments to offline/online characters (`2221/2222 eEGS_POST_SEND_REQ/ACK` `0x00795F40`).
   - Mail expiration, return to sender, and deletion (`2236/2237 eEGS_POST_DELETE_REQ/ACK` `0x007715F0`).
-- [ ] **Personal Shop**:
-  - Opening personal stall in town (`2078 eEGS_PERSONALSHOP_OPEN_REQ` / `2079 ACK`).
-  - Setting stall title, price per item, and browsing stalls of other players.
-  - Buying items directly from player stalls with real-time tax and gold updates.
-- [ ] **Auction House / Market**:
-  - Search market listings with filters (item type, rarity, level requirement, price).
-  - Register item for bidding or instant buyout; fee calculation and deposit.
+- [x] **Personal Shop (Player Stalls)**:
+  - Opening personal stall in town (`2340/2341 eEGS_PERSONALSHOP_START` `0x00601AA0`, alias `2078/2079`).
+  - Setting stall title, price per item (`StallItem`), and browsing products (`6021/6022 eERT_PERSONALSHOP_GET_PRODUCTS` `0x006029D6`).
+  - Purchasing items directly from player stalls (`5242/5243 eERC_PERSONALSHOP_BUYITEM` `0x006022AC`, alias `2080/2081`) with atomic gold and inventory transfers.
+  - Renaming stall title (`2090/2091`) and closing stalls (`2342/2343`, alias `2088/2089`) with town broadcasts (`5250`, `5254`, `5255`).
+- [x] **Auction House / Market (Broker Subsystem)**:
+  - Search and browse marketplace listings with pagination (`2262/2263 eEGS_BROKER_LIST` `0x005ADAC0`).
+  - Query personal listings (`2264/2265 eEGS_BROKER_MYLIST` `0x005ADFF0`).
+  - Register items for instant marketplace buyout with deposit (`2266/2267 eEGS_BROKER_REGIST_ITEM` `0x005AFBAC`).
+  - Buy marketplace items atomically (`2268/2269 eEGS_BROKER_BUY_ITEM` `0x005B005C`).
+  - Cancel marketplace listings (`2270/2271 eEGS_BROKER_CANCEL`).
+  - Market price history and valuation statistics (`2272/2273 eEGS_BROKER_PRICE`).
 
 ### P8 — Guild Warfare, Sieges, Social Expansion & Arena PvP
 - [x] **Titles & Achievements System**:
@@ -222,9 +227,10 @@ Final objective: launch without the original services, establish a local session
 - [x] **C# Architectural Blueprint & Packet Dispatcher**:
   - Documented complete composition transition in `docs/ARCHITECTURE_REFACTOR_CSHARP.md`.
   - Created prototype `PacketDispatcher` (`src/darkblood/games/dispatcher.py`) and `BaseDomainService` (`src/darkblood/games/handlers/base.py`).
-- [ ] **Server Session Composition Transition (Immediate Goal)**:
-  - Migrate `GameSession` from 11 multiple inheritance mixins (`FrontendHandlers`, `SocialHandlers`, `MailHandlers`, `SquareHandlers`, `CommerceHandlers`, `InventoryHandlers`, `SkillHandlers`, `QuestHandlers`, `DungeonHandlers`, `ArenaHandlers`, `PetHandlers`) to composition using `PacketDispatcher`.
-  - Validate all 150 tests pass without regression.
+- [x] **Server Session Composition Transition**:
+  - Migrated `GameSession` from 11 multiple inheritance mixins (`FrontendHandlers`, `SocialHandlers`, `MailHandlers`, `SquareHandlers`, `CommerceHandlers`, `InventoryHandlers`, `SkillHandlers`, `QuestHandlers`, `DungeonHandlers`, `ArenaHandlers`, `PetHandlers`) to pure composition using `PacketDispatcher` (`self.dispatcher`).
+  - All domain services inherit from `BaseDomainService(session)` and register their handlers cleanly.
+  - Full backward compatibility and two-way dynamic delegation maintained; 164 automated unit & flow tests passing 100%.
 
 ### P10 — C# / .NET 8 Server Port (MHServerEmu Architecture)
 - [ ] **Solution & Project Scaffolding**:
