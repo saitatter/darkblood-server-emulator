@@ -338,12 +338,12 @@ class CommerceHandlers(BaseDomainService):
 
     # --- Personal Shop (Player Stalls) Handlers ---
 
-    def _broadcast_square(self, evt_data: bytes):
+    async def _broadcast_square(self, evt_data: bytes):
         """Broadcast an event to all players in the square."""
         try:
             from darkblood.games.world import GameWorldManager
             world = GameWorldManager.get()
-            world.broadcast_to_square(1, evt_data, exclude_char_id=self.char_id)
+            await world.broadcast_to_square(1, evt_data, exclude_char_id=self.char_id)
         except Exception:
             pass
 
@@ -386,7 +386,7 @@ class CommerceHandlers(BaseDomainService):
                                             note=f'personal shop open ack (uid={char_uid} items={len(stall.items)})')
             # Broadcast stall opening to town square
             notif = event(5254, PersonalShopStartNot(seller_uid=char_uid, title=stall.title).encode())
-            self._broadcast_square(notif)
+            await self._broadcast_square(notif)
         else:
             ack = PersonalShopOpenAck(result=1).encode()
             await self.transport.send_event(event(ack_opcode, ack, correlation),
@@ -438,7 +438,7 @@ class CommerceHandlers(BaseDomainService):
                     title=stall.title,
                     item_count=len(stall.items)
                 ).encode())
-                self._broadcast_square(notif)
+                await self._broadcast_square(notif)
         else:
             ack = PersonalShopBuyAck(result=1).encode()
             await self.transport.send_event(event(ack_opcode, ack, correlation),
@@ -462,7 +462,7 @@ class CommerceHandlers(BaseDomainService):
                                         note=f'personal shop close ack (uid={char_uid})')
         if success:
             notif = event(5255, PersonalShopCloseNot(seller_uid=char_uid).encode())
-            self._broadcast_square(notif)
+            await self._broadcast_square(notif)
 
     async def on_2090(self, correlation, body):
         # eEGS_PERSONALSHOP_CHANGE_TITLE_REQ -> 2091 eEGS_PERSONALSHOP_CHANGE_TITLE_ACK
@@ -482,7 +482,7 @@ class CommerceHandlers(BaseDomainService):
                 title=req.title,
                 item_count=item_cnt
             ).encode())
-            self._broadcast_square(notif)
+            await self._broadcast_square(notif)
 
     async def on_6021(self, correlation, body):
         # eERT_PERSONALSHOP_GET_PRODUCTS_REQ -> 6022 eERT_PERSONALSHOP_GET_PRODUCTS_ACK (0x006029D6)

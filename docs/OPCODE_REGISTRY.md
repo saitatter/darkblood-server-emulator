@@ -320,6 +320,37 @@
 | **5082** | `0x13DA` | `eERC_ACCEPT_TRADE_ACK` | **S → C** | `0x0078EB40` | — | `AcceptTradeAck` (Opcode 5082: eERC_ACCEPT_TRADE_ACK (0x0078EB40).) |
 | **5083** | `0x13DB` | `eERC_FINALLY_ACCEPT_TRADE_REQ` | **C → S** | `—` | `commerce.py` | `FinallyAcceptTradeReq` (Opcode 5083: eERC_FINALLY_ACCEPT_TRADE_REQ.) |
 | **5084** | `0x13DC` | `eERC_FINALLY_ACCEPT_TRADE_ACK` | **S → C** | `—` | — | `FinallyAcceptTradeAck` (Opcode 5084: eERC_FINALLY_ACCEPT_TRADE_ACK.) |
+| **2078** | `0x081E` | `eEGS_PERSONALSHOP_OPEN_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopOpenReq` (Stall open request; alias for 2340). |
+| **2079** | `0x081F` | `eEGS_PERSONALSHOP_OPEN_ACK` | **S → C** | `0x00780200` | — | `PersonalShopOpenAck` (Stall open response; alias for 2341). |
+| **2080** | `0x0820` | `eEGS_PERSONALSHOP_BUY_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopBuyReq` (Stall buy item request; alias for 5242). |
+| **2081** | `0x0821` | `eEGS_PERSONALSHOP_BUY_ACK` | **S → C** | `—` | — | `PersonalShopBuyAck` (Stall buy item response; alias for 5243). |
+| **2088** | `0x0828` | `eEGS_PERSONALSHOP_CLOSE_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopCloseReq` (Stall close request; alias for 2342). |
+| **2089** | `0x0829` | `eEGS_PERSONALSHOP_CLOSE_ACK` | **S → C** | `—` | — | `PersonalShopCloseAck` (Stall close response; alias for 2343). |
+| **2090** | `0x082A` | `eEGS_PERSONALSHOP_CHANGE_TITLE_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopChangeTitleReq` (Stall rename request). |
+| **2091** | `0x082B` | `eEGS_PERSONALSHOP_CHANGE_TITLE_ACK` | **S → C** | `—` | — | `PersonalShopChangeTitleAck` (Stall rename response). |
+| **2262** | `0x08D6` | `eEGS_BROKER_LIST_REQ` | **C → S** | `—` | `commerce.py` | `BrokerListReq` (Broker auction house search). |
+| **2263** | `0x08D7` | `eEGS_BROKER_LIST_ACK` | **S → C** | `0x005ADAC0` | — | `BrokerListAck` (JAppPageItemBroker::OneEGS_BROKER_LIST_ACK). |
+| **2264** | `0x08D8` | `eEGS_BROKER_MYLIST_REQ` | **C → S** | `—` | `commerce.py` | `BrokerMyListReq` (Broker player listings request). |
+| **2265** | `0x08D9` | `eEGS_BROKER_MYLIST_ACK` | **S → C** | `0x005ADFF0` | — | `BrokerMyListAck` (JAppPageItemBroker::OneEGS_BROKER_MYLIST_ACK). |
+| **2266** | `0x08DA` | `eEGS_BROKER_REGIST_ITEM_REQ` | **C → S** | `—` | `commerce.py` | `BrokerRegistItemReq` (Register item into Broker). |
+| **2267** | `0x08DB` | `eEGS_BROKER_REGIST_ITEM_ACK` | **S → C** | `0x005AFBAC` | — | `BrokerRegistItemAck` (Broker registration response). |
+| **2268** | `0x08DC` | `eEGS_BROKER_BUY_ITEM_REQ` | **C → S** | `—` | `commerce.py` | `BrokerBuyItemReq` (Purchase item from Broker). |
+| **2269** | `0x08DD` | `eEGS_BROKER_BUY_ITEM_ACK` | **S → C** | `0x005B005C` | — | `BrokerBuyItemAck` (Broker purchase confirmation). |
+| **2270** | `0x08DE` | `eEGS_BROKER_CANCEL_REQ` | **C → S** | `—` | `commerce.py` | `BrokerCancelReq` (Cancel Broker listing). |
+| **2271** | `0x08DF` | `eEGS_BROKER_CANCEL_ACK` | **S → C** | `0x00789882` | — | `BrokerCancelAck` (Broker cancel response). |
+| **2272** | `0x08E0` | `eEGS_BROKER_PRICE_REQ` | **C → S** | `—` | `commerce.py` | `BrokerPriceReq` (Query item market price stats). |
+| **2273** | `0x08E1` | `eEGS_BROKER_PRICE_ACK` | **S → C** | `—` | — | `BrokerPriceAck` (Average and minimum market prices). |
+| **2340** | `0x0924` | `eEGS_PERSONALSHOP_START_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopOpenReq` (Stall start request). |
+| **2341** | `0x0925` | `eEGS_PERSONALSHOP_START_ACK` | **S → C** | `0x00601AA0` | — | `PersonalShopOpenAck` (JAppPagePersonalStore::OneEGS_PERSONALSHOP_START_ACK). |
+| **2342** | `0x0926` | `eEGS_PERSONALSHOP_CLOSE_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopCloseReq` (Stall close request). |
+| **2343** | `0x0927` | `eEGS_PERSONALSHOP_CLOSE_ACK` | **S → C** | `0x00601F09` | — | `PersonalShopCloseAck` (JAppPagePersonalStore::OneEGS_PERSONALSHOP_CLOSE_ACK). |
+| **5242** | `0x147A` | `eERC_PERSONALSHOP_BUYITEM_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopBuyReq` (Stall buy item request). |
+| **5243** | `0x147B` | `eERC_PERSONALSHOP_BUYITEM_ACK` | **S → C** | `0x006022AC` | — | `PersonalShopBuyAck` (JAppPagePersonalStore::OneERC_PERSONALSHOP_BUYITEM_ACK). |
+| **5250** | `0x1482` | `eERC_PERSONALSHOP_CHANGE_NOT` | **S → C** | `0x00602B39` | — | `PersonalShopChangeNot` (Broadcast stall state/title change). |
+| **5254** | `0x1486` | `eERC_PERSONALSHOP_START_NOT` | **S → C** | `—` | — | `PersonalShopStartNot` (Broadcast stall opened). |
+| **5255** | `0x1487` | `eERC_PERSONALSHOP_CLOSE_NOT` | **S → C** | `—` | — | `PersonalShopCloseNot` (Broadcast stall closed). |
+| **6021** | `0x1785` | `eERT_PERSONALSHOP_GET_PRODUCTS_REQ` | **C → S** | `—` | `commerce.py` | `PersonalShopGetProductsReq` (Query stall products). |
+| **6022** | `0x1786` | `eERT_PERSONALSHOP_GET_PRODUCTS_ACK` | **S → C** | `0x006029D6` | — | `PersonalShopGetProductsAck` (JAppPagePersonalStore::OneERT_PERSONALSHOP_GET_PRODUCTS_ACK). |
 
 ---
 
