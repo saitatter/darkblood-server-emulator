@@ -1,6 +1,6 @@
 # Roadmap — Dark Blood Offline Server Emulator
 
-Updated **November 16, 2026**.
+Updated **November 17, 2026**.
 
 Final objective: launch without the original services, establish a local session, persist character and world state, enter maps/dungeons, and provide full offline singleplayer and LAN multiplayer gameplay.
 
@@ -13,11 +13,11 @@ Final objective: launch without the original services, establish a local session
 | **P0: Enter the World** | Handshake, Auth, Lobby, Selection, Town entry | **Verified** | Town rendered, character visible, movement confirmed |
 | **P1: Transport & Serialization** | ProudNet framing, JSerBuffer, crypto, compression | **Verified** | Full regression test suite (`test_transport.py`), 11 tests |
 | **P2: Lobby & Account** | Character list, create, delete, versioned persistence | **Verified** | Name validation, persistent JSON store, default gear |
-| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **In Progress (~85%)** | 85 opcodes implemented; live dungeon verified |
+| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **In Progress (~85%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop; drops/EXP headless only |
 | **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~75%)** | Validated decoder, store/quest/stat tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~80%)** | Clean headless test runner, process cleanup |
 | **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **Planned** | Relay PIDL JoinGroup verified; multi-client next |
-| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, auction | **Verified** | Full trade flow, mailbox reading/send, storage depot wired |
+| **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, auction | **In Progress** | Trade/mail handlers exist; depot (warehouse) NOT implemented; Steam cash shop offline purchases live |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~85%)** | Guild banking/notice/level/grades wired; arena rooms next |
 | **P9: Refactoring & Tools Dashboard** | Modular messages, GM dashboard, semantic architecture | **Verified** | Monolith split into 10 domains; GM web dashboard added; 105 tests |
 
@@ -57,16 +57,27 @@ Final objective: launch without the original services, establish a local session
 - [x] Implement spawn coordinates, player movement, and heartbeat responses.
 - [x] Implement dungeon lifecycle: gate selection (5043/5044), map code resolution (5009/5010), and dungeon start (5013/5014).
 - [x] Implement dungeon layers (5095 `CHANGE_DUNGEON_LAYER_NOT`) and active warflags (2422).
-- [x] Implement combat events: monster death (5063), item drops (5064), player death (5093), and rebirth coin revive (2448/2449).
+- [x] Player death (5093/5094, echoes the client UID) and rebirth-coin revive — live 2026-11-17.
+- [x] Monster kill EXP (5063 -> 5086 from `monster.lua`) and drops (`games/loot.py`, 5064, pick-up 5065 -> 5068 + 2037) — headless only.
 - [x] Implement dungeon completion: card reward choice (5090/5091) and return to town (5045/5046).
+- [x] 5017 finish game -> 5018 clear result (reward map still empty).
 - [x] Implement level-up & SP progression on EXP overflow using `Data/Dict/charstat.lua` tables with 5087 (`LevelUpNot`) and 5086 (`ChangeExpNot`).
 - [x] Implement shop transactions: buy item (2067/2068), sell item (2069/2070), and repurchase (2071/2072) with gold & inventory persistence.
-- [x] Implement inventory operations: bag slot drag-and-drop (2036/2037), equip item (2042/2043), use consumable (2038/2039), discard item (2040/2041), bag swapping (2030/2031), bag renaming (2032/2033), and tab filters (2048/2049).
+- [x] Inventory operations live 2026-11-17: drag (2036/2037), equip/unequip/swap (2042/2043), use (2038/2039), delete (2040/2041). Fixes: request prefix, owner -1, empty cells uid/code -1, equipment slot validation, bag capacity.
+- [x] Item stats: Quality 0 (was 0xFFFF -> every item stat -1.0), integer max durability.
+- [ ] Depot / warehouse (container convention, 2229/2231, 2401, 2461/2462; cash items Ikee*/lSto*).
 - [x] Implement skill management: learn skill (2050/2051), lock skill (2117/2118), and custom speech shout (2053/2054, 2055/2056).
 - [x] Implement guild economy: money deposit (2179/2180), money withdraw (2181/2182), level up (2183/2184), notice modify/delete (2185/2186, 2188/2189), and skill init (2214/2215).
 - [ ] Implement monster AI aggro and damage calculation algorithms from client property tables.
 - [ ] Implement item enhancement/refining system (2115/2116 `ITEM_UPGRADE_REQ/ACK`) with success/break rates.
-- [ ] Implement package item unpacking (`CPkg...` item extraction into sub-items).
+- [x] Cash shop offline: Steam purchase 2712 -> 2037 + 2714; packages (PACKAGEnnn) and random boxes open on use.
+- [ ] Mounts (`ridecall`), pets (`PetCall`), CashWG/CashAG/Zam boxes.
+
+### Wire-correctness audit (from the 2026-11-17 session)
+- [x] Remove literal `0x1E`/`0x0D` struct tags where the reader uses `0x00B35010` (2075, 2074/2077, 5086, 5087, 5064, 5068).
+- [ ] Audit the ~15 encoders that still emit `0x1e` (arena, NPC store 2066/2072, events, guild, social).
+- [x] Client UID: details `+0x1C` now carries the character id.
+- [ ] Shared `strip_prefix()` for the `ffffff7f` request header (~30 ad-hoc checks).
 
 ### P4 — Assets and Configuration
 - [x] Reverse engineer JPK archive format: 0x226 header flag, custom inverse cipher, and directory headers.
@@ -75,7 +86,7 @@ Final objective: launch without the original services, establish a local session
 - [x] Parse `Data/Dict/storelist.lua` for NPC shop inventories and stock limits.
 - [x] Parse `Data/Dict/charstat.lua` for per-class base stats, HP/MP curves, and level-up requirements.
 - [x] Parse `Data/Dict/maplist.lua` for square definitions, dungeon layers, and spawn coordinates.
-- [ ] Parse monster attributes and drop rate tables (`Data/Dict/monsterlist.lua` or binary properties).
+- [x] Parse `monster.lua` (Exp, Lv, HP, DropCnt) and `itemlooting.lua` (MonLooting, LootingItem, groups), `item_cash.lua` (products, packages, random boxes).
 - [ ] Parse skill damage formulas and cooldown definitions (`Data/Dict/skilllist.lua`).
 - [ ] Investigate `DarkbloodKR.ini` configuration flags and client customization toggles.
 - [ ] Optional: fix the shipped English UI text in `Data/localization_st/ui_st.dat` (UTF-16, `ID<TAB>text` lines), on a separate
