@@ -155,13 +155,7 @@ class CommerceHandlers:
                                         note='depot share expire time ack (none)')
 
     def _shop_char(self):
-        char = None
-        if selected_character.get('id'):
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
-        return char
+        return self.current_char()
 
     async def on_2390(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0:
@@ -198,12 +192,7 @@ class CommerceHandlers:
     async def on_2036(self, correlation, body):
         # eEGS_DRAG_ITEM_REQ (0x00790000.c:4212) -> 2037 eEGS_DRAG_ITEM_ACK (0x0077F570).
         req = DragItemReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if not char:
             ack = DragItemAck(result=1).encode()
             await self.transport.send_event(event(2037, ack, correlation), note='drag item fail (no char)')
@@ -280,12 +269,7 @@ class CommerceHandlers:
     async def on_2038(self, correlation, body):
         # eEGS_USE_ITEM_REQ (0x00780000.c:8159) -> 2039 eEGS_USE_ITEM_ACK (0x0077D4C0).
         req = UseItemReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if not char:
             ack = UseItemAck(result=1).encode()
             await self.transport.send_event(event(2039, ack, correlation), note='use item fail (no char)')
@@ -360,12 +344,7 @@ class CommerceHandlers:
     async def on_2042(self, correlation, body):
         # eEGS_EQUIP_ITEM_REQ (0x00800000.c:500) -> 2043 eEGS_EQUIP_ITEM_ACK (0x007AE940).
         req = EquipItemReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if not char:
             ack = EquipItemAck(result=1).encode()
             await self.transport.send_event(event(2043, ack, correlation), note='equip item fail (no char)')
@@ -446,12 +425,7 @@ class CommerceHandlers:
     async def on_2044(self, correlation, body):
         # eEGS_ASSIGN_QUICKSLOT_REQ (0x00780000.c:8513) -> 2045 eEGS_ASSIGN_QUICKSLOT_ACK (0x0078C4A0).
         req = AssignQuickslotReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             qs = char.setdefault('quickslots', {})
             qs[str(req.slot_num)] = dict(type=req.slot_type, ref_id=req.ref_id, ref_uid=req.ref_uid)
@@ -465,12 +439,7 @@ class CommerceHandlers:
     async def on_2040(self, correlation, body):
         # eEGS_DELETE_ITEM_REQ (0x00550000.c:769) -> 2041 eEGS_DELETE_ITEM_ACK (0x00557420).
         req = DeleteItemReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if not char:
             ack = DeleteItemAck(result=1, item_uid=req.item_uid, del_amount=0).encode()
             await self.transport.send_event(event(2041, ack, correlation), note='delete item fail (no char)')
@@ -495,12 +464,7 @@ class CommerceHandlers:
     async def on_2030(self, correlation, body):
         # eEGS_SWITCH_BAG_REQ (0x00550000.c:626) -> 2031 eEGS_SWITCH_BAG_ACK (0x00557680).
         req = SwitchBagReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             bags = char.get('bags', [])
             if req.from_index < len(bags) and req.to_index < len(bags):
@@ -531,12 +495,7 @@ class CommerceHandlers:
     async def on_2050(self, correlation, body):
         # eEGS_LEARN_SKILL_REQ (0x00780000.c:9504) -> 2051 eEGS_LEARN_SKILL_ACK (0x0078DBE0).
         req = LearnSkillReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         remain_sp = 100
         remain_gold = 10000
         if char:
@@ -553,12 +512,7 @@ class CommerceHandlers:
     async def on_2048(self, correlation, body):
         # eEGS_CHANGE_BAG_PROPERTY_REQ (0x00550000.c:676) -> 2049 eEGS_CHANGE_BAG_PROPERTY_ACK (0x00774040).
         req = ChangeBagPropertyReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             for bag in char.get('bags', []):
                 if bag.get('bag_id') == req.bag_uid:
@@ -572,12 +526,7 @@ class CommerceHandlers:
     async def on_2053(self, correlation, body):
         # eEGS_MODIFY_SKILL_SPEECH_REQ (0x00780000.c:9674) -> 2054 eEGS_MODIFY_SKILL_SPEECH_ACK (0x0078E090).
         req = ModifySkillSpeechReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             speeches = char.setdefault('skill_speeches', {})
             speeches[str(req.skill_index)] = req.speech
@@ -589,12 +538,7 @@ class CommerceHandlers:
     async def on_2055(self, correlation, body):
         # eEGS_DELETE_SKILL_SPEECH_REQ (0x00780000.c:9708) -> 2056 eEGS_DELETE_SKILL_SPEECH_ACK (0x0078E270).
         req = DeleteSkillSpeechReq.decode(body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             speeches = char.setdefault('skill_speeches', {})
             speeches.pop(str(req.skill_index), None)
@@ -607,12 +551,7 @@ class CommerceHandlers:
         # eEGS_BUY_ITEM_REQ (0x00780000.c:10667) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
         req = BuyItemReq.decode(body)
         self.transport.record('buy-item-req', body, store_id=req.store_id, item_id=req.item_id, count=req.count)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if not char:
             ack = BuyItemAck(result=1).encode()
             await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (no char)')
@@ -652,12 +591,7 @@ class CommerceHandlers:
         # eEGS_SELL_ITEM_REQ (0x00780000.c:10700) -> 2070 eEGS_SELL_ITEM_ACK (0x0077E8E0).
         req = SellItemReq.decode(body)
         self.transport.record('sell-item-req', body, npc_id=req.npc_id, item_uid=req.item_uid, count=req.count)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if not char:
             ack = SellItemAck(result=1).encode()
             await self.transport.send_event(event(2070, ack, correlation), note='sell item fail (no char)')
@@ -693,12 +627,7 @@ class CommerceHandlers:
         # eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30).
         req = RepurchaseItemReq.decode(body)
         self.transport.record('repurchase-item-req', body, item_uid=req.item_uid)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         char_gold = char.get('gold', 0) if char else 0
         ack = RepurchaseItemAck(result=0, gold=char_gold, items=[]).encode()
         await self.transport.send_event(event(2072, ack, correlation),
@@ -708,12 +637,7 @@ class CommerceHandlers:
         # eEGS_CHANGE_BAG_NAME_REQ -> 2033 eEGS_CHANGE_BAG_NAME_ACK (0x007528B0).
         req = ChangeBagNameReq.decode(body)
         self.transport.record('change-bag-name-req', body, bag_uid=req.bag_uid, name=req.name)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             for b in char.get('bags', []):
                 if b.get('bag_id') == req.bag_uid:
@@ -754,12 +678,7 @@ class CommerceHandlers:
         # eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390) -> 2118 eEGS_UPDATE_SKILL_LOCKED_ACK (0x00752C70).
         req = UpdateSkillLockedReq.decode(body)
         self.transport.record('update-skill-locked-req', body, skill=req.skill_index, locked=req.locked)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             locked = set(char.setdefault('locked_skills', []))
             if req.locked:

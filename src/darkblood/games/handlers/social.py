@@ -116,12 +116,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildPersonJoinReq.decode(body)
         self.transport.record('guild-join-req', body, guild_uid=req.guild_uid)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             char['guild_uid'] = req.guild_uid
             self.store().save()
@@ -144,12 +139,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildPersonLeaveReq.decode(body)
         self.transport.record('guild-leave-req', body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             char.pop('guild_uid', None)
             char.pop('guild_name', None)
@@ -163,12 +153,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildMoneyInReq.decode(body)
         self.transport.record('guild-money-in-req', body, amount=req.amount)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         remain_gold = 0
         if char:
             current_gold = char.get('gold', 0)
@@ -189,12 +174,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildMoneyOutReq.decode(body)
         self.transport.record('guild-money-out-req', body, amount=req.amount)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         remain_gold = 0
         if char:
             guild_money = char.get('guild_money', 0)
@@ -214,12 +194,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildLevelUpReq.decode(body)
         self.transport.record('guild-level-up-req', body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         new_level = 1
         if char:
             new_level = char.get('guild_level', 1) + 1
@@ -235,12 +210,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildNoticeModifyReq.decode(body)
         self.transport.record('guild-notice-modify-req', body, notice=req.notice)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             char['guild_notice'] = req.notice
             self.store().save()
@@ -254,12 +224,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildNoticeDeleteReq.decode(body)
         self.transport.record('guild-notice-delete-req', body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             char.pop('guild_notice', None)
             self.store().save()
@@ -273,12 +238,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = GuildAllSkillInitReq.decode(body)
         self.transport.record('guild-all-skill-init-req', body)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char:
             char['guild_skills'] = {}
             self.store().save()
@@ -308,12 +268,7 @@ class SocialHandlers:
         from darkblood.games.state import selected_character
         req = PostGetAppendItemReq.decode(body)
         self.transport.record('post-get-append-item-req', body, mail_uid=req.mail_uid)
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         char_gold = char.get('gold', 0) if char else 0
         ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=char_gold, items=[]).encode()
         await self.transport.send_event(event(2226, ack, correlation),
@@ -336,12 +291,7 @@ class SocialHandlers:
         msg = req.message.strip()
         self.transport.record('chat-req', body, message=msg)
 
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
 
         char_name = char.get('name', 'Player') if char else 'Player'
         system_reply = None

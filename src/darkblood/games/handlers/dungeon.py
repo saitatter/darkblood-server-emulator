@@ -200,12 +200,7 @@ class DungeonHandlers:
                                         note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
 
     def _current_char(self):
-        char = None
-        if 'id' in selected_character:
-            char = self.store().get(self.account, selected_character['id'])
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         return char
 
     async def on_5093(self, correlation, body):
