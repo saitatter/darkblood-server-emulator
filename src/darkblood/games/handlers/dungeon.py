@@ -120,6 +120,12 @@ class DungeonHandlers:
         except (struct.error, ValueError):
             pass
 
+    async def on_2509(self, correlation, body):
+        # eEGS_MONSTER_LAYER_MOVE_NOT: notification without an ACK opcode
+        # (2510 is PET_NICK_CHANGE_REQ). Live: ffffff7f 13270006 + two
+        # (u32 layer, u32 hash) pairs, e.g. 2 -> 5 in 0x32ADCD46. Recorded only.
+        self.transport.record('monster-layer-move', body)
+
     async def on_2422(self, correlation, body):
         # eEGS_ACTIVE_WARFLAG_REQ (sender 0x79C300): ffffff7f + u32 war_flag_id.
         try:
