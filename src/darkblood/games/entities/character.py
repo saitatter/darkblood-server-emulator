@@ -190,7 +190,13 @@ class Character:
         b += varuint(len(sliders)) + bytes(sliders)  # 0xa48dd0
         b += varuint(0)  # 0xa48d50 (u32 array max 2)
         b += wide_string(self.name)
-        b += struct.pack('<QQQ', 0, 0, self.id)
+        # Reader 0x00A52630: i64 +0x1C, i64 +0x24, +0x2C (0x00B356F0).
+        # 0x0095A150 copies +0x1C into the player's UID (+0x10), which
+        # 0x00946570 returns. It was sent as 0 while every other place used
+        # the character id, so owner checks (0x008354D0), user lookups
+        # (0x00966470, 0x00938C70: crashes at 0x0055BF71 / 0x00650DB4) and
+        # the revive UID disagreed. +0x2C keeps the id it carried before.
+        b += struct.pack('<QQQ', self.id, 0, self.id)
         b += struct.pack('<B', int(self.char_class))
         # Face, hair, and cosmetic parameter (Reader 0x00A52630 +0x35, +0x39, +0x3D)
         b += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
