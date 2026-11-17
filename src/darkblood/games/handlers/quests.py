@@ -68,7 +68,7 @@ class QuestHandlers:
         if not char or exp <= 0:
             return
         from darkblood.games.game_data.client_dict import char_level_stat
-        char_class = int(char.get('char_class', 1))
+        char_class = int(char.get('char_class', 0))
         level = char.get('level', 1)
         char_exp = char.get('exp', 0) + exp
         while level < 60:

@@ -165,13 +165,13 @@ class QuestFlowTest(ServerTestCase):
 
     def test_char_level_stats_progression(self):
         from darkblood.games.game_data import client_dict
-        warrior_lv1 = client_dict.char_level_stat(1, 1)
+        warrior_lv1 = client_dict.char_level_stat(0, 1)
         self.assertGreater(warrior_lv1.get('upexp', 0), 0)
         self.assertGreater(warrior_lv1.get('hp', 0), 0)
         self.assertGreater(warrior_lv1.get('mp', 0), 0)
 
         # Higher level requires more EXP and grants higher HP
-        warrior_lv10 = client_dict.char_level_stat(1, 10)
+        warrior_lv10 = client_dict.char_level_stat(0, 10)
         self.assertGreater(warrior_lv10['upexp'], warrior_lv1['upexp'])
         self.assertGreater(warrior_lv10['hp'], warrior_lv1['hp'])
 

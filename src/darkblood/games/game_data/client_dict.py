@@ -196,14 +196,16 @@ def default_equipment():
     return out
 
 
+# Keys are CharacterClass values (0 = Warrior, as sent on the wire). The map
+# used to start at 1, so every Warrior lookup fell back to the formula below.
 CLASS_SECTION_MAP = {
-    1: 'LoadStatWarrior',
-    2: 'LoadStatKnight',
-    3: 'LoadStatHunter',
-    4: 'LoadStatMage',
-    5: 'LoadStatThief',
-    6: 'LoadStatFighter',
-    7: 'LoadStatWHunter',
+    0: 'LoadStatWarrior',
+    1: 'LoadStatKnight',
+    2: 'LoadStatHunter',
+    3: 'LoadStatMage',
+    4: 'LoadStatThief',
+    5: 'LoadStatFighter',
+    6: 'LoadStatWHunter',
 }
 
 
