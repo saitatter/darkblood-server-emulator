@@ -147,7 +147,9 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 await client2.expect_event(2007)
                 await client2.expect_event(2410)
 
-                # Client 1 should receive join notification (Opcode 5021) for Watcher2
+                # Client 1 should receive layer spawn (5027, 5096) and join notification (5021) for Watcher2
+                await client1.expect_event(5027)
+                await client1.expect_event(5096)
                 _, join_payload = await client1.expect_event(5021)
                 join_not = UserJoinSquareNot.decode(join_payload)
                 self.assertEqual(join_not.char_id, char_id2)

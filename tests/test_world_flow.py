@@ -40,14 +40,16 @@ class WorldFlowTest(ServerTestCase):
                 await client2.expect_event(2007)
                 await client2.expect_event(2410)
 
-                # Client 2 should receive Opcode 5096 spawning existing Client 1 (Warrior1)
+                # Client 2 should receive Opcode 5027 (JOIN_LAYER_NOT) and 5096 (UPDATE_CHAR_INFO_NOT) for existing Client 1
+                _, layer_not_c2 = await client2.expect_event(5027)
+                self.assertIn('Warrior1'.encode('utf-16le'), layer_not_c2)
                 _, spawn_for_c2 = await client2.expect_event(5096)
-                self.assertEqual(spawn_for_c2[0], 0x1e)
                 self.assertIn('Warrior1'.encode('utf-16le'), spawn_for_c2)
 
-                # Client 1 should receive Opcode 5096 broadcasting newcomer Client 2 (Mage2)
+                # Client 1 should receive Opcode 5027 (JOIN_LAYER_NOT) and 5096 (UPDATE_CHAR_INFO_NOT) for newcomer Client 2
+                _, layer_not_c1 = await client1.expect_event(5027)
+                self.assertIn('Mage2'.encode('utf-16le'), layer_not_c1)
                 _, spawn_for_c1 = await client1.expect_event(5096)
-                self.assertEqual(spawn_for_c1[0], 0x1e)
                 self.assertIn('Mage2'.encode('utf-16le'), spawn_for_c1)
 
                 # Verify both are registered in the square

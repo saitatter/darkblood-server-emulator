@@ -198,6 +198,42 @@ class RelayJoinGroupAck:
         return b'\x00\x03' + struct.pack('<HI', 3001, self.group_host_id)
 
 @dataclass
+class PageCharTemp:
+    """Opcode 5027: PageCharTemp entry inside eERC_JOIN_LAYER_NOT (0x00787790).
+    
+    Binary schema: Reader 0x00A494B0 (Writer 0x00A49530).
+    Spawns player entities in the town square layer.
+    """
+    char_id: int = 0
+    name: str = ""
+    char_class: int = 1
+    level: int = 1
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    guild_uid: int = 0
+    guild_name: str = ""
+    extra_i64: int = 0
+
+    def encode(self) -> bytes:
+        raw_20 = struct.pack('<qfff', self.char_id, self.x, self.y, self.z)
+        return (raw_20 + wide_string(self.name)
+                + struct.pack('<Bqq', int(self.char_class), int(self.level), int(self.guild_uid))
+                + wide_string(self.guild_name) + struct.pack('<q', int(self.extra_i64)))
+
+def encode_join_layer_not(players_data: list) -> bytes:
+    """Opcode 5027: eERC_JOIN_LAYER_NOT (0x00787790).
+    
+    vecPageCharTemp (tag 0x10) + vecDuel (tag 0x10).
+    """
+    entries = b''.join(
+        (p.encode() if isinstance(p, PageCharTemp) else PageCharTemp(**p).encode())
+        for p in players_data
+    )
+    return b'\x10' + varuint(len(players_data)) + entries + b'\x10' + varuint(0)
+
+
+@dataclass
 class DeleteCharacterReq:
     """Opcode 2014: eEGS_DELETE_CHARACTER_REQ (0x00780000.c:6618).
 
