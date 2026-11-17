@@ -32,6 +32,8 @@ from darkblood.games.network.messages import (
     ItemUpgradeAck,
     ItemUpgradeReq,
     LearnSkillAck,
+    LearnSkillListAck,
+    LearnSkillListReq,
     LearnSkillReq,
     ModifySkillSpeechAck,
     ModifySkillSpeechReq,
@@ -508,6 +510,28 @@ class CommerceHandlers:
                             remain_sp=remain_sp, remain_gold=remain_gold).encode()
         await self.transport.send_event(event(2051, ack, correlation),
                                         note=f'learn skill ack (skill={req.skill_index} lvl={req.level})')
+
+    async def on_2697(self, correlation, body):
+        # eEGS_LEARN_SKILL_LIST_REQ (0x007A73D0) -> 2698 eEGS_LEARN_SKILL_LIST_ACK (0x007A74A0).
+        req = LearnSkillListReq.decode(body)
+        char = self.current_char()
+        remain_sp = 100
+        remain_gold = 10000
+        learned_skills = {}
+        if char:
+            skills = char.setdefault('skills', {})
+            for sidx, lvl in req.skills:
+                skills[str(sidx)] = lvl
+                learned_skills[sidx] = lvl
+            self.store().save()
+            remain_gold = char.get('gold', 10000)
+            remain_sp = char.get('sp', 100)
+        else:
+            learned_skills = {sidx: lvl for sidx, lvl in req.skills}
+        ack = LearnSkillListAck(result=0, skills=learned_skills,
+                                remain_sp=remain_sp, remain_gold=remain_gold).encode()
+        await self.transport.send_event(event(2698, ack, correlation),
+                                        note=f'learn skill list ack ({len(learned_skills)} skills)')
 
     async def on_2048(self, correlation, body):
         # eEGS_CHANGE_BAG_PROPERTY_REQ (0x00550000.c:676) -> 2049 eEGS_CHANGE_BAG_PROPERTY_ACK (0x00774040).

@@ -52,6 +52,21 @@ class WireMessagesTest(unittest.TestCase):
         ack = messages.LearnSkillAck(result=0, skill_index=105, level=3, remain_sp=50, remain_gold=12000)
         self.assertEqual(struct.unpack_from('<iHBiq', ack.encode()), (0, 105, 3, 50, 12000))
 
+    def test_learn_skill_list_messages(self):
+        # Captured wire packet from client: ffffff7f 10 83 0f 050001 0f fb0001 0f 230001
+        raw_req = bytes.fromhex('ffffff7f10830f0500010ffb00010f230001')
+        req = messages.LearnSkillListReq.decode(raw_req)
+        self.assertEqual(req.skills, [(5, 1), (251, 1), (35, 1)])
+
+        # Test ack encoding
+        ack = messages.LearnSkillListAck(result=0, skills={5: 1, 251: 1, 35: 1}, remain_sp=100, remain_gold=10000)
+        encoded = ack.encode()
+        self.assertEqual(encoded[:4], b'\x00\x00\x00\x00')
+        self.assertEqual(encoded[4], 0x17)  # map tag
+        # Remaining SP (int32) and Gold (int64) at the end
+        sp, gold = struct.unpack_from('<iq', encoded[-12:])
+        self.assertEqual((sp, gold), (100, 10000))
+
     def test_http_notice_messages(self):
         ack = messages.HttpNoticeCheckAck(result=0, watch=False)
         self.assertEqual(struct.unpack_from('<i?', ack.encode()), (0, False))

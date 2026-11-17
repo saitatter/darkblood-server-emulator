@@ -56,6 +56,7 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - 5017 finish game -> 5018 (u32, bool clear, wstring map_code, bool flag, empty 0x17 map): implemented in `dungeon.py`.
 - Blood effect unlocked in options: `m_bAdultUser = True` in welcome 5020 ungrays `Btn_ShowBlood` (JNetUserMgr+0x4C / 0x00577860).
 - Quest monster kill tracking: 5063 now resolves active quest objectives via `quest_monster_objectives()` and broadcasts 2075 progress updates.
+- Learn skill list (2697 -> 2698): resolved UI freeze in `Lua_OnVirtualLearnSkill` (waiting for 0x0A8A in `0x0094E1F0`). Decoded wire format: 2697 prefix + tag 0x10 vector, 2698 result + tag 0x17 map + remain SP + remain Gold.
 - Empty/record-only handlers: 2242->2243, 2446->2447, 2592 (no client handler), 2509, monster cards 2601/2608/2617.
 - `GameSession.current_char()` replaces 26 copied character lookups.
 - The live character's bag was upgraded once to Ibaga0003 (20 slots) in `data/darkblood.db` (backup in scratchpad).

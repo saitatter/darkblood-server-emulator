@@ -177,3 +177,80 @@ class InsertApNot:
 
     def encode(self) -> bytes:
         return struct.pack('<ii', self.current_ap, self.total_ap)
+
+@dataclass
+class LearnSkillListReq:
+    """Opcode 2697: eEGS_LEARN_SKILL_LIST_REQ (0x007A73D0).
+
+    Wire format:
+      [optional i32 prefix = 0x7fffffff]
+      tag 0x10 (std::vector)
+      varuint count
+      for each:
+        tag 0x0F
+        u16 skill_index
+        u8 level
+    """
+    skills: list = field(default_factory=list)  # [(skill_index, level), ...]
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'LearnSkillListReq':
+        offset = 0
+        if len(data) >= 4 and data[:4] == b'\xff\xff\xff\x7f':
+            offset = 4
+        if offset >= len(data):
+            return cls()
+        skills = []
+        try:
+            if data[offset] == 0x10:
+                offset += 1
+            count, offset = read_varuint(data, offset)
+            for _ in range(count):
+                if offset < len(data) and data[offset] == 0x0f:
+                    offset += 1
+                if offset + 3 <= len(data):
+                    sidx, lvl = struct.unpack_from('<HB', data, offset)
+                    offset += 3
+                    skills.append((sidx, lvl))
+        except Exception:
+            pass
+        return cls(skills=skills)
+
+@dataclass
+class LearnSkillListAck:
+    """Opcode 2698: eEGS_LEARN_SKILL_LIST_ACK (On_opcode_2698 0x007A74A0).
+
+    Wire format:
+      i32 result (0 = success)
+      tag 0x17 (std::map)
+      varuint count
+      for each:
+        tag 0x0F
+        u16 skill_index (key)
+        u16 skill_index (val)
+        u8 level
+        wide_string speech (empty: varuint(0) = b'\x80')
+        bool locked (b'\x00')
+        bool unknown (b'\x00')
+      i32 remain_sp
+      i64 remain_gold
+    """
+    result: int = 0
+    skills: dict = field(default_factory=dict)  # {skill_index: level}
+    remain_sp: int = 100
+    remain_gold: int = 10000
+
+    def encode(self) -> bytes:
+        buf = bytearray()
+        buf.extend(struct.pack('<i', self.result))
+        buf.append(0x17)
+        buf.extend(varuint(len(self.skills)))
+        for sidx, lvl in self.skills.items():
+            buf.append(0x0f)
+            buf.extend(struct.pack('<H', int(sidx)))
+            buf.extend(struct.pack('<HB', int(sidx), int(lvl)))
+            buf.extend(wide_string(''))
+            buf.extend(b'\x00\x00')
+        buf.extend(struct.pack('<iq', self.remain_sp, self.remain_gold))
+        return bytes(buf)
+

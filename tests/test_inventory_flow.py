@@ -77,6 +77,16 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2051 = await client.expect_event(2051)
             self.assertEqual(struct.unpack_from('<iHBiq', ack2051)[:3], (0, 101, 2))
 
+            # 9b. Learn skill list (2697 -> 2698)
+            req_2697 = bytes.fromhex('ffffff7f10830f0500010ffb00010f230001')
+            client.send_event(2697, req_2697)
+            _, ack2698 = await client.expect_event(2698)
+            self.assertEqual(struct.unpack_from('<i', ack2698[:4])[0], 0)
+            self.assertEqual(ack2698[4], 0x17)  # map tag
+            sp, gold = struct.unpack_from('<iq', ack2698[-12:])
+            self.assertEqual(sp, 100)
+            self.assertEqual(gold, 10000)
+
             # 10. Change bag property (2048 -> 2049)
             client.send_event(2048, struct.pack('<qB', 2, 3))
             _, ack2049 = await client.expect_event(2049)

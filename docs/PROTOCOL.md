@@ -148,6 +148,7 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | Quickslot assign | 2044 `eEGS_ASSIGN_QUICKSLOT_REQ` (u8 type, u8 slot, i32 ref_id, i64 ref_uid) | 2045 `eEGS_ASSIGN_QUICKSLOT_ACK` | `0x0078C4A0`: i32 result, echoes slot/ref parameters | Verified |
 | Quickslot switch | 2046 `eEGS_SWITCH_QUCIKSLOT_REQ` (u8 type, u8 from, u8 to) | 2047 `eEGS_SWITCH_QUCIKSLOT_ACK` | `0x0078C790`: i32 result, u8 type, u8 from, u8 to | Verified |
 | Learn skill | 2050 `eEGS_LEARN_SKILL_REQ` (u16 skill_index, u8 level) | 2051 `eEGS_LEARN_SKILL_ACK` | `0x0078DBE0`: i32 result, u16 skill_index, u8 level, i32 remain_sp, i64 remain_gold | Verified |
+| Learn skill list | 2697 `eEGS_LEARN_SKILL_LIST_REQ` (prefix, tag 0x10 vector: tag 0x0F, u16 sidx, u8 lvl) | 2698 `eEGS_LEARN_SKILL_LIST_ACK` | `0x007A74A0`: i32 result, tag 0x17 map (0x0F, u16 key, u16 sidx, u8 lvl, wstring speech, bool lock, bool unk), i32 remain_sp, i64 remain_gold | Verified |
 | Http notice check | 2594 `eEGS_HTTPNOTICE_CHECK_REQ` | 2595 `eEGS_HTTPNOTICE_CHECK_ACK` | `0x005A5110`: i32 result, bool bWatch | Verified |
 | Play option update | 2216 `eEGS_PLAY_OPTION_UPDATE_REQ` (i64 char_uid, tag `0x1E` struct) | — | Fire-and-forget; consumed by server | Verified |
 | Invite list | 2024 `eEGS_GET_INVITELIST_REQ` | 2025 `eEGS_GET_INVITELIST_ACK` | `0x006A2E10`: i32 result, tag `0x10` empty vector | Verified |
