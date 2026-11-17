@@ -222,16 +222,6 @@ class CommerceHandlers:
         ack = RouletteManagerInfoAck().encode()
         await self.transport.send_event(event(2391, ack, correlation), note='roulette manager info ack')
 
-    async def on_2348(self, correlation, body):
-        # eEGS_TAMEING_MONSTER_INSERT_REQ -> eEGS_TAMEING_MONSTER_INSERT_ACK (2349), handler 0x771A00.
-        ack = TamingMonsterInsertAck().encode()
-        await self.transport.send_event(event(2349, ack, correlation), note='taming monster insert ack')
-
-    async def on_2350(self, correlation, body):
-        # eEGS_TAMEING_MONSTER_DELETE_REQ -> eEGS_TAMEING_MONSTER_DELETE_ACK (2351), handler 0x771BB0.
-        ack = TamingMonsterDeleteAck().encode()
-        await self.transport.send_event(event(2351, ack, correlation), note='taming monster delete ack')
-
     async def on_2594(self, correlation, body):
         # eEGS_HTTPNOTICE_CHECK_REQ -> 2595 eEGS_HTTPNOTICE_CHECK_ACK (0x005A5110).
         ack = HttpNoticeCheckAck(result=0, watch=False).encode()

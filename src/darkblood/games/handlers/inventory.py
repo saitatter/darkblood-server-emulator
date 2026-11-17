@@ -203,6 +203,8 @@ class InventoryHandlers:
         ack = UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count).encode()
         await self.transport.send_event(event(2039, ack, correlation),
                                         note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
+        if hasattr(self, '_apply_pet_or_mount_item'):
+            await self._apply_pet_or_mount_item(char, used_item.get('code', ''))
         if contents:
             stored = add_reward_items(char, contents)
             self.store().save()

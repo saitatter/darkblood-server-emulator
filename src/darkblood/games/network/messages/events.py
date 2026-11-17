@@ -33,55 +33,12 @@ class NpcFirstMeetAck:
     def encode(self) -> bytes:
         return struct.pack('<II', self.result, self.npc_id)
 
-@dataclass
-class TamingMonsterInsertAck:
-    """Opcode 2349: eEGS_TAMEING_MONSTER_INSERT_ACK response.
-
-    Binary schema: Reader 0x00771A00.
-    u32 result (0 = success) + tag 0x10 vector.
-    """
-    result: int = 0
-    monsters: list = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        return struct.pack('<I', self.result) + b'\x10' + varuint(len(self.monsters))
-
-@dataclass
-class TamingMonsterDeleteAck:
-    """Opcode 2351: eEGS_TAMEING_MONSTER_DELETE_ACK response.
-
-    Binary schema: Reader 0x00771BB0.
-    u32 result (0 = success) + tag 0x10 vector + i32 deleted_slot.
-    """
-    result: int = 0
-    monsters: list = field(default_factory=list)
-    deleted_slot: int = 0
-
-    def encode(self) -> bytes:
-        return (struct.pack('<I', self.result)
-                + b'\x10' + varuint(len(self.monsters))
-                + struct.pack('<i', self.deleted_slot))
-
-@dataclass
-class TameingMonsterInsertReq:
-    """Opcode 2348: eEGS_TAMEING_MONSTER_INSERT_REQ (0x00799BCC)."""
-    raw_payload: bytes = b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TameingMonsterInsertReq':
-        return cls(raw_payload=data)
-
-@dataclass
-class TameingMonsterDeleteReq:
-    """Opcode 2350: eEGS_TAMEING_MONSTER_DELETE_REQ (0x00799D5A)."""
-    monster_id: int = 0
-    slot: int = 0
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TameingMonsterDeleteReq':
-        if len(data) >= 8:
-            return cls(*struct.unpack_from('<ii', data, 0))
-        return cls()
+from .pets import (
+    TameingMonsterDeleteReq,
+    TameingMonsterInsertReq,
+    TamingMonsterDeleteAck,
+    TamingMonsterInsertAck,
+)
 
 @dataclass
 class RequestTeachingReq:
