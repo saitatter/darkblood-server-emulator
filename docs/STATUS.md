@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Town layer visibility routing — Cristian, 2026-11-18
+
+Preserved the selected channel and used live `5030` layer IDs for peer
+visibility. Added `5039` removal for old layer viewers and reannouncements
+in the destination layer. See `docs/PROTOCOL.md`. All 165 headless tests pass.
+Live rendering and relay position synchronization remain open.
+
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
 Major subsystems implemented, integrated, and verified with 155 automated tests:

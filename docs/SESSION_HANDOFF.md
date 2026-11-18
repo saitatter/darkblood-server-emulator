@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Town layer visibility — Cristian, 2026-11-18
+
+- A reported player visibility issue led to comparing live `5030` requests
+  with `5031`, `5027`, `5096` and `5039` in Ghidra and x86 assembly.
+  The server previously acknowledged layer changes without updating visibility.
+- Selection now keeps the chosen channel. Layer changes remove the peer from
+  old viewers via `5039` and resend reciprocal spawn data to destination peers.
+  Two-client regression coverage and all 165 headless tests pass. The baseline
+  socket warnings remain. The visual result still needs two live clients.
+
 Compressed on 2026-11-17 at the user's request. Earlier entries (2026-11-16 and the first part of 2026-11-17,
 ~800 lines) are in git history: `git log -p -- docs/SESSION_HANDOFF.md`. Evidence that still matters is
 summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/STATUS.md`.

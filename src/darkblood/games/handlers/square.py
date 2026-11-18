@@ -147,13 +147,24 @@ class SquareHandlers(BaseDomainService):
         Otherwise moves client into an instanced town layer / sub-district.
         """
         from darkblood.core.serialization.jser import strip_prefix
+        from darkblood.games.world import GameWorldManager
         if len(strip_prefix(body)) >= 20:
             return await self.handle_user_move(correlation, body)
 
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
-        ack = BackToSquareAck(square_uid=SQUARES[0]['square_id'], layer_net_id=layer_id).encode()
+        world = GameWorldManager.get()
+        player = world.get_player(self.active_char_id)
+        previous_layer = None
+        if player and player.session is self.session:
+            previous_layer = player.layer_id
+            player.layer_id = layer_id
+        ack = BackToSquareAck(square_uid=self.square_id, layer_net_id=layer_id).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
+        if previous_layer is not None:
+            if previous_layer != layer_id:
+                await world.broadcast_layer_leave(player, previous_layer)
+            await world.broadcast_player_spawn(player)
 
     async def handle_user_move(self, correlation: int, body: bytes):
         """Opcode 5030 / 5031: eERC_USER_MOVE_NOT.
@@ -178,7 +189,8 @@ class SquareHandlers(BaseDomainService):
             player.move_state = move.move_state
             square_id = player.square_id
 
-        await world.broadcast_user_move(move, square_id=square_id)
+        await world.broadcast_user_move(move, square_id=square_id,
+                                        layer_id=player.layer_id if player else None)
 
     async def handle_enter_maptool(self, correlation: int, body: bytes):
         """Opcode 2016 (eEGS_ENTER_MAPTOOL_REQ) -> 2017 (eEGS_ENTER_MAPTOOL_ACK).

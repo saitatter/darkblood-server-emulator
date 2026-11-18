@@ -146,6 +146,7 @@ class FrontendHandlers(BaseDomainService):
         Connects the client session to a chosen town channel and delivers relay address.
         """
         square_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
+        self.session.square_id = square_id
         await self.transport.send_event(
             event(5029, JoinSquareAck(result=0, square_id=square_id).encode(), correlation),
             note='join square ack'
@@ -213,7 +214,8 @@ class FrontendHandlers(BaseDomainService):
         # Register in GameWorldManager and broadcast mutual character spawns
         try:
             from darkblood.games.world import GameWorldManager
-            player = GameWorldManager.get().register_player(self.session or self, char_id, char, square_id=1)
+            player = GameWorldManager.get().register_player(self.session or self, char_id, char,
+                                                            square_id=self.square_id)
             await GameWorldManager.get().broadcast_player_spawn(player)
             await GameWorldManager.get().broadcast_user_join(player)
         except Exception:

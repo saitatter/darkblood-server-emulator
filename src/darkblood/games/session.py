@@ -29,6 +29,7 @@ class GameSession:
         self.transport = transport
         self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
         self.active_char_id = None
+        self.square_id = 1
 
         # Composition: PacketDispatcher and Domain Services
         self.dispatcher = PacketDispatcher()

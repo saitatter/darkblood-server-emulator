@@ -232,6 +232,26 @@ Evidence: matching executable hash in STATUS.md; local mapped image
 confirms the reader calls independently of inferred decompiler signatures.
 Headless flow checks the complete default body; live acceptance is pending.
 
+### Player visibility across town layers (Cristian, 2026-11-18)
+
+The local capture has live `5030` bodies of `ffffff7f` followed by the
+u64 layer ID and a trailing bool. `5031` at `0x00787A70` stores the
+confirmed layer at local player `+0xF0` and refreshes the scene. `5027`
+at `0x00787790` passes each peer summary and the recipient's current
+layer to `0x00967590`. That routine looks up the summary's first i64
+as the peer UID and creates a `JUser` entry when needed. `5096` at
+`0x0078C990` looks up an existing peer by UID before applying details.
+`5039` at `0x00789450` reads a u32 result and i64 peer UID on success,
+then calls `0x009662E0` to remove the peer.
+
+The emulator keeps the selected `5028` channel during `2006`. On a
+`5030` layer change, it sends the acknowledgment, tells the old layer
+to remove the mover, and sends reciprocal `5027` then `5096` announcements
+within the destination channel and layer. The headless movement path is
+also filtered by layer. Two-client headless tests verify the routing and
+peer UIDs. In-game visibility and relay-driven positions remain unverified.
+Local static evidence is in `research/town-peer-*.c`.
+
 ### Dungeon layer, warflag, monster kill, and drop schemas (2026-11-16; static + headless)
 
 1. **5095 eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x007900B0):**
