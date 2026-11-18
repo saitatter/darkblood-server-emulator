@@ -9,6 +9,9 @@
   old viewers via `5039` and resend reciprocal spawn data to destination peers.
   Two-client regression coverage and all 165 headless tests pass. The baseline
   socket warnings remain. The visual result still needs two live clients.
+- The same PR also covers departure on disconnect, return to character select
+  and channel switches. Reopening a channel from character select no longer
+  recreates the previous character's world entry before selection.
 
 Compressed on 2026-11-17 at the user's request. Earlier entries (2026-11-16 and the first part of 2026-11-17,
 ~800 lines) are in git history: `git log -p -- docs/SESSION_HANDOFF.md`. Evidence that still matters is

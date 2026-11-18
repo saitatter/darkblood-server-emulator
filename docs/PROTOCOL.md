@@ -252,6 +252,11 @@ also filtered by layer. Two-client headless tests verify the routing and
 peer UIDs. In-game visibility and relay-driven positions remain unverified.
 Local static evidence is in `research/town-peer-*.c`.
 
+Disconnect, return to character select (`5037`), leave square (`5032`) and
+channel changes also announce `5039` to old layer viewers. Removal checks that
+the departing session owns the world registration. After `5037`, a new `5028`
+chooses a channel and leaves the character list off-world until selection.
+
 ### Dungeon layer, warflag, monster kill, and drop schemas (2026-11-16; static + headless)
 
 1. **5095 eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x007900B0):**

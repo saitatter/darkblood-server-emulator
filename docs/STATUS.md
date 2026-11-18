@@ -6,6 +6,9 @@ Preserved the selected channel and used live `5030` layer IDs for peer
 visibility. Added `5039` removal for old layer viewers and reannouncements
 in the destination layer. See `docs/PROTOCOL.md`. All 165 headless tests pass.
 Live rendering and relay position synchronization remain open.
+The departure path now sends `5039` on disconnect, explicit leave, and channel
+change. Returning to character select keeps the old character off-world when
+the connection chooses another channel.
 
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 

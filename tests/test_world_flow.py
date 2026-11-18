@@ -53,6 +53,21 @@ class WorldFlowTest(ServerTestCase):
                     _, joined = await client.expect_event(5027)
                     self.assertEqual(struct.unpack_from('<q', joined, 2)[0], uid)
                     await client.expect_event(5096)
+
+                second.send_event(5028, struct.pack('<iQ', 0x7fffffff, 1))
+                await second.expect_event(5029)
+                _, departure = await first.expect_event(5039)
+                self.assertEqual(departure, struct.pack('<Iq', 0, b))
+
+                first.send_event(5037)
+                await first.expect_event(5038)
+                first.send_event(5028, struct.pack('<iQ', 0x7fffffff, 1))
+                await first.expect_event(5029)
+                first.send_event(2008)
+                await first.expect_event(2009)
+                self.assertIsNone(GameWorldManager.get().get_player(a))
+                with self.assertRaises(asyncio.TimeoutError):
+                    await asyncio.wait_for(second.expect_event(5027), timeout=0.1)
             finally:
                 await second.close()
 
@@ -105,6 +120,9 @@ class WorldFlowTest(ServerTestCase):
                 # Verify both are registered in the square
                 players = world.get_players_in_square(1)
                 self.assertEqual(len(players), 2)
+                await client2.close()
+                _, departure = await client1.expect_event(5039)
+                self.assertEqual(departure, struct.pack('<Iq', 0, char_id2))
             finally:
                 await client2.close()
 

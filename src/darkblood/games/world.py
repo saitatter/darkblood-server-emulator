@@ -222,6 +222,17 @@ class GameWorldManager:
                                        exclude_char_id=player.char_id, layer_id=layer_id,
                                        note=f"leave layer not ({player.char_id})")
 
+    async def broadcast_player_departure(self, player: WorldPlayer):
+        await self.broadcast_layer_leave(player, player.layer_id)
+        await self.broadcast_user_leave(player.char_id, player.square_id)
+
+    async def remove_session_player(self, session):
+        """Send departure once, for the session that owns the registration."""
+        player = self.get_player(session.active_char_id)
+        if player is not None and player.session is session:
+            self.unregister_player(player.char_id)
+            await self.broadcast_player_departure(player)
+
     async def broadcast_user_move(self, move: UserMoveNot, square_id: int = 1, opcode: int = 5031,
                                   layer_id: Optional[int] = None):
         """Broadcast Opcode 5030 / 5031 (eERC_USER_MOVE_NOT) to square occupants."""

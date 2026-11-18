@@ -228,11 +228,7 @@ class SquareHandlers(BaseDomainService):
         """
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
-            world = GameWorldManager.get()
-            p = world.get_player(self.active_char_id)
-            square_id = p.square_id if p else 1
-            world.unregister_player(self.active_char_id)
-            await world.broadcast_user_leave(self.active_char_id, square_id)
+            await GameWorldManager.get().remove_session_player(self.session)
         await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
                                         note='leave layer ack')
 
@@ -246,11 +242,7 @@ class SquareHandlers(BaseDomainService):
         """
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
-            world = GameWorldManager.get()
-            p = world.get_player(self.active_char_id)
-            square_id = p.square_id if p else 1
-            world.unregister_player(self.active_char_id)
-            await world.broadcast_user_leave(self.active_char_id, square_id)
+            await GameWorldManager.get().remove_session_player(self.session)
         await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
                                         note='leave square ack')
 
