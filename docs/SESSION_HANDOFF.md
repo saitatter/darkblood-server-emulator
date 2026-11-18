@@ -1,5 +1,23 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Cristian pause — 2026-11-18 (analysis and test tooling)
+
+- Ghidra 12.2 and the REA CLI and MCP tools are available locally. The static
+  fixture `research/unpacked.analysis.exe` and its source dump `research/session.bin`
+  are present. The full Ghidra project and decompiled function corpus mentioned
+  below belong to the saita setup and were absent from this checkout. The fixture
+  is for static analysis only. Keep any Ghidra output under git-ignored `research/`.
+- `tools/tail_wire.py` reads the existing `logs/wire.jsonl`, prints the latest
+  matching events, and exits. A continuous `--follow` mode for errors and
+  unhandled opcodes is a proposal from the collaborator discussion.
+- The collaborator also suggested restarting the server during a live test to
+  exercise reconnect. A restart disconnects the client. The shim can bring it
+  back to the server list, where the player resumes through the lobby.
+- The three tooling suggestions (full local Ghidra export, continuous log
+  monitoring, and a live restart check) were recorded for later consideration.
+  This check inspected local files only. PR #5 contains the party and reconnect
+  lifecycle fix described below, with 167 passing tests and live validation pending.
+
 ## Cristian resume — 2026-11-18 (party and reconnect lifecycle)
 
 - Workspace `C:/Users/cri99/Projects/darkblood-server-emulator`. PR #3 was closed
