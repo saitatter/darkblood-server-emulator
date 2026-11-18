@@ -280,8 +280,8 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 _, not5051_c3 = await client3.expect_event(5051)
                 self.assertEqual(PartyInviteNot.decode(not5051_c3).inviter_uid, char_id1)
 
-                # Client 3 accepts via Opcode 5054 (eERC_ACCEPT_INVITE_REQ)
-                client3.send_event(5054, PartyAcceptInviteReq(host_uid=char_id1).encode())
+                # 5054 carries the host's square UID before its character UID.
+                client3.send_event(5054, struct.pack('<iqq', 0x7fffffff, 0x12345678, char_id1))
                 _, ack5055 = await client3.expect_event(5055)
                 self.assertEqual(PartyAcceptInviteAck.decode(ack5055).result, 0)
 

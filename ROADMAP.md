@@ -120,6 +120,8 @@ Final objective: launch without the original services, establish a local session
   - Master delegation and leader promotion upon departure.
 - [ ] **Co-op Dungeon Instances**:
   - Synchronize party dungeon entry so all party members enter the same dungeon instance.
+  - Complete the 5004 member fields and shared room and relay routing. The 5003
+    request and outer 5004 reply are mapped in `docs/PROTOCOL.md`.
   - Synchronize monster health, damage numbers, and boss cinematic triggers across party members.
   - Shared party rank calculation and card reward selection at dungeon finish.
 

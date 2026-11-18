@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Room join and invite sender — Cristian, 2026-11-18
+
+- Mapped the `5003` room UID, the outer `5004` reply, and the member record
+  reader `0x00A533A0`. The same sender uses `5054` with square UID and host
+  UID as a separate path. The server now reads the host from the second
+  field. All 164 headless tests passed on the branch based on `main`, with
+  the baseline socket warnings. See `docs/PROTOCOL.md` for addresses and evidence.
+- Next, identify the nested peer fields and supply shared room membership
+  and relay routing. Live room join remains open.
+
 Compressed on 2026-11-17 at the user's request. Earlier entries (2026-11-16 and the first part of 2026-11-17,
 ~800 lines) are in git history: `git log -p -- docs/SESSION_HANDOFF.md`. Evidence that still matters is
 summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/STATUS.md`.

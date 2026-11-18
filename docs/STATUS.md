@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Dungeon room join and invite sender — Cristian, 2026-11-18
+
+Mapped the 5003 request, 5004 outer reply and member record from the local
+client. The 5054 handler now uses the host UID that follows the square UID.
+The full headless suite passes (164 tests). Live entry into a shared room
+and the meanings of the remaining member fields are still open.
+
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
 Major subsystems implemented, integrated, and verified with 155 automated tests:

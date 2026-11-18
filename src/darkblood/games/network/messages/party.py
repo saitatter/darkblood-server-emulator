@@ -323,7 +323,10 @@ class PartyKickAck:
 
 @dataclass
 class PartyAcceptInviteReq:
-    """Opcode 5054: eERC_ACCEPT_INVITE_REQ."""
+    """Opcode 5054: host square UID then host UID (sender 0x0058B430).
+
+    Older headless callers send only the host UID.
+    """
     host_uid: int = 0
 
     def encode(self) -> bytes:
@@ -331,8 +334,11 @@ class PartyAcceptInviteReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyAcceptInviteReq':
-        data = strip_prefix(data)
-        if len(data) >= 8:
+        if len(data) in (12, 20):
+            data = strip_prefix(data)
+        if len(data) == 16:
+            return cls(host_uid=struct.unpack_from('<q', data, 8)[0])
+        if len(data) == 8:
             return cls(host_uid=struct.unpack_from('<q', data, 0)[0])
         return cls()
 
