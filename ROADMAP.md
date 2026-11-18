@@ -113,6 +113,8 @@ Final objective: launch without the original services, establish a local session
 - [x] **Multi-client Square Synchronization**:
   - Broadcast player position, rotation, and animation state to nearby players in the same square/layer (`5030/5031 eERC_USER_MOVE_NOT`).
   - Handle player join notification (`5021 eERC_USER_JOIN_SQUARE_NOT`) and player leave notification (`5022 eERC_USER_LEAVE_SQUARE_NOT`).
+  - Relay groups follow the requested square and layer. Verify the combined
+    game and relay flow with two live clients crossing between subareas.
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
 - [x] **Party System**:
   - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).

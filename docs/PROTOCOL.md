@@ -377,10 +377,25 @@ If unconfigured, this triggers ProudNet error 14 ("Unknown Internet address") at
 ### Relay PIDL Protocol (Port 9401)
 The relay service uses game-defined ProudNet RMI messages rather than standard JEvents:
 - **JoinGroup (RMI 1001)**: Client → Server (`0x00956420`/`0x00956500`).
-  Parameters: group type (`u32`), group identifiers.
+  `u32` group type, two `i64` group identifiers (`0x00977610`), and a trailing
+  `i64` whose meaning is open. `LeaveGroup` (1002, `0x009565E0`) uses the same
+  layout. In town captures the identifiers were the square UID and layer UID.
+  Initial joins sometimes send square UID `-1`, resolved against the game-world
+  channel or the default channel when the registration is unavailable.
 - **JoinGroupACK (RMI 3001)**: Server → Client (`0x009567A0`).
-  - Prefix: ProudNet RMI magic `0x0003` + `u16` RMI ID (`3001`).
-  - Body: `u32` group host ID (`0x10000`) + ProudNet scalar byte-length + JSerBuffer vector (tag `0x10`) of member entries (tag `0x0F` + `u64` character UID + `u32` host ID).
+  - Prefix: ProudNet message type `0x01` + `u16` RMI ID (`3001`).
+  - Body: `u32` group HostID + ProudNet scalar byte length + JSerBuffer vector (`0x10`) of member entries (`0x0F` + `u64` character UID + `u32` HostID).
+- **Peer departure (`0xF61E`)**: Two consecutive 32-bit HostIDs, member then
+  group. ProudS2C dispatch entry `0x00B45730` calls vtable slot `+0x30` at
+  `0x00B45901`, which resolves to `0x00B573C0`. That routine looks up the first
+  value as the remote peer and the second as the group.
+
+The relay keeps a roster per `(group type, first identifier, second identifier)`
+and forwards reliable peer frames only within the sender's current group.
+Switching groups or disconnecting tells the previous group that a peer left.
+A `LeaveGroup` for an old key preserves the current group. These behaviors are
+covered by a three-connection headless test. The existing relay-to-character
+binding is unchanged. Position updates and rendering still need a live test.
 
 ## 6. Town & Tutorial Flow (Decompiled & Implemented)
 

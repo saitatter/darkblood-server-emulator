@@ -16,7 +16,7 @@ from pathlib import Path
 from darkblood import REPO_ROOT
 from darkblood.core.network.crypto import AES, CryptoError, RSAKey, envelope_decrypt
 from darkblood.core.network.proudnet import ProtocolError, connection_success, frame, pop_frame, read_scalar, scalar
-from darkblood.frontend.relay import RELAY_RMI, relay_rmi
+from darkblood.frontend.relay import RELAY_RMI, RelayGroups
 from darkblood.games.session import GameSession
 
 
@@ -92,7 +92,9 @@ class Session:
             logger.info('%s closed: %r', self.peer, exc)
         finally:
             self.record('disconnect')
-            if hasattr(self, 'app') and hasattr(self.app, 'on_disconnect'):
+            if self.server.role == 'relay':
+                await self.server.relay_groups.disconnect(self)
+            else:
                 try:
                     await self.app.on_disconnect()
                 except Exception as exc:
@@ -140,8 +142,7 @@ class Session:
         elif kind in (0x26, 0x27):
             await self.handle_encrypted(payload)
         elif kind == 0x15 and self.server.role == 'relay':
-            from darkblood.frontend.relay import forward_reliable_relay
-            await forward_reliable_relay(self, payload)
+            await self.server.relay_groups.forward(self, payload)
         elif kind in (0x02, 0x03):
             await self.app.on_user_message(payload[1:])
         elif kind == 0x01:
@@ -165,7 +166,7 @@ class Session:
                 self.record('rmi-fa13', payload)
                 return
             elif self.server.role == 'relay' and rmi_id in RELAY_RMI:
-                await relay_rmi(self, rmi_id, payload[3:])
+                await self.server.relay_groups.handle_rmi(self, rmi_id, payload[3:])
                 return
         self.record('unhandled-rmi', payload)
 
@@ -191,9 +192,9 @@ class BootstrapServer:
         self.host, self.port = host, port
         # 'game': login/lobby server (welcome 5020 and game events).
         # 'relay': square relay endpoint announced by 5134; reached through
-        # JP2PClient::Connect (0x956C80). Its application protocol is not
-        # recovered yet, so it only completes the ProudNet handshake and logs.
+        # JP2PClient::Connect (0x956C80).
         self.role = role
+        self.relay_groups = RelayGroups() if role == 'relay' else None
         self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
         self.guid = uuid.UUID('a1d7e8c2-5a20-44af-94e1-52424c4f4f44').bytes_le
         key_file = str(key_path) if key_path else str(ROOT / 'logs' / 'server_rsa.key')

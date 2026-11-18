@@ -1,5 +1,17 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Relay group isolation — Cristian, 2026-11-19
+
+- The town trace changes the layer UID in `JoinGroup` when walking between
+  subareas. The previous relay used one global roster. It now separates groups
+  by the identifiers in the request and limits forwarding to the current group.
+- Disassembly of `0xF61E` confirmed member HostID followed by group HostID.
+  Group moves, explicit leaves, and disconnects now send this notification.
+- The headless relay regression covers two layers, membership changes, a stale
+  leave, and forwarding isolation. Live visual verification remains open.
+  The relay still uses the existing FIFO to associate the first connection
+  with a character. See `docs/PROTOCOL.md` for the wire observations.
+
 Compressed on 2026-11-17 at the user's request. Earlier entries (2026-11-16 and the first part of 2026-11-17,
 ~800 lines) are in git history: `git log -p -- docs/SESSION_HANDOFF.md`. Evidence that still matters is
 summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/STATUS.md`.

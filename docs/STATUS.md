@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Relay group isolation — Cristian, 2026-11-19
+
+Town joins now use the observed square and layer identifiers for relay
+membership. A moved or disconnected peer is removed with `0xF61E`.
+Reliable forwarding stays within the sender's group. Headless coverage uses
+three local relay connections. Live player visibility remains open.
+
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
 Major subsystems implemented, integrated, and verified with 155 automated tests:
