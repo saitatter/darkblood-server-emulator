@@ -1,5 +1,18 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Dungeon start readers — Cristian, 2026-11-18
+
+- Verified the client hash before examining opcode 5014 in Ghidra and x86
+  disassembly. The final collection is an inventory update vector. The first
+  and third maps target peers by character ID. The second map's value reader
+  is `0x00A52CF0`, with semantics still open. See `docs/PROTOCOL.md` for the
+  reader chains and local evidence.
+- The server now returns a result-only 5014 error for missing or malformed
+  map codes. The valid solo response retains its established wire layout.
+  The headless test exercises both paths. Live verification remains open.
+- Co-op entry still needs the room join exchange 5003/5004 and evidence for
+  which peer data should populate the maps at the start of a shared room.
+
 Compressed on 2026-11-17 at the user's request. Earlier entries (2026-11-16 and the first part of 2026-11-17,
 ~800 lines) are in git history: `git log -p -- docs/SESSION_HANDOFF.md`. Evidence that still matters is
 summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/STATUS.md`.

@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Dungeon start ACK readers — Cristian, 2026-11-18
+
+Ghidra and x86 disassembly identify the 5014 inventory vector and the three
+outer map reader chains. Two maps apply data to peers by character ID. See
+`docs/PROTOCOL.md` for addresses and limits. Invalid 5013 map strings now get a
+result-only error. Co-op entry and live validation of the error remain open.
+
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
 Major subsystems implemented, integrated, and verified with 155 automated tests:

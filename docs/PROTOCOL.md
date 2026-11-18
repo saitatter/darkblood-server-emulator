@@ -232,6 +232,31 @@ Evidence: matching executable hash in STATUS.md; local mapped image
 confirms the reader calls independently of inferred decompiler signatures.
 Headless flow checks the complete default body; live acceptance is pending.
 
+### Dungeon start collection readers (Cristian, 2026-11-18, static analysis)
+
+The three outer maps and the trailing vector use these reader chains:
+
+| Field | Client readers | Observed structure or use |
+| --- | --- | --- |
+| First `0x17` map | `0x004B8B80` → `0x004B2BC0` → `0x004B1F80` | Each pair starts with `0x0F`, then a 64-bit key and a nested `0x17` map through `0x004B1240`. In state 8 the key selects a peer and the client applies the nested skill records to peers other than itself. |
+| Second `0x17` map | `0x0064E7D0` → `0x00644440` → `0x00643940` | `0x0F` pair, 64-bit key, structure from `0x00A52CF0`. The `0x1E` check at `0x00642170` consumes no wire byte. The value's role remains open. |
+| Third `0x17` map | `0x004B7550` → `0x004B66A0` → `0x004B45F0` | `0x0F` pair, 64-bit key, nested `0x10` vector through `0x004B2C90`. In state 8 the key selects a peer and the vector is passed to `0x00948E80`. |
+| Final `0x10` vector | `0x004B94C0` → `0x004B9210` → `0x0049F1E0` → `0x00A53F50` | Standard `Item` records. The handler applies them to the local inventory through `0x00835990` → `0x008354D0`. The `0x1E` check consumes no wire byte. |
+
+The second map's value starts with an array reader `0x00A4B250` (maximum two
+elements), followed by i64, u32, u8, u32, u16, J-wstring, a `0x10` vector
+through `0x0076E600`, bool, and u16. The field meanings still need confirmation.
+
+`0x007880A0` reads the result first and skips the success fields when it is
+nonzero. The emulator sends result 1 for an empty or malformed 5013 map code.
+Valid single-player replies retain the existing map code and empty collections.
+The headless test checks both replies. Live verification of the error remains open.
+
+Evidence comes from Ghidra 12.2 focused decompilation and x86 instructions in
+`research/session.bin`. The derived PE hashes to
+`f5defbc15c68a3c90641b1f02a200a7f3ae64d7e866248db4dd83a3d1f9a3e88`.
+The dumps and generated output remain under ignored `research/`.
+
 ### Dungeon layer, warflag, monster kill, and drop schemas (2026-11-16; static + headless)
 
 1. **5095 eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x007900B0):**
