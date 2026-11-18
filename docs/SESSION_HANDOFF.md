@@ -10,6 +10,13 @@
 - The server now returns a result-only 5014 error for missing or malformed
   map codes. The valid solo response retains its established wire layout.
   The headless test exercises both paths. Live verification remains open.
+- Fix `18430d4` is in PR #6 on `fix/dungeon-start-map`. All 165 headless
+  tests passed on that branch. The run reported socket warnings also seen
+  on the baseline. The party and reconnect fix is in the separate PR #5.
+- Ghidra ran headless on this machine, and REA used the same local fixture
+  through MCP. The saved REA evidence is `research/dungeon-5014-rea-evidence.json`.
+  Focused decompiler output is in `research/dungeon-5014-*.c`. These files
+  stay local under the ignored `research/` directory.
 - Co-op entry still needs the room join exchange 5003/5004 and evidence for
   which peer data should populate the maps at the start of a shared room.
 
