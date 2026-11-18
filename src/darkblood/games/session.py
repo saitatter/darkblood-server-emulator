@@ -123,10 +123,9 @@ class GameSession:
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
             world = GameWorldManager.get()
-            p = world.get_player(self.active_char_id)
-            square_id = p.square_id if p else 1
-            world.unregister_player(self.active_char_id)
-            await world.broadcast_user_leave(self.active_char_id, square_id)
+            player = world.unregister_player(self.active_char_id, session=self)
+            if player:
+                await world.broadcast_user_leave(self.active_char_id, player.square_id)
 
     async def on_user_message(self, data):
         try:

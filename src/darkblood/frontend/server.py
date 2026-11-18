@@ -65,6 +65,8 @@ class Session:
         self.server.record(self.peer, event, data, **extra)
 
     async def send_payload(self, payload, note=None):
+        if self.writer.is_closing():
+            raise ConnectionError('Cannot send to a closing connection')
         wire = frame(payload)
         self.record('send', wire, note=note)
         self.writer.write(wire)
