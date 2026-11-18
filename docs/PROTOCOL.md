@@ -164,7 +164,7 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | Square presence join | — | 5021 `eERC_USER_JOIN_SQUARE_NOT` | `i64 char_id, i32 square_id, 4 × f32 x/y/z/angle, u8 class, u8 level, wstr name`: broadcast to square occupants | Verified |
 | Square presence leave | — | 5022 `eERC_USER_LEAVE_SQUARE_NOT` | `i64 char_id, i32 reason`: broadcast to square occupants upon departure or disconnect | Verified |
 | Party invite | 2100 / 5049 `eEGS_PARTY_INVITE_REQ` (i64 target_uid / wstr name) | 2101 / 5050 `eEGS_PARTY_INVITE_ACK` | `0x00758700`: i32 result | Verified |
-| Party invite notice | — | 5051 `eERC_INVITE_NOT` | `0x007706E0`: i64 inviter_uid, i64 party_id, wstr inviter_name | Verified |
+| Party invite notice | — | 5051 `eERC_INVITE_NOT` | `0x007706E0` → `0x00A4AD10`: bool, host summary, i64 room UID, J-wstring room name, u32 gate, u32 map, u16 difficulty | Static + headless |
 | Party join / accept | 2102 / 5054 `eEGS_PARTY_JOIN_REQ` (i32 party_id, i32 host_uid) | 2103 / 5055 `eEGS_PARTY_JOIN_ACK` | i32 result, i32 party_id | Verified |
 | Party member joined | — | 5056 `eERC_ACCEPT_INVITE_NOT` | i32 party_id, i64 member_uid, bool is_leader, wstr member_name | Verified |
 | Party leave | 2104 `eEGS_PARTY_LEAVE_REQ` (i32 party_id) | 2105 `eEGS_PARTY_LEAVE_ACK` | i32 result; auto-promotes next member if leader departs | Verified |
@@ -231,6 +231,30 @@ Evidence: matching executable hash in STATUS.md; local mapped image
 `research/session.bin`, focused output `research/dungeon-start.c`. Assembly
 confirms the reader calls independently of inferred decompiler signatures.
 Headless flow checks the complete default body; live acceptance is pending.
+
+### Town party invitation notice (Cristian, 2026-11-18, static + headless)
+
+The `5051` client handler `0x007706E0` requires SquarePlay and sends the payload
+to `0x00A4AD10`. The previous two-ID/name payload stopped before the fields
+required by this reader. The bool and two structs do not carry a struct tag.
+
+Host summary `0x00A49600` reads i64 square UID, i64 character UID, u32,
+J-wstring nickname, u8, u16, u8, two i64, 74 opaque bytes (`0x00A48B40`),
+and bool. The UI assigns the first two values to `nSquareUID` and `nCharUID`
+at `0x0062BE50` and `0x0062BE63`. The notice uses the registered square and
+the inviter's character ID and nickname. Other host and room fields use the
+defaults from `0x00473E60` and `0x0049F6C0`, including room UID zero for a town
+invite. The server's internal party ID is not a room UID.
+
+`5050` uses the result reader `0x00A1EA20(0)` from `0x00758700`. No `5055`
+or `5056` handler was found in the captured global table or the room-page
+dispatcher at `0x0059D970`. This is a bounded search. The existing headless
+fixtures for those replies do not establish live client behavior.
+
+Evidence is in ignored `research/dungeon-invite-*.c` and x86 instructions
+from the same local dump used for the `5014` analysis. The headless tests
+check the full notice bytes and the multi-client party workflow. The in-game
+dialog remains to be verified.
 
 ### Dungeon layer, warflag, monster kill, and drop schemas (2026-11-16; static + headless)
 

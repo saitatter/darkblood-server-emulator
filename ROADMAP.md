@@ -118,6 +118,7 @@ Final objective: launch without the original services, establish a local session
   - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).
   - Party join, leave, and kick (`2102/2103 eEGS_PARTY_JOIN`, `5054/5055 eERC_ACCEPT_INVITE`, `5056 ACCEPT_INVITE_NOT`, `2104/2105 LEAVE`, `2106/2107 KICK`).
   - Master delegation and leader promotion upon departure.
+  - Validate the corrected 5051 invitation notice in the client dialog.
 - [ ] **Co-op Dungeon Instances**:
   - Synchronize party dungeon entry so all party members enter the same dungeon instance.
   - Synchronize monster health, damage numbers, and boss cinematic triggers across party members.

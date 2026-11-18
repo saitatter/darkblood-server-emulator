@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import struct
 from typing import List
 
-from darkblood.core.serialization.jser import read_varuint, strip_prefix, varuint, wide_string
+from darkblood.core.serialization.jser import JSerBufferReader, read_varuint, strip_prefix, varuint, wide_string
 
 
 # =========================================================================
@@ -177,32 +177,35 @@ class PartyInviteAck:
 class PartyInviteNot:
     """Opcode 5051: eERC_INVITE_NOT (0x007706E0).
 
-    Delivered to invited player containing inviter details.
+    The 0x00A4AD10 reader expects a bool, a host summary (0x00A49600),
+    then room UID, room name, gate, map and difficulty. This sends a town
+    party invitation using the client's constructor defaults for room fields.
     """
     inviter_uid: int = 0
     inviter_name: str = ''
-    party_id: int = 0
+    inviter_square_uid: int = 1
 
     def encode(self) -> bytes:
-        return struct.pack('<qq', self.inviter_uid, self.party_id) + wide_string(self.inviter_name)
+        # Unmapped host fields use 0x00473E60 defaults, including the opaque
+        # 74-byte block consumed by 0x00A48B40. The summaries are untagged.
+        host = (struct.pack('<qqI', self.inviter_square_uid, self.inviter_uid, 0)
+                + wide_string(self.inviter_name)
+                + struct.pack('<BHBqq', 0, 0xffff, 0, -1, -1) + bytes(74) + b'\x00')
+        return (b'\x00' + host + struct.pack('<q', 0) + wide_string('')
+                + struct.pack('<IIH', 0xffffffff, 0xffffffff, 0xffff))
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyInviteNot':
-        data = strip_prefix(data)
-        if len(data) >= 16:
-            iuid, pid = struct.unpack_from('<qq', data, 0)
-            name = ''
-            if len(data) > 16:
-                try:
-                    length, offset = read_varuint(data, 16)
-                    name = data[offset:offset + length].decode('utf-16le', errors='replace')
-                except Exception:
-                    pass
-            return cls(inviter_uid=iuid, party_id=pid, inviter_name=name)
-        elif len(data) >= 8:
-            iuid = struct.unpack_from('<q', data, 0)[0]
-            return cls(inviter_uid=iuid)
-        return cls()
+        reader = JSerBufferReader(data)
+        reader.read_bool()
+        square_uid = reader.read_i64()
+        inviter_uid = reader.read_i64()
+        reader.read_u32()
+        name = reader.read_wstring()
+        reader.read_bytes(4 + 16 + 74 + 1 + 8)
+        reader.read_wstring()  # room name
+        reader.read_bytes(10)  # gate, map, difficulty
+        return cls(inviter_uid=inviter_uid, inviter_name=name, inviter_square_uid=square_uid)
 
 
 @dataclass

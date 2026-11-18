@@ -460,8 +460,8 @@ class SocialHandlers(BaseDomainService):
         Client handler: 0x00758700.
         Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteNot, PartyInviteReq
-        from darkblood.games.world import GameWorldManager, PartyManager
+        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteReq
+        from darkblood.games.world import PartyManager
         req = PartyInviteReq.decode(body)
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.active_char_id or 0
@@ -477,16 +477,13 @@ class SocialHandlers(BaseDomainService):
                 target_id = target.get('id', 0)
 
         pm = PartyManager.get()
-        res, party = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
+        res, _ = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
         ack = PartyInviteAck(result=res, target_uid=target_id).encode()
         await self.transport.send_event(event(2101, ack, correlation),
                                         note=f'party invite ack (res={res} target={target_id})')
 
         if res == 0 and target_id:
-            target_player = GameWorldManager.get().get_player(target_id)
-            if target_player and target_player.session and getattr(target_player.session, 'transport', None):
-                notif = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name, party_id=party.party_id if party else 0).encode()
-                await target_player.session.transport.send_event(event(5051, notif), note=f'party invite not from {char_name}')
+            await self._send_party_invite_notice(char_id, char_name, target_id)
 
     async def on_5049(self, correlation, body):
         """Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK).
@@ -494,8 +491,8 @@ class SocialHandlers(BaseDomainService):
         Client handler: 0x00758700.
         Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteNot, PartyInviteReq
-        from darkblood.games.world import GameWorldManager, PartyManager
+        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteReq
+        from darkblood.games.world import PartyManager
         req = PartyInviteReq.decode(body)
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.active_char_id or 0
@@ -511,16 +508,27 @@ class SocialHandlers(BaseDomainService):
                 target_id = target.get('id', 0)
 
         pm = PartyManager.get()
-        res, party = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
+        res, _ = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
         ack = PartyInviteAck(result=res, target_uid=target_id).encode()
         await self.transport.send_event(event(5050, ack, correlation),
                                         note=f'party invite ack (res={res} target={target_id})')
 
         if res == 0 and target_id:
-            target_player = GameWorldManager.get().get_player(target_id)
-            if target_player and target_player.session and getattr(target_player.session, 'transport', None):
-                notif = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name, party_id=party.party_id if party else 0).encode()
-                await target_player.session.transport.send_event(event(5051, notif), note=f'party invite not from {char_name}')
+            await self._send_party_invite_notice(char_id, char_name, target_id)
+
+    async def _send_party_invite_notice(self, char_id, char_name, target_id):
+        from darkblood.games.network.messages.party import PartyInviteNot
+        from darkblood.games.world import GameWorldManager
+
+        world = GameWorldManager.get()
+        target = world.get_player(target_id)
+        if not target or not target.session or not getattr(target.session, 'transport', None):
+            return
+        inviter = world.get_player(char_id)
+        notice = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name,
+                                inviter_square_uid=inviter.square_id if inviter else 1)
+        await target.session.transport.send_event(event(5051, notice.encode()),
+                                                  note=f'party invite not from {char_name}')
 
     async def on_2102(self, correlation, body):
         """Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK)."""

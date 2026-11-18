@@ -1,5 +1,11 @@
 # Research status and handoff
 
+## Town party invitation notice — Cristian, 2026-11-18
+
+Ghidra and x86 disassembly confirmed the 5051 host summary and room fields.
+The server sends the corrected shape for town invitations. The wire fixture
+and multi-client headless party flow cover it. Live dialog verification is open.
+
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
 Major subsystems implemented, integrated, and verified with 155 automated tests:
