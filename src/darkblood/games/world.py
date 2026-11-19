@@ -366,29 +366,28 @@ class PartyManager:
         party.pending_invites.add(target_id)
         return 0, party
 
-    def accept_invite(self, target_id: int, host_id: int, target_name: str = '',
+    def accept_invite(self, target_id: int, party: Optional[Party], target_name: str = '',
                       target_class: int = 0, level: int = 1, session: any = None) -> Tuple[int, Optional[Party]]:
-        """Accept invite from host_id into host's party.
+        """Consume a pending invitation to the specified party.
 
         Returns (result_code, party):
             result 0: Success
             result 1: Party not found
             result 2: Party full
-            result 3: Target was not invited
+            result 3: Target has no usable invitation
         """
-        # host_id could be host's char_id or party_id
-        party = self.get_player_party(host_id) or self.get_party(host_id)
-        if party is None:
-            # Fallback/auto-create party for host_id if accepting an invite
-            party = self.create_party(host_id, f"Player_{host_id}", 0, 1, session=None)
-            party.pending_invites.add(target_id)
+        if party is None or self.get_party(party.party_id) is not party:
+            return 1, None
+        if target_id <= 0 or target_id not in party.pending_invites:
+            return 3, None
+        if self.get_player_party(target_id) is not None:
+            return 3, None
 
         if party.is_full():
             party.pending_invites.discard(target_id)
             return 2, None
 
-        party.pending_invites.discard(target_id)
-        self.leave_party(target_id)
+        party.pending_invites.remove(target_id)
 
         member = PartyMember(
             char_id=target_id,

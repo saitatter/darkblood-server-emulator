@@ -140,6 +140,13 @@
   showed `ElfHunter1(Offline)` and `Mage1(Offline)` in the two windows.
   Both live 5027 messages carried key 1. The clients stayed connected.
 
+## Party invitation acceptance — Cristian, 2026-11-20
+
+Acceptance through `2102` or `5054` now requires a pending invite in an
+existing party. A successful join consumes the invite. The headless flow
+covers both valid accept paths, an absent party, a missing invite, and a
+repeat acceptance. Live validation of the `5051` dialog remains open.
+
 ## Town peer rendering and movement verified — saita machine, 2026-11-20
 
 - Started the server with the 512-bit Fast correction. Live peer sends

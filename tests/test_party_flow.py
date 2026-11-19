@@ -190,6 +190,12 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 await client3.expect_event(2007)
                 await client3.expect_event(2410)
 
+                # Acceptance by host UID cannot create a party on its own.
+                client3.send_event(5054, PartyAcceptInviteReq(host_uid=char_id1).encode())
+                _, rejection = await client3.expect_event(5055)
+                self.assertNotEqual(PartyAcceptInviteAck.decode(rejection).result, 0)
+                self.assertIsNone(pm.get_player_party(char_id1))
+
                 # Drain 5021 join notifications from clients
                 # 1. Leader (Client 1) invites Client 2 via Opcode 2100 (eEGS_PARTY_INVITE_REQ)
                 client1.send_event(2100, PartyInviteReq(target_uid=char_id2).encode())
@@ -220,6 +226,12 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 self.assertEqual(party.leader_id, char_id1)
                 self.assertIn(char_id2, party.members)
 
+                # A known party ID is not an invitation to that party.
+                client3.send_event(2102, PartyJoinReq(party_id=party.party_id).encode())
+                _, rejection = await client3.expect_event(2103)
+                self.assertNotEqual(PartyJoinAck.decode(rejection).result, 0)
+                self.assertEqual(set(party.members), {char_id1, char_id2})
+
                 # 3. Leader invites Client 3 via Opcode 5049 (eERC_INVITE_REQ)
                 client1.send_event(5049, PartyInviteReq(target_uid=char_id3).encode())
                 _, ack5050 = await client1.expect_event(5050)
@@ -238,6 +250,10 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 # Party now has 3 members
                 self.assertEqual(len(party.members), 3)
                 self.assertIn(char_id3, party.members)
+                client3.send_event(5054, PartyAcceptInviteReq(host_uid=char_id1).encode())
+                _, replay = await client3.expect_event(5055)
+                self.assertNotEqual(PartyAcceptInviteAck.decode(replay).result, 0)
+                self.assertEqual(set(party.members), {char_id1, char_id2, char_id3})
 
                 # 4. Non-leader (Client 2) tries to kick Client 3 -> should be rejected
                 client2.send_event(2106, PartyKickReq(target_uid=char_id3, party_id=party.party_id).encode())

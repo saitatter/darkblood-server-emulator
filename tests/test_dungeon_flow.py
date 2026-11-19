@@ -109,10 +109,10 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5050 = await client.expect_event(5050)
             self.assertEqual(struct.unpack_from('<i', ack5050)[0], 0)
 
-            # 13. Party accept invite (5054 -> 5055)
+            # 13. Accepting without an invitation is rejected (5054 -> 5055).
             client.send_event(5054, struct.pack('<q', 12345))
             _, ack5055 = await client.expect_event(5055)
-            self.assertEqual(struct.unpack_from('<i', ack5055)[0], 0)
+            self.assertNotEqual(struct.unpack_from('<i', ack5055)[0], 0)
 
             # 14. Change team (5015 -> 5016)
             client.send_event(5015, struct.pack('<i', 1))

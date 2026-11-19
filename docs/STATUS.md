@@ -1,5 +1,11 @@
 # Research status and handoff
 
+## Party invitation acceptance — Cristian, 2026-11-20
+
+The server requires a pending invitation for `2102` and `5054` and consumes it
+on acceptance. Host and party IDs resolve through separate lookups. Valid joins,
+missing invitations, and repeated acceptance are covered headlessly.
+
 ## Standalone Server Assets and Client Data Elimination — 2026-11-20
 
 The server no longer requires external client Lua dictionaries (`darkblood-client-data` or `$DARKBLOOD_CLIENT_DATA`).

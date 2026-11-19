@@ -533,8 +533,10 @@ class SocialHandlers(BaseDomainService):
         level = char.get('level', 1) if char else 1
 
         pm = PartyManager.get()
-        host_ref = req.host_uid if req.host_uid else req.party_id
-        res, party = pm.accept_invite(char_id, host_ref, char_name, char_class, level, session=self)
+        party = pm.get_party(req.party_id) if req.party_id else pm.get_player_party(req.host_uid)
+        if req.host_uid and party and party.leader_id != req.host_uid:
+            party = None
+        res, party = pm.accept_invite(char_id, party, char_name, char_class, level, session=self)
         party_id = party.party_id if party else 0
         ack = PartyJoinAck(result=res, party_id=party_id).encode()
         await self.transport.send_event(event(2103, ack, correlation),
@@ -556,7 +558,10 @@ class SocialHandlers(BaseDomainService):
         level = char.get('level', 1) if char else 1
 
         pm = PartyManager.get()
-        res, party = pm.accept_invite(char_id, req.host_uid, char_name, char_class, level, session=self)
+        party = pm.get_player_party(req.host_uid)
+        if party and party.leader_id != req.host_uid:
+            party = None
+        res, party = pm.accept_invite(char_id, party, char_name, char_class, level, session=self)
         party_id = party.party_id if party else 0
         ack = PartyAcceptInviteAck(result=res, party_id=party_id).encode()
         await self.transport.send_event(event(5055, ack, correlation),
