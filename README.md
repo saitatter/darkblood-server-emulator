@@ -105,11 +105,23 @@ python -m unittest discover -s tests -v
 * Python 3.8+ (with `pefile` and `capstone`)
 * MSVC x86 build tools (Visual Studio Community 2022)
 
-The Cash Shop catalog is loaded by the server. By default, the server reads
-`lua_src/data/dict/item_cash.lua` from the `darkblood-client-data` directory
-beside this repository. If the extracted data is elsewhere, set
-`DARKBLOOD_CLIENT_DATA` to its root in the environment that starts the server.
-Players connecting to that server need no Cash Shop environment setting.
+### Cash Shop catalog
+
+The server reads its purchase catalog from `data/cash_shop.tsv` (or
+`$DARKBLOOD_DATA/cash_shop.tsv` when the server data directory is configured).
+Create a UTF-8 tab-separated file with the header `product_id`, `item_code`,
+`quantity`, then one row per product. Use the product IDs sent by the client.
+Restart the server after editing a loaded catalog. Offline purchases are free.
+
+To populate a new catalog from an existing local extraction, run
+`python tools/import_cash_shop.py`. The importer searches
+`lua_src/data/dict/item_cash.lua` under `DARKBLOOD_CLIENT_DATA` or the adjacent
+`darkblood-client-data` directory. It also accepts an explicit `--source` path
+and creates a new TSV without overwriting a catalog. Keep imported data local.
+
+Purchases use the TSV at runtime. Package and random box contents still use
+the optional extracted game data. Players connecting to the server need no
+Cash Shop configuration.
 
 ### 1. Build & Deploy Client Hook
 Build the x86 redirect hook with the game client closed:

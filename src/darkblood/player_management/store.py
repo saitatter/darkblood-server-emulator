@@ -5,8 +5,8 @@ import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from darkblood import REPO_ROOT
-from darkblood.player_management.characters import DATA, ensure_inventory
+from darkblood import DATA
+from darkblood.player_management.characters import ensure_inventory
 
 
 class ICharacterStore(ABC):

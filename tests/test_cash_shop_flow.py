@@ -1,32 +1,24 @@
 """Steam cash shop offline: 2712 -> unsolicited 2037 with the items + 2714."""
 import os
 import struct
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
-from darkblood.games.game_data import client_dict
-
-# Entry copied from the client's item_cash.lua (product 288).
-PRODUCT_LUA = '\n'.join([
-    'assert(DictCash:LoadProductList({', '  {', '    Best = 0,', '    Ggroup = 0,',
-    '    ItemCount = 1,', '    ItemID = "IRanCashEtc232",', '    New = 0,', '    OnSell = 1,',
-    '    Price = 2,', '    ProductID = 288,', '    Recommend = 22,', '    Sgroup = 4', '  }',
-    '}), "DictCash:LoadProductList")', ''])
+from darkblood.games.game_data import cash_shop, client_dict
 
 
 class CashShopFlowTest(ServerTestCase):
     def test_steam_init_buy_grants_items(self):
-        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
-        dict_dir.mkdir(parents=True, exist_ok=True)
-        path = dict_dir / 'item_cash.lua'
-        path.write_text(PRODUCT_LUA, encoding='utf-8')
-        client_dict.cash_products.cache_clear()
-        self.addCleanup(client_dict.cash_products.cache_clear)
-        self.addCleanup(path.unlink)
-        self.assertEqual(client_dict.cash_products()[288], ('IRanCashEtc232', 1, 2.0))
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        path = root / 'cash_shop.tsv'
+        cash_shop.load_catalog.cache_clear()
+        self.addCleanup(cash_shop.load_catalog.cache_clear)
 
         async def scenario(client):
             await lobby_flow(client)
@@ -38,11 +30,16 @@ class CashShopFlowTest(ServerTestCase):
 
             # Live 2712 body: prefix, SteamID, vector<u32> {288}.
             purchase = bytes.fromhex('ffffff7f0100000001001001108120010000')
-            with patch('darkblood.games.game_data.client_dict.cash_products', return_value={}):
-                client.send_event(2712, purchase)
-                _, ack = await client.expect_event(2714)
-                self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
+            client.send_event(2712, purchase)
+            _, ack = await client.expect_event(2714)
+            self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
 
+            path.write_text('product_id\titem_code\tquantity\n288\tIRanCashEtc232\t0\n', encoding='utf-8')
+            client.send_event(2712, purchase)
+            _, ack = await client.expect_event(2714)
+            self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
+
+            path.write_text('product_id\titem_code\tquantity\n288\tIRanCashEtc232\t1\n', encoding='utf-8')
             client.send_event(2712, purchase[:-4] + struct.pack('<I', 99999))
             _, ack = await client.expect_event(2714)
             self.assertEqual(struct.unpack_from('<I', ack)[0], 442)
@@ -62,7 +59,8 @@ class CashShopFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertIn('IRanCashEtc232', [i['code'] for i in char['items']])
 
-        self.run_async(self.with_server(scenario))
+        with patch.object(cash_shop, 'CATALOG_PATH', path), patch.dict(os.environ, DARKBLOOD_CLIENT_DATA=str(root)):
+            self.run_async(self.with_server(scenario))
 
     def test_cash_package_opens_into_bag(self):
         dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'

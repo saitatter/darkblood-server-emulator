@@ -4,15 +4,10 @@ Struct reader 0xA4AB30 (constructor 0x737BD0); offsets are in the client
 object. Field names are only given where the value was observed in a request
 or on screen; the rest are named by offset and sent as zero.
 """
-import os
 import struct
-from pathlib import Path
-from darkblood import REPO_ROOT
+
 from darkblood.core.serialization.jser import WireError, read_varuint
 from darkblood.games.entities.character import Character
-
-
-DATA = Path(os.environ.get('DARKBLOOD_DATA', REPO_ROOT / 'data'))
 
 
 def read_wide(data, offset):

@@ -1,5 +1,17 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Server Cash Shop catalog — saita machine, 2026-11-20
+
+- `2712` resolves product IDs through `data/cash_shop.tsv`, or through
+  the same file in `DARKBLOOD_DATA`. Missing and malformed catalogs return
+  result 24 with diagnostics in the server log.
+- `tools/import_cash_shop.py` imported 771 products into the local server
+  catalog. The private input and generated catalog remain outside Git.
+- All 171 tests passed. Isolated headless replay persisted the four captured
+  products (847, 760, 22 and 862) with the extracted-data path unavailable.
+  The active diagnostic server was left running while the clients were in use.
+- Cash package and random box contents still use the extracted game tables.
+
 ## Server compatibility cleanup — saita machine, 2026-11-20
 
 - The user confirmed that the cleanup covers Python server adapters. The
@@ -14,9 +26,6 @@
 - Town presence is indexed by square and layer. The relay reuses the
   serialized roster across recipients of each membership update. Client
   playback profiling and shared dungeon instance ownership remain open.
-- The Cash Shop catalog path is configured on the server machine only.
-  Its default is `darkblood-client-data` beside the repo. Remote clients
-  do not need `DARKBLOOD_CLIENT_DATA`.
 
 ## Quest abandonment and performance review — saita machine, 2026-11-20
 
