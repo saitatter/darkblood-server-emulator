@@ -3,6 +3,7 @@ import os
 import struct
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
@@ -36,7 +37,22 @@ class CashShopFlowTest(ServerTestCase):
             await client.expect_event(2007)
 
             # Live 2712 body: prefix, SteamID, vector<u32> {288}.
-            client.send_event(2712, bytes.fromhex('ffffff7f0100000001001001108120010000'))
+            purchase = bytes.fromhex('ffffff7f0100000001001001108120010000')
+            with patch('darkblood.games.game_data.client_dict.cash_products', return_value={}):
+                client.send_event(2712, purchase)
+                _, ack = await client.expect_event(2714)
+                self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
+
+            client.send_event(2712, purchase[:-4] + struct.pack('<I', 99999))
+            _, ack = await client.expect_event(2714)
+            self.assertEqual(struct.unpack_from('<I', ack)[0], 442)
+
+            with patch('darkblood.games.handlers.commerce.free_bag_slots', return_value=0):
+                client.send_event(2712, purchase)
+                _, ack = await client.expect_event(2714)
+                self.assertEqual(struct.unpack_from('<I', ack)[0], 67)
+
+            client.send_event(2712, purchase)
             _, items = await client.expect_event(2037)
             self.assertEqual(struct.unpack_from('<i', items)[0], 0)
             self.assertEqual(items[4:6], b'\x10\x81')

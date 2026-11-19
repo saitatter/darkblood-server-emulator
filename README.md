@@ -105,6 +105,10 @@ python -m unittest discover -s tests -v
 * Python 3.8+ (with `pefile` and `capstone`)
 * MSVC x86 build tools (Visual Studio Community 2022)
 
+The Cash Shop reads `lua_src/data/dict/item_cash.lua` from the
+`darkblood-client-data` directory beside this repository. Set
+`DARKBLOOD_CLIENT_DATA` to the extracted data root when it is elsewhere.
+
 ### 1. Build & Deploy Client Hook
 Build the x86 redirect hook with the game client closed:
 

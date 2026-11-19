@@ -197,25 +197,31 @@ class CommerceHandlers(BaseDomainService):
         # are USD), items go to the bag and reach the client through an
         # unsolicited 2037 (global handler 0x0077F570, owner -1), and 2714
         # closes the shop's purchase flow (page dispatcher 0x004DCCC0).
-        from darkblood.games.game_data.client_dict import cash_products
+        from darkblood.games.game_data.client_dict import cash_products, data_root
         req = SteamInitBuyItemNot.decode(body)
         products = cash_products()
-        rewards = [products[p][:2] for p in req.product_ids if p in products]
         char = self._shop_char()
-        stored = []
-        free = free_bag_slots(char) if char is not None else None
-        if free is not None and slots_needed(rewards) > free:
-            rewards = []  # bag full: refuse instead of storing past the bag's capacity
-        if char is not None and rewards:
-            stored = add_reward_items(char, rewards)
-            self.store().save()
-        if stored:
-            items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
-            await self.transport.send_event(event(2037, DragItemAck(result=0, items=items).encode()),
-                                            note='cash shop items (%s)' % ', '.join(i['code'] for i in stored))
-        ok = bool(stored)
-        await self.transport.send_event(event(2714, SteamFinalizeBuyItemAck(result=0 if ok else 1, applied=ok).encode()),
-                                        note='steam buy ack (products %s -> %d items)' % (req.product_ids, len(stored)))
+        if char is None:
+            result, reason = 1, 'no character'
+        elif not products:
+            result, reason = 24, f'cash catalog missing or empty: {data_root() / "item_cash.lua"}'
+        elif not req.product_ids or any(product not in products for product in req.product_ids):
+            result, reason = 442, 'unknown product'
+        else:
+            rewards = [products[product][:2] for product in req.product_ids]
+            free = free_bag_slots(char)
+            if free is not None and slots_needed(rewards) > free:
+                result, reason = 67, 'inventory full'
+            else:
+                stored = add_reward_items(char, rewards)
+                self.store().save()
+                items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
+                await self.transport.send_event(event(2037, DragItemAck(result=0, items=items).encode()),
+                                                note='cash shop items (%s)' % ', '.join(i['code'] for i in stored))
+                result, reason = 0, f'{len(stored)} items'
+        ack = SteamFinalizeBuyItemAck(result=result, applied=result == 0).encode()
+        await self.transport.send_event(event(2714, ack),
+                                        note=f'steam buy ack (products {req.product_ids}: {reason})')
 
     async def on_2713(self, correlation, body):
         # eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id,
