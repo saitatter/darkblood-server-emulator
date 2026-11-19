@@ -33,6 +33,7 @@ from darkblood.games.network.messages import (
     StartGameReq,
 )
 from darkblood.games.handlers.base import BaseDomainService
+from darkblood.games.network import results
 from darkblood.games.state import selected_character
 
 # The daily-claim sender refuses when owned or received coins reach 3.
@@ -397,7 +398,7 @@ class DungeonHandlers(BaseDomainService):
             return
         free = free_bag_slots(char)
         if free is not None and slots_needed([(code, 1)]) > free:
-            await self.transport.send_event(event(5068, PickUpItemResultAck(result=1, picker_uid=char['id']).encode()),
+            await self.transport.send_event(event(5068, PickUpItemResultAck(result=results.INVEN_FULL, picker_uid=char['id']).encode()),
                                             note='pick up item refused (bag full, drop %d)' % req.drop_uid)
             return
         del drops[req.drop_uid]

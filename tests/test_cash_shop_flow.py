@@ -74,7 +74,20 @@ class CashShopFlowTest(ServerTestCase):
             await client.expect_event(2007)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
-            char['items'] = [dict(code='CPkgTest', uid=50, container=bag, slot=0)]
+            filler = [dict(code='Ihppa0000', uid=60 + s, container=bag, slot=s) for s in range(1, 5)]
+            char['items'] = [dict(code='CPkgTest', uid=50, container=bag, slot=0)] + filler
+            session.GameSession.store().save()
+
+            # A full bag gets JERI_INVEN_05 (67, "Not enough space in inventory."),
+            # not 1 (JERI_NO_EXIST_CHAR, "Unavailable character.").
+            client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 50, 1))
+            _, ack = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 67)
+            client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 999, 1))
+            _, ack = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 63)  # JERI_INVEN_01
+            for item in filler:
+                char['items'].remove(item)
             session.GameSession.store().save()
 
             # Live 2038 shape: prefix + i64 uid + i32 count.

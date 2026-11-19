@@ -189,6 +189,38 @@ def free_cells(char):
             if (b['bag_id'], s) not in used]
 
 
+TEST_BAG_CODE = 'Ibaga0003'  # BagSize 20 in item_disposable.lua
+UI_BAG_SLOTS = 5               # bag bar slots w2a 0..4 (0x00557860)
+
+
+def grant_test_bags(char, code=TEST_BAG_CODE, size=20):
+    """Testing aid (GM /bags): every UI bag slot holds a `size`-cell bag.
+
+    Existing bags smaller than `size` become `code`; free UI slots get a new
+    bag. Bag ids avoid the equipment container 1, the reserved container 2
+    and ids already in use. Returns the number of bags added or enlarged.
+    The client reads bags from 2007, so the character must be selected again.
+    """
+    bags = char.setdefault('bags', [])
+    changed = 0
+    for bag in _inventory_bags(char):
+        if int(bag.get('b29', DEFAULT_BAG_CAPACITY)) < size:
+            bag.update(code=code, b29=size)
+            changed += 1
+    used_ids = {b['bag_id'] for b in bags} | {EQUIP_CONTAINER, 2}
+    used_slots = {int(b.get('w2a', 0xFFFF)) for b in _inventory_bags(char)}
+    for slot in range(UI_BAG_SLOTS):
+        if slot in used_slots:
+            continue
+        bag_id = next_item_uid(char)
+        while bag_id in used_ids:
+            bag_id = next_item_uid(char)
+        used_ids.add(bag_id)
+        bags.append({'bag_id': bag_id, 'code': code, 'b28': 0, 'b29': size, 'w2a': slot})
+        changed += 1
+    return changed
+
+
 def free_bag_slots(char):
     """Free cells over all equipped bags. None when there is no bag."""
     if not _inventory_bags(char):

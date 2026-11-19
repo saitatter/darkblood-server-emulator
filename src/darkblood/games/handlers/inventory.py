@@ -5,6 +5,7 @@ import struct
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.entities.items import Item, UPDATE_OWNER, EQUIPPED
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
     AssignQuickslotAck,
     AssignQuickslotReq,
@@ -179,14 +180,14 @@ class InventoryHandlers(BaseDomainService):
         items = char.get('items', [])
         used_item = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not used_item:
-            ack = UseItemAck(result=1).encode()
+            ack = UseItemAck(result=results.INVEN_ITEM_NOT_FOUND).encode()
             await self.transport.send_event(event(2039, ack, correlation), note='use item fail (not found)')
             return
         contents = self._cash_box_contents(used_item.get('code', ''))
         if contents:
             free = free_bag_slots(char)
             if free is not None and slots_needed(contents) > free:
-                ack = UseItemAck(result=1).encode()
+                ack = UseItemAck(result=results.INVEN_FULL).encode()
                 await self.transport.send_event(event(2039, ack, correlation),
                                                 note='use item fail (bag full: need %d, free %d)'
                                                 % (slots_needed(contents), free))
@@ -242,7 +243,7 @@ class InventoryHandlers(BaseDomainService):
         items = char.get('items', [])
         target_item = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not target_item:
-            ack = EquipItemAck(result=1).encode()
+            ack = EquipItemAck(result=results.INVEN_ITEM_NOT_FOUND).encode()
             await self.transport.send_event(event(2043, ack, correlation), note='equip item fail (not found)')
             return
 

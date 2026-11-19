@@ -321,6 +321,12 @@ class SocialHandlers(BaseDomainService):
                 add_reward_items(char, [(icode, icnt)])
                 self.store().save()
                 system_reply = f'[GM] Granted {icnt}x {icode}'
+            elif cmd == '/bags' and char:
+                from darkblood.player_management.characters import free_bag_slots, grant_test_bags
+                changed = grant_test_bags(char)
+                self.store().save()
+                system_reply = (f'[GM] {changed} bag(s) set to 20 cells, {free_bag_slots(char)} free. '
+                                'Select the character again to load them.')
 
         reply_msg = system_reply if system_reply else msg
         sender = 'System' if system_reply else char_name

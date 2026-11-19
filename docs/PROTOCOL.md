@@ -377,6 +377,31 @@ Item base field names come from `0x006741F0`: `+0` Amount, `+2` UpgStep, `+4` Qu
 If durability is <= 0 while the prop's max (`+0xBE`) is > 0, the item is broken (`0x00A49920`), and `0x009D89B0` leaves it out of the stat sum.
 `0x008354D0` ignores items whose container is 2, so bag ids must avoid 2 (as well as 1, which is the equipment).
 
+### ACK result codes and client error texts (saita machine, 2026-11-19; static + live)
+
+A nonzero `result` in 2039 (`0x0077D4C0`), 2043 (`0x007AE940`), 2045
+(`0x0078C4A0`) and 5068 (`0x0078AD80`) is passed to `0x00AB29C0`.
+`0x00AB2980` looks the code up in the std::map at `0x00F4BBBC`
+(code → `JERI_*` key, filled by the initializer `0x00AB3450`, inserts up to
+`0x00ABBA50`) and the key is resolved through
+`Data/Localization_ST/error_st.dat` (UTF-16, `key<TAB>text`) and shown as
+system message type `0xD`. Unknown codes show `Invalid value.` (`0x00D58C38`).
+
+- `assets/result_codes.tsv` lists all 497 codes (-2..494, no gaps), with
+  English text for 154. Regenerate with `tools/extract_result_codes.py`.
+- Code 1 is `JERI_NO_EXIST_CHAR` ("Unavailable character."). The server had
+  sent 1 as a generic failure. Live: a full bag on 2038 showed that text.
+- Checks: 206 (`0xCE`) = `JERI_ROUTER_00` "cannot find this character.", and
+  421 (`0x1A5`) = `JERI_FRIEND_BLOCK_00` "Currently blocked.", matching
+  meanings already used for 2140/2222.
+- Inventory: 62 `JERI_INVEN_00` no space for a bag, 63 `JERI_INVEN_01` item
+  not found, 67 `JERI_INVEN_05` "Not enough space in inventory.". The server
+  now sends 67 for a full bag (2039, 5068) and 63 for a missing item (2039,
+  2043). Constants: `src/darkblood/games/network/results.py`.
+- 2037 (`0x0077F570`) and 2070 (`0x0077E8E0`) do not call `0x00AB29C0`
+  directly. Their failure codes are unchanged and not verified.
+- Error-message display for the new codes is not live-verified yet.
+
 ## 6. Instrumentation and continuation addresses
 
 | Address / slot | Role |

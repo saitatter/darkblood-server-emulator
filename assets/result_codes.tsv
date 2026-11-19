@@ -1,0 +1,498 @@
+# code	key	text  (client result-code map 0x00F4BBBC, texts from error_st.dat; see tools/extract_result_codes.py)
+-2	JERI_CMD_DELETE_SESSION	
+-1	JERI_FAILED	
+0	JERI_OK	
+1	JERI_NO_EXIST_CHAR	Unavailable character.
+2	JERI_OVER_COUNT_CHAR	Exceeded the number of characters created.
+3	JERI_JOIN_FAIL_ROOM_FULL	There are no empty spots in this party.
+4	JERI_ALREADY_PLAY_GAME	This party is already playing.
+5	JERI_GATHERING_00	This item has been collected by another player.
+6	JERI_ALREADY_PICK_UP_ITEM	Already acquired by other user.
+7	JERI_ROOM_NOT_EXISTS	Invalid party.
+8	JERI_ARENA_ROOM_NOT_EXISTS	Combat room unavailable.
+9	JERI_WRONG_ROOM_PASSWORD	The password is incorrect. Please ty again.
+10	JERI_DUPLICATE_CONNECTION	
+11	JERI_BLOCKED_IDENTIFICATION	
+12	JERI_INVALID_STATE	Can't perform in the current position.
+13	JERI_FAILED_STATE_TRANSITION	
+14	JERI_NICK_00	Please check the length of the name of your character (1-8 Korean letters, 2-12 English letters).
+15	JERI_NICK_01	Invalid name.
+16	JERI_NICK_02	The name is already existed.
+17	JERI_NICK_03	Your character name must be in Korean and English.
+18	JERI_NICK_04	Korean can be used by syllables.
+19	JERI_NICK_05	You cannot use Korean and English at the same time.
+20	JERI_NICK_06	You may only use complete letters.
+21	JERI_NICK_07	Do not leave space between letters.
+22	JERI_INTERNAL_INVALID_UID	
+23	JERI_INTERNAL_DESERIALIZE_ERR	
+24	JERI_INTERNAL_QUERY_FAILED	Data processing has failed. Please try again.
+25	JERI_INTERNAL_FETCH_FAILED	
+26	JERI_INTERNAL_SP_FAILED	
+27	JERI_INTERNAL_INTERSERVER	
+28	JERI_INTERNAL_NO_HANDLER	
+29	JERI_SQUARE_LAYER_00	
+30	JERI_SQUARE_LAYER_01	
+31	JERI_SQUARE_LAYER_02	
+32	JERI_SQUARE_LAYER_03	
+33	JERI_SQUARE_LAYER_04	
+34	JERI_SQUARE_LAYER_05	
+35	JERI_SQUARE_LAYER_06	
+36	JERI_SQUARE_LAYER_07	
+37	JERI_SQUARE_LAYER_08	Failed to move as required level is not met.
+38	JERI_CHANGE_UDP_ADDRESS	
+39	JERI_SQUARE_00	
+40	JERI_SQUARE_01	
+41	JERI_SQUARE_02	
+42	JERI_SQUARE_03	
+43	JERI_SQUARE_04	
+44	JERI_SQUARE_05	
+45	JERI_SQUARE_06	
+46	JERI_NETWORK_00	
+47	JERI_START_GAME_FAIL_NOT_READY	
+48	JERI_NOT_ENOUGH_TIME_INTERVAL	Please try again.
+49	JERI_ALREADY_JOIN_CHAR	This character is already in a party.
+50	JERI_ALREADY_ARENA_JOIN_CHAR	Character is already in Arena.
+51	JERI_ALREADY_SEND_MSG	
+52	JERI_NOT_READY_P2P_CON	P2P connection is not complete yet.
+53	JERI_ALREADY_SELECT_DUNGEON	This room has already been moved to Dungeon Selection Window.
+54	JERI_NOT_OPERATOR	
+55	JERI_CHAT_00	No recipent was selected for this whisper.
+56	JERI_CHAT_01	Can't find a recipent for this whisper.
+57	JERI_CHAT_02	Please try again later.
+58	JERI_CHAT_03	Incorrect chat length.
+59	JERI_CHAT_04	Chatting is currently blocked.
+60	JERI_FAIL_AUTHENTICATE	
+61	JERI_FAILED_INVEN_INIT	
+62	JERI_INVEN_00	There is no empty space for a bag.
+63	JERI_INVEN_01	Can't locate the item in the inventory.
+64	JERI_INVEN_02	
+65	JERI_INVEN_03	
+66	JERI_INVEN_04	
+67	JERI_INVEN_05	Not enough space in inventory.
+68	JERI_INVEN_06	
+69	JERI_INVEN_07	
+70	JERI_INVEN_08	
+71	JERI_INVEN_09	
+72	JERI_INVEN_10	
+73	JERI_INVEN_11	
+74	JERI_INVEN_12	
+75	JERI_INVEN_13	
+76	JERI_INVEN_14	
+77	JERI_INVEN_15	
+78	JERI_INVEN_16	
+79	JERI_INVEN_17	
+80	JERI_INVEN_18	
+81	JERI_INVEN_19	
+82	JERI_INVEN_20	
+83	JERI_INVEN_21	
+84	JERI_INVEN_22	
+85	JERI_INVEN_23	
+86	JERI_INVEN_24	
+87	JERI_INVEN_25	
+88	JERI_INVEN_26	
+89	JERI_INVEN_27	
+90	JERI_INVEN_28	
+91	JERI_INVEN_29	
+92	JERI_INVEN_30	
+93	JERI_INVEN_31	You cannot wear this item and a two-handed weapon at the same time.
+94	JERI_INVEN_32	
+95	JERI_INVEN_33	
+96	JERI_INVEN_34	
+97	JERI_DEPOT_01	
+98	JERI_DEPOT_02	
+99	JERI_DEPOT_03	
+100	JERI_DEPOT_04	
+101	JERI_DEPOT_05	
+102	JERI_DEPOT_06	
+103	JERI_DEPOT_07	
+104	JERI_TRADE_00	
+105	JERI_TRADE_01	
+106	JERI_TRADE_02	
+107	JERI_TRADE_03	
+108	JERI_TRADE_04	
+109	JERI_TRADE_05	
+110	JERI_TRADE_06	
+111	JERI_TRADE_07	Not enough space in inventory.
+112	JERI_TRADE_08	This item is unexchangeable.
+113	JERI_TRADE_09	
+114	JERI_TRADE_10	
+115	JERI_TRADE_11	
+116	JERI_TRADE_12	
+117	JERI_TRADE_13	
+118	JERI_TRADE_14	
+119	JERI_ROOM_00	
+120	JERI_ROOM_01	
+121	JERI_ROOM_02	
+122	JERI_ROOM_03	
+123	JERI_ROOM_04	
+124	JERI_ROOM_05	
+125	JERI_ROOM_06	
+126	JERI_ROOM_07	
+127	JERI_ROOM_08	
+128	JERI_ROOM_09	
+129	JERI_ROOM_10	
+130	JERI_ROOM_11	
+131	JERI_ROOM_12	Level requirement not met.
+132	JERI_ROOM_13	
+133	JERI_ROOM_14	
+134	JERI_ROOM_15	
+135	JERI_ROOM_16	Admin and user cannot party up together.
+136	JERI_ROOM_17	There is a party member who is not ready
+137	JERI_ROOM_18	
+138	JERI_ROOM_19	Some party members don't have the required items to enter the dungeon.
+139	JERI_ROOM_20	
+140	JERI_ROOM_21	
+141	JERI_ROOM_22	
+142	JERI_ROOM_23	This dungeon is for a non active quest.
+143	JERI_ROOM_24	
+144	JERI_ROOM_25	You cannot enter this dungeon when your condition is zero.
+145	JERI_ROOM_26	
+146	JERI_ROOM_27	
+147	JERI_ROOM_28	cannot enter as there is a party member whose level is not satisfactory.
+148	JERI_ROOM_29	cannot enter as there is a user waiting to enter security code.
+149	JERI_ROOM_30	
+150	JERI_SKILL_00	
+151	JERI_SKILL_01	Skill lines should have at least 2 letters.
+152	JERI_SKILL_02	
+153	JERI_SKILL_03	
+154	JERI_SKILL_04	
+155	JERI_STORE_00	
+156	JERI_LACK_DAMAND_ITEM	
+157	JERI_OVER_LEVEL	Please try again.
+158	JERI_CHEAT00	
+159	JERI_CHEAT01	
+160	JERI_QUEST_00	
+161	JERI_QUEST_01	This is not an active quest for you.
+162	JERI_QUEST_02	
+163	JERI_QUEST_03	
+164	JERI_QUEST_04	
+165	JERI_NOT_ENOUGHT_COIN	
+166	JERI_BAD_DIE_STATE	
+167	JERI_NOT_HEAD_CS	
+168	JERI_NOT_ENOUGH_AR	
+169	JERI_NOT_PENALTY_STATE	
+170	JERI_BAD_CHEAT_INDEX	
+171	JERI_NO_OWNERSHIP_ITEM	You are not authorized to access this item.
+172	JERI_NO_MORE_TAKEN_ITEM	You can no longer acquire this item.
+173	JERI_NO_MORE_NEED_ITEM	You can no longer possess this item.
+174	JERI_QUEST_05	
+175	JERI_QUEST_06	
+176	JERI_QUEST_07	
+177	JERI_QUEST_08	
+178	JERI_QUEST_09	
+179	JERI_QUEST_10	
+180	JERI_QUEST_11	The current level of the character is lower than the level to enter this quest.
+181	JERI_QUEST_12	
+182	JERI_QUEST_13	
+183	JERI_QUEST_14	Not enough space in inventory.
+184	JERI_QUEST_15	
+185	JERI_QUEST_16	
+186	JERI_QUEST_17	
+187	JERI_QUEST_18	
+188	JERI_QUEST_19	
+189	JERI_QUEST_20	
+190	JERI_QUEST_21	
+191	JERI_QUEST_22	
+192	JERI_QUEST_23	
+193	JERI_QUEST_24	
+194	JERI_QUEST_25	
+195	JERI_QUEST_26	
+196	JERI_QUEST_27	Cannot accept quest because stress level is too high.
+197	JERI_QUEST_28	You have the item required to complete a quest in the storage.
+198	JERI_QUEST_29	
+199	JERI_DUEL_00	The character cannot be available to duel.
+200	JERI_DUEL_01	
+201	JERI_DUEL_02	You're not available to duel.
+202	JERI_DUEL_03	
+203	JERI_DUEL_04	
+204	JERI_DUEL_05	
+205	JERI_DUEL_06	This character is currently in a duel.
+206	JERI_ROUTER_00	cannot find this character.
+207	JERI_FRIEND_00	
+208	JERI_FRIEND_01	
+209	JERI_FRIEND_02	
+210	JERI_FRIEND_03	Invalid character name.
+211	JERI_FRIEND_04	This friend has already been added.
+212	JERI_FRIEND_05	User and Admin cannot register as friends.
+213	JERI_DURABILITY_00	
+214	JERI_DURABILITY_01	
+215	JERI_DURABILITY_02	
+216	JERI_SEAL_00	
+217	JERI_SEAL_01	
+218	JERI_SEAL_02	
+219	JERI_SEAL_03	
+220	JERI_GUILD_00	
+221	JERI_GUILD_01	
+222	JERI_GUILD_02	
+223	JERI_GUILD_03	
+224	JERI_GUILD_04	
+225	JERI_GUILD_05	You cannot create a guild if you are already in a guild.
+226	JERI_GUILD_06	Guild name already in use.
+227	JERI_GUILD_07	
+228	JERI_GUILD_08	This character has been already joined in a guild
+229	JERI_GUILD_09	
+230	JERI_GUILD_10	
+231	JERI_GUILD_11	
+232	JERI_GUILD_12	
+233	JERI_GUILD_13	
+234	JERI_GUILD_14	
+235	JERI_GUILD_15	
+236	JERI_GUILD_16	
+237	JERI_GUILD_17	Guild master cannot delete a character,disband guild, or change guild leader.
+238	JERI_GUILD_18	
+239	JERI_GUILD_19	
+240	JERI_GUILD_20	
+241	JERI_GUILD_21	
+242	JERI_GUILD_22	
+243	JERI_GUILD_23	
+244	JERI_GUILD_24	
+245	JERI_GUILD_25	
+246	JERI_GUILD_26	
+247	JERI_GUILD_27	You don't have enough Guild Points.
+248	JERI_GUILD_28	
+249	JERI_GUILD_29	
+250	JERI_GUILD_30	
+251	JERI_GUILD_31	
+252	JERI_GUILD_32	
+253	JERI_GUILD_33	
+254	JERI_GUILD_34	
+255	JERI_GUILD_35	
+256	JERI_GUILD_36	
+257	JERI_GUILD_37	It hasn't been a full day since you left a guild.
+258	JERI_GUILD_38	
+259	JERI_GUILD_39	
+260	JERI_GUILD_40	Exceeds the total amount of guild funds.
+261	JERI_KAIRO_00	
+262	JERI_KAIRO_01	
+263	JERI_KAIRO_02	
+264	JERI_KAIRO_03	
+265	JERI_KAIRO_06	
+266	JERI_UPGRADE_00	
+267	JERI_SKILL_05	
+268	JERI_SEAL_04	
+269	JERI_POST_00	The letter is too long.
+270	JERI_POST_01	Your storage box is full.
+271	JERI_POST_02	You cannot send mail to yourself.
+272	JERI_POST_03	Attached item not found.
+273	JERI_POST_04	
+274	JERI_POST_05	Normal users cannot exchange mail with Admin.
+275	JERI_POST_06	
+276	JERI_POST_07	This item cannot be traded.
+277	JERI_KAIRO_04	
+278	JERI_SKILL_06	
+279	JERI_FAILED_INVEN_UPDATE	
+280	JERI_SQUARE_LAYER_09	
+281	JERI_MAGIC_ENCHANT_00	
+282	JERI_MAGIC_ENCHANT_01	
+283	JERI_MAGIC_ENCHANT_02	
+284	JERI_MAGIC_ENCHANT_03	
+285	JERI_MAGIC_ENCHANT_04	
+286	JERI_MAGIC_ENCHANT_05	
+287	JERI_MAGIC_ENCHANT_06	
+288	JERI_MAGIC_ENCHANT_07	
+289	JERI_MAGIC_ENCHANT_08	
+290	JERI_BROKER_00	
+291	JERI_SUMMON_00	Summoning has been cancelled as layer condition is improper.
+292	JERI_SUMMON_01	May be used for characters and targets in the Square.
+293	JERI_DUEL_07	A normal user cannot request a GM for duel.
+294	JERI_DUN_REWARD_00	
+295	JERI_DYEING_00	
+296	JERI_DYEING_01	
+297	JERI_DYEING_02	
+298	JERI_DYEING_03	
+299	JERI_BROKER_01	This item has already sold. Please search again.
+300	JERI_BROKER_02	
+301	JERI_BROKER_03	
+302	JERI_BROKER_04	
+303	JERI_BROKER_05	
+304	JERI_BROKER_06	
+305	JERI_BROKER_07	
+306	JERI_BROKER_08	
+307	JERI_BROKER_09	
+308	JERI_BROKER_10	
+309	JERI_BROKER_11	
+310	JERI_BROKER_12	
+311	JERI_BROKER_13	Click item classification. \ncannot search all classes.
+312	JERI_USER_KICK_00	Disconnected by Admin.
+313	JERI_CRONOS_00	
+314	JERI_CRONOS_01	
+315	JERI_CRONOS_02	
+316	JERI_CRONOS_03	
+317	JERI_CASH_FC_COMMON_ERROR	
+318	JERI_CASH_FC_NOT_ENOUGH_CASH	
+319	JERI_KAIRO_05	
+320	JERI_SPIRIT_00	
+321	JERI_SPIRIT_01	
+322	JERI_SPIRIT_02	
+323	JERI_ARENA_00	
+324	JERI_ARENA_01	
+325	JERI_ARENA_02	Some members do not satisfy the sub-character conditions.
+326	JERI_NOT_ENOUGH_PVP_POINT	
+327	JERI_DUEL_08	
+328	JERI_DUEL_09	
+329	JERI_NOT_ENOUGH_SPACE	Not enough space.
+330	JERI_TAMEING_INVALID	
+331	JERI_INVALIED_TARGET	
+332	JERI_AVATAR_ZAM_NOT_ENOUGH_SLOT	
+333	JERI_NP_AUTH_FAIL	
+334	JERI_NP_AUTH_QUERY_FAIL	
+335	JERI_NP_FIND_HACK	Game guard has detected a hacking tool.
+336	JERI_PERSONALSHOP_REMAIN_DATE	
+337	JERI_AR_MAX	
+338	JERI_AR_TRADE	
+339	JERI_AR_POSSESS	
+340	JERI_COMMON_INVALID_ACTION	
+341	JERI_ROULETTE_NOT_ENOUGHT_POINT	
+342	JERI_PERSONALSHOP_CLOSED	
+343	JERI_CHAT_INVALID_STATE	
+344	JERI_STATE_INVALID_PLACE	
+345	JERI_UPGRADE_INVALID_ITEM	
+346	JERI_POST_LIMIT_SEND_COUNT	
+347	JERI_BILLING_ALREADY_BUYING	
+348	JERI_NOT_ENOUGH_CASH	
+349	JERI_DEPOT_MAX_EXPEND	
+350	JERI_INVALID_ITEMLEVEL	
+351	JERI_MEMEBER_X_00	
+352	JERI_MEMEBER_E_01	
+353	JERI_MEMEBER_I_02	
+354	JERI_MEMEBER_P_03	
+355	JERI_MEMEBER_B_04	
+356	JERI_MEMEBER_A_05	
+357	JERI_MEMEBER_G_06	
+358	JERI_MEMEBER_C_07	
+359	JERI_MEMEBER_D_08	
+360	JERI_MEMEBER_T_09	
+361	JERI_FAIL_SECOND_PASS_MODIFY	
+362	JERI_FAIL_SECOND_PASS_AUTH	
+363	JERI_BILLING_MAXCNT	
+364	JERI_ZAM_DUPLICATE_BUFF	
+365	JERI_ARENA_UNBALANCED_TEAM	You cannot start until the team formation is matched.
+366	JERI_DYEING_INVALID_OPT	
+367	JERI_ARENA_READY_STAT	
+368	JERI_SECOND_PASS_TEN_FAIL	
+369	JERI_ARENA_TEAM_NOT_EXISTS	
+370	JERI_CODE_S_BAN	
+371	JERI_CODE_S_TIME_OUT	
+372	JERI_VERIFY_STAT_BAN	
+373	JERI_VERIFY_STAT_TIME_OUT	
+374	JERI_BEAUTY_00	
+375	JERI_BEAUTY_01	
+376	JERI_ARENA_INVALID_SLOT	
+377	JERI_COMMON_NO_AUTHENTICATE	Not authorized.
+378	JERI_SUB_CHAR_LEVEL	
+379	JERI_ARENA_ALREADY_DIED	
+380	JERI_SKILL_INVALID_INIT	
+381	JERI_SKILL_INVALID_LV_DOWN	
+382	JERI_GUILD_NO_PERSON	
+383	JERI_AVATAR_COMPOSE_01	
+384	JERI_AVATAR_COMPOSE_02	
+385	JERI_AVATAR_COMPOSE_03	
+386	JERI_AVATAR_COMPOSE_04	
+387	JERI_AVATAR_COMPOSE_05	
+388	JERI_AVATAR_COMPOSE_06	
+389	JERI_PERIOD_INFINITE	
+390	JERI_OVER_COUNT_CHAR_LIMIT	
+391	JERI_RANDOM_MATCHING_FAILED_00	
+392	JERI_PERIOD_OVER	
+393	JERI_ARENA_INVALID_DISCONNECT	
+394	JERI_COIN_DAILY_CHARGE_OVER	
+395	JERI_COIN_NOT_ENOUGH_CONDITION	
+396	JERI_GUILD_41	Commander can only assign 1 person.
+397	JERI_SIEGE_WARFARE_01	No available siege room.
+398	JERI_SIEGE_WARFARE_02	
+399	JERI_SIEGE_WARFARE_03	
+400	JERI_CRONOS_STAMP_01	
+401	JERI_ARENA_TARGET_NO_AUTH	The user is not authorized to enter duel in this mode.
+402	JERI_ARENA_NO_INVITE_AUTH	No authorization to send an invitation
+403	JERI_PET_01	
+404	JERI_PET_02	
+405	JERI_PET_03	
+406	JERI_PET_04	
+407	JERI_PET_05	
+408	JERI_HACKDOUBT_01	This action is currently unavailable.
+409	JERI_OVER_COUNT_JUMPING_CHAR	
+410	JERI_ITEM_COOLTIME_01	
+411	JERI_CONNECT_01	You are attempting to connect from one of the restricted areas.
+412	JERI_LEAGUE_IS_NOT_NEW_RANK	
+413	JERI_FISHING_00	
+414	JERI_FISHING_01	
+415	JERI_FISHING_02	
+416	JERI_FISHING_03	
+417	JERI_FISHING_04	You need more bait.
+418	JERI_FISHING_05	You didn't catch anything.
+419	JERI_STRESS_DECREASE	
+420	JERI_LEAGUE_ARENA_CHAR_STAT_00	
+421	JERI_FRIEND_BLOCK_00	Currently blocked.
+422	JERI_FRIEND_BLOCK_01	
+423	JERI_SELECT_CHAR_01	This character is currently blocked.
+424	JERI_AVATAR_LOOK_01	
+425	JERI_AVATAR_LOOK_02	
+426	JERI_AVATAR_LOOK_03	
+427	JERI_AVATAR_LOOK_04	
+428	JERI_TREASURE_00	You can no longer farm.
+429	JERI_TREASURE_01	There are no more items to process
+430	JERI_TREASURE_02	Once the scheduled time has passed, processing can be done again.
+431	JERI_SBB_01	
+432	JERI_SBB_02	
+433	JERI_ZAM_SEPARATE_00	Not enough item to unequip Gem from Avatar.
+434	JERI_MONSTERCARD_00	Failed to initialize card data.
+435	JERI_MONSTERCARD_01	This card does not exist.
+436	JERI_MONSTERCARD_02	You do not have this card.
+437	JERI_MONSTERCARD_03	Failed to bring combine Card data.
+438	JERI_MONSTERCARD_04	This card is already in use.
+439	JERI_MONSTERCARD_05	Other character is using this card currently.
+440	JERI_MONSTERCARD_06	Not enough room in card inventory.
+441	JERI_MONSTERCARD_07	Card inventory cannot be expanded.
+442	JERI_REQUEST_ITEM_01	This item does not exist.
+443	JERI_MARK_00	Should reach at required level to increase slots of the slate.
+444	JERI_MARK_01	This rune item can’t be equipped in
+445	JERI_MARK_02	Not enough Slate slots to equip Runes.
+446	JERI_MARK_03	Cannot equip Runes having same effects.
+447	JERI_MARK_04	Cannot equip Runes in unactivated slots of slate
+448	JERI_CHAR_LEVEL_00	Not enough level to use this option.
+449	JERI_INDULGENCE_00	Cannot complete Quest because stress level is too high.
+450	JERI_UPGRADE_LIMIT_LEVEL	
+451	JERI_MONSTERCARD_08	Can't reach to relevant points yet.
+452	JERI_MONSTERCARD_09	You already received this item.
+453	JERI_MONSTERCARD_10	Not enough cards to register.
+454	JERI_MONSTERCARD_11	Cannot register Lottery Ticket anymore.
+455	JERI_MONSTERCARD_12	Card Event period is not now.
+456	JERI_MONSTERCARD_13	This is not the time to register Lottery Ticket.
+457	JERI_MONSTERCARD_14	You failed to win at this time.
+458	JERI_MONSTERCARD_15	You already received the reward for the winning Lottery Ticket.
+459	JERI_MARK_05	No available slots to equip Skill Rune
+460	JERI_MARK_06	No available slots to equip Normal Rune
+461	JERI_MARK_07	Cannot equip Normal Runes in the Skill Rune Slot or Skill Runes in the Normal Rune Slot.
+462	JERI_MONSTERCARD_16	This is not the time to receive rewards.
+463	JERI_TEACHING_00	Currently cannot request for Apprentice.
+464	JERI_TEACHING_01	Cannot request to be Senior Knight.
+465	JERI_TEACHING_02	Cannot enter into Apperentice relationship with this chracter.
+466	JERI_TEACHING_03	You are not qualified for Senior Knight.
+467	JERI_EXPLORE_01	Not enough space in Exploration Inventory.
+468	JERI_EXPLORE_02	Character that is exploring cannot go to explore again.
+469	JERI_EXPLORE_03	This character is not exploring now.
+470	JERI_EXPLORE_04	This character has already returned by force.
+471	JERI_EXPLORE_05	The number of available character to explore has exceeded.
+472	JERI_EXPLORE_06	Not high enou level to explore.
+473	JERI_EXPLORE_07	You cannot go exploring by yourself.
+474	JERI_EXPLORE_08	Not enough items to enter for the exploring.
+475	JERI_EXPLORE_09	Not enough Stress.
+476	JERI_EXPLORE_10	The character that is exploring cannot log in.
+477	JERI_TEACHING_04	There is no characters to summon.
+478	JERI_TEACHING_05	Needs more time to re-summon.
+479	JERI_TEACHING_06	This character cannot accept the request for apprentice training currently.
+480	JERI_TEACHING_07	Daily supplies can only be sent once a day.
+481	JERI_FIX_UPGRADE_00	You exceeded available range to reinforce by this item.
+482	JERI_FIX_UPGRADE_01	Cannot use on same item anymore.
+483	JERI_FIX_UPGRADE_02	Cannot seal items that are reinforced by a special item.
+484	JERI_GUILD_42	Only Master and Assistant Master can bid.
+485	JERI_GUILD_43	It is smaller than the Highest Bidding Point or same.
+486	JERI_GUILD_44	In the Highest Bidding condition, cannot collect.
+487	JERI_GUILD_45	The bidding window is now closed.
+488	JERI_BROKER_14	
+489	JERI_STRING_00	You cannot use curse words in your sentense.
+490	JERI_VERSION_00	The version between server and client is not matched
+491	JERI_BILLING_GIFT_NOT_AVAILABLE	
+492	JERI_BILLING_VIP_SERVICE_MAX	
+493	JERI_BILLING_VIP_ONLY	
+494	JERI_FAIL_AUTHENTICATE_00	
