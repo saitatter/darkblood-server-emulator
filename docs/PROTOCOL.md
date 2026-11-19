@@ -160,7 +160,7 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | Daily rebirth coin | 2448 `eEGS_DAILY_REBIRTH_COIN_USE_REQ` | 2449 `eEGS_DAILY_REBIRTH_COIN_USE_ACK` | `0x0079DC70`: i32 result, u16 daily_count, i32 remain_pcbang | Verified |
 | Level up notification | — | 5087 `eERC_LEVEL_UP_NOT` | `0x0078CCF0`: tag `0x1E` + tag `0x0D` (count 0) + i64 char_uid + u8 level + i32 hp + i32 mp + bool flag | Verified |
 | Exp notification | — | 5086 `eERC_CHANGE_EXP_NOT` | `0x0078D170`: i32 nExpTotal + tag `0x1E` jGainExp (8 x i32 + 1 x f32) | Verified |
-| Spatial Movement | 5030 / 5031 `eERC_USER_MOVE_NOT` (i64 char_id, 4 × f32 x/y/z/angle, i32 move_state) | 5031 `eERC_USER_MOVE_NOT` | Spatial position update decoded and broadcast to other connected square occupants | Verified |
+| Town layer membership | 5030 `eERC_JOIN_LAYER_REQ` (i32 prefix, u64 layer UID) | 5031 `eERC_JOIN_LAYER_ACK` | Layer changes confirmed on two live clients. Position updates use peer messages. | Layer change verified |
 | Square presence join | — | 5021 `eERC_USER_JOIN_SQUARE_NOT` | `i64 char_id, i32 square_id, 4 × f32 x/y/z/angle, u8 class, u8 level, wstr name`: broadcast to square occupants | Verified |
 | Square presence leave | — | 5022 `eERC_USER_LEAVE_SQUARE_NOT` | `i64 char_id, i32 reason`: broadcast to square occupants upon departure or disconnect | Verified |
 | Party invite | 2100 / 5049 `eEGS_PARTY_INVITE_REQ` (i64 target_uid / wstr name) | 2101 / 5050 `eEGS_PARTY_INVITE_ACK` | `0x00758700`: i32 result | Verified |
@@ -523,8 +523,8 @@ announcing the replacement. A three-connection headless test covers these
 transitions and relay isolation.
 
 The two live relay clients exchange matching `0x32`/ `0x33` control payloads
-inside `0x15` / `0x19` reliable relay envelopes. The observed client send
-path calls `0x00B53310` through vtable slot `+0x30` after encryption and
+inside `0x15` / `0x19` reliable relay envelopes. In the disassembly, the
+client send path calls `0x00B53310` through vtable slot `+0x30` after encryption and
 returns its send status through `0x00B763D3`. Receipt of control messages
 establishes reliable peer transport. Town user messages and rendering
 remain open.

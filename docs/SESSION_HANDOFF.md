@@ -3,9 +3,10 @@
 ## Relay character binding and peer-send trace — saita machine, 2026-11-19
 
 - Continued from `4845213`. Both multibox clients were connected to the game
-  and relay listeners. The running server and clients were left open. Checked
-  both the packed executable and the analysis fixture against the hashes in
-  `docs/STATUS.md`.
+  and relay listeners at the start. The initial server later stopped while
+  both windows remained open. Started the updated server with
+  `python tools/gamectl.py start --server-only`. Checked both the packed
+  executable and the analysis fixture against the hashes in `docs/STATUS.md`.
 - The live pair used character UIDs 2 and 3 and relay HostIDs 20 and 21.
   The `0x00B761C2`/ `0x00B76229` sample for destination HostID 20 shows a
   non-null session key and a successful reliable encryption counter lookup.
@@ -24,15 +25,17 @@
   carried positive values, including captured kind-2 joins. The current pair
   was already mapped correctly, so this is a separate correctness fix.
 - All 173 headless tests pass. The three-connection relay test now binds from
-  the wire and covers changing character on one TCP connection. The running
-  server still has its earlier code loaded.
+  the wire and covers changing character on one TCP connection. The updated
+  server listens on both local ports; the new code awaits a two-client replay.
 - Next trace: `0x00B762AC` tests the encryption result, `0x00B763D3` stores
   the result returned by routing, and `0x00B53DB3` is the routing failure branch.
   The verified breakpoint profile is saved locally as
   `research/client/bp.txt.peer-send-next` for the next controlled client launch.
   Static outputs are `research/resume-send-routing.c` and
-  `research/resume-peer-message.c`. The REA MCP Ghidra provider lacked
-  configuration, so focused Ghidra and Capstone supplied the static evidence.
+  `research/resume-peer-message.c`. The configured REA CLI retained the
+  `0x00B76050` dossier in `research/resume-send-rea.json`
+  (evidence `ev_b37f701827abdc6dcf4ffa8f1ddd71e5c0c1e1f37ddf1b1eefec9a1f3cd96e96`).
+  Capstone confirmed the instruction boundaries for the next trace.
 
 ## Town peer visibility trace — saita machine, 2026-11-19 (live breakpoints)
 

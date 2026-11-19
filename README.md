@@ -19,8 +19,8 @@ The project allows playing the original client offline via a local server (`127.
 * **Adult Blood Effect**: Unlocked and ungrayed in options menu (`m_bAdultUser = True` in welcome 5020).
 
 ### 3. World & Town Gameplay
-* **Town Presence**: Town square loading (Northern Elwood, etc.), character positioning, movement synchronization, and chat broadcasts.
-* **Multi-Client World Presence**: Simultaneous multi-client presence in town with mutual player spawn/despawn broadcasts.
+* **Town Play**: Town square loading (Northern Elwood, etc.), local character movement, and chat broadcasts.
+* **Multi-Client World Presence**: The server sends mutual spawn/despawn notices and routes peer control traffic. Rendering other players and synchronizing movement are in progress.
 * **Channel & Layer Transitions**: Switching between channels and field layers cleanly.
 
 ### 4. Dungeons, Combat & Quests
@@ -88,7 +88,7 @@ src/darkblood/
 
 ## Automated Test Suite
 
-The emulator includes a comprehensive headless integration and unit test suite (**126 passing tests**) testing complete network handshakes and protocol flows without launching graphics windows:
+The emulator includes **173 headless integration and unit tests** for network handshakes and protocol flows without launching graphics windows:
 
 ```bash
 python -m unittest discover -s tests -v
