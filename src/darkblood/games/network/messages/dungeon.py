@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import struct
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
+from darkblood.core.serialization.jser import JSerBufferReader, WireError, read_varuint, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 
@@ -91,6 +91,44 @@ class ChangeMapCodeAck:
 
     def encode(self) -> bytes:
         return struct.pack('<I', self.result) + wide_string(self.map_code) + struct.pack('<?', self.flag)
+
+@dataclass
+class StartGameReq:
+    """Opcode 5013: i32 request prefix followed by the dungeon map code."""
+
+    map_code: str
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'StartGameReq':
+        reader = JSerBufferReader(data, offset=4)
+        length = reader.read_varuint()
+        map_code = reader.read_bytes(length).decode('utf-16le')
+        if not map_code or '\x00' in map_code:
+            raise WireError('Missing or invalid dungeon map code')
+        return cls(map_code)
+
+
+@dataclass
+class StartGameAck:
+    """Opcode 5014, reader 0x007880A0. Errors contain only the result.
+
+    Success reads a u16 and u32, a J-wstring, maps 0x004B8B80, 0x0064E7D0
+    and 0x004B7550, then an inventory update vector via 0x004B94C0. The
+    scalar defaults and empty maps preserve the verified single-player reply.
+    """
+
+    result: int = 0
+    map_code: str = ''
+    item_updates: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        if self.result:
+            return struct.pack('<I', self.result)
+        return (struct.pack('<IHI', 0, 0, 0) + wide_string(self.map_code)
+                + (b'\x17' + varuint(0)) * 3
+                + b'\x10' + varuint(len(self.item_updates))
+                + b''.join(item.encode() for item in self.item_updates))
+
 
 @dataclass
 class ChangeDungeonLayerNot:

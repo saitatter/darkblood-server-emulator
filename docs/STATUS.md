@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Dungeon start ACK readers — Cristian, 2026-11-18
+
+Ghidra and x86 disassembly identify the 5014 inventory vector and the three
+outer map reader chains. Two maps apply data to peers by character ID. See
+`docs/PROTOCOL.md` for addresses and limits. Invalid 5013 map strings now get a
+result-only error. Co-op entry and live validation of the error remain open.
+
 ## Party retention and overlapping reconnect cleanup — Cristian, 2026-11-18
 
 Source review found that square re-registration removed party membership and that an

@@ -2,7 +2,7 @@ import struct
 import time
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import WireError, event, read_varuint, varuint, wide_string
+from darkblood.core.serialization.jser import WireError, event, read_varuint
 from darkblood.frontend.relay import RELAY_PORT
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
@@ -29,6 +29,8 @@ from darkblood.games.network.messages import (
     RebirthCoinChangeNot,
     RoomInfoListAck,
     SelectDungeonAck,
+    StartGameAck,
+    StartGameReq,
 )
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.state import selected_character
@@ -92,24 +94,14 @@ class DungeonHandlers(BaseDomainService):
                                         note='change mapcode ack (%s)' % code)
 
     async def on_5013(self, correlation, body):
-        # eERC_START_GAME_REQ -> eERC_START_GAME_ACK (5014), handler 0x7880A0.
-        # Success reader: u16, u32, J-wstring (0xB35AB0), three 0x17 maps,
-        # then a 0x10 vector (0x78836B -> 0x4B94C0). Scalar/string type
-        # codes are not wire tags; empty lengths use the terminal byte 0x80.
-        # The J-wstring is the map code: 0x788539 resolves it with 0x98E630
-        # and dereferences the result (+0x28), so an empty/unknown code
-        # crashes. The request (sender observed live) is ffffff7f + J-wstring
-        # map code ("Act1_G1_A10"); echo it. Other field meanings and nonempty
-        # entries still need recovery.
-        code = ''
         try:
-            length, offset = read_varuint(body, 4)
-            code = body[offset:offset + length].decode('utf-16le')
+            request = StartGameReq.decode(body)
         except (WireError, UnicodeDecodeError):
-            pass
-        ack = (struct.pack('<IHI', 0, 0, 0) + wide_string(code)
-               + (b'\x17' + varuint(0)) * 3 + b'\x10' + varuint(0))
-        await self.transport.send_event(event(5014, ack, correlation),
+            # The success path assumes the map code resolves to a client property.
+            ack = StartGameAck(result=1)
+        else:
+            ack = StartGameAck(map_code=request.map_code)
+        await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
 
     async def on_5095(self, correlation, body):

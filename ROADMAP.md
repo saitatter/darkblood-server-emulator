@@ -123,6 +123,8 @@ Final objective: launch without the original services, establish a local session
     locally on Cristian's machine, 2026-11-18, live verification pending).
 - [ ] **Co-op Dungeon Instances**:
   - Synchronize party dungeon entry so all party members enter the same dungeon instance.
+  - Recover room join 5003/5004 and verify how clients populate 5014's peer maps.
+    The three map readers and the local inventory vector are documented in `docs/PROTOCOL.md`.
   - Synchronize monster health, damage numbers, and boss cinematic triggers across party members.
   - Shared party rank calculation and card reward selection at dungeon finish.
 

@@ -2,13 +2,31 @@
 import struct
 import unittest
 
-from tests.common import ServerTestCase, create_request, lobby_flow
+from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.core import hashing
 from darkblood.games import session
 from darkblood.games.state import selected_character
 
 
 class DungeonFlowTest(ServerTestCase):
+    def test_start_game_replies_with_map_or_result_only(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            prefix = struct.pack('<I', 0x7fffffff)
+            map_code = wide('Act1_G1_A10')
+            for payload in (prefix + wide(''), prefix + map_code[:-2], prefix + b'\x81A'):
+                client.send_event(5013, payload, correlation=42)
+                correlation, error = await client.expect_event(5014)
+                self.assertEqual(correlation, 42)
+                self.assertEqual(error, bytes.fromhex('01000000'))
+
+            client.send_event(5013, prefix + map_code, correlation=43)
+            correlation, success = await client.expect_event(5014)
+            self.assertEqual(correlation, 43)
+            self.assertEqual(success, b'\x00' * 10 + map_code + bytes.fromhex('1780178017801080'))
+
+        self.run_async(self.with_server(scenario))
+
     def test_dungeon_and_combat_lifecycle(self):
         async def scenario(client):
             await lobby_flow(client)

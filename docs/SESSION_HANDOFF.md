@@ -1,5 +1,25 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Dungeon start readers — Cristian, 2026-11-18
+
+- Verified the client hash before examining opcode 5014 in Ghidra and x86
+  disassembly. The final collection is an inventory update vector. The first
+  and third maps target peers by character ID. The second map's value reader
+  is `0x00A52CF0`, with semantics still open. See `docs/PROTOCOL.md` for the
+  reader chains and local evidence.
+- The server now returns a result-only 5014 error for missing or malformed
+  map codes. The valid solo response retains its established wire layout.
+  The headless test exercises both paths. Live verification remains open.
+- Fix `18430d4` is in PR #6 on `fix/dungeon-start-map`. All 165 headless
+  tests passed on that branch. The run reported socket warnings also seen
+  on the baseline. The party and reconnect fix is in the separate PR #5.
+- Ghidra ran headless on this machine, and REA used the same local fixture
+  through MCP. The saved REA evidence is `research/dungeon-5014-rea-evidence.json`.
+  Focused decompiler output is in `research/dungeon-5014-*.c`. These files
+  stay local under the ignored `research/` directory.
+- Co-op entry still needs the room join exchange 5003/5004 and evidence for
+  which peer data should populate the maps at the start of a shared room.
+
 ## Cristian pause — 2026-11-18 (analysis and test tooling)
 
 - Ghidra 12.2 and the REA CLI and MCP tools are available locally. The static
