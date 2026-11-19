@@ -1,5 +1,19 @@
 # Research status and handoff
 
+## Town peer sends — saita machine, 2026-11-19
+
+Two connected clients exchanged ProudNet `0x32`/ `0x33` control messages inside
+reliable relay frames. A peer send reached key and reliable-counter lookup
+successfully, but the game send caller still saw zero and the captured relay
+stream had no encrypted peer movement payload. Town characters remain
+invisible to one another. The next trace distinguishes payload encryption
+from the subsequent transport send.
+
+JoinGroup now uses the character UID in its payload, removing the dependency
+on game selection order. The same connection can change characters, and a
+leave for the former character preserves its replacement. All 173 headless
+tests passed. The patch remains pending launch against the live clients.
+
 ## Relay group isolation — Cristian, 2026-11-19
 
 Town joins now use the observed square and layer identifiers for relay

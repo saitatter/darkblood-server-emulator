@@ -16,7 +16,7 @@ Final objective: launch without the original services, establish a local session
 | **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot |
 | **P4: Assets & Config** | JPK unpacker, LUA tables, dictionaries | **In Progress (~80%)** | Validated decoder, store/quest/stat/cash/monster tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
-| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress (~85%)** | Spatial movement sync (5030/5031), join/leave (5021/5022), party subsystem (2100-2107, 5049-5056) verified; co-op dungeon instances next |
+| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress** | Town layer membership and reliable relay control traffic observed live. Town peer rendering, movement, and co-op dungeon instances remain open. |
 | **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **Verified (~95%)** | P2P trade, full mailbox with attachments, depot AR/slots, player stalls & broker marketplace live |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
 | **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode registry | **Verified (100%)** | 164 tests; pure composition `PacketDispatcher` & `BaseDomainService`; opcode registry (501 entries) |
@@ -110,13 +110,16 @@ Final objective: launch without the original services, establish a local session
 ## New Milestones
 
 ### P6 — Multiplayer, Party & P2P Relay Synchronization
-- [x] **Multi-client Square Synchronization**:
-  - Broadcast player position, rotation, and animation state to nearby players in the same square/layer (`5030/5031 eERC_USER_MOVE_NOT`).
+- [ ] **Multi-client Square Synchronization**:
+  - Resolve peer rendering and movement. Live `5030/5031` changes the layer,
+    and town position traffic uses the peer transport.
   - Handle player join notification (`5021 eERC_USER_JOIN_SQUARE_NOT`) and player leave notification (`5022 eERC_USER_LEAVE_SQUARE_NOT`).
-  - Relay groups follow the requested square and layer. Verify the combined
-    game and relay flow with two live clients crossing between subareas.
+  - Live clients crossed between layers and exchanged reliable relay control
+    frames. The relay now binds group membership to the request's character
+    UID. Character rebinding is verified headlessly.
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
-  - Verify two live clients after the `5030` layer routing and `5039` departure fix.
+  - Capture the encryption and routing returns from the client peer-send
+    path at `0x00B762AC` and `0x00B763D3`.
 - [x] **Party System**:
   - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).
   - Party join, leave, and kick (`2102/2103 eEGS_PARTY_JOIN`, `5054/5055 eERC_ACCEPT_INVITE`, `5056 ACCEPT_INVITE_NOT`, `2104/2105 LEAVE`, `2106/2107 KICK`).

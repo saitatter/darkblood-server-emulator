@@ -1,5 +1,39 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Relay character binding and peer-send trace — saita machine, 2026-11-19
+
+- Continued from `4845213`. Both multibox clients were connected to the game
+  and relay listeners. The running server and clients were left open. Checked
+  both the packed executable and the analysis fixture against the hashes in
+  `docs/STATUS.md`.
+- The live pair used character UIDs 2 and 3 and relay HostIDs 20 and 21.
+  The `0x00B761C2`/ `0x00B76229` sample for destination HostID 20 shows a
+  non-null session key and a successful reliable encryption counter lookup.
+  The town send caller at `0x0095C340` still saw zero. The two processes share
+  the hook log, so the capture cannot correlate every send with its internals.
+- In `logs/wire.jsonl` around 23:14:13 local time, each client responds to
+  the other's `0x32` with a `0x33` carrying the same eight bytes. These are
+  inner frames carried in raw `0x15` receives. The server intentionally skips
+  separate `message` entries for `0x15`. This establishes that the reliable
+  relay can carry control traffic between the two clients. The sampled period
+  contained no relayed encrypted user message for town movement.
+- The relay now binds each group join to the trailing character UID from RMI
+  1001. It also checks that UID on RMI 1002, so a stale leave cannot remove a
+  different character using the same connection. This removes the global
+  selection FIFO. All reviewed joins and leaves after the local-UID fix
+  carried positive values, including captured kind-2 joins. The current pair
+  was already mapped correctly, so this is a separate correctness fix.
+- All 173 headless tests pass. The three-connection relay test now binds from
+  the wire and covers changing character on one TCP connection. The running
+  server still has its earlier code loaded.
+- Next trace: `0x00B762AC` tests the encryption result, `0x00B763D3` stores
+  the result returned by routing, and `0x00B53DB3` is the routing failure branch.
+  The verified breakpoint profile is saved locally as
+  `research/client/bp.txt.peer-send-next` for the next controlled client launch.
+  Static outputs are `research/resume-send-routing.c` and
+  `research/resume-peer-message.c`. The REA MCP Ghidra provider lacked
+  configuration, so focused Ghidra and Capstone supplied the static evidence.
+
 ## Town peer visibility trace — saita machine, 2026-11-19 (live breakpoints)
 
 Peers in town are still invisible. Two live clients, shim `bp.txt` tracer:

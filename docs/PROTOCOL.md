@@ -501,13 +501,14 @@ If unconfigured, this triggers ProudNet error 14 ("Unknown Internet address") at
 The relay service uses game-defined ProudNet RMI messages rather than standard JEvents:
 - **JoinGroup (RMI 1001)**: Client → Server (`0x00956420`/`0x00956500`).
   `u32` group type, two `i64` group identifiers (`0x00977610`), and a trailing
-  `i64` whose meaning is open. `LeaveGroup` (1002, `0x009565E0`) uses the same
-  layout. In town captures the identifiers were the square UID and layer UID.
+  `i64` character UID. `LeaveGroup` (1002, `0x009565E0`) uses the same
+  layout. Live town captures matched the last field to the selected character
+  UID on both accounts. The group identifiers were the square and layer UIDs.
   Initial joins sometimes send square UID `-1`, resolved against the game-world
   channel or the default channel when the registration is unavailable.
 - **JoinGroupACK (RMI 3001)**: Server → Client (`0x009567A0`).
   - Prefix: ProudNet message type `0x01` + `u16` RMI ID (`3001`).
-  - Body: `u32` group HostID + ProudNet scalar byte length + JSerBuffer vector (`0x10`) of member entries (`0x0F` + `u64` character UID + `u32` HostID).
+  - Body: `u32` group HostID + ProudNet scalar byte length + JSerBuffer vector (`0x10`) of member entries (`u64` character UID + `u32` HostID). The pair check at `0x006AFA10` consumes no byte.
 - **Peer departure (`0xF61E`)**: Two consecutive 32-bit HostIDs, member then
   group. ProudS2C dispatch entry `0x00B45730` calls vtable slot `+0x30` at
   `0x00B45901`, which resolves to `0x00B573C0`. That routine looks up the first
@@ -516,9 +517,17 @@ The relay service uses game-defined ProudNet RMI messages rather than standard J
 The relay keeps a roster per `(group type, first identifier, second identifier)`
 and forwards reliable peer frames only within the sender's current group.
 Switching groups or disconnecting tells the previous group that a peer left.
-A `LeaveGroup` for an old key preserves the current group. These behaviors are
-covered by a three-connection headless test. The existing relay-to-character
-binding is unchanged. Position updates and rendering still need a live test.
+A `LeaveGroup` must match both the current group key and character UID.
+A join with a different character UID removes the earlier membership before
+announcing the replacement. A three-connection headless test covers these
+transitions and relay isolation.
+
+The two live relay clients exchange matching `0x32`/ `0x33` control payloads
+inside `0x15` / `0x19` reliable relay envelopes. The observed client send
+path calls `0x00B53310` through vtable slot `+0x30` after encryption and
+returns its send status through `0x00B763D3`. Receipt of control messages
+establishes reliable peer transport. Town user messages and rendering
+remain open.
 
 ## 6. Town & Tutorial Flow (Decompiled & Implemented)
 

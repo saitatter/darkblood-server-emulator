@@ -1,9 +1,7 @@
 """Tests for relay server handshake and isolation."""
 import asyncio
-from collections import deque
 import struct
 import unittest
-from unittest.mock import patch
 
 from tests.common import ServerTestCase
 from darkblood.core.network.proudnet import read_scalar, scalar
@@ -34,8 +32,13 @@ class RelayFlowTest(ServerTestCase):
         self.assertIsNone(self.run_async(self.with_server(scenario, role='relay')))
 
     def test_group_switch_isolates_rosters_and_forwarding(self):
-        layer_a = bytes.fromhex('00000000 0100000000000000 01000000aeaf985f 0000000000000000')
-        layer_b = bytes.fromhex('00000000 0100000000000000 05000000aeaf985f 0000000000000000')
+        def group_args(layer, uid):
+            return struct.pack('<Iqqq', 0, 1, 0x5F98AFAE00000000 | layer, uid)
+
+        first_layer = group_args(1, 101)
+        second_layer = group_args(1, 102)
+        second_destination = group_args(5, 102)
+        third_layer = group_args(5, 103)
 
         def request(client, rmi_id, args):
             client.send(struct.pack('<BH', 1, rmi_id) + args)
@@ -70,16 +73,16 @@ class RelayFlowTest(ServerTestCase):
                 await first.connect()
                 await second.connect()
                 await third.connect()
-                request(first, 1001, layer_a)
+                request(first, 1001, first_layer)
                 group_a, members = await roster(first)
                 host_a = members[101]
-                request(second, 1001, layer_a)
+                request(second, 1001, second_layer)
                 self.assertEqual((await roster(first))[0], group_a)
                 _, members = await roster(second)
                 self.assertEqual(set(members), {101, 102})
                 host_b = members[102]
 
-                request(third, 1001, layer_b)
+                request(third, 1001, third_layer)
                 group_b, members = await roster(third)
                 self.assertNotEqual(group_a, group_b)
                 self.assertEqual(set(members), {103})
@@ -91,23 +94,32 @@ class RelayFlowTest(ServerTestCase):
                 with self.assertRaises(asyncio.TimeoutError):
                     await asyncio.wait_for(third.expect(0x19), 0.1)
 
-                request(second, 1001, layer_b)
+                request(second, 1001, second_destination)
                 self.assertEqual(await leave_notice(first), (host_b, group_a))
                 self.assertEqual(await leave_notice(second), (host_b, group_a))
                 self.assertEqual(await roster(second), (group_b, {102: host_b, 103: host_c}))
                 self.assertEqual(await roster(third), (group_b, {102: host_b, 103: host_c}))
 
-                request(second, 1002, layer_a)  # stale leave must preserve the new group
-                request(second, 1001, layer_b)
+                request(second, 1002, second_layer)  # stale leave must preserve the new group
+                request(second, 1001, second_destination)
                 self.assertEqual(await roster(second), (group_b, {102: host_b, 103: host_c}))
+
+                replacement = group_args(5, 104)
+                request(second, 1001, replacement)
+                self.assertEqual(await leave_notice(second), (host_b, group_b))
+                self.assertEqual(await leave_notice(third), (host_b, group_b))
+                self.assertEqual(await roster(second), (group_b, {104: host_b, 103: host_c}))
+                self.assertEqual(await roster(third), (group_b, {104: host_b, 103: host_c}))
+                request(second, 1002, second_destination)
+                request(second, 1001, replacement)
+                self.assertEqual(await roster(second), (group_b, {104: host_b, 103: host_c}))
                 await second.close()
                 self.assertEqual(await leave_notice(third), (host_b, group_b))
             finally:
                 await second.close()
                 await third.close()
 
-        with patch('darkblood.games.state.pending_relay', deque((101, 102, 103))):
-            self.run_async(self.with_server(scenario, role='relay'))
+        self.run_async(self.with_server(scenario, role='relay'))
 
 
 if __name__ == '__main__':

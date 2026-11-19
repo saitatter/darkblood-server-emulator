@@ -196,8 +196,6 @@ class FrontendHandlers(BaseDomainService):
         char_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
         selected_character['id'] = char_id
         self.active_char_id = char_id
-        from darkblood.games.state import pending_relay
-        pending_relay.append(char_id)
         char = self.store().get(self.account, char_id)
         if not char:
             chars = self.store().characters(self.account)

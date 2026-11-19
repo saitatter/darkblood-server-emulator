@@ -7,7 +7,6 @@ from itertools import count
 
 from darkblood.core.network.proudnet import ProtocolError, frame, read_scalar, scalar
 from darkblood.core.serialization.jser import varuint
-from darkblood.games.state import selected_character
 
 
 # Square relay endpoint (opcode 5134). Reader 0xA48910 copies 6 raw bytes
@@ -23,11 +22,11 @@ def relay_address(port=RELAY_PORT):
 
 # Relay PIDL (game-defined, not ProudNet internal). Proxy C2S vtable 0xD1CD80:
 #   1001 JoinGroup  (0x956420/0x956500), 1002 LeaveGroup (0x9565E0/0x9566C0)
-#   args: u32 group type, {i64, i64} (0x977610), i64 (0xB6D3B0)
+#   args: u32 group type, {i64, i64} (0x977610), i64 character UID (0xB6D3B0)
 # Stub S2C (0x9567A0, JS2CStub 0x96C220):
 #   3001 JoinGroupACK: u32 group HostID (-> factory+0x6C, 0x963CE0),
 #   ByteArray (scalar length + bytes) holding a JSerBuffer:
-#   tag 0x10, varuint count, entries {tag 0x0F, u64 char UID, u32 HostID}
+#   tag 0x10, varuint count, entries {u64 char UID, u32 HostID}
 #   (0x90DD90 / 0x90CC90 / 0x6AD6C0). 0x96BC60 then expects a P2P link to
 #   every member except the local character.
 RELAY_RMI = {1001: 'JoinGroup', 1002: 'LeaveGroup'}
@@ -99,8 +98,7 @@ class RelayGroups:
         self.lock = asyncio.Lock()
 
     @staticmethod
-    def group_key(args, char_id):
-        kind, scope_uid, layer_uid, _ = struct.unpack('<Iqqq', args)
+    def group_key(kind, scope_uid, layer_uid, char_id):
         if kind == 0 and scope_uid == -1:
             # The first town JoinGroup can precede the client learning the
             # square UID. Use the game-world registration when it is available.
@@ -121,13 +119,18 @@ class RelayGroups:
         transport.record('relay-rmi', args, rmi=RELAY_RMI[rmi_id])
         if len(args) != struct.calcsize('<Iqqq'):
             raise ProtocolError('Invalid relay group arguments')
+        kind, scope_uid, layer_uid, char_id = struct.unpack('<Iqqq', args)
+        if char_id <= 0:
+            raise ProtocolError('Invalid relay character UID')
+        key = self.group_key(kind, scope_uid, layer_uid, char_id)
         async with self.lock:
             if rmi_id == 1001:
-                if getattr(transport, 'char_id', None) is None:
-                    from darkblood.games.state import pending_relay
-                    transport.char_id = pending_relay.popleft() if pending_relay else selected_character['id']
-                await self.join(transport, self.group_key(args, transport.char_id))
-            elif self.memberships.get(transport) == self.group_key(args, getattr(transport, 'char_id', None)):
+                if getattr(transport, 'char_id', None) != char_id:
+                    await self.remove(transport, notify_departing=True)
+                    transport.char_id = char_id
+                await self.join(transport, key)
+            elif (getattr(transport, 'char_id', None) == char_id
+                  and self.memberships.get(transport) == key):
                 await self.remove(transport, notify_departing=True)
 
     async def join(self, transport, key):
