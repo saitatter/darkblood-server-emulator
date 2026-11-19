@@ -1,5 +1,13 @@
 # Research status and handoff
 
+## Town peer rendering and movement — saita machine, 2026-11-20
+
+Mage1 and ElfHunter1 rendered and moved in each other's clients, confirmed
+by the live tester. Both client traces reached the `0x1A` payload dispatch
+and passed the Fast CRC check. The relay sends `0x1A` for `0x16` requests
+within each group. All 173 headless tests pass, including reliable and
+unreliable forwarding isolation. Shared dungeon entry remains open.
+
 ## Town peer sends — saita machine, 2026-11-19
 
 Two connected clients exchanged ProudNet `0x32`/ `0x33` control messages inside
@@ -19,7 +27,11 @@ The next client trace captured town sends failing inside mode 2 encryption
 at `0x00B762AC` and `0x00B763FD`. The Fast cipher only dispatches key
 schedules of 512, 1024 or 2048 bits at `0x00B82AE0`. The emulator advertised
 128 bits and now supplies 512-bit Fast keys in both settings and member joins.
-All 173 headless tests pass. Live verification of the new key size is pending.
+Live verification showed mode 2 return success at `0x00B762AC` for both
+peers. The prior server forwarded reliable `0x15` traffic but dropped the
+newly observed `0x16` movement envelopes. The relay now forwards those as
+`0x1A` per the client reader at `0x00B5A790`. All 173 headless tests pass,
+including forwarding and isolation across two layers.
 
 ## Relay group isolation — Cristian, 2026-11-19
 

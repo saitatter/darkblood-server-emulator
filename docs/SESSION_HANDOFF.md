@@ -1,5 +1,30 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Town peer rendering and movement verified — saita machine, 2026-11-20
+
+- Started the server with the 512-bit Fast correction. Live peer sends
+  returned success at both `0x00B762AC` and `0x00B763D3`. The clients sent
+  reliable `0x15` frames and unreliable `0x16` messages. Offline decoding
+  verified Fast CRCs on both clients' type-2, event-`0x53` payloads.
+- Implemented `0x16` → `0x1A` forwarding within the current relay group.
+  Writer evidence is `0x00B538FB`, and the receiving reader is
+  `0x00B5A790`. The three-connection headless test covers forwarding,
+  isolation across layers, and the existing reliable path. All 173 tests pass.
+- Restarted the server and both multibox clients with the change. At
+  00:03:41–00:03:42 local time Mage1 (UID 2) and ElfHunter1 (UID 3)
+  entered town. Both client threads hit `0x00B5A8B5` (dispatch of a relayed
+  payload) and `0x00B82C2D` (Fast CRC success). The user confirmed that
+  both windows showed the other character and its movement.
+- The server and both clients stayed open. The active local breakpoint
+  profile traces receive and decrypt. The old send profile is retained as
+  `research/client/bp.txt.peer-send-next`. Local evidence includes
+  `logs/wire.jsonl`, `research/client/hook_log.txt`, and
+  `research/fast-512-before-unreliable-forward.txt`. REA confirmed the
+  Fast dispatch in `research/fast-peer-rea.json`
+  (evidence `ev_16519ec626a41b065a17cf7b4877c0da92a466feada77f28008df3447ecfb5a3`).
+- Next multiplayer milestone: verify the 5051 town party dialog and recover
+  the remaining 5004 room member fields for shared dungeon entry.
+
 ## Live relay binding replay — saita machine, 2026-11-19
 
 - The updated server accepted both reconnecting clients. The selection ACKs

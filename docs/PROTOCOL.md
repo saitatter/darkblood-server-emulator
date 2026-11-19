@@ -531,8 +531,21 @@ The two live relay clients exchange matching `0x32`/ `0x33` control payloads
 inside `0x15` / `0x19` reliable relay envelopes. In the disassembly, the
 client send path calls `0x00B53310` through vtable slot `+0x30` after encryption and
 returns its send status through `0x00B763D3`. Receipt of control messages
-establishes reliable peer transport. Town user messages and rendering
-remain open.
+establishes reliable peer transport.
+
+With 512-bit Fast keys, both live clients emitted reliable `0x26` mode-2
+envelopes via `0x15` and unreliable `0x27` mode-2 envelopes via `0x16`.
+The latter decode to a type-2 user message starting with game P2P event
+`0x53`. The local decoder verified the Fast CRC on both senders.
+
+- C → S `0x16`: `u8 priority, scalar unique ID, scalar destination count,
+  i32 destination HostIDs[count], blob(message)` (writer `0x00B538FB`).
+- S → C `0x1A`: `i32 sender HostID, blob(message)` (reader `0x00B5A790`).
+  The blob holds one unframed ProudNet message. The client resolves the
+  peer using the sender HostID and dispatches the blob through `0x00B5F900`.
+  The relay preserves the message and forwards only within the current group.
+  Two live clients reached the dispatch at `0x00B5A8B5`, passed the Fast
+  CRC check at `0x00B82C2D`, and displayed each other's movement.
 
 ## 6. Town & Tutorial Flow (Decompiled & Implemented)
 

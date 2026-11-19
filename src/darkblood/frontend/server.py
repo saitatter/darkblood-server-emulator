@@ -18,7 +18,7 @@ from darkblood.core.network.crypto import AES, CryptoError, RSAKey, envelope_dec
 from darkblood.core.network.proudnet import (
     FAST_KEY_BITS, ProtocolError, connection_success, frame, pop_frame, read_scalar, scalar,
 )
-from darkblood.frontend.relay import RELAY_RMI, RelayGroups
+from darkblood.frontend.relay import RELAY_RMI, RELIABLE_RELAY1, UNRELIABLE_RELAY1, RelayGroups
 from darkblood.games.session import GameSession
 
 
@@ -110,7 +110,7 @@ class Session:
 
     async def handle(self, payload):
         kind = payload[0]
-        if kind != 0x15:  # relayed peer stream: too frequent to log each one
+        if kind not in (RELIABLE_RELAY1, UNRELIABLE_RELAY1):
             self.record('message', payload)
         if kind == 0x30 and self.state == 'new':
             if len(payload) != 5 or struct.unpack('<I', payload[1:])[0] != 0x4000000f:
@@ -144,7 +144,7 @@ class Session:
             await self.send_payload(b'\x1f')
         elif kind in (0x26, 0x27):
             await self.handle_encrypted(payload)
-        elif kind == 0x15 and self.server.role == 'relay':
+        elif kind in (RELIABLE_RELAY1, UNRELIABLE_RELAY1) and self.server.role == 'relay':
             await self.server.relay_groups.forward(self, payload)
         elif kind in (0x02, 0x03):
             await self.app.on_user_message(payload[1:])

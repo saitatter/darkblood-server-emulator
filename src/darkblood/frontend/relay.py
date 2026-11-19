@@ -80,6 +80,10 @@ def p2p_member_join(group_host_id, member_host_id, aes_key, fast_key, event_id=0
 # the client feeds them into that peer's stream (0x00B83EA0) and dispatches
 # the messages inside (0x00B5F900).
 RELIABLE_RELAY1, RELIABLE_RELAY2 = 0x15, 0x19
+# 0x16 writer 0x00B538FB: u8 priority, scalar unique ID, scalar count,
+# i32 destination HostIDs, byte array. 0x1A reader 0x00B5A790 expects
+# i32 sender HostID and a byte array containing one unframed message.
+UNRELIABLE_RELAY1, UNRELIABLE_RELAY2 = 0x16, 0x1A
 
 
 @dataclass
@@ -175,13 +179,22 @@ class RelayGroups:
             await self.remove(transport)
 
     async def forward(self, transport, payload):
-        result = read_scalar(payload, 1)
+        reliable = payload[0] == RELIABLE_RELAY1
+        count_offset = 1
+        if not reliable:
+            unique_id = read_scalar(payload, 2)
+            if unique_id is None:
+                raise ProtocolError('Truncated unreliable relay unique ID')
+            _, count_offset = unique_id
+        result = read_scalar(payload, count_offset)
         if result is None:
             raise ProtocolError('Truncated relay destination count')
         n, offset = result
-        if not 0 <= n <= (len(payload) - offset) // 8:
+        destination_format = '<iI' if reliable else '<i'
+        destination_size = struct.calcsize(destination_format)
+        if not 0 <= n <= (len(payload) - offset) // destination_size:
             raise ProtocolError('Invalid relay destination count')
-        end = offset + 8 * n
+        end = offset + destination_size * n
         result = read_scalar(payload, end)
         if result is None:
             raise ProtocolError('Truncated relay payload length')
@@ -193,11 +206,16 @@ class RelayGroups:
             group = self.groups.get(self.memberships.get(transport))
             if group is None:
                 return
-            for host_id, frame_no in struct.iter_unpack('<iI', payload[offset:end]):
+            sender = struct.pack('<i', transport.host_id)
+            body = scalar(length) + payload[start:]
+            for destination in struct.iter_unpack(destination_format, payload[offset:end]):
+                host_id = destination[0]
                 target = group.members.get(host_id)
                 if target is None or target.writer.is_closing():
                     transport.record('relay-drop', payload, dest=host_id)
                     continue
-                out = (bytes([RELIABLE_RELAY2]) + struct.pack('<iI', transport.host_id, frame_no)
-                       + scalar(length) + payload[start:])
+                if reliable:
+                    out = bytes([RELIABLE_RELAY2]) + sender + struct.pack('<I', destination[1]) + body
+                else:
+                    out = bytes([UNRELIABLE_RELAY2]) + sender + body
                 target.writer.write(frame(out))

@@ -100,6 +100,14 @@ class RelayFlowTest(ServerTestCase):
                 with self.assertRaises(asyncio.TimeoutError):
                     await asyncio.wait_for(third.expect(0x19), 0.1)
 
+                peer_message = b'\x27\x02' + scalar(3) + b'xyz'
+                destinations = scalar(2) + struct.pack('<ii', host_b, host_c)
+                first.send(b'\x16\x03' + scalar(0) + destinations + scalar(len(peer_message)) + peer_message)
+                self.assertEqual(await second.expect(0x1A),
+                                 b'\x1a' + struct.pack('<i', host_a) + scalar(len(peer_message)) + peer_message)
+                with self.assertRaises(asyncio.TimeoutError):
+                    await asyncio.wait_for(third.expect(0x1A), 0.1)
+
                 request(second, 1001, second_destination)
                 self.assertEqual(await leave_notice(first), (host_b, group_a))
                 self.assertEqual(await leave_notice(second), (host_b, group_a))

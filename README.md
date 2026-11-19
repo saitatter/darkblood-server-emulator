@@ -20,7 +20,7 @@ The project allows playing the original client offline via a local server (`127.
 
 ### 3. World & Town Gameplay
 * **Town Play**: Town square loading (Northern Elwood, etc.), local character movement, and chat broadcasts.
-* **Multi-Client World Presence**: The server sends mutual spawn/despawn notices and routes peer control traffic. Rendering other players and synchronizing movement are in progress.
+* **Multi-Client World Presence**: Two live clients can see each other and synchronize movement in the same town layer through the local TCP relay.
 * **Channel & Layer Transitions**: Switching between channels and field layers cleanly.
 
 ### 4. Dungeons, Combat & Quests
