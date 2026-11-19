@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Room join and invite sender — Cristian, 2026-11-18
+
+- Mapped the `5003` room UID, the outer `5004` reply, and the member record
+  reader `0x00A533A0`. The same sender uses `5054` with square UID and host
+  UID as a separate path. The server now reads the host from the second
+  field. All 164 headless tests passed on the branch based on `main`, with
+  the baseline socket warnings. See `docs/PROTOCOL.md` for addresses and evidence.
+- Next, identify the nested peer fields and supply shared room membership
+  and relay routing. Live room join remains open.
+
 ## Dungeon start readers — Cristian, 2026-11-18
 
 - Verified the client hash before examining opcode 5014 in Ghidra and x86

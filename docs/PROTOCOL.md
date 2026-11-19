@@ -232,6 +232,30 @@ Evidence: matching executable hash in STATUS.md; local mapped image
 confirms the reader calls independently of inferred decompiler signatures.
 Headless flow checks the complete default body; live acceptance is pending.
 
+### Dungeon room join (Cristian, 2026-11-18, static analysis)
+
+- `JAppPageGameRoom::JoinRoomREQ` at `0x0058B430` sends `5003` when the
+  room UID is positive. Writer `0x00B353D0` writes the i64 room UID.
+  Without a positive room UID, it sends `5054` with two i64 values. The caller
+  at `0x0063A80E` identifies them as host square UID and host UID.
+  The server accepts this form and the older host-only fixture, both with
+  an optional four-byte prefix.
+- The game-room dispatcher at `0x0059D970` routes `5004` to `0x00597C30`.
+  A nonzero u32 result ends the reply. On success the handler reads untagged
+  `jRoomInfo` (`0x00A49380`, shared with `5002`), i64 host UID, a `0x10`
+  `vecNetChar`, six-byte relay address, `bFreeItemObtain`, and
+  `bIsAllCharSameRate`. The diagnostic string at `0x00CB93C0` names the fields.
+- `vecNetChar` is read through `0x00596AA0` → `0x005969B0` → `0x0049EA00`
+  → `0x00A533A0`. Each record begins with the `0x00A52630` character details
+  used by `2007`, followed by i64, 20 raw bytes (`0x00A48950`), i64,
+  eight bytes (`0x00B354D0`), u32, and struct `0x00A4AC80` (two groups of
+  six 16-bit fields followed by u32). The `0x1E` checks consume no wire byte.
+  The handler looks up its own UID in the list.
+- Local evidence is in ignored `research/dungeon-5003-sender.c`,
+  `research/dungeon-5004-reader.c`, and `research/dungeon-5004-member.c`.
+  Successful room entry still needs the meanings of the nested member fields, room
+  membership, and relay routing.
+
 ### Dungeon start collection readers (Cristian, 2026-11-18, static analysis)
 
 The three outer maps and the trailing vector use these reader chains:
@@ -524,7 +548,8 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `5049 eERC_INVITE_REQ` -> `5050 eERC_INVITE_ACK` (`0x00758700`):
   `target_uid: i64` -> `result: i32 (0)`.
 - `5054 eERC_ACCEPT_INVITE_REQ` -> `5055 eERC_ACCEPT_INVITE_ACK`:
-  `host_uid: i64` -> `result: i32 (0)`.
+  `host_square_uid: i64, host_uid: i64` -> `result: i32 (0)`.
+  The host-only request remains supported for headless callers.
 - `5015 eERC_CHANGE_TEAM_REQ` -> `5016 eERC_CHANGE_TEAM_ACK`:
   `team_id: i32` -> `result: i32 (0), team_id: i32`.
 - `5040 eERC_CHAT_REQ` (`0x007AC5E0`) -> `5041 eERC_CHAT_ACK` (`0x007AC890`):
