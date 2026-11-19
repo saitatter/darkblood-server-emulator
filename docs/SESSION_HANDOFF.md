@@ -1,5 +1,35 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Town update cadence, server labels, and cash shop — saita machine, 2026-11-20
+
+- Both live clients sent event `0x4D` (town position revision inside the
+  `0x53` peer bundle) about every 2.1 seconds. The sender at
+  `0x0087C1F9` uses the budgeted path in `0x00966B90`, which adds
+  2000 ms to the peer's last send timestamp at `0x00966C9C`.
+  The loopback shim changes the verified instruction to 100 ms and
+  preserves the per-update peer budget.
+- `GAME_434` in `ui_st.dat` supplies “Other server.” The overhead name
+  renderer uses `0x00A614A0` to extract bits 54–58 of the peer's packed
+  ID, copied from the trailing 5027 field by `0x00944510`. The emulator
+  now places its configured server-list key (1) in those bits.
+- The supplied Downloads capture contained 21 Cash Shop 2712 requests,
+  no 2067 NPC buy requests, and 16 finalization ACKs with result 1 and
+  zero items. Observed product IDs resolve in the local catalogue.
+  Replayed 847, 760, 22 and 862 against an isolated temporary character
+  using the installed catalogue. All four returned 0 and filled four
+  cells. The historical ACK does not distinguish catalog, inventory, or
+  character failure. The new handler returns 24 with a local path in the
+  server log when the catalogue is missing/empty, 442 for an unknown
+  product, and 67 for a full bag. Result 1 is reserved for a missing
+  character. All 173 headless tests passed.
+- Rebuilt the x86 shim. Backups are `research/steam_api.live-before-town-update.dll`
+  and `research/steam_api.build-before-town-update.dll`.
+- Restarted the server and both clients with the changes. The shim logged
+  the patch at `0x00966C9C`. Both clients had a median revision interval
+  of 215 ms (55 and 50 sampled messages, respectively). A passive capture
+  showed `ElfHunter1(Offline)` and `Mage1(Offline)` in the two windows.
+  Both live 5027 messages carried key 1. The clients stayed connected.
+
 ## Town peer rendering and movement verified — saita machine, 2026-11-20
 
 - Started the server with the 512-bit Fast correction. Live peer sends

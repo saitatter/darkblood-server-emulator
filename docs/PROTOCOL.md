@@ -547,6 +547,17 @@ The latter decode to a type-2 user message starting with game P2P event
   Two live clients reached the dispatch at `0x00B5A8B5`, passed the Fast
   CRC check at `0x00B82C2D`, and displayed each other's movement.
 
+The unreliable `0x53` bundle carries the town position revision `0x4D`.
+The stock client passes a recipient budget at `0x0087C25E` and clamps
+each peer's revision rate to one per 2000 ms at `0x00966C9C`. The
+loopback shim replaces that throttle with 100 ms.
+
+The final `i64` of each 5027 player entry (reader destination `+0x41`)
+contains the server key in bits 54–58. `0x00944510` copies it to the
+peer's `+0x100`, and the overhead name renderer extracts it via
+`0x00A614A0`. With key 0 the local server list lookup falls back to
+`GAME_434` (“Other server”). The emulator sends the same key as 2403.
+
 ## 6. Town & Tutorial Flow (Decompiled & Implemented)
 
 Following character selection and relay attachment, the client interacts with tutorial and town systems:

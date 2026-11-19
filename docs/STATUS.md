@@ -1,5 +1,18 @@
 # Research status and handoff
 
+## Town update cadence, player labels, and cash shop — 2026-11-20
+
+Town position revisions arrived around every 2.1 seconds before the shim
+change. The x86 patch lowers the client throttle to 100 ms; both live
+clients then had a 215 ms median revision interval. Opcode 5027 now carries
+the configured server key, and both nameplates show “Offline.”
+
+The submitted Cash Shop log shows result 1 for zero granted items. The
+current local data grants the captured products in a headless replay, and
+the server now distinguishes missing catalog data, unknown products,
+and insufficient inventory space. See the session handoff for the capture
+and test results.
+
 ## Town peer rendering and movement — saita machine, 2026-11-20
 
 Mage1 and ElfHunter1 rendered and moved in each other's clients, confirmed

@@ -121,6 +121,8 @@ Final objective: launch without the original services, establish a local session
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
   - Live clients send town updates with 512-bit ProudNet Fast keys.
     The relay forwards `0x16` updates as `0x1A` within the group.
+  - The two-client rerun measured a 215 ms median town revision interval
+    with the shim and showed the correct “Offline” server name.
 - [x] **Party System**:
   - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).
   - Party join, leave, and kick (`2102/2103 eEGS_PARTY_JOIN`, `5054/5055 eERC_ACCEPT_INVITE`, `5056 ACCEPT_INVITE_NOT`, `2104/2105 LEAVE`, `2106/2107 KICK`).
