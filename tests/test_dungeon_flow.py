@@ -47,6 +47,13 @@ class DungeonFlowTest(ServerTestCase):
             _, ack2370 = await client.expect_event(2370)
             self.assertEqual(ack2370, b'\x00' * 16)
 
+            prefix = struct.pack('<I', 0x7fffffff)
+            first_map = wide('Act1_G1_A10')
+            client.send_event(5009, prefix + first_map + b'\x00')
+            await client.expect_event(5010)
+            client.send_event(5013, prefix + first_map)
+            await client.expect_event(5014)
+
             # 3. Dungeon layer change (5095)
             layer_net_id = (hashing.jhash('Act1_G1_A10') << 32) | 4
             client.send_event(5095, struct.pack('<iq', 0x7fffffff, layer_net_id))
@@ -134,11 +141,25 @@ class DungeonFlowTest(ServerTestCase):
             # 18. Finish game (5017 -> 5018)
             client.send_event(5017, b'\x01')
             _, ack5018 = await client.expect_event(5018)
-            res, is_clear = struct.unpack_from('<I?', ack5018, 0)
-            self.assertEqual((res, is_clear), (0, True))
-            self.assertTrue(ack5018.endswith(b'\x10\x80'))
-            # mapSingleReward must hold the player's own entry (uid = char id).
-            self.assertIn(b'\x17\x81\x0f' + struct.pack('<q', char_id), ack5018)
+            reward_entry = b'\x00\x17\x80\x17\x81\x0f' + struct.pack('<q', char_id)
+            first_result = struct.pack('<I?', 0, True) + first_map + reward_entry
+            self.assertTrue(ack5018.startswith(first_result))
+            self.assertEqual(struct.unpack_from('<i', ack5018, len(first_result) + 4)[0], 1)
+
+            # A new start supplies the current map even without a map-change
+            # request. Combat totals belong to the new run.
+            client.send_event(5043, prefix + wide('Act1_G2'))
+            await client.expect_event(5044)
+            second_map = wide('Act1_G2_B10')
+            client.send_event(5013, prefix + second_map)
+            _, ack5014 = await client.expect_event(5014)
+            self.assertEqual(ack5014, b'\x00' * 10 + second_map + bytes.fromhex('1780178017801080'))
+            client.send_event(5017, b'\x01')
+            _, ack5018 = await client.expect_event(5018)
+            second_result = struct.pack('<I?', 0, True) + second_map + reward_entry
+            self.assertTrue(ack5018.startswith(second_result))
+            self.assertEqual(ack5018[len(second_result):len(second_result) + 40], b'\x00' * 40)
+            self.assertEqual(ack5018[len(second_result) + 40:], struct.pack('<iiii', 4, 4, 1, 0) + b'\x10\x80')
 
         self.run_async(self.with_server(scenario))
 

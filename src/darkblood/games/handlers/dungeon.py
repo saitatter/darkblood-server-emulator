@@ -99,6 +99,10 @@ class DungeonHandlers(BaseDomainService):
             # The success path assumes the map code resolves to a client property.
             ack = StartGameAck(result=1)
         else:
+            self.map_code = request.map_code
+            self.dungeon_kill_count = 0
+            self.dungeon_score = 0
+            self.dungeon_max_combo = 0
             ack = StartGameAck(map_code=request.map_code)
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
