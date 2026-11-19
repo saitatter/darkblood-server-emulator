@@ -1,5 +1,34 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Town peer visibility trace — saita machine, 2026-11-19 (live breakpoints)
+
+Peers in town are still invisible. Two live clients, shim `bp.txt` tracer:
+
+- 5027 (`0x00787790` → `0x00967590`) creates the peer `JUser`, but the scene actor
+  lookup `0x00866C90` returns 0. Position is not taken from 5027 (`0x00944510`).
+- The client never sends town movement to the game server (5030 is always the 13-byte
+  layer request in all logs). Town presence and movement are P2P events
+  (`JNetMsgHandler::OneET_*`) sent by `JP2PClient::SendTo` (`0x0095C1E0`, caller
+  `0x00966970`).
+- SendTo looks the peer UID up in the JP2PClient map (`0x0095A9F0`, clients at
+  `0xF47A38 + i*0x80`, map head `+0x78`). That map is filled from relay 3001
+  JoinGroupACK by `JS2CStub::JoinGroupACK` (`0x0096C220` → `0x00963CE0`, reader
+  `0x0090DD90`). The server sent a 0x0F byte per pair that the client does not consume
+  (`0x006AFA10` type check), so keys were garbage (live key `0x30F`). Fixed in
+  `ef1430e`; after the fix the lookup succeeds.
+- After the fix `CNetClientImpl` (vtable `0x00D6EF8C`) slot `+0xC8` (`0x00B55A30`) is
+  called with HostID 4, count 1, a 0x38-byte message, and returns 0. Nothing new reaches
+  the relay. Open hypotheses: the server must answer ProudNet RMI 0xFA04
+  (P2PGroup_MemberJoin_Ack: group HostID, member HostID, event id), or the P2P
+  0x32/0x33 exchange that repeats every ~1.7 s never completes. Next: trace inside
+  `0x00B55A30` (call via `[this-0xAC]+0x14`) for the failure reason.
+- Ruled out for town: 5024-5026 (party/duel/arena/siege P2P reports, `0x0094F7D0`) and
+  `SetPeerInfo` (`0x0095BB70`, arena/duel/room paths only). There is no UDP socket.
+- Tooling: both clients write the same `research/client/hook_log.txt`, so lines from the
+  two processes can overwrite each other. `multibox.py start` without `--accounts` once
+  picked Player2/Player3 while an old client was exiting. Use
+  `--accounts OfflinePlayer Player2`. Original `bp.txt` is in `bp.txt.before-visibility`.
+
 ## Live multibox session and result codes — saita machine, 2026-11-19
 
 - Two multibox clients (`OfflinePlayer`/Mage1, `Player2`/ElfHunter1) on the merged
