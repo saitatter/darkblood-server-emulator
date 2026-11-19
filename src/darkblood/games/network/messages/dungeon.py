@@ -26,34 +26,94 @@ class RoomInfoListAck:
                 + b'\x10' + varuint(0) + struct.pack('<i', self.pages))
 
 @dataclass
-class CreateRoomAck:
-    """Opcode 5002: eERC_CREATE_ROOM_ACK (JAppPageGameRoom, table case 0x59D970 -> 0x5984D0).
-
-    Read order (names from "jRoomInfo >> nTeamID >> jRelayAddress"): u32 nOK,
-    implicit jRoomInfo (0x00A49380: i64, wstring, i16, i16, i32, i64, i64,
-    i32, i32, i16), u32 nTeamID, implicit jRelayAddress (0x00A48910, 6 bytes:
-    IPv4 network order + u16 LE port, as in 5134). The handler then connects
-    JP2PClient (0x00956C80) to the relay address. jRoomInfo field meanings are
-    not recovered: room id first, the requested name second, the rest echo the
-    5001 request (i32, i32, i16, i16) or default to -1 / 0.
-    """
-    result: int = 0
-    room_id: int = 1
+class RoomInfo:
+    """Untagged jRoomInfo, reader 0x00A49380, shared by 5002 and 5004."""
+    room_id: int
     name: str = ''
     req_a: int = -1
     req_b: int = -1
     req_c: int = -1
     req_d: int = 1
     host_uid: int = 0
-    team_id: int = 0
-    relay_port: int = 9401
 
     def encode(self) -> bytes:
-        info = (struct.pack('<q', self.room_id) + wide_string(self.name)
+        return (struct.pack('<q', self.room_id) + wide_string(self.name)
                 + struct.pack('<hhiqqiih', self.req_c, self.req_d, self.req_a,
                               self.host_uid, 0, self.req_b, -1, self.req_d))
-        relay = bytes([127, 0, 0, 1]) + struct.pack('<H', self.relay_port)
-        return struct.pack('<I', self.result) + info + struct.pack('<I', self.team_id) + relay
+
+
+@dataclass
+class CreateRoomAck:
+    """5002 (0x005984D0): result, room info, team ID, relay endpoint."""
+    result: int = 0
+    room: RoomInfo = None
+    team_id: int = 0
+    relay: bytes = b''
+
+    def encode(self) -> bytes:
+        result = struct.pack('<I', self.result)
+        if self.result:
+            return result
+        return result + self.room.encode() + struct.pack('<I', self.team_id) + self.relay
+
+
+@dataclass
+class JoinRoomReq:
+    """5003 (0x0058B430): i64 room UID, with optional request prefix."""
+    room_id: int
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'JoinRoomReq':
+        if len(data) == 12 and data[:4] == b'\xff\xff\xff\x7f':
+            data = data[4:]
+        if len(data) != 8:
+            raise WireError('Invalid room UID request')
+        return cls(*struct.unpack('<q', data))
+
+
+@dataclass
+class RoomMember:
+    """jNetChar (0x00A533A0). Unmapped fields use constructor 0x00486190 defaults."""
+    character: Character
+
+    def encode(self) -> bytes:
+        return (self.character.encode_world_details()
+                + struct.pack('<q20sqqI', -1, b'\xff' * 8, -1, -1, 0)
+                + struct.pack('<12HI', 2010, 1, 1, 0, 0, 0, 2010, 1, 1, 0, 0, 0, 0))
+
+
+@dataclass
+class JoinRoomAck:
+    """5004 (0x00597C30): result, room info, host UID, roster, relay, two bools."""
+    result: int = 0
+    room: RoomInfo = None
+    members: list = field(default_factory=list)
+    relay: bytes = b''
+
+    def encode(self) -> bytes:
+        result = struct.pack('<I', self.result)
+        if self.result:
+            return result
+        roster = b'\x10' + varuint(len(self.members)) + b''.join(member.encode() for member in self.members)
+        return result + self.room.encode() + struct.pack('<q', self.room.host_uid) + roster + self.relay + b'\0\0'
+
+
+@dataclass
+class RoomMemberJoinedNot:
+    """5035 (0x00598D90): jNetChar and bIsAllCharSameRate."""
+    member: RoomMember
+
+    def encode(self) -> bytes:
+        return self.member.encode() + b'\0'
+
+
+@dataclass
+class RoomMemberLeftNot:
+    """5036 (0x005991B0): result and departing character UID."""
+    char_uid: int
+
+    def encode(self) -> bytes:
+        return struct.pack('<Iq', 0, self.char_uid)
 
 @dataclass
 class SelectDungeonAck:

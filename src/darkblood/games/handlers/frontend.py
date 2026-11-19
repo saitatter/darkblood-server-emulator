@@ -201,6 +201,7 @@ class FrontendHandlers(BaseDomainService):
         from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         if self.session.active_char_id != char_id:
+            await self.session.dungeon.leave_room()
             await world.remove_session_player(self.session)
         self.session.active_char_id = char_id
         ack = build_select_char_ack(char)

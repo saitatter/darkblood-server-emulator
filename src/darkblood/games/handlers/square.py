@@ -126,6 +126,7 @@ class SquareHandlers(BaseDomainService):
         Client handler: 0x007897F0.
         Transitions the player entity from a dungeon session back to the default town square.
         """
+        await self.session.dungeon.leave_room()
         ack = BackToSquareAck(square_uid=self.session.square_id).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
@@ -188,6 +189,7 @@ class SquareHandlers(BaseDomainService):
         0 continues, any other value opens an error box. The player leaves
         the town, so it is removed from the world presence list.
         """
+        await self.session.dungeon.leave_room()
         if self.session.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
@@ -202,6 +204,7 @@ class SquareHandlers(BaseDomainService):
         result: 0 leaves the channel and clears the stored square (+0xB0/+0xB4
         of state 8); other values open an error box.
         """
+        await self.session.dungeon.leave_room()
         if self.session.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)

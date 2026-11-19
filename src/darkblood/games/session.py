@@ -76,6 +76,7 @@ class GameSession:
         )
 
     async def on_disconnect(self):
+        await self.dungeon.leave_room()
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self)
