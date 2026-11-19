@@ -24,7 +24,7 @@ class FriendEntry:
     """Friend struct, reader 0x00A49450 (2140 and the 2132 map).
 
     +0x00 i64 char uid, +0x08 wstring name, +0x24 u8, +0x25 u8 (sent as
-    level, class like the lobby entry; not confirmed), +0x26 i64 location:
+    class, level like the lobby entry; not confirmed), +0x26 i64 location:
     the friend list (0x00926800) counts a friend online when it is not -1,
     +0x2E wstring (sent empty), +0x4A i64 (0), +0x52 bool (sent 1).
     """
@@ -36,7 +36,7 @@ class FriendEntry:
 
     def encode(self) -> bytes:
         return (struct.pack('<q', self.uid) + wide_string(self.name)
-                + struct.pack('<BBq', self.level & 0xFF, self.char_class & 0xFF, 1 if self.online else -1)
+                + struct.pack('<BBq', self.char_class & 0xFF, self.level & 0xFF, 1 if self.online else -1)
                 + wide_string('') + struct.pack('<q?', 0, True))
 
 
