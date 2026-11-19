@@ -12,6 +12,7 @@ import logging
 import struct
 import time
 import uuid
+from itertools import count
 from pathlib import Path
 from darkblood import REPO_ROOT
 from darkblood.core.network.crypto import AES, CryptoError, RSAKey, envelope_decrypt
@@ -202,6 +203,8 @@ class BootstrapServer:
         # JP2PClient::Connect (0x956C80).
         self.role = role
         self.relay_groups = RelayGroups() if role == 'relay' else None
+        self.dungeon_rooms = {}
+        self.room_ids = count(1)
         self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
         self.guid = uuid.UUID('a1d7e8c2-5a20-44af-94e1-52424c4f4f44').bytes_le
         key_file = str(key_path) if key_path else str(ROOT / 'logs' / 'server_rsa.key')

@@ -15,6 +15,9 @@ Code 1 is JERI_NO_EXIST_CHAR ("Unavailable character."), not a generic failure.
 OK = 0
 FAILED = -1                 # JERI_FAILED (no localized text)
 NO_EXIST_CHAR = 1           # "Unavailable character."
+JOIN_FAIL_ROOM_FULL = 3     # "There are no empty spots in this party."
+ALREADY_PLAY_GAME = 4       # "This party is already playing."
+ROOM_NOT_EXISTS = 7         # "Invalid party."
 INVALID_STATE = 12          # "Can't perform in the current position."
 INVEN_NO_BAG_SPACE = 62     # JERI_INVEN_00 "There is no empty space for a bag."
 INVEN_ITEM_NOT_FOUND = 63   # JERI_INVEN_01 "Can't locate the item in the inventory."

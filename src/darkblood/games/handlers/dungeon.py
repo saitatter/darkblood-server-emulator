@@ -1,9 +1,11 @@
 import struct
 import time
+from dataclasses import dataclass, field
 
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import WireError, event, read_varuint
-from darkblood.frontend.relay import RELAY_PORT
+from darkblood.frontend.relay import relay_address
+from darkblood.games.entities.character import Character
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
     ChangeDungeonLayerNot,
@@ -19,6 +21,8 @@ from darkblood.games.network.messages import (
     GameplayDieCharAck,
     GameplayDieCharReq,
     GuideBeginnerUpdateReq,
+    JoinRoomAck,
+    JoinRoomReq,
     LeaveRoomAck,
     MonsterDeadReq,
     PartyAcceptInviteAck,
@@ -26,7 +30,11 @@ from darkblood.games.network.messages import (
     PartyInviteAck,
     PartyInviteReq,
     RebirthCoinChangeNot,
+    RoomInfo,
     RoomInfoListAck,
+    RoomMember,
+    RoomMemberJoinedNot,
+    RoomMemberLeftNot,
     SelectDungeonAck,
     StartGameAck,
     StartGameReq,
@@ -38,8 +46,20 @@ from darkblood.games.network import results
 DAILY_REBIRTH_COINS = 3
 
 
+@dataclass
+class DungeonRoom:
+    info: RoomInfo
+    host: object
+    members: dict = field(default_factory=dict)
+    started: bool = False
+
+
 class DungeonHandlers(BaseDomainService):
     """Rooms, dungeon gate, map code and game start."""
+
+    def __init__(self, session):
+        super().__init__(session)
+        self.room = None
 
     async def on_2010(self, correlation, body):
         # eEGS_GET_ROOMINFOLIST_REQ (sender 0x7AB140) -> 2011: no open rooms.
@@ -56,12 +76,81 @@ class DungeonHandlers(BaseDomainService):
             a, b, c, d = struct.unpack_from('<iihh', body, offset + length)
         except (WireError, struct.error, UnicodeDecodeError):
             pass
-        self.room_id = getattr(self, 'room_id', 0) + 1
-        ack = CreateRoomAck(room_id=self.room_id, name=name, req_a=a, req_b=b, req_c=c, req_d=d,
-                            host_uid=self.char_id,
-                            relay_port=RELAY_PORT).encode()
-        await self.transport.send_event(event(5002, ack, correlation),
+        char = self.current_char()
+        if char is None:
+            await self.transport.send_event(event(5002, CreateRoomAck(result=results.NO_EXIST_CHAR).encode(), correlation),
+                                            note='create room refused (no character)')
+            return
+        await self.leave_room()
+        server = self.transport.server
+        info = RoomInfo(room_id=next(server.room_ids), name=name, req_a=a, req_b=b, req_c=c, req_d=d,
+                        host_uid=char['id'])
+        self.room = DungeonRoom(info, self.session, {self.session: char})
+        server.dungeon_rooms[info.room_id] = self.room
+        ack = CreateRoomAck(room=info, relay=relay_address())
+        await self.transport.send_event(event(5002, ack.encode(), correlation),
                                         note='create room ack (%s)' % name)
+
+    async def on_5003(self, correlation, body):
+        try:
+            req = JoinRoomReq.decode(body)
+        except WireError:
+            room = None
+        else:
+            room = self.transport.server.dungeon_rooms.get(req.room_id)
+        char = self.current_char()
+        result = results.OK
+        if char is None:
+            result = results.NO_EXIST_CHAR
+        elif room is None or room.info.name == '_singleplay':
+            result = results.ROOM_NOT_EXISTS
+        elif room is not self.room:
+            if self.room is not None or any(record['id'] == char['id'] for record in room.members.values()):
+                result = results.INVALID_STATE
+            elif room.started:
+                result = results.ALREADY_PLAY_GAME
+            elif len(room.members) >= 4:
+                result = results.JOIN_FAIL_ROOM_FULL
+        if result:
+            await self.transport.send_event(event(5004, JoinRoomAck(result=result).encode(), correlation),
+                                            note='join room refused (%d)' % result)
+            return
+
+        is_new = self.room is not room
+        peers = [member for member in room.members if member is not self.session]
+        room.members[self.session] = char
+        self.room = room
+        roster = [RoomMember(Character.from_dict(record)) for record in room.members.values()]
+        ack = JoinRoomAck(room=room.info, members=roster, relay=relay_address())
+        await self.transport.send_event(event(5004, ack.encode(), correlation), note='join room ack')
+        if is_new and self.room is room:
+            joined = RoomMemberJoinedNot(RoomMember(Character.from_dict(char)))
+            await self._notify_room(room, peers, event(5035, joined.encode()), 'room member joined')
+
+    async def _notify_room(self, room, peers, packet, note):
+        for peer in peers:
+            if peer.dungeon.room is room:
+                try:
+                    await peer.transport.send_event(packet, note=note)
+                except (ConnectionError, OSError):
+                    continue
+
+    async def leave_room(self):
+        room = self.room
+        if room is None:
+            return
+        self.room = None
+        char = room.members.pop(self.session)
+        notice = event(5036, RoomMemberLeftNot(char['id']).encode())
+        peers = list(room.members)
+        if self.session is room.host:
+            self.transport.server.dungeon_rooms.pop(room.info.room_id, None)
+        await self._notify_room(room, peers, notice, 'room member left')
+        if self.session is room.host:
+            for peer in peers:
+                if peer.dungeon.room is room:
+                    peer.dungeon.room = None
+            room.members.clear()
 
     async def on_5043(self, correlation, body):
         # eERC_SELECT_DUNGEON_REQ (sender 0x7AC1C0), observed body:
@@ -105,6 +194,8 @@ class DungeonHandlers(BaseDomainService):
             ack = StartGameAck(result=1)
         else:
             ack = StartGameAck(map_code=request.map_code)
+            if self.room is not None and self.room.host is self.session:
+                self.room.started = True
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
 
@@ -359,6 +450,7 @@ class DungeonHandlers(BaseDomainService):
     async def on_5005(self, correlation, body):
         # eERC_LEAVE_ROOM_REQ (0x0058B240) -> 5006 eERC_LEAVE_ROOM_ACK (0x00598A00).
         # Acknowledges leaving game room before eERC_BACK_TO_SQUARE_REQ (5045).
+        await self.leave_room()
         ack = LeaveRoomAck(result=0).encode()
         await self.transport.send_event(event(5006, ack, correlation), note='leave room ack')
 
