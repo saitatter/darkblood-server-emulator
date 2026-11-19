@@ -1,5 +1,18 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## PR integration — saita machine, 2026-11-19
+
+- Reviewed and merged open PRs #5–#10 (CristianVita) into `main` in creation order.
+  All were based on `27fce6b`. Doc conflicts were resolved by keeping every section.
+- #9 overlapped #5 in the leave/disconnect paths. `remove_session_player()` now
+  delegates to the ownership check in `unregister_player(session=...)`, so stale
+  cleanup and party retention from #5 still apply. The #5 disconnect regression now
+  expects the single 5039 + 5022 departure pair that #9 introduced.
+- #10's 28-byte JoinGroup/LeaveGroup argument check matches all 254 relay RMIs in
+  the local `logs/wire.jsonl`. The first town join uses scope UID `-1`.
+- 170 headless tests pass with Python 3.8. Live verification is still pending for party
+  invite dialog (5051), layer visibility (5039/5027), relay groups and the 5014 error reply.
+
 ## Relay group isolation — Cristian, 2026-11-19
 
 - The town trace changes the layer UID in `JoinGroup` when walking between
