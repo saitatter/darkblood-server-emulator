@@ -78,11 +78,11 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(encoded[4:], b'\x10\x80')
 
     def test_level_up_and_change_exp_not_messages(self):
-        lvl = messages.LevelUpNot(char_uid=777, new_level=10, max_hp=1500, max_mp=800, flag=True)
+        lvl = messages.LevelUpNot(char_uid=777, new_level=10, exp=25, total_ap=27, remaining_ap=10, flag=True)
         enc_lvl = lvl.encode()
         # No tag bytes: 0x1E / array tag are not on the wire (0x00B35010).
-        self.assertEqual(enc_lvl[0:1], bytes.fromhex('80'))
-        self.assertEqual(struct.unpack_from('<qBii?', enc_lvl, 1), (777, 10, 1500, 800, True))
+        self.assertEqual(enc_lvl[0:1], bytes.fromhex('82'))
+        self.assertEqual(struct.unpack_from('<IIqBII?', enc_lvl, 1), (10, 10, 777, 10, 25, 27, True))
 
         exp = messages.ChangeExpNot(exp_total=25000, exp_details=(50, 100, 0, 0, 0, 0, 0, 0, 2.0))
         enc_exp = exp.encode()
@@ -121,9 +121,29 @@ class WireMessagesTest(unittest.TestCase):
         req_5017 = messages.FinishGameReq.decode(b'\x01\x17\x81\x0f')
         self.assertTrue(req_5017.is_clear)
 
-        ack_5018 = messages.FinishGameAck(result=0, is_clear=True, map_code='Act1_G1_A10', char_uid=123).encode()
+        ack_5018 = messages.FinishGameAck(result=0, is_clear=True, map_code='Act1_G1_A10', char_uid=123,
+                                          score=25000, kill_count=12, max_combo=18, clear_time=60, damage_dealt=5000).encode()
         self.assertEqual(struct.unpack_from('<I?', ack_5018[:5]), (0, True))
         self.assertTrue(ack_5018.endswith(b'\x10\x80'))
+
+        # SelectDungeonAck (5044) with history
+        dun_hist = {'Act1_G1_A1': ('Act1_G1_A1', 3, 1)}
+        ack_5044 = messages.SelectDungeonAck(gate_id='Act1_G1', dun_history=dun_hist).encode()
+        self.assertEqual(struct.unpack_from('<I', ack_5044[:4])[0], 0)
+        self.assertEqual(ack_5044[4], 0x17)  # tag 0x17 map
+        self.assertIn('Act1_G1'.encode('utf-16le'), ack_5044)
+
+        # ChoiceRewardPartyRankAck (5091)
+        reward_item = Item(code='Ihppa0001', uid=1, owner=1, container=1, slot=0, count=1)
+        ack_5091 = messages.ChoiceRewardPartyRankAck(result=0, char_uid=999, reward_uid=1,
+                                                    item_id=hashing.jhash('Ihppa0001'), count=1,
+                                                    drop_type=0, box_type=0, box_cost=0,
+                                                    items=[reward_item], gold=12345).encode()
+        self.assertEqual(struct.unpack_from('<iq', ack_5091[:12]), (0, 999))
+        self.assertEqual(struct.unpack_from('<IIHH', ack_5091, 12), (1, hashing.jhash('Ihppa0001') & 0xFFFFFFFF, 1, 0))
+        self.assertEqual(struct.unpack_from('<ii', ack_5091, 24), (0, 0))
+        self.assertEqual(ack_5091[32:34], b'\x10\x81')  # tag 0x10 + 1 item
+        self.assertEqual(struct.unpack_from('<q', ack_5091, len(ack_5091) - 8)[0], 12345)
 
     def test_item_encoding_includes_count_at_offset_zero(self):
         item = Item(code='AbodT1N', uid=123, owner=1, container=1, slot=0, count=5)

@@ -258,7 +258,8 @@ class SocialHandlers(BaseDomainService):
 
     async def on_5040(self, correlation, body):
         # eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890).
-        from darkblood.games.network.messages import ChatAck, ChatReq, LevelUpNot, ChangeExpNot
+        from darkblood.games.network.messages import ChatAck, ChatReq, LevelUpNot
+        from darkblood.games.progression import MAX_LEVEL, add_ap, advance_level
         req = ChatReq.decode(body)
         msg = req.message.strip()
         self.transport.record('chat-req', body, message=msg)
@@ -283,22 +284,19 @@ class SocialHandlers(BaseDomainService):
                     system_reply = '[GM] Usage: /gold <amount>'
             elif cmd == '/levelup' and char:
                 levels = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
-                char['level'] = min(60, char.get('level', 1) + levels)
-                char['sp'] = char.get('sp', 0) + (3 * levels)
-                self.store().save()
-                lvl_ack = LevelUpNot(
-                    char_uid=char.get('id', 1),
-                    new_level=char['level'],
-                    max_hp=char.get('max_hp', 1000),
-                    max_mp=char.get('max_mp', 500),
-                    flag=True
-                ).encode()
-                await self.transport.send_event(event(5087, lvl_ack), note=f'gm levelup not (level={char["level"]})')
-                system_reply = f'[GM] Leveled up by {levels}. Current level: {char["level"]}, SP: {char["sp"]}'
+                previous = char.get('level', 1)
+                gained = min(levels, max(0, MAX_LEVEL - previous))
+                if gained:
+                    level = previous + gained
+                    advance_level(char, level, exp=0)
+                    self.store().save()
+                    await self.transport.send_event(event(5087, LevelUpNot.from_character(char).encode()),
+                                                    note=f'gm levelup not (level={level})')
+                system_reply = f'[GM] Leveled up by {gained}. Current level: {previous + gained}, SP: {char.get("sp", 0)}'
             elif cmd == '/sp' and len(parts) > 1 and char:
                 try:
                     sp_amt = int(parts[1])
-                    char['sp'] = char.get('sp', 0) + sp_amt
+                    add_ap(char, sp_amt)
                     self.store().save()
                     system_reply = f'[GM] Added {sp_amt} SP. Total SP: {char["sp"]}'
                 except ValueError:

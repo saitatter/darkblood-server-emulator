@@ -110,6 +110,10 @@ class QuestFlowTest(ServerTestCase):
             client.send_event(2073, req, compressed=True)
             await client.expect_event(2074)
             client.send_event(2076, req, compressed=True)
+            _, level_up = await client.expect_event(5087)
+            _, exp = await client.expect_event(5086)
+            self.assertEqual(struct.unpack_from('<IIqBII?', level_up, 1), (3, 3, char_id, 2, 6, 3, True))
+            self.assertEqual(struct.unpack_from('<iiii', exp), (6, 0, 0, 150))
             _, ack = await client.expect_event(2077)
             return char_id, ack
 
@@ -120,7 +124,7 @@ class QuestFlowTest(ServerTestCase):
         self.assertEqual(struct.unpack_from('<ii', ack, len(ack) - 8), (150, 0))  # EXP, GP
         char = session.GameSession.store().get('OfflinePlayer', char_id)
         self.assertEqual(char['level'], 2)
-        self.assertEqual(char['u62'], 6)  # 13 + 150 exp - 157 req_exp = 6 remaining exp
+        self.assertEqual(char['exp'], 6)  # 150 reward XP - 144 required XP
         self.assertEqual(char['sp'], 3)
         self.assertIn('Ibaga0004', [i['code'] for i in char['items']])
 
@@ -255,6 +259,95 @@ class QuestFlowTest(ServerTestCase):
         active = char.get('quests_active', {})
         self.assertNotIn(str(quest1), active)
         self.assertNotIn(str(quest2), active)
+
+    def test_quest_item_objective_tracked_and_completed(self):
+        from darkblood.games.game_data import client_dict
+        dict_dir = Path(os.environ['DARKBLOOD_CLIENT_DATA']) / 'lua_src' / 'data' / 'dict'
+        dict_dir.mkdir(parents=True, exist_ok=True)
+        (dict_dir / 'quest_act1.lua').write_text('\n'.join([
+            'assert(DictQuest:LoadQuest({',
+            '  {',
+            '    ID = "Q0008S01",',
+            '    MissionID = {"QM807", "QM815"},',
+            '    OfferItemG = "LLQ0008S01o",',
+            '    RewardExp = 100,',
+            '    RewardGold = 50,',
+            '  }',
+            '}), "DictQuest:LoadQuest")',
+            'assert(DictQuest:LoadItemGroup({',
+            '  {',
+            '    GroupID = "LLQ0008S01o",',
+            '    ItemUnit = {',
+            '      {',
+            '        "Iquea0310",',
+            '        0,',
+            '        1',
+            '      }',
+            '    }',
+            '  }',
+            '}), "DictQuest:LoadItemGroup")',
+            'assert(DictQuest:LoadMission({',
+            '  {',
+            '    MissionID = "QM807",',
+            '    MissionType = "5",',
+            '    TargetValue = 1',
+            '  },',
+            '  {',
+            '    MissionID = "QM815",',
+            '    MissionType = "1",',
+            '    TargetID = "Iquea0310",',
+            '    TargetValue = 1',
+            '  }',
+            '}), "DictQuest:LoadMission")',
+            ''
+        ]), encoding='utf-8')
+        for fn in (client_dict.quests, client_dict.item_groups, client_dict.quest_item_objectives,
+                   client_dict.quest_mission_counts, client_dict.quest_mission_objectives):
+            fn.cache_clear()
+            self.addCleanup(fn.cache_clear)
+        self.addCleanup((dict_dir / 'quest_act1.lua').unlink)
+
+        q_hash = hashing.jhash('Q0008S01') & 0xFFFFFFFF
+        stamp = 'x'.encode('utf-16le')
+        req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', q_hash, -1)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('GuardBuddy'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            # Start quest: hands over Iquea0310 (2037) and immediately updates QM815 (2075)
+            client.send_event(2073, req, compressed=True)
+            await client.expect_event(2074)
+            await client.expect_event(2037)
+            _, not2075 = await client.expect_event(2075)
+            # 2075: b'\x10' + varuint(1) + signed_qid, obj_idx (1), count (1)
+            q_signed = q_hash - (1 << 32) if q_hash >= 1 << 31 else q_hash
+            self.assertEqual(struct.unpack_from('<iii', not2075, 2), (q_signed, 1, 1))
+
+            # Talk to NPC Lloyd: sends 2113 for QM807 -> updates objective 0
+            mission_str = 'QM807'.encode('utf-16le')
+            body_2113 = struct.pack('<i', 0x7fffffff) + jser.varuint(len(mission_str)) + mission_str
+            client.send_event(2113, body_2113)
+            _, not2075_talk = await client.expect_event(2075)
+            self.assertEqual(struct.unpack_from('<iii', not2075_talk, 2), (q_signed, 0, 1))
+            await client.expect_event(2114)
+
+            # Both objectives complete: turn in quest (2076 -> 2077)
+            client.send_event(2076, req, compressed=True)
+            await client.expect_event(5086)  # EXP gain notification
+            _, ack2077 = await client.expect_event(2077)
+            self.assertEqual(struct.unpack_from('<I', ack2077[:4])[0], 0)
+
+            # Verify character store: quest is done and consumed offer item is gone
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertIn(q_hash, char.get('quests_done', []))
+            self.assertNotIn('Iquea0310', [it['code'] for it in char.get('items', [])])
+
+        self.run_async(self.with_server(scenario))
 
 
 if __name__ == '__main__':

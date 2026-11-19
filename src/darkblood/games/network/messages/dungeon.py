@@ -64,15 +64,20 @@ class SelectDungeonAck:
     (0x00B35AB0), tag 0x13 set (0x005EAB90: varint, i32 elements). On success
     the wstring goes to JAppStateDungeonGate 0x006B2C00, which looks it up as
     the gate property id (failure logs "Invalidation in m_pjGateProp"), so it
-    echoes the 5043 request ("Act1_G1"). The map and both sets feed
-    0x006BCD20 (SetDunHist); their element meanings are not recovered and
-    are sent empty. The handler then changes app state to the dungeon gate.
+    echoes the 5043 request ("Act1_G1"). The map feeds 0x006BCD20 (SetDunHist),
+    populating JDunHistory with cleared difficulties (m_ucDiff) to enable
+    Normal/Hard/Master/Hero selection.
     """
     result: int = 0
     gate_id: str = ''
+    dun_history: dict = field(default_factory=dict)  # {dungeon_id: (map_code, max_diff, state)}
 
     def encode(self) -> bytes:
-        return (struct.pack('<I', self.result) + b'\x17' + varuint(0) + b'\x13' + varuint(0)
+        hist_bytes = b''
+        for dun_id, (map_code, max_diff, state) in self.dun_history.items():
+            hist_bytes += b'\x0f' + wide_string(dun_id) + wide_string(map_code) + struct.pack('<BB', max_diff, state)
+        hist_map = b'\x17' + varuint(len(self.dun_history)) + hist_bytes
+        return (struct.pack('<I', self.result) + hist_map + b'\x13' + varuint(0)
                 + wide_string(self.gate_id) + b'\x13' + varuint(0))
 
 @dataclass
@@ -299,9 +304,12 @@ class ChoiceRewardPartyRankAck:
     Wire format:
       i32 result (0 = success)
       i64 nChoiceCharUID
-      tag 0x1E + 12-byte struct (u32 uid, u32 item_id, u16 count, u16 drop_type)
+      12-byte reward struct (u32 uid, u32 item_id, u16 count, u16 drop_type)
       i32 nBoxType
       i32 nBoxCost
+      If char_uid == local_player_uid:
+        tag 0x10 + vector of Item (0x004B94C0)
+        i64 new_gold (player +0x70)
     """
     result: int = 0
     char_uid: int = 0
@@ -311,11 +319,15 @@ class ChoiceRewardPartyRankAck:
     drop_type: int = 0
     box_type: int = 0
     box_cost: int = 0
+    items: list = field(default_factory=list)  # [Item]
+    gold: int = 0
 
     def encode(self) -> bytes:
         data = struct.pack('<iq', self.result, self.char_uid)
         data += struct.pack('<IIHH', self.reward_uid, self.item_id, self.count, self.drop_type)
         data += struct.pack('<ii', self.box_type, self.box_cost)
+        data += b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
+        data += struct.pack('<q', self.gold)
         return data
 
 @dataclass
@@ -408,13 +420,15 @@ class FinishGameAck:
                 buf.extend(struct.pack('<q', self.char_uid))
                 if self.reward_stats and len(self.reward_stats) == 40:
                     buf.extend(self.reward_stats)
-                elif any((self.score, self.kill_count, self.max_combo, self.clear_time, self.damage_dealt)):
-                    buf.extend(struct.pack('<iiiiiiiiii',
-                                           self.score, self.kill_count, self.max_combo,
-                                           self.clear_time, self.damage_dealt,
-                                           0, 0, 0, 0, 0))
                 else:
-                    buf.extend(b'\x00' * 40)
+                    score = self.score if self.score > 0 else 15000
+                    kill_count = self.kill_count if self.kill_count > 0 else 10
+                    max_combo = self.max_combo if self.max_combo > 0 else 15
+                    clear_time = self.clear_time if self.clear_time > 0 else 45
+                    damage = self.damage_dealt if self.damage_dealt > 0 else 3500
+                    buf.extend(struct.pack('<iifiiiiiii',
+                                           1, 1, 1.0, 0,
+                                           score, kill_count, max_combo, clear_time, damage, 0))
             else:
                 buf.extend(varuint(0))
             # nPartyRankFirst, nPartyRankFinal, nBoxGrade, nExtraBoxCost

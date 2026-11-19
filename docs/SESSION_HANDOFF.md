@@ -1,5 +1,41 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Dungeon difficulty, end-of-dungeon chest & stats, quest item tracking — saita machine, 2026-11-20
+
+- **Dungeon difficulty switching (Issue 1)**:
+  `JAppStateDungeonGate` checks `*(int *)(in_ECX + 0x14)` in its `JDunHistory` map (`0x00A4BC00` `CheckDifficultyEnabled`).
+  In Opcode 5044 (`SelectDungeonAck`), the server previously sent an empty map.
+  Now populated via `gate_dungeons()` from `maplist.lua` with `(dungeon_id, max_diff=3, state=1)` encoded in the `0x17` map
+  as `\x0f + wide_string(dungeon_id) + wide_string(map_code) + struct.pack('<BB', 3, 1)`.
+  This unlocks Normal, Hard, Master, and Hero difficulty selection on the dungeon gate UI.
+
+- **End-of-dungeon chest opening (Issue 2)**:
+  In Opcode 5091 (`ChoiceRewardPartyRankAck`, handler `0x0078D660`), when `char_uid == local_player_uid`,
+  the client expects `tag 0x10 + vector of Item (0x004B94C0) + i64 new_gold (player +0x70)`.
+  Because these trailing fields were previously missing, the client hit a packet read error at line 9410 and aborted,
+  never calling `Lua_GetAppPage(0x1b); FUN_00560a20(...)` (which triggers the chest opening animation).
+  Updated `ChoiceRewardPartyRankAck` to include the items vector and gold. When picking a card/chest (5090),
+  the reward is added to player inventory and cleanly displayed on screen.
+
+- **End-of-dungeon stats calculation (Issue 3)**:
+  In Opcode 5018 (`FinishGameAck`, handler `0x007ADB60`), `mapSingleReward` provides 10 dwords (40 bytes) to `JResultDirect +0x74`.
+  The 3rd dword (`+0x7c`, offset 8) is checked as a float rate `fVar12 = *(float *)(in_ECX + 0x7c)` in `00720000.c:5112`.
+  If `<= 0.0`, line 5124 jumped to `LAB_007274e7`, bypassing all gauge initializations (`gauge_stylish`, `gauge_demolition`, `gauge_damage`)
+  and rank score calculations.
+  Configured `FinishGameAck` to encode `<iifiiiiiii` with float `1.0f` at offset 8, and populated non-zero combat metrics
+  (score, kill_count, max_combo, clear_time, damage_dealt).
+
+- **Quest "Support the Guards!" & Item Objectives (Issue 4)**:
+  In `quest_act1.lua`, quest `Q0008S01` has two missions: `QM807` (meet Lloyd, index 0, type 5) and `QM815` (have Backup Order `Iquea0310`, index 1, type 1).
+  Previously, `_activate_quest` initialized objective counters to `[]` for all quests except tutorial `0x34c58e7c`, and offer items handed over via 2037
+  never evaluated item objectives. Consequently, `QM815` stayed at 0/1, preventing quest completion dialogue when meeting Lloyd.
+  Added `quest_mission_counts()` and `quest_item_objectives()` in `client_dict.py`.
+  `_activate_quest` now initializes counters according to the quest's mission count.
+  Added `check_quest_item_objectives()` to update item objectives and dispatch Opcode 2075 (`QuestUpdateNot`) upon quest acceptance and item pickup.
+  Consumed quest items are cleaned up on quest turn-in (2076 -> 2077).
+  All 172 unit tests pass.
+
+
 ## Server Cash Shop catalog — saita machine, 2026-11-20
 
 - `2712` resolves product IDs through the bundled `assets/cash_shop.tsv`.

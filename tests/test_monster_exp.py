@@ -36,11 +36,20 @@ class MonsterExpTest(ServerTestCase):
             # Live 5063: prefix + u32 template hash + u32 instance.
             client.send_event(5063, struct.pack('<iII', 0x7fffffff, jhash('1npi01n0') & 0xFFFFFFFF, 0x03000fa2))
             _, exp = await client.expect_event(5086)
-            total, gained = struct.unpack_from('<ii', exp)
+            total, _, _, gained = struct.unpack_from('<iiii', exp)
             self.assertEqual(gained, 10)
+            self.assertEqual(total, 10)
             self.assertEqual(len(exp), 4 + 36)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(char['exp'], total)
+            char['exp'] = client_dict.char_level_stat(1, 1)['upexp'] - 10
+            client.send_event(5063, struct.pack('<iII', 0x7fffffff, jhash('1npi01n0'), 0x03000fa3))
+            _, level_up = await client.expect_event(5087)
+            self.assertEqual(level_up[0], 0x82)
+            self.assertEqual(struct.unpack_from('<IIqBII?', level_up, 1), (3, 3, char_id, 2, 0, 3, True))
+            _, exp = await client.expect_event(5086)
+            self.assertEqual(struct.unpack_from('<iiii', exp), (0, 0, 0, 10))
+            self.assertEqual(char['exp'], 0)
 
         self.run_async(self.with_server(scenario))
 

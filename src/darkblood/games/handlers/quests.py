@@ -4,6 +4,7 @@ import struct
 from darkblood.core.serialization.jser import WireError, event, read_varuint
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item, UPDATE_OWNER
+from darkblood.games.game_data.client_dict import char_level_stat
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.network.messages import (
     ChangeExpNot,
@@ -16,6 +17,7 @@ from darkblood.games.network.messages import (
     QuestStartAck,
     TutorialQuestStartAck,
 )
+from darkblood.games.progression import MAX_LEVEL, advance_level
 
 
 def _quest_id_after_tag(body: bytes) -> int:
@@ -49,6 +51,7 @@ class QuestHandlers(BaseDomainService):
                                         note='quest start ack (%08x)' % quest_id)
         if is_new:
             await self._give_offer_items(char, quest_id)
+        await self.check_quest_item_objectives(char)
 
     async def _give_offer_items(self, char, quest_id):
         """Hand over the quest's OfferItemG items (e.g. a letter to deliver).
@@ -68,6 +71,57 @@ class QuestHandlers(BaseDomainService):
         await self.transport.send_event(
             event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
             note='quest offer items (%s: %s)' % (group, ', '.join(c for c, _ in offered)))
+        await self.check_quest_item_objectives(char)
+
+    async def check_quest_item_objectives(self, char=None):
+        """Check active quests for item collection objectives (MissionType 1).
+
+        Compares inventory quantities against quest targets, updates active quest
+        objective counters, saves to character store, and dispatches Opcode 2075
+        (eEGS_QUEST_UPDATE_NOT) for changed counters.
+        """
+        if char is None:
+            char = self.current_char()
+        if not char:
+            return
+        from darkblood.games.game_data.client_dict import quest_item_objectives, quest_mission_counts
+        from darkblood.games.network.messages import QuestUpdateNot
+        active = char.get('quests_active', {})
+        if not active:
+            return
+        item_counts = {}
+        for it in char.get('items', []):
+            code = it.get('code')
+            cnt = it.get('count', 1)
+            item_counts[code] = item_counts.get(code, 0) + cnt
+
+        obj_map = quest_item_objectives()
+        mission_counts = quest_mission_counts()
+        updates = []
+        for q_str, record in active.items():
+            try:
+                qid = int(q_str)
+            except ValueError:
+                continue
+            counters = record.setdefault('counters', [])
+            needed = mission_counts.get(qid, 0)
+            while len(counters) < needed:
+                counters.append(0)
+            for item_code, q_list in obj_map.items():
+                cur_count = item_counts.get(item_code, 0)
+                for target_qid, obj_idx, target_val in q_list:
+                    if target_qid == qid:
+                        while len(counters) <= obj_idx:
+                            counters.append(0)
+                        new_val = min(target_val, cur_count)
+                        if counters[obj_idx] != new_val:
+                            counters[obj_idx] = new_val
+                            updates.append((qid, obj_idx, new_val))
+
+        if updates:
+            self.store().save()
+            await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
+                                            note=f'quest update not (item objectives: {updates})')
 
     def _activate_quest(self, quest_id: int) -> int:
         """Add quest_id to the selected character's active quests; return its UID."""
@@ -78,41 +132,40 @@ class QuestHandlers(BaseDomainService):
             return quests[str(quest_id)].uid
         uid = max([0] + [q.uid for q in quests.values()]) + 1
         tracked = sum(q.tracked for q in quests.values()) < 5  # 0x00A60960
-        counters = [0, 0] if quest_id == 0x34c58e7c else []
+        from darkblood.games.game_data.client_dict import quest_mission_counts
+        num_missions = quest_mission_counts().get(quest_id, 2 if quest_id == 0x34c58e7c else 0)
+        counters = [0] * num_missions
         active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=counters)
         if char:
             self.store().save()
         return uid
 
     async def grant_exp(self, char, exp):
-        """Add EXP to char, send 5087 for each level gained and 5086 with the total.
+        """Add EXP, carry excess across levels, and publish the updated progress.
 
         Shared by quest completion (2076) and monster kills (5063). Level
         thresholds come from charstat.lua (upexp per class and level).
         """
         if not char or exp <= 0:
             return
-        from darkblood.games.game_data.client_dict import char_level_stat
         char_class = int(char.get('char_class', 0))
         level = char.get('level', 1)
         char_exp = char.get('exp', 0) + exp
-        while level < 60:
-            stat = char_level_stat(char_class, level)
-            req_exp = stat.get('upexp', 999999)
-            if char_exp < req_exp:
+        level_notifications = []
+        while level < MAX_LEVEL:
+            req_exp = char_level_stat(char_class, level)['upexp']
+            if req_exp <= 0 or char_exp < req_exp:
                 break
             char_exp -= req_exp
             level += 1
-            char['level'] = level
-            char['sp'] = char.get('sp', 0) + 3
-            char['max_hp'] = stat.get('hp', 500)
-            char['max_mp'] = stat.get('mp', 200)
-            lvl_ack = LevelUpNot(char_uid=char.get('id', 1), new_level=level,
-                                 max_hp=char['max_hp'], max_mp=char['max_mp'], flag=True).encode()
-            await self.transport.send_event(event(5087, lvl_ack), note=f'level up not (level={level})')
+            advance_level(char, level, char_exp)
+            level_notifications.append(LevelUpNot.from_character(char))
         char['exp'] = char_exp
-        char['u62'] = char_exp
-        exp_ack = ChangeExpNot(exp_total=char_exp, exp_details=(exp, 0, 0, 0, 0, 0, 0, 0, 0.0)).encode()
+        for level_not in level_notifications:
+            await self.transport.send_event(event(5087, level_not.encode()),
+                                            note=f'level up not (level={level_not.new_level})')
+        # The client displays the gained XP from jGainExp +0x08.
+        exp_ack = ChangeExpNot(exp_total=char_exp, exp_details=(0, 0, exp, 0, 0, 0, 0, 0, 0.0)).encode()
         await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
 
     async def handle_quest_complete(self, correlation: int, body: bytes):
@@ -144,6 +197,23 @@ class QuestHandlers(BaseDomainService):
             char['u66'] = total
             char['gold'] = total
             await self.grant_exp(char, exp)
+            from darkblood.games.game_data.client_dict import quest_item_objectives
+            for item_code, q_list in quest_item_objectives().items():
+                for target_qid, _, target_val in q_list:
+                    if target_qid == quest_id:
+                        rem = target_val
+                        new_items = []
+                        for it in char.get('items', []):
+                            if it.get('code') == item_code and rem > 0:
+                                cnt = it.get('count', 1)
+                                if cnt <= rem:
+                                    rem -= cnt
+                                    continue
+                                else:
+                                    it['count'] = cnt - rem
+                                    rem = 0
+                            new_items.append(it)
+                        char['items'] = new_items
             from darkblood.player_management.characters import add_reward_items
             reward_items = [] if already else add_reward_items(char, items)
             self.store().save()

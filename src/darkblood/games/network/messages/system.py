@@ -63,27 +63,27 @@ class CharVerifyStatAck:
 class LevelUpNot:
     """Opcode 5087: eERC_LEVEL_UP_NOT (On_eERC_LEVEL_UP_NOT 0x0078CCF0).
 
-    Wire format:
-      tag 0x1E
-        tag 0x0D + varuint(0) (empty stats array via 0x00A48D50)
-        i64 char_uid
-        u8 new_level
-        i32 max_hp
-        i32 max_mp
-        bool flag
+    Reader 0x00A49160 reads the AP array first, then the fixed fields.
+    The handler indexes that array to write the player's remaining AP.
     """
     char_uid: int = 0
     new_level: int = 1
-    max_hp: int = 1000
-    max_mp: int = 500
+    exp: int = 0
+    total_ap: int = 0
+    remaining_ap: int = 0
     flag: bool = True
+
+    @classmethod
+    def from_character(cls, char):
+        return cls(char_uid=char['id'], new_level=char['level'], exp=char['exp'],
+                   total_ap=char['total_ap'], remaining_ap=char['sp'])
 
     def encode(self) -> bytes:
         # 0x0078CCF0 checks tag 0x1E (and the array tag) through 0x00B35010,
         # which consumes no byte for tags outside 0x0F..0x1A: neither byte is
-        # on the wire. The array is a bare varint count, as in 2007.
-        return varuint(0) + struct.pack('<qBii?', self.char_uid, self.new_level,
-                                        self.max_hp, self.max_mp, self.flag)
+        # on the wire. Fill both AP array entries as in 2007.
+        return varuint(2) + struct.pack('<IIqBII?', self.remaining_ap, self.remaining_ap,
+                                        self.char_uid, self.new_level, self.exp, self.total_ap, self.flag)
 
 @dataclass
 class ChangeExpNot:

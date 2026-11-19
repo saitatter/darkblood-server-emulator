@@ -70,7 +70,8 @@ class Character:
     # 0x00990030 (DictMap+0x3C) for "Text_Town"; unknown ids show "default town"
     # (0x00704278).
     join_layer_net_id: int = field(default_factory=layer_net_id)
-    sp: int = 0  # skill points: details u32 array +0x51 -> player +0x8C
+    sp: int = 0  # remaining AP: details u32 array +0x51 -> player +0x8C
+    total_ap: int = 0  # details +0x4D -> player +0x88
     s49: Tuple[int, int, int] = (23, 25, 27)
     s53: Tuple[int, int, int] = (29, 31, 33)
     # Lobby +0x5D / +0x5E: pending deletion and seconds left, shown by
@@ -85,7 +86,7 @@ class Character:
     guild_grade: int = 0
     # 2007 details +0x41 EXP and +0x45 gold (player +0x78 / +0x70). Not part
     # of the lobby entry, whose +0x62 / +0x66 are the bonus fields below.
-    u62: int = 13
+    exp: int = 0
     u66: int = 21
     # Lobby +0x62 f32 rate and +0x66 i64: when +0x66 > 0, character select
     # shows a "bonus" of (rate - 1.0) (0x007045B4). Meaning of the amount
@@ -106,6 +107,7 @@ class Character:
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
         """Instantiate a Character from storage JSON dictionary."""
+        from darkblood.games.progression import total_ap
         visuals = CharacterVisuals(
             face=data.get('face', 0),
             hair=data.get('hair', 0),
@@ -128,6 +130,7 @@ class Character:
             u2e=data.get('u2e', 7),
             join_layer_net_id=data.get('join_layer_net_id', layer_net_id()),
             sp=data.get('sp', 0),
+            total_ap=total_ap(data),
             s49=tuple(data.get('s49', (23, 25, 27))),
             s53=tuple(data.get('s53', (29, 31, 33))),
             # +0x5D / +0x5E: pending deletion flag and seconds left
@@ -139,7 +142,7 @@ class Character:
                  else data.get('u5e', 9)),
             guild_uid=data.get('guild_uid', -1),
             guild_grade=data.get('guild_grade', 0),
-            u62=data.get('u62', 13),
+            exp=data.get('exp', 0),
             u66=data.get('u66', 21),
             u6e=data.get('u6e', 15),
             b72=data.get('b72', False),
@@ -165,13 +168,14 @@ class Character:
             'u2e': self.u2e,
             'join_layer_net_id': self.join_layer_net_id,
             'sp': self.sp,
+            'total_ap': self.total_ap,
             's49': list(self.s49),
             's53': list(self.s53),
             'b5d': self.b5d,
             'u5e': self.u5e,
             'guild_uid': self.guild_uid,
             'guild_grade': self.guild_grade,
-            'u62': self.u62,
+            'exp': self.exp,
             'u66': self.u66,
             'u6e': self.u6e,
             'b72': self.b72,
@@ -220,8 +224,7 @@ class Character:
         # Face, hair, and cosmetic parameter (Reader 0x00A52630 +0x35, +0x39, +0x3D)
         b += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
         b += struct.pack('<B', self.level)
-        b += struct.pack('<IQI', self.u62, self.u66, self.u6e)
-        b += struct.pack('<HHHH', 0, 0, 0, 0)
+        b += struct.pack('<IQIIHH', self.exp, self.u66, self.u6e, self.total_ap, 0, 0)
         # Sub-struct 0xa488f0: untagged 24 bytes
         b += (b'\x00' * 24)
         # Details +0x5F (u64) and +0x9C (bool), copied by 0x0095A150 into the

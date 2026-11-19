@@ -72,9 +72,14 @@ class DungeonHandlers(BaseDomainService):
             gate = body[offset:offset + length].decode('utf-16le')
         except (WireError, UnicodeDecodeError):
             pass
-        ack = SelectDungeonAck(gate_id=gate).encode()
+        from darkblood.games.game_data.client_dict import gate_dungeons
+        dungeons = gate_dungeons().get(gate, [])
+        if not dungeons:
+            dungeons = [f"{gate}_A1", f"{gate}_A2", f"{gate}_A3", f"{gate}_A4"]
+        dun_history = {d: (d, 3, 1) for d in dungeons}
+        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history).encode()
         await self.transport.send_event(event(5044, ack, correlation),
-                                        note='select dungeon ack (%s)' % gate)
+                                        note=f'select dungeon ack ({gate}, {len(dun_history)} dungeons unlocked)')
 
     async def on_5009(self, correlation, body):
         # eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f
@@ -146,11 +151,12 @@ class DungeonHandlers(BaseDomainService):
         self.dungeon_kill_count = getattr(self, 'dungeon_kill_count', 0) + 1
         from darkblood.games.game_data.client_dict import monsters
         info = monsters().get(msg.monster_id)
+        exp = round(info['exp']) if info else 0
         if info:
-            self.dungeon_score = getattr(self, 'dungeon_score', 0) + max(1, int(round(info['exp']))) * 10
+            self.dungeon_score = getattr(self, 'dungeon_score', 0) + max(1, exp) * 10
         char = self._current_char()
-        if info and char is not None:
-            await self.session.quests.grant_exp(char, max(1, int(round(info['exp']))))
+        if exp > 0 and char is not None:
+            await self.session.quests.grant_exp(char, exp)
             self.store().save()
         if char is not None:
             if info:
@@ -197,6 +203,28 @@ class DungeonHandlers(BaseDomainService):
         kill_count = getattr(self, 'dungeon_kill_count', 0)
         max_combo = getattr(self, 'dungeon_max_combo', 0)
         score = getattr(self, 'dungeon_score', 0)
+        clear_time = getattr(self, 'dungeon_clear_time', 0)
+        damage_dealt = getattr(self, 'dungeon_damage_dealt', 0)
+
+        # Ensure realistic stats for gauge and ranking calculations
+        if kill_count > 0:
+            if score == 0:
+                score = kill_count * 1250
+            if max_combo == 0:
+                max_combo = min(50, max(5, kill_count * 3))
+            if clear_time == 0:
+                clear_time = max(20, kill_count * 8)
+            if damage_dealt == 0:
+                damage_dealt = kill_count * 450
+        else:
+            if score == 0:
+                score = 10000
+            if max_combo == 0:
+                max_combo = 10
+            if clear_time == 0:
+                clear_time = 35
+            if damage_dealt == 0:
+                damage_dealt = 2500
 
         # Ranks: 1=SSS, 2=SS, 3=S, 4=A, 5=B, 6=C, 7=D
         if score >= 50000 or kill_count >= 20:
@@ -224,6 +252,8 @@ class DungeonHandlers(BaseDomainService):
             score=score,
             kill_count=kill_count,
             max_combo=max_combo,
+            clear_time=clear_time,
+            damage_dealt=damage_dealt,
         ).encode()
         await self.transport.send_event(event(5018, ack, correlation),
                                         note=f'finish game ack ({map_code} clear={req.is_clear} rank={rank})')
@@ -335,8 +365,18 @@ class DungeonHandlers(BaseDomainService):
     async def on_5090(self, correlation, body):
         # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
         req = ChoiceRewardPartyRankReq.decode(body)
+        char = self._current_char()
         char_id = self.char_id
-        item_id = jhash('Ihppa0001')
+        reward_code = 'Ihppa0001'
+        item_id = jhash(reward_code) & 0xFFFFFFFF
+        from darkblood.games.entities.items import UPDATE_OWNER, Item
+        from darkblood.player_management.characters import add_reward_items
+        stored_items = []
+        if char:
+            stored_items = add_reward_items(char, [(reward_code, 1)])
+            self.store().save()
+        reward_item = [Item(owner=UPDATE_OWNER, **i) for i in stored_items] if stored_items else []
+        gold = char.get('gold', char.get('u66', 0)) if char else 0
         ack = ChoiceRewardPartyRankAck(
             result=0,
             char_uid=char_id,
@@ -345,10 +385,12 @@ class DungeonHandlers(BaseDomainService):
             count=1,
             drop_type=0,
             box_type=0,
-            box_cost=0
+            box_cost=0,
+            items=reward_item,
+            gold=gold,
         ).encode()
         await self.transport.send_event(event(5091, ack, correlation),
-                                        note='choice reward partyrank ack (card=%d)' % req.card_index)
+                                        note=f'choice reward partyrank ack (card={req.card_index} item={reward_code})')
 
     async def on_5015(self, correlation, body):
         # eERC_CHANGE_TEAM_REQ -> 5016 eERC_CHANGE_TEAM_ACK.
@@ -400,6 +442,8 @@ class DungeonHandlers(BaseDomainService):
                                         note='pick up item result (drop %d: %s)' % (req.drop_uid, code))
         await self.transport.send_event(event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
                                         note='picked item into bag (%s)' % code)
+        if hasattr(self, 'check_quest_item_objectives'):
+            await self.check_quest_item_objectives(char)
 
     async def on_5363(self, correlation, body):
         # eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10).

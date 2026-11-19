@@ -255,6 +255,17 @@ def char_level_stat(char_class: int, level: int) -> dict:
     }
 
 
+@lru_cache(maxsize=1)
+def level_up_ap():
+    """AP awarded at each level in the client's DictChar:LoadLevelUp table."""
+    path = data_root() / 'levelup.lua'
+    if not path.is_file():
+        return {}
+    return {int(level): int(ap) for ap, level in re.findall(
+        r'\{\s*GainAP\s*=\s*(\d+)\s*,\s*Level\s*=\s*(\d+)\s*\}',
+        path.read_text(encoding='utf-8', errors='replace'))}
+
+
 
 ITEM_FIELD_RE = re.compile(r'^ {4}(\w+) = (-?\d+),?$')
 
@@ -621,6 +632,88 @@ def quest_mission_objectives():
     for q_hash, mids in quest_missions.items():
         for idx, mid in enumerate(mids):
             out.setdefault(mid, []).append((q_hash, idx, targets.get(mid, 1)))
+    return out
+
+
+@lru_cache(maxsize=None)
+def quest_mission_counts():
+    """Mapping: quest_id_hash (int) -> count of missions.
+
+    Parsed from LoadQuest in quest_*.lua.
+    """
+    root = data_root()
+    if not root.exists():
+        return {}
+    out = {}
+    for p in _quest_files():
+        txt = p.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', txt):
+            if block.startswith('LoadQuest'):
+                for q_block in re.split(r'\n  \{', block):
+                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    if qid and mids:
+                        out[jhash(qid.group(1)) & 0xFFFFFFFF] = len(mids)
+    return out
+
+
+@lru_cache(maxsize=None)
+def quest_item_objectives():
+    """Mapping: item_code (str) -> [(quest_id_hash, objective_index, target_count)].
+
+    Parsed from LoadMission (MissionType == '1') and LoadQuest in quest_*.lua.
+    """
+    root = data_root()
+    if not root.exists():
+        return {}
+    mission_defs = {}
+    quest_missions = {}
+
+    for p in _quest_files():
+        txt = p.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', txt):
+            if block.startswith('LoadMission'):
+                for m_block in re.split(r'\n  \{', block):
+                    mid = re.search(r'MissionID\s*=\s*"([^"]+)"', m_block)
+                    mtype = re.search(r'MissionType\s*=\s*"([^"]+)"', m_block)
+                    tid = re.search(r'TargetID\s*=\s*"([^"]+)"', m_block)
+                    tval = re.search(r'TargetValue\s*=\s*(\d+)', m_block)
+                    if mid and mtype and tval and mtype.group(1) == '1' and tid:
+                        mission_defs[mid.group(1)] = (tid.group(1), int(tval.group(1)))
+            elif block.startswith('LoadQuest'):
+                for q_block in re.split(r'\n  \{', block):
+                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    if qid and mids:
+                        quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = mids
+
+    out = {}
+    for qid_hash, mids in quest_missions.items():
+        for obj_idx, mid in enumerate(mids):
+            if mid in mission_defs:
+                target_item, target_val = mission_defs[mid]
+                out.setdefault(target_item, []).append((qid_hash, obj_idx, target_val))
+    return out
+
+
+@lru_cache(maxsize=None)
+def gate_dungeons():
+    """Mapping: gate_id ("Act1_G1") -> list of dungeon_ids (["Act1_G1_A1", ...]).
+
+    Parsed from DictMap:LoadGate in maplist.lua.
+    """
+    path = data_root() / 'maplist.lua'
+    if not path.exists():
+        return {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    section = _section(text, 'DictMap:LoadGate')
+    out = {}
+    for entry in _top_entries(section):
+        gid = re.search(r'GateID = "([^"]+)"', entry)
+        if not gid:
+            continue
+        dlist = re.findall(r'"([^"]+)"', entry.split('DungeonID = {', 1)[-1].split('}', 1)[0]) if 'DungeonID = {' in entry else []
+        out[gid.group(1)] = dlist
     return out
 
 
