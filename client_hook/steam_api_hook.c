@@ -835,6 +835,13 @@ static void ApplyOptionPatch(const char* name, DWORD va, const BYTE* expected, c
     RawLogFmt("[OPTION] %s applied at %08X", name, va);
 }
 static void ApplyClientOptions(void) {
+    /* The budgeted P2P sender (0x00966B90) allows one revision per peer
+     * every 2000 ms. Use 100 ms on loopback and preserve its peer budget. */
+    {
+        static const BYTE e[] = {0x05, 0xD0, 0x07, 0x00, 0x00};
+        static const BYTE p[] = {0x05, 0x64, 0x00, 0x00, 0x00};
+        ApplyOptionPatch("peer_update_interval", 0x00966C9C, e, p, sizeof(e));
+    }
     /* JAppStateLogo next-clip (0x006F3950): take the "queue empty" branch
      * at once, which ends the logo state (0x006F2E10). je -> jmp. */
     if (Option("skip_logos", 0)) {

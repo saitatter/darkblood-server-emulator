@@ -3,7 +3,8 @@ from darkblood.games.network.messages import ChannelSquare, GameServer
 
 
 # Experimental local server list (map key -> entry).
-SERVERS = [(1, dict(name='Offline'))]
+OFFLINE_SERVER_ID = 1
+SERVERS = [(OFFLINE_SERVER_ID, dict(name='Offline'))]
 
 
 CHAR_SLOTS = 4  # first u8 of 2009: shown as "4 SLOT" on character select (observed)

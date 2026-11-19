@@ -114,6 +114,7 @@ class GameWorldManager:
         5027 instantiates the JUser entity (JNetUserMgr::SetPeerInfo_At via Reader 0x00A494B0).
         5096 updates the 3D model, visual equipment (0x00A52630), and guild name.
         """
+        from darkblood.games.config import OFFLINE_SERVER_ID
         from darkblood.games.handlers.frontend import build_char_details
         new_char = Character.from_dict(new_player.char_data)
         new_p_data = dict(
@@ -126,7 +127,7 @@ class GameWorldManager:
             z=new_player.z,
             guild_uid=getattr(new_char, 'guild_uid', 0),
             guild_name=getattr(new_char, 'guild_name', '') or '',
-            extra_i64=0,
+            server_id=OFFLINE_SERVER_ID,
         )
 
         # 1. Notify others in square of newcomer
@@ -171,7 +172,7 @@ class GameWorldManager:
                     z=ep.z,
                     guild_uid=getattr(ec, 'guild_uid', 0),
                     guild_name=getattr(ec, 'guild_name', '') or '',
-                    extra_i64=0,
+                    server_id=OFFLINE_SERVER_ID,
                 )
                 for ep, ec in existing_players
             ]

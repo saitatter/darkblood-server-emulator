@@ -213,13 +213,14 @@ class PageCharTemp:
     z: float = 0.0
     guild_uid: int = 0
     guild_name: str = ""
-    extra_i64: int = 0
+    server_id: int = 0
 
     def encode(self) -> bytes:
         raw_20 = struct.pack('<qfff', self.char_id, self.x, self.y, self.z)
         return (raw_20 + wide_string(self.name)
                 + struct.pack('<Bqq', int(self.char_class), int(self.level), int(self.guild_uid))
-                + wide_string(self.guild_name) + struct.pack('<q', int(self.extra_i64)))
+                # The client extracts the server-list key from bits 54–58 (0x00A614A0).
+                + wide_string(self.guild_name) + struct.pack('<Q', self.server_id << 54))
 
 def encode_join_layer_not(players_data: list) -> bytes:
     """Opcode 5027: eERC_JOIN_LAYER_NOT (0x00787790).
