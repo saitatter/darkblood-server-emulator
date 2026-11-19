@@ -76,9 +76,20 @@ class InventoryFlowTest(ServerTestCase):
                 self.assertIn(struct.pack('<BBiq?qH', *entry, False, 0, 0xFFFF), ack2007)
 
             # 8. Switch quickslot (2046 -> 2047)
-            client.send_event(2046, struct.pack('<BBB', 0, 0, 1))
+            client.send_event(2044, bytes.fromhex('ffffff7f0103') + struct.pack('<iq', 0x19b, -1))
+            await client.expect_event(2045)
+            client.send_event(2046, bytes.fromhex('ffffff7f010103'))
             _, ack2047 = await client.expect_event(2047)
-            self.assertEqual(struct.unpack_from('<iBBB', ack2047), (0, 0, 0, 1))
+            self.assertEqual(struct.unpack('<iBBB', ack2047), (0, 1, 1, 3))
+            client.send_event(2046, bytes.fromhex('ffffff7f010305'))
+            _, ack2047 = await client.expect_event(2047)
+            self.assertEqual(struct.unpack('<iBBB', ack2047), (0, 1, 3, 5))
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            for entry in ((1, 1, 0x19b, -1), (1, 5, 0x19a, -1), (0, 1, 0x1234, 2)):
+                self.assertIn(struct.pack('<BBiq?qH', *entry, False, 0, 0xFFFF), ack2007)
+            self.assertNotIn(struct.pack('<BBiq?qH', 1, 3, 0x19a, -1, False, 0, 0xFFFF), ack2007)
 
             # 9. Learn skill (2050 -> 2051)
             client.send_event(2050, struct.pack('<HB', 101, 2))

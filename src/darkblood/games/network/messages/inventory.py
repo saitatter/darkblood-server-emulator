@@ -303,9 +303,10 @@ class SwitchBagAck:
 
 @dataclass
 class SwitchQuickslotReq:
-    """Opcode 2046: eEGS_SWITCH_QUCIKSLOT_REQ (0x00780000.c:8591).
+    """Opcode 2046: eEGS_SWITCH_QUCIKSLOT_REQ (sender 0x0078C2E0).
 
-    Wire format: u8 ucType + u8 ucSlotNumFrom + u8 ucSlotNumTo (3 bytes).
+    Wire format: optional 0x7fffffff prefix + u8 ucType + u8 ucSlotNumFrom
+    + u8 ucSlotNumTo.
     """
     slot_type: int = 0
     from_slot: int = 0
@@ -313,6 +314,8 @@ class SwitchQuickslotReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'SwitchQuickslotReq':
+        from darkblood.core.serialization.jser import strip_prefix
+        data = strip_prefix(data)
         if len(data) >= 3:
             t, f, to = struct.unpack_from('<BBB', data, 0)
             return cls(slot_type=t, from_slot=f, to_slot=to)
