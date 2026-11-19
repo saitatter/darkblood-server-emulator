@@ -217,7 +217,7 @@ class QuestFlowTest(ServerTestCase):
     def test_quest_giveup_and_fail(self):
         quest1 = hashing.jhash('Q0003S01')
         quest2 = hashing.jhash('Q0004S01')
-        stamp = 'x'.encode('utf-16le')
+        stamp = '2015-02-23 15:42:11, '.encode('utf-16le')
         req1 = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest1, -1)
         req2 = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest2, -1)
 

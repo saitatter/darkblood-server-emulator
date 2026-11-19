@@ -1,5 +1,27 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Quest abandonment and performance review — saita machine, 2026-11-20
+
+- The live 2078 request on Mage1 carried a 42-byte UTF-16 timestamp and
+  quest hash `0x8CD61A6C`. The stall alias's old length heuristic
+  misrouted it and sent 2079 “personal shop open ack (uid=2 items=0).”
+  2078/2080 now recognize the exact J-wstring plus u32 quest body,
+  with one registered dispatcher entry for each opcode. The regression
+  uses the full timestamp and preserves the stall alias tests.
+  All 173 headless tests passed.
+- Restarted the game listener with the fix. Mage1 retried at 00:16:27
+  and received a successful 2079 for `0x8CD61A6C`. At 00:17:03 the
+  same live client accepted the quest again and received 2074, with a
+  fresh active quest record. The server and both clients stayed open.
+- Used an isolated loopback benchmark of the relay's real 0x16 → 0x1A
+  path. Median latency was 0.26–0.27 ms with capture enabled and
+  0.059 ms disabled. Real town client sends remain about 215 ms apart.
+  Compare client emission, receive/playback, and event-loop delay
+  separately. The local script is `research/benchmark-relay-capture.py`.
+- Architecture review pinned NexusForever and MHServerEmu sources. The
+  ordered refactor targets and source links are in `docs/ARCHITECTURE.md`.
+  Immediate targets are opcode ownership and measured client playback.
+
 ## Town update cadence, server labels, and cash shop — saita machine, 2026-11-20
 
 - Both live clients sent event `0x4D` (town position revision inside the

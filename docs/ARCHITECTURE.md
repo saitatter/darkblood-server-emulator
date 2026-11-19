@@ -57,3 +57,51 @@ tools/                           gamectl, headless client, RE helpers
 opcode. Dataclass `encode()` methods map to serializers on message types; the
 JSer helpers in `core/serialization/jser.py` are the only wire primitives the
 game layer needs.
+
+## Performance and ownership review
+
+Town movement uses a client-generated `0x4D` revision inside a peer
+payload. The current clients emit revisions about every 215 ms with the
+100 ms shim throttle. In an isolated Windows loopback run of the real
+relay path with two headless connections, the median send-to-receive time
+was 0.26–0.27 ms with synchronous wire capture and 0.059 ms with capture
+disabled. The 95th percentiles were 0.42–0.43 ms and 0.07–0.11 ms
+respectively (two runs of 280 measured messages per mode, sequential
+sends). This measures the two-peer forwarding path without contention
+or client rendering.
+
+1. **Town playback.** Timestamp the client eligibility check
+   (`0x008464E0`), revision enqueue (`0x0087C25E`), and receiver apply
+   before changing another timer. Measure sender and receiver intervals
+   during continuous movement and after direction changes. Any
+   interpolation should target the client consumer of actual peer
+   revisions.
+2. **Opcode ownership.** Establish one registration per opcode, detect
+   duplicates at startup, and resolve call shape at registration.
+   The current dispatcher inspects each invocation and silently keeps the
+   first registration. Four remaining collisions require evidence before
+   choosing owners. The client table identifies 2446 as achievement
+   division, 2448 as rebirth coins, and 2475/2477 as pet load/replace.
+   Keep intentional aliases on one dispatcher entry with structural
+   request validation.
+3. **Lobby and instance lifecycle.** Put town membership behind a
+   `(square, layer)` index and let each dungeon instance own its
+   membership, room state, and lifecycle commands. Resolve session
+   identity at the boundary, then enqueue typed joins and departures
+   for the owner. NexusForever's `MapManager` drains pending admissions
+   before updating maps, and its entity command handler forwards to the
+   controlled entity's movement manager. MHServerEmu drains network input
+   ahead of fixed-step simulation and uses per-connection area of
+   interest. Use these boundaries first for shared rooms and despawn
+   ordering. Town can keep its existing peer protocol.
+   [NexusForever MapManager](https://github.com/NexusForever/NexusForever/blob/43004fc8bdd8769342cd59783315f6dd484b1394/Source/NexusForever.Game/Map/MapManager.cs)
+   [NexusForever movement entry](https://github.com/NexusForever/NexusForever/blob/43004fc8bdd8769342cd59783315f6dd484b1394/Source/NexusForever.WorldServer/Network/Message/Handler/Entity/ClientEntityCommandHandler.cs)
+   [MHServerEmu update loop](https://github.com/Crypto137/MHServerEmu/blob/1a309e526a74b2066ea6705e7ca4e17c4ba32489/src/MHServerEmu.Games/Game.cs#L207)
+   [MHServerEmu AreaOfInterest](https://github.com/Crypto137/MHServerEmu/blob/1a309e526a74b2066ea6705e7ca4e17c4ba32489/src/MHServerEmu.Games/Network/AreaOfInterest.cs#L97)
+4. **Relay and persistence under load.** Track event-loop delay, outgoing
+   buffer size, fan-out and database flush time. Move optional packet
+   capture off the hot path with a bounded queue and drop counter,
+   preserving gameplay messages and diagnostic ordering. Encode each
+   roster once per membership change. Replace whole-cache saves with
+   explicit dirty records, preserving atomic trade or inventory changes
+   across characters. Keep these changes independently measurable.

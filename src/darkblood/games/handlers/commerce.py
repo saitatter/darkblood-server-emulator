@@ -354,14 +354,11 @@ class CommerceHandlers(BaseDomainService):
             pass
 
     async def on_2078(self, correlation, body):
-        # eEGS_PERSONALSHOP_OPEN_REQ / eEGS_QUEST_GIVEUP_REQ disambiguation:
-        # Quest giveup has a small body with a quest ID (<= 12 bytes or no 0x10 item vector),
-        # whereas personal shop open contains stall items (0x10 vector) or stall title.
-        from darkblood.core.serialization.jser import strip_prefix
-        unprefixed = strip_prefix(body)
-        if len(unprefixed) <= 8 or (b'\x10' not in unprefixed and len(unprefixed) < 16):
-            if hasattr(self.session, 'quests') and hasattr(self.session.quests, 'handle_quest_giveup'):
-                return await self.session.quests.handle_quest_giveup(correlation, body)
+        # The quest body ends with a u32 after the timestamp. The stall
+        # alias has a title followed by a tagged item vector.
+        from darkblood.games.network.messages.quests import QuestGiveupReq
+        if QuestGiveupReq.decode(body).quest_id:
+            return await self.session.quests.handle_quest_giveup(correlation, body)
         await self._handle_open_stall(correlation, body, ack_opcode=2079)
 
     async def on_2340(self, correlation, body):
@@ -399,14 +396,9 @@ class CommerceHandlers(BaseDomainService):
                                             note=f'personal shop open fail ({msg})')
 
     async def on_2080(self, correlation, body):
-        # eEGS_PERSONALSHOP_BUY_REQ / eEGS_QUEST_FAIL_REQ disambiguation:
-        # Quest fail has a small body with a quest ID (<= 12 bytes),
-        # whereas personal shop buy has seller_uid, item_uid (>= 16 bytes).
-        from darkblood.core.serialization.jser import strip_prefix
-        unprefixed = strip_prefix(body)
-        if len(unprefixed) <= 12:
-            if hasattr(self.session, 'quests') and hasattr(self.session.quests, 'handle_quest_fail'):
-                return await self.session.quests.handle_quest_fail(correlation, body)
+        from darkblood.games.network.messages.quests import QuestFailReq
+        if QuestFailReq.decode(body).quest_id:
+            return await self.session.quests.handle_quest_fail(correlation, body)
         await self._handle_buy_stall_item(correlation, body, ack_opcode=2081)
 
     async def on_5242(self, correlation, body):

@@ -683,6 +683,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   Tag `0x1E` chat struct (`channel: u8, sender: wstring, target: wstring, message: wstring`). Intercepts GM console commands (`/gold`, `/levelup`, `/sp`, `/item`).
 - `2078 eEGS_QUEST_GIVEUP_REQ` -> `2079 eEGS_QUEST_GIVEUP_ACK` (`0x006223B0`, reader `0x00A559F0`):
   observed request `J-wstring (timestamp text, meaning unknown), u32 quest_id` (same shape as 2073) -> `result: i32 (0)`, tag `0x10` i32 quest-id vector, 18-byte jInfo, tag `0x10` i32 vector, tag `0x10` item vector. Removes quest from active storage. The client looks each id up (`0x00A7B390`) and drops the ack if it is unknown.
+  Route by the exact string-plus-ID shape before handling the local stall alias. Verified live with a 42-byte timestamp and a subsequent 2073 accept for the abandoned quest.
 - `2080 eEGS_QUEST_FAIL_REQ` -> `2081 eEGS_QUEST_FAIL_ACK` (`0x006223B0`):
   `quest_id: u32` (request assumed to share the 2078 J-wstring prefix; not yet observed) -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
 - `2254 eEGS_MAGICENCHANT_ENCHANT_REQ` -> `2255 eEGS_MAGICENCHANT_ENCHANT_ACK` (`0x00796DC0`):

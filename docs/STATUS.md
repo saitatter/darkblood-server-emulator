@@ -1,5 +1,15 @@
 # Research status and handoff
 
+## Quest abandonment and relay latency — 2026-11-20
+
+The live 2078 request was routed to the stall alias because its timestamp
+made it longer than the old heuristic allowed. The decoder now checks the
+full quest wire shape before selecting the handler. Mage1 abandoned and
+then accepted the same quest in a live replay. All 173 tests pass.
+An isolated two-peer relay benchmark measured a 0.43 ms worst-run p95
+with capture enabled. The town client emits revisions about every 215 ms.
+See `docs/ARCHITECTURE.md` for the benchmark limits and refactor priorities.
+
 ## Town update cadence, player labels, and cash shop — 2026-11-20
 
 Town position revisions arrived around every 2.1 seconds before the shim

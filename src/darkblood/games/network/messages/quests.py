@@ -11,6 +11,8 @@ def _quest_id_after_wstring(data: bytes) -> int:
     """J-wstring, then u32 quest id; 0 if malformed."""
     try:
         length, offset = read_varuint(data, 0)
+        if length % 2 or offset + length + 4 != len(data):
+            return 0
         return struct.unpack_from('<I', data, offset + length)[0]
     except (WireError, struct.error):
         return 0

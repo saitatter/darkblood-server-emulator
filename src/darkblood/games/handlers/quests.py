@@ -263,5 +263,3 @@ class QuestHandlers(BaseDomainService):
     on_2073 = handle_quest_start
     on_2076 = handle_quest_complete
     on_2346 = handle_tutorial_quest_start
-    on_2078 = handle_quest_giveup
-    on_2080 = handle_quest_fail
