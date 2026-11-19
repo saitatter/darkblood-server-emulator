@@ -12,6 +12,15 @@ from headless_client import HeadlessClient
 
 
 class RelayFlowTest(ServerTestCase):
+    def test_join_group_ack_roster_matches_client_reader(self):
+        # Reader 0x0090DD90: 0x10, varuint count, then u64 UID + i32 HostID per
+        # member with no pair byte. Live, a 0x0F byte made the client key UID 3
+        # as 0x30F, so JP2PClient::SendTo never found the peer.
+        from darkblood.frontend.relay import join_group_ack
+        ack = join_group_ack(0x10007, [(2, 0x23), (3, 0x22)])
+        roster = (b'\x10\x82' + struct.pack('<QI', 2, 0x23) + struct.pack('<QI', 3, 0x22))
+        self.assertEqual(ack, b'\x01' + struct.pack('<HI', 3001, 0x10007) + scalar(len(roster)) + roster)
+
     def test_relay_handshake_without_welcome(self):
         async def scenario(client):
             await client.connect()
@@ -42,7 +51,7 @@ class RelayFlowTest(ServerTestCase):
                     self.assertEqual(reader.read_u8(), 0x10)
                     members = {}
                     for _ in range(reader.read_varuint()):
-                        self.assertEqual(reader.read_u8(), 0x0F)
+                        # Pairs are untagged: 0x006AFA10's 0x0F check reads no byte.
                         uid = reader.read_u64()
                         members[uid] = reader.read_u32()
                     self.assertEqual(reader.remaining, 0)

@@ -37,10 +37,19 @@ RELAY_GROUP_HOST_ID = 0x10000  # local choice; any HostID distinct from peers
 
 
 def join_group_ack(group_host_id, members):
-    body = b'' + varuint(len(members))
+    """RMI 3001 JoinGroupACK: i32 group HostID + ByteArray roster.
+
+    The roster is read by 0x00963CE0 -> 0x0090DD90: tag 0x10, varuint count,
+    then per member u64 char UID (0x00B35430) and i32 HostID (0x00B35300).
+    The pair check 0x006AFA10 (type 0x0F) consumes no wire byte, so pairs are
+    untagged: a 0x0F byte here shifted every key (live: key 0x30F for UID 3).
+    The client stores the pairs in the JP2PClient map that JP2PClient::SendTo
+    (0x0095C1E0) searches, so a wrong roster silently drops all town P2P.
+    """
+    body = b'\x10' + varuint(len(members))
     for char_uid, host_id in members:
-        body += b'' + struct.pack('<QI', char_uid, host_id)
-    return (b'' + struct.pack('<HI', 3001, group_host_id)
+        body += struct.pack('<QI', char_uid, host_id)
+    return (b'\x01' + struct.pack('<HI', 3001, group_host_id)
             + scalar(len(body)) + body)
 
 
