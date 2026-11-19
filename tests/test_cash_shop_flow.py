@@ -19,6 +19,9 @@ class CashShopFlowTest(ServerTestCase):
         path = root / 'cash_shop.tsv'
         cash_shop.load_catalog.cache_clear()
         self.addCleanup(cash_shop.load_catalog.cache_clear)
+        with patch.object(cash_shop, 'CATALOG_PATH', path):
+            self.assertEqual(cash_shop.load_catalog()[288], ('IRanCashEtc232', 1))
+        cash_shop.load_catalog.cache_clear()
 
         async def scenario(client):
             await lobby_flow(client)
@@ -30,16 +33,17 @@ class CashShopFlowTest(ServerTestCase):
 
             # Live 2712 body: prefix, SteamID, vector<u32> {288}.
             purchase = bytes.fromhex('ffffff7f0100000001001001108120010000')
-            client.send_event(2712, purchase)
-            _, ack = await client.expect_event(2714)
-            self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
+            with patch.object(cash_shop, 'DEFAULT_CATALOG_PATH', root / 'missing.tsv'):
+                client.send_event(2712, purchase)
+                _, ack = await client.expect_event(2714)
+                self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
 
             path.write_text('product_id\titem_code\tquantity\n288\tIRanCashEtc232\t0\n', encoding='utf-8')
             client.send_event(2712, purchase)
             _, ack = await client.expect_event(2714)
             self.assertEqual(struct.unpack_from('<I', ack)[0], 24)
 
-            path.write_text('product_id\titem_code\tquantity\n288\tIRanCashEtc232\t1\n', encoding='utf-8')
+            path.write_text('product_id\titem_code\tquantity\n288\tIRanCashEtc232\t2\n', encoding='utf-8')
             client.send_event(2712, purchase[:-4] + struct.pack('<I', 99999))
             _, ack = await client.expect_event(2714)
             self.assertEqual(struct.unpack_from('<I', ack)[0], 442)
@@ -57,9 +61,10 @@ class CashShopFlowTest(ServerTestCase):
             self.assertEqual(ack, struct.pack('<I', 0) + b'\x10\x80' + b'\x00\x01')
 
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            self.assertIn('IRanCashEtc232', [i['code'] for i in char['items']])
+            self.assertIn(('IRanCashEtc232', 2), [(i['code'], i.get('count', 1)) for i in char['items']])
 
-        with patch.object(cash_shop, 'CATALOG_PATH', path), patch.dict(os.environ, DARKBLOOD_CLIENT_DATA=str(root)):
+        with patch.object(cash_shop, 'CATALOG_PATH', path), \
+             patch.dict(os.environ, DARKBLOOD_CLIENT_DATA=str(root)):
             self.run_async(self.with_server(scenario))
 
     def test_cash_package_opens_into_bag(self):

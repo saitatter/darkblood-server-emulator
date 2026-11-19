@@ -7,8 +7,9 @@ Confidence labels: **observed** in a process/capture; **static** from assembly/d
 ## Offline Cash Shop purchases
 
 The client sends product IDs in 2712. The emulator resolves each ID to an
-item code and quantity from the server's `cash_shop.tsv`. A successful
-purchase sends 2037 with the granted items and 2714 to finalize the purchase.
+item code and quantity from `assets/cash_shop.tsv` or a local server override.
+A successful purchase sends 2037 with the granted items and 2714 to finalize
+the purchase.
 Result 24 reports an unavailable server catalog. Result 442 reports an
 unknown product ID. The product list visible in the original client comes
 from its own data.

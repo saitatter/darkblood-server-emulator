@@ -2,13 +2,14 @@
 
 ## Server Cash Shop catalog — saita machine, 2026-11-20
 
-- `2712` resolves product IDs through `data/cash_shop.tsv`, or through
-  the same file in `DARKBLOOD_DATA`. Missing and malformed catalogs return
-  result 24 with diagnostics in the server log.
-- `tools/import_cash_shop.py` imported 771 products into the local server
-  catalog. The private input and generated catalog remain outside Git.
+- `2712` resolves product IDs through the bundled `assets/cash_shop.tsv`.
+  An operator can supply a complete `data/cash_shop.tsv` override or put
+  that file in `DARKBLOOD_DATA`. An invalid catalog returns result 24 with
+  diagnostics in the server log.
+- Per user request, the public source tree includes the normalized 771-entry
+  server catalog. The extracted Lua source and local override stay outside Git.
 - All 171 tests passed. Isolated headless replay persisted the four captured
-  products (847, 760, 22 and 862) with the extracted-data path unavailable.
+  products (847, 760, 22 and 862) using only the bundled catalog.
   The active diagnostic server was left running while the clients were in use.
 - Cash package and random box contents still use the extracted game tables.
 

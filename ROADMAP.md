@@ -14,7 +14,7 @@ Final objective: launch without the original services, establish a local session
 | **P1: Transport & Serialization** | ProudNet framing, JSerBuffer, crypto, compression | **Verified** | Full regression test suite (`test_transport.py`), 11 tests |
 | **P2: Lobby & Account** | Character list, create, delete, versioned persistence | **Verified** | Name validation, persistent SQLite store, default gear |
 | **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot |
-| **P4: Assets & Config** | JPK unpacker, Lua tables, dictionaries | **In Progress (~80%)** | Validated decoder, server-owned Cash Shop purchase catalog, store/quest/stat/monster tables parsed |
+| **P4: Assets & Config** | JPK unpacker, Lua tables, dictionaries | **In Progress (~80%)** | Validated decoder, bundled Cash Shop purchase catalog, store/quest/stat/monster tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
 | **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress** | Town peer rendering and movement verified with two live clients. Shared dungeon instances remain open. |
 | **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **Verified (~95%)** | P2P trade, full mailbox with attachments, depot AR/slots, player stalls & broker marketplace live |

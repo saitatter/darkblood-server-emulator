@@ -3,9 +3,10 @@
 ## Server Cash Shop catalog — 2026-11-20
 
 The purchase handler loads product IDs, item codes, and quantities from the
-server's `cash_shop.tsv`. The optional import tool creates the TSV without
-overwriting operator edits. The local import recovered 771 entries. Cash
-package and random box contents still come from the extracted game tables.
+bundled `assets/cash_shop.tsv` or an operator-supplied override. The bundled
+catalog contains 771 entries. The optional import tool creates an override
+without overwriting operator edits. Cash package and random box contents
+still come from the extracted game tables.
 The 171 headless tests passed. A separate replay granted and persisted
 products 847, 760, 22 and 862 with no extracted game data available.
 

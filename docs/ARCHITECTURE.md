@@ -48,8 +48,8 @@ tools/                           gamectl, headless client, RE helpers
   in the matching `games/handlers/*.py` mixin, then a headless test.
 - New domain: create `games/handlers/<domain>.py` with a mixin class and add it
   to `GameSession`'s bases.
-- Client data (`../darkblood-client-data`) is private and never committed;
-  `game_data` returns empty results when it is absent.
+- Extracted client data (`../darkblood-client-data`) stays private. The
+  server ships its normalized Cash Shop purchase catalog in `assets/`.
 
 ## Porting notes
 

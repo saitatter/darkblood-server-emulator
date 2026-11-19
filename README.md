@@ -107,17 +107,18 @@ python -m unittest discover -s tests -v
 
 ### Cash Shop catalog
 
-The server reads its purchase catalog from `data/cash_shop.tsv` (or
-`$DARKBLOOD_DATA/cash_shop.tsv` when the server data directory is configured).
-Create a UTF-8 tab-separated file with the header `product_id`, `item_code`,
-`quantity`, then one row per product. Use the product IDs sent by the client.
-Restart the server after editing a loaded catalog. Offline purchases are free.
+The repo ships the default purchase catalog at `assets/cash_shop.tsv`.
+To replace it on your server, put a complete catalog in `data/cash_shop.tsv`
+(or `$DARKBLOOD_DATA/cash_shop.tsv` when the server data directory is configured).
+Use UTF-8 tab-separated columns `product_id`, `item_code`, and `quantity` and
+match the product IDs sent by the client. Restart the server after editing a
+loaded catalog. Offline purchases are free.
 
 To populate a new catalog from an existing local extraction, run
 `python tools/import_cash_shop.py`. The importer searches
 `lua_src/data/dict/item_cash.lua` under `DARKBLOOD_CLIENT_DATA` or the adjacent
 `darkblood-client-data` directory. It also accepts an explicit `--source` path
-and creates a new TSV without overwriting a catalog. Keep imported data local.
+and creates a local override without overwriting an existing catalog.
 
 Purchases use the TSV at runtime. Package and random box contents still use
 the optional extracted game data. Players connecting to the server need no

@@ -1,10 +1,11 @@
 """Server-owned catalog for offline Cash Shop purchases."""
 from functools import lru_cache
 
-from darkblood import DATA
+from darkblood import DATA, REPO_ROOT
 
 
 CATALOG_PATH = DATA / 'cash_shop.tsv'
+DEFAULT_CATALOG_PATH = REPO_ROOT / 'assets' / 'cash_shop.tsv'
 HEADER = 'product_id\titem_code\tquantity'
 
 
@@ -35,4 +36,13 @@ def parse_catalog(text):
 
 @lru_cache(maxsize=1)
 def load_catalog():
-    return parse_catalog(CATALOG_PATH.read_text(encoding='utf-8-sig'))
+    path = CATALOG_PATH
+    try:
+        text = path.read_text(encoding='utf-8-sig')
+    except FileNotFoundError:
+        path = DEFAULT_CATALOG_PATH
+        text = path.read_text(encoding='utf-8-sig')
+    try:
+        return parse_catalog(text)
+    except ValueError as exc:
+        raise ValueError(f'{path}: {exc}') from exc

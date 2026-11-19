@@ -204,7 +204,7 @@ class CommerceHandlers(BaseDomainService):
             try:
                 products = cash_shop.load_catalog()
             except (OSError, ValueError) as exc:
-                result, reason = 24, f'cash catalog unavailable ({cash_shop.CATALOG_PATH}): {exc}'
+                result, reason = 24, f'cash catalog unavailable: {exc}'
             else:
                 result, reason = await self._grant_cash_products(char, req.product_ids, products)
         ack = SteamFinalizeBuyItemAck(result=result, applied=result == 0).encode()
