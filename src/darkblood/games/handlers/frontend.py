@@ -18,7 +18,6 @@ from darkblood.games.network.messages import (
     SelectCharacterAck,
     UndeleteCharacterAck,
 )
-from darkblood.games.state import selected_character
 
 # Pending deletion delay: the client's own text says characters are held for
 # 2 days (UI_PUB_006). The client receives the seconds left, not a date.
@@ -158,7 +157,7 @@ class FrontendHandlers(BaseDomainService):
         )
         from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
-        previous = world.get_player(self.active_char_id)
+        previous = world.get_player(self.session.active_char_id)
         if previous and previous.session is self.session and previous.square_id != square_id:
             player = world.register_player(self.session, previous.char_id, previous.char_data, square_id=square_id)
             await world.broadcast_player_departure(previous)
@@ -193,13 +192,17 @@ class FrontendHandlers(BaseDomainService):
         Loads full character data (attributes, active quests, equipment, inventory bags)
         and sends quest completion history refresh (2410).
         """
-        char_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
-        selected_character['id'] = char_id
-        self.active_char_id = char_id
+        char_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 0
         char = self.store().get(self.account, char_id)
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else dict(id=char_id, name=self.account, char_class=1)
+        if char is None:
+            await self.transport.send_event(event(2007, struct.pack('<I', 1), correlation),
+                                            note='select char fail (no character)')
+            return
+        from darkblood.games.world import GameWorldManager
+        world = GameWorldManager.get()
+        if self.session.active_char_id != char_id:
+            await world.remove_session_player(self.session)
+        self.session.active_char_id = char_id
         ack = build_select_char_ack(char)
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)
@@ -208,11 +211,9 @@ class FrontendHandlers(BaseDomainService):
                                         note='quest history not (%d)' % len(done))
         # Register in GameWorldManager and broadcast mutual character spawns
         try:
-            from darkblood.games.world import GameWorldManager
-            player = GameWorldManager.get().register_player(self.session or self, char_id, char,
-                                                            square_id=self.square_id)
-            await GameWorldManager.get().broadcast_player_spawn(player)
-            await GameWorldManager.get().broadcast_user_join(player)
+            player = world.register_player(self.session, char_id, char, square_id=self.session.square_id)
+            await world.broadcast_player_spawn(player)
+            await world.broadcast_user_join(player)
         except Exception:
             pass
 
@@ -274,7 +275,7 @@ class FrontendHandlers(BaseDomainService):
         await self.transport.send_event(event(2247, ack, correlation),
                                         note=f'undelete character ack ({req.char_uid})')
 
-    # Opcode backward-compatibility aliases
+    # Client opcode bindings
     on_2402 = handle_get_server_list
     on_2001 = handle_knock_square_list
     on_2021 = handle_get_square_list

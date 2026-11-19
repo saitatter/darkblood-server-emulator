@@ -11,41 +11,6 @@ from darkblood.core.serialization.jser import JSerBufferReader, read_varuint, st
 # =========================================================================
 
 @dataclass
-class UserMoveNot:
-    """Opcode 5030 / 5031: eERC_USER_MOVE_NOT.
-
-    Spatial movement notification in town/square.
-    Carries character UID, 3D coordinates (x, y, z), heading/angle, and move state.
-    """
-    char_id: int = 0
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    angle: float = 0.0
-    move_state: int = 0
-
-    def encode(self) -> bytes:
-        return struct.pack('<qffffi', self.char_id, self.x, self.y, self.z, self.angle, self.move_state)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UserMoveNot':
-        data = strip_prefix(data)
-        if len(data) >= 28:
-            char_id, x, y, z, angle, move_state = struct.unpack_from('<qffffi', data, 0)
-            return cls(char_id=char_id, x=x, y=y, z=z, angle=angle, move_state=move_state)
-        elif len(data) >= 20:
-            x, y, z, angle, move_state = struct.unpack_from('<ffffi', data, 0)
-            return cls(char_id=0, x=x, y=y, z=z, angle=angle, move_state=move_state)
-        elif len(data) >= 16:
-            x, y, z, angle = struct.unpack_from('<ffff', data, 0)
-            return cls(char_id=0, x=x, y=y, z=z, angle=angle, move_state=0)
-        elif len(data) >= 12:
-            x, y, z = struct.unpack_from('<fff', data, 0)
-            return cls(char_id=0, x=x, y=y, z=z, angle=0.0, move_state=0)
-        return cls()
-
-
-@dataclass
 class UserJoinSquareNot:
     """Opcode 5021: eERC_USER_JOIN_SQUARE_NOT.
 

@@ -1,11 +1,18 @@
 # Research status and handoff
 
+## Opcode ownership and town presence — 2026-11-20
+
+The startup registry rejects duplicate opcode registrations and calls domain
+handlers through a uniform async signature. Removed the pre-ticket login
+fallback, global character selection, and synthetic stall, arena, pet,
+and position routes. Town presence is indexed by square and layer, and the
+relay serializes the member roster once per join. All 171 headless tests pass.
+
 ## Quest abandonment and relay latency — 2026-11-20
 
 The live 2078 request was routed to the stall alias because its timestamp
-made it longer than the old heuristic allowed. The decoder now checks the
-full quest wire shape before selecting the handler. Mage1 abandoned and
-then accepted the same quest in a live replay. All 173 tests pass.
+made it longer than the old heuristic allowed. Mage1 abandoned and then
+accepted the same quest in a live replay after the original routing fix.
 An isolated two-peer relay benchmark measured a 0.43 ms worst-run p95
 with capture enabled. The town client emits revisions about every 215 ms.
 See `docs/ARCHITECTURE.md` for the benchmark limits and refactor priorities.

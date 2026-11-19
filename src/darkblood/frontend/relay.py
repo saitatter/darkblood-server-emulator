@@ -154,10 +154,11 @@ class RelayGroups:
                                 'relay peer joined')
             group.members[transport.host_id] = transport
         roster = [(member.char_id, member.host_id) for member in group.members.values()]
+        ack = join_group_ack(group.host_id, roster)
+        note = 'relay JoinGroupACK 3001 (%d members)' % len(roster)
         for member in group.members.values():
             if member is transport or newcomer:
-                await self.send(member, join_group_ack(group.host_id, roster),
-                                'relay JoinGroupACK 3001 (%d members)' % len(roster))
+                await self.send(member, ack, note)
 
     async def remove(self, transport, notify_departing=False):
         key = self.memberships.pop(transport, None)

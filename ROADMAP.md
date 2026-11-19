@@ -1,6 +1,6 @@
 # Roadmap — Dark Blood Offline Server Emulator
 
-Updated **November 17, 2026**.
+Updated **November 20, 2026**.
 
 Final objective: launch without the original services, establish a local session, persist character and world state, enter maps/dungeons, and provide full offline singleplayer and LAN multiplayer gameplay.
 
@@ -19,7 +19,7 @@ Final objective: launch without the original services, establish a local session
 | **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress** | Town peer rendering and movement verified with two live clients. Shared dungeon instances remain open. |
 | **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **Verified (~95%)** | P2P trade, full mailbox with attachments, depot AR/slots, player stalls & broker marketplace live |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
-| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode registry | **Verified (100%)** | 164 tests; pure composition `PacketDispatcher` & `BaseDomainService`; opcode registry (501 entries) |
+| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode ownership, world lifecycle | **In Progress** | Startup-validated opcode registry, per-connection identity, indexed town presence. 171 headless tests pass. Shared instance ownership remains open. |
 | **P10: C# / .NET 8 Server Port** | High-performance C# server (MHServerEmu alignment) | **Planned** | Composition architecture, ProudNet wire layer, entity model, domain services |
 
 ---

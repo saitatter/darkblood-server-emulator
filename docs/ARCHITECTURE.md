@@ -76,17 +76,13 @@ or client rendering.
    during continuous movement and after direction changes. Any
    interpolation should target the client consumer of actual peer
    revisions.
-2. **Opcode ownership.** Establish one registration per opcode, detect
-   duplicates at startup, and resolve call shape at registration.
-   The current dispatcher inspects each invocation and silently keeps the
-   first registration. Four remaining collisions require evidence before
-   choosing owners. The client table identifies 2446 as achievement
-   division, 2448 as rebirth coins, and 2475/2477 as pet load/replace.
-   Keep intentional aliases on one dispatcher entry with structural
-   request validation.
-3. **Lobby and instance lifecycle.** Put town membership behind a
-   `(square, layer)` index and let each dungeon instance own its
-   membership, room state, and lifecycle commands. Resolve session
+2. **Opcode ownership.** The startup registry validates unique ownership
+   and dispatches every request through a uniform async signature. The
+   game connection owns its authenticated account and selected character.
+   Quest, stall, arena, and pet requests use their client opcodes.
+3. **Lobby and instance lifecycle.** World presence is indexed by
+   `(square, layer)` for town fan-out. The next step is to let each dungeon
+   instance own its membership, room state, and lifecycle commands. Resolve session
    identity at the boundary, then enqueue typed joins and departures
    for the owner. NexusForever's `MapManager` drains pending admissions
    before updating maps, and its entity command handler forwards to the
@@ -101,7 +97,7 @@ or client rendering.
 4. **Relay and persistence under load.** Track event-loop delay, outgoing
    buffer size, fan-out and database flush time. Move optional packet
    capture off the hot path with a bounded queue and drop counter,
-   preserving gameplay messages and diagnostic ordering. Encode each
-   roster once per membership change. Replace whole-cache saves with
+   preserving gameplay messages and diagnostic ordering. Relay roster
+   updates are serialized once per join. Replace whole-cache saves with
    explicit dirty records, preserving atomic trade or inventory changes
    across characters. Keep these changes independently measurable.

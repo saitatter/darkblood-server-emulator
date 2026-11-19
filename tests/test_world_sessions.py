@@ -32,8 +32,8 @@ class WorldSessionTest(ServerTestCase):
 
         self.world.register_player(original, 101, {}, square_id=2)
         self.assertIs(self.parties.get_player_party(101), party)
-        self.assertNotIn(101, self.world.squares[1])
-        self.assertIn(101, self.world.squares[2])
+        self.assertNotIn(101, {player.char_id for player in self.world.get_players_in_square(1)})
+        self.assertIn(101, {player.char_id for player in self.world.get_players_in_square(2)})
 
         self.world.register_player(replacement, 101, {}, square_id=2)
         self.assertIs(self.parties.get_player_party(101), party)
@@ -84,7 +84,7 @@ class WorldSessionTest(ServerTestCase):
 
             self.assertIsNone(self.world.get_player(101))
             self.assertIsNone(self.parties.get_player_party(101))
-            self.assertNotIn(101, self.world.squares[7])
+            self.assertNotIn(101, {player.char_id for player in self.world.get_players_in_square(7)})
             # One departure: 5039 removes the peer from the layer, 5022 from the square.
             self.assertEqual(
                 [parse_event(call.args[0])[0] for call in observer.transport.send_event.await_args_list],

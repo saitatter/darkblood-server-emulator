@@ -6,7 +6,6 @@ from darkblood.core.serialization.jser import WireError, event, read_varuint
 from darkblood.frontend.relay import RELAY_PORT
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
-    BackToSquareAck,
     ChangeDungeonLayerNot,
     ChangeMapCodeAck,
     ChangeTeamAck,
@@ -34,7 +33,6 @@ from darkblood.games.network.messages import (
 )
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.network import results
-from darkblood.games.state import selected_character
 
 # The daily-claim sender refuses when owned or received coins reach 3.
 DAILY_REBIRTH_COINS = 3
@@ -151,8 +149,8 @@ class DungeonHandlers(BaseDomainService):
         if info:
             self.dungeon_score = getattr(self, 'dungeon_score', 0) + max(1, int(round(info['exp']))) * 10
         char = self._current_char()
-        if info and char is not None and hasattr(self, '_grant_exp'):
-            await self._grant_exp(char, max(1, int(round(info['exp']))))
+        if info and char is not None:
+            await self.session.quests.grant_exp(char, max(1, int(round(info['exp']))))
             self.store().save()
         if char is not None:
             if info:
@@ -333,13 +331,6 @@ class DungeonHandlers(BaseDomainService):
         # Acknowledges leaving game room before eERC_BACK_TO_SQUARE_REQ (5045).
         ack = LeaveRoomAck(result=0).encode()
         await self.transport.send_event(event(5006, ack, correlation), note='leave room ack')
-
-    async def on_5045(self, correlation, body):
-        # eERC_BACK_TO_SQUARE_REQ (0x007A0000.c:8367) -> 5046 eERC_BACK_TO_SQUARE_ACK (0x007897F0).
-        # Return to town/square from dungeon.
-        from darkblood.games.entities.character import layer_net_id
-        ack = BackToSquareAck(result=0, square_uid=1, layer_net_id=layer_net_id()).encode()
-        await self.transport.send_event(event(5046, ack, correlation), note='back to square ack')
 
     async def on_5090(self, correlation, body):
         # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).

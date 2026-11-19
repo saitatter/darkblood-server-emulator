@@ -96,20 +96,16 @@ class SocialHandlers(BaseDomainService):
     async def on_2150(self, correlation, body):
         # eEGS_GUILD_CREATE_REQ -> 2151 eEGS_GUILD_CREATE_ACK (0x00793720).
         from darkblood.games.network.messages import GuildCreateAck, GuildCreateReq
-        from darkblood.games.state import selected_character
         req = GuildCreateReq.decode(body)
         self.transport.record('guild-create-req', body, name=req.guild_name)
-        char = None
-        gold = 0
-        if self.char_id is not None:
-            char = self.store().get(self.account, self.char_id)
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
-        if char:
-            char['guild_name'] = req.guild_name
-            gold = char.get('gold', 100000)
-            self.store().save()
+        char = self.current_char()
+        if char is None:
+            await self.transport.send_event(event(2151, GuildCreateAck(result=1).encode(), correlation),
+                                            note='guild create fail (no character)')
+            return
+        char['guild_name'] = req.guild_name
+        gold = char.get('gold', 100000)
+        self.store().save()
         ack = GuildCreateAck(result=0, guild_uid=1001, guild_name=req.guild_name, remain_gold=gold).encode()
         await self.transport.send_event(event(2151, ack, correlation),
                                         note=f'guild create ack (name={req.guild_name})')
@@ -135,7 +131,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2155(self, correlation, body):
         # eEGS_GUILD_PERSON_JOIN_REQ (0x00790000.c:2837) -> 2156 eEGS_GUILD_PERSON_JOIN_ACK (0x0075A220).
         from darkblood.games.network.messages import GuildPersonJoinAck, GuildPersonJoinReq
-        from darkblood.games.state import selected_character
         req = GuildPersonJoinReq.decode(body)
         self.transport.record('guild-join-req', body, guild_uid=req.guild_uid)
         char = self.current_char()
@@ -158,7 +153,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2162(self, correlation, body):
         # eEGS_GUILD_PERSON_LEAVE_REQ (0x00790000.c:2761) -> 2163 eEGS_GUILD_PERSON_LEAVE_ACK (0x00759CA0).
         from darkblood.games.network.messages import GuildPersonLeaveAck, GuildPersonLeaveReq
-        from darkblood.games.state import selected_character
         req = GuildPersonLeaveReq.decode(body)
         self.transport.record('guild-leave-req', body)
         char = self.current_char()
@@ -211,7 +205,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2183(self, correlation, body):
         # eEGS_GUILD_LEVEL_UP_REQ (0x00790000.c:3250) -> 2184 eEGS_GUILD_LEVEL_UP_ACK (0x00753380).
         from darkblood.games.network.messages import GuildLevelUpAck, GuildLevelUpReq
-        from darkblood.games.state import selected_character
         req = GuildLevelUpReq.decode(body)
         self.transport.record('guild-level-up-req', body)
         char = self.current_char()
@@ -227,7 +220,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2185(self, correlation, body):
         # eEGS_GUILD_NOTICE_MODIFY_REQ (0x00790000.c:3278) -> 2186 eEGS_GUILD_NOTICE_MODIFY_ACK (0x0075A120).
         from darkblood.games.network.messages import GuildNoticeModifyAck, GuildNoticeModifyReq
-        from darkblood.games.state import selected_character
         req = GuildNoticeModifyReq.decode(body)
         self.transport.record('guild-notice-modify-req', body, notice=req.notice)
         char = self.current_char()
@@ -241,7 +233,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2188(self, correlation, body):
         # eEGS_GUILD_NOTICE_DELETE_REQ (0x00790000.c:3388) -> 2189 eEGS_GUILD_NOTICE_DELETE_ACK (0x0074B830).
         from darkblood.games.network.messages import GuildNoticeDeleteAck, GuildNoticeDeleteReq
-        from darkblood.games.state import selected_character
         req = GuildNoticeDeleteReq.decode(body)
         self.transport.record('guild-notice-delete-req', body)
         char = self.current_char()
@@ -255,7 +246,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2214(self, correlation, body):
         # eEGS_GUILD_ALL_SKILL_INIT_REQ -> 2215 eEGS_GUILD_ALL_SKILL_INIT_ACK (0x00752D80).
         from darkblood.games.network.messages import GuildAllSkillInitAck, GuildAllSkillInitReq
-        from darkblood.games.state import selected_character
         req = GuildAllSkillInitReq.decode(body)
         self.transport.record('guild-all-skill-init-req', body)
         char = self.current_char()
@@ -269,7 +259,6 @@ class SocialHandlers(BaseDomainService):
     async def on_5040(self, correlation, body):
         # eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890).
         from darkblood.games.network.messages import ChatAck, ChatReq, LevelUpNot, ChangeExpNot
-        from darkblood.games.state import selected_character
         req = ChatReq.decode(body)
         msg = req.message.strip()
         self.transport.record('chat-req', body, message=msg)
@@ -336,7 +325,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2310(self, correlation, body):
         # eEGS_CHAR_NICK_CHANGE_REQ -> 2311 eEGS_CHAR_NICK_CHANGE_ACK (0x00780200).
         from darkblood.games.network.messages import CharNickChangeAck, CharNickChangeReq
-        from darkblood.games.state import selected_character
         req = CharNickChangeReq.decode(body)
         new_name = req.new_name.strip()
         self.transport.record('char-nick-change-req', body, new_name=new_name)
@@ -359,7 +347,6 @@ class SocialHandlers(BaseDomainService):
     async def on_2319(self, correlation, body):
         # eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960).
         from darkblood.games.network.messages import KeyboardSetCustomKeyAck, KeyboardSetCustomKeyReq
-        from darkblood.games.state import selected_character
         req = KeyboardSetCustomKeyReq.decode(body)
         self.transport.record('keyboard-set-custom-key-req', body)
         char = self.store().get(self.account, self.char_id) 
@@ -470,7 +457,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.world import PartyManager
         req = PartyInviteReq.decode(body)
         char = self.current_char()
-        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         char_name = char.get('name', 'Leader') if char else 'Leader'
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
@@ -501,7 +488,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.world import PartyManager
         req = PartyInviteReq.decode(body)
         char = self.current_char()
-        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         char_name = char.get('name', 'Leader') if char else 'Leader'
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
@@ -542,7 +529,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.world import PartyManager
         req = PartyJoinReq.decode(body)
         char = self.current_char()
-        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         char_name = char.get('name', 'Member') if char else 'Member'
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
@@ -565,7 +552,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.world import PartyManager
         req = PartyAcceptInviteReq.decode(body)
         char = self.current_char()
-        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         char_name = char.get('name', 'Member') if char else 'Member'
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
@@ -586,7 +573,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.network.messages.party import PartyLeaveAck, PartyLeaveReq
         from darkblood.games.world import PartyManager
         char = self.current_char()
-        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         pm = PartyManager.get()
         res, rem_party = pm.leave_party(char_id)
         ack = PartyLeaveAck(result=res).encode()
@@ -598,7 +585,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.world import GameWorldManager, PartyManager
         req = PartyKickReq.decode(body)
         char = self.current_char()
-        char_id = char.get('id', 0) if char else self.active_char_id or 0
+        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         pm = PartyManager.get()
         res, party = pm.kick_player(char_id, req.target_uid)
         ack = PartyKickAck(result=res, target_uid=req.target_uid).encode()

@@ -1,8 +1,7 @@
 """Multi-client Game World Manager and Party Subsystem.
 
-Coordinates town square channels, instanced dungeons, player visibility
-broadcasts (Opcode 5096 UpdateCharInfoNot), spatial movement broadcasting
-(Opcode 5030/5031 eERC_USER_MOVE_NOT), square join/leave presence notifications
+Coordinates town square channels, player visibility
+broadcasts (Opcode 5096 UpdateCharInfoNot), square join/leave presence notifications
 (Opcode 5021/5022), and party management (Opcodes 2100-2107, 5049-5056).
 """
 import asyncio
@@ -16,7 +15,7 @@ from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.network.messages.lobby import encode_join_layer_not
 from darkblood.games.network.messages.party import (
     PartyAcceptInviteNot, PartyInfoNot, PartyInviteNot, PartyMemberInfo,
-    UserJoinSquareNot, UserLeaveSquareNot, UserMoveNot
+    UserJoinSquareNot, UserLeaveSquareNot
 )
 
 logger = logging.getLogger(__name__)
@@ -34,7 +33,6 @@ class WorldPlayer:
     y: float = 0.0
     z: float = 0.0
     angle: float = 0.0
-    move_state: int = 0
 
 
 class GameWorldManager:
@@ -44,7 +42,7 @@ class GameWorldManager:
 
     def __init__(self):
         self.players: Dict[int, WorldPlayer] = {}  # char_id -> WorldPlayer
-        self.squares: Dict[int, Set[int]] = {}     # square_id -> set of char_ids
+        self._squares: Dict[int, Dict[int, Set[int]]] = {}
 
     @classmethod
     def get(cls) -> 'GameWorldManager':
@@ -57,7 +55,7 @@ class GameWorldManager:
         # Re-entering a square or replacing a connection keeps party membership.
         previous = self.players.get(char_id)
         if previous:
-            self.squares.get(previous.square_id, set()).discard(char_id)
+            self._remove_presence(previous)
 
         player = WorldPlayer(
             session=session,
@@ -66,11 +64,35 @@ class GameWorldManager:
             square_id=square_id
         )
         self.players[char_id] = player
-        self.squares.setdefault(square_id, set()).add(char_id)
+        self._add_presence(player)
         party = PartyManager.get().get_player_party(char_id)
         if party:
             party.members[char_id].session = session
         return player
+
+    def _add_presence(self, player: WorldPlayer):
+        layers = self._squares.setdefault(player.square_id, {})
+        layers.setdefault(player.layer_id, set()).add(player.char_id)
+
+    def _remove_presence(self, player: WorldPlayer):
+        layers = self._squares[player.square_id]
+        occupants = layers[player.layer_id]
+        occupants.remove(player.char_id)
+        if not occupants:
+            del layers[player.layer_id]
+        if not layers:
+            del self._squares[player.square_id]
+
+    def change_layer(self, session, layer_id: int):
+        player = self.players.get(session.active_char_id)
+        if player is None or player.session is not session:
+            return None, None
+        previous_layer = player.layer_id
+        if previous_layer != layer_id:
+            self._remove_presence(player)
+            player.layer_id = layer_id
+            self._add_presence(player)
+        return player, previous_layer
 
     def unregister_player(self, char_id: int, session=None) -> Optional[WorldPlayer]:
         """Remove player on disconnect or return to character select."""
@@ -79,8 +101,7 @@ class GameWorldManager:
             return None
         player = self.players.pop(char_id, None)
         if player:
-            square_players = self.squares.get(player.square_id, set())
-            square_players.discard(char_id)
+            self._remove_presence(player)
         # Also clean up any active party membership
         PartyManager.get().leave_party(char_id)
         return player
@@ -88,24 +109,24 @@ class GameWorldManager:
     def get_player(self, char_id: int) -> Optional[WorldPlayer]:
         return self.players.get(char_id)
 
-    def get_players_in_square(self, square_id: int) -> List[WorldPlayer]:
-        cids = self.squares.get(square_id, set())
-        return [self.players[cid] for cid in cids if cid in self.players]
+    def get_players_in_square(self, square_id: int, layer_id: Optional[int] = None) -> List[WorldPlayer]:
+        layers = self._squares.get(square_id, {})
+        groups = layers.values() if layer_id is None else (layers.get(layer_id, ()),)
+        return [self.players[cid] for occupants in groups for cid in occupants]
 
     async def broadcast_to_square(self, square_id: int, ev: bytes, exclude_char_id: Optional[int] = None,
                                   note: str = "", layer_id: Optional[int] = None):
         """Broadcast an event payload to all players in a square channel."""
-        for cid in list(self.squares.get(square_id, set())):
-            if cid == exclude_char_id:
+        for p in self.get_players_in_square(square_id, layer_id):
+            if p.char_id == exclude_char_id or self.players.get(p.char_id) is not p:
                 continue
-            p = self.players.get(cid)
-            if p and layer_id is not None and p.layer_id != layer_id:
+            if layer_id is not None and p.layer_id != layer_id:
                 continue
             if p and p.session and getattr(p.session, 'transport', None):
                 try:
                     await p.session.transport.send_event(ev, note=note)
                 except Exception as e:
-                    logger.debug("Failed broadcast to char %d: %s", cid, e)
+                    logger.debug("Failed broadcast to char %d: %s", p.char_id, e)
 
     async def broadcast_player_spawn(self, new_player: WorldPlayer):
         """Broadcast Opcode 5027 (eERC_JOIN_LAYER_NOT) and Opcode 5096 (eERC_UPDATE_CHAR_INFO_NOT)
@@ -152,13 +173,10 @@ class GameWorldManager:
 
         # 2. Send existing players in square to newcomer
         existing_players = []
-        for cid in list(self.squares.get(new_player.square_id, set())):
-            if cid == new_player.char_id:
+        for existing in self.get_players_in_square(new_player.square_id, new_player.layer_id):
+            if existing.char_id == new_player.char_id:
                 continue
-            existing = self.players.get(cid)
-            if existing and existing.layer_id == new_player.layer_id:
-                c = Character.from_dict(existing.char_data)
-                existing_players.append((existing, c))
+            existing_players.append((existing, Character.from_dict(existing.char_data)))
 
         if existing_players:
             ex_data_list = [
@@ -240,18 +258,6 @@ class GameWorldManager:
         player = self.unregister_player(session.active_char_id, session=session)
         if player is not None:
             await self.broadcast_player_departure(player)
-
-    async def broadcast_user_move(self, move: UserMoveNot, square_id: int = 1, opcode: int = 5031,
-                                  layer_id: Optional[int] = None):
-        """Broadcast Opcode 5030 / 5031 (eERC_USER_MOVE_NOT) to square occupants."""
-        await self.broadcast_to_square(
-            square_id,
-            event(opcode, move.encode()),
-            exclude_char_id=move.char_id,
-            layer_id=layer_id,
-            note=f"user move not ({move.char_id} -> {move.x:.1f}, {move.y:.1f}, {move.z:.1f})"
-        )
-
 
 # =========================================================================
 # Party Subsystem Domain Entities & Manager

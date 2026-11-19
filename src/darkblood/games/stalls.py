@@ -117,14 +117,6 @@ class PersonalShopManager:
                 return list(self.stalls.values())
             return [s for s in self.stalls.values() if s.square_id == square_id]
 
-    def change_title(self, owner_uid: int, new_title: str) -> bool:
-        with self.lock:
-            stall = self.stalls.get(owner_uid)
-            if stall:
-                stall.title = new_title
-                return True
-            return False
-
     def close_stall(self, owner_uid: int, char: Optional[dict] = None,
                     store: Optional[any] = None) -> Tuple[bool, list]:
         """Close stall and unflag unsold items in owner inventory."""

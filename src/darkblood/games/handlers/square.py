@@ -13,7 +13,6 @@ from darkblood.games.network.messages import (
     NpcFirstMeetAck,
     QuestUpdateNot,
 )
-from darkblood.games.state import selected_character
 
 # Tutorial quest Q0882S01 (0x34c58e7c) objective mappings:
 # Objective 0: QM788 (Wild Hog / ResourceNum 71, TargetValue = 2)
@@ -127,7 +126,7 @@ class SquareHandlers(BaseDomainService):
         Client handler: 0x007897F0.
         Transitions the player entity from a dungeon session back to the default town square.
         """
-        ack = BackToSquareAck(square_uid=SQUARES[0]['square_id']).encode()
+        ack = BackToSquareAck(square_uid=self.session.square_id).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
 
@@ -141,56 +140,19 @@ class SquareHandlers(BaseDomainService):
                                         note='gtarget list ack')
 
     async def handle_join_layer(self, correlation: int, body: bytes):
-        """Opcode 5030 (eERC_JOIN_LAYER_REQ / eERC_USER_MOVE_NOT).
-
-        If body carries spatial coordinates (>= 20 bytes), handles movement update.
-        Otherwise moves client into an instanced town layer / sub-district.
-        """
-        from darkblood.core.serialization.jser import strip_prefix
+        """Opcode 5030 changes the town layer; positions travel via the relay."""
         from darkblood.games.world import GameWorldManager
-        if len(strip_prefix(body)) >= 20:
-            return await self.handle_user_move(correlation, body)
 
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         world = GameWorldManager.get()
-        player = world.get_player(self.active_char_id)
-        previous_layer = None
-        if player and player.session is self.session:
-            previous_layer = player.layer_id
-            player.layer_id = layer_id
-        ack = BackToSquareAck(square_uid=self.square_id, layer_net_id=layer_id).encode()
+        player, previous_layer = world.change_layer(self.session, layer_id)
+        ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=layer_id).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
         if previous_layer is not None:
             if previous_layer != layer_id:
                 await world.broadcast_layer_leave(player, previous_layer)
             await world.broadcast_player_spawn(player)
-
-    async def handle_user_move(self, correlation: int, body: bytes):
-        """Opcode 5030 / 5031: eERC_USER_MOVE_NOT.
-
-        Decodes player spatial movement (x, y, z, angle, move_state), updates
-        active WorldPlayer position, and broadcasts the movement to other players.
-        """
-        from darkblood.games.network.messages.party import UserMoveNot
-        from darkblood.games.world import GameWorldManager
-        move = UserMoveNot.decode(body)
-        if not move.char_id:
-            move.char_id = self.active_char_id or self.char_id
-
-        world = GameWorldManager.get()
-        player = world.get_player(move.char_id)
-        square_id = 1
-        if player:
-            player.x = move.x
-            player.y = move.y
-            player.z = move.z
-            player.angle = move.angle
-            player.move_state = move.move_state
-            square_id = player.square_id
-
-        await world.broadcast_user_move(move, square_id=square_id,
-                                        layer_id=player.layer_id if player else None)
 
     async def handle_enter_maptool(self, correlation: int, body: bytes):
         """Opcode 2016 (eEGS_ENTER_MAPTOOL_REQ) -> 2017 (eEGS_ENTER_MAPTOOL_ACK).
@@ -226,7 +188,7 @@ class SquareHandlers(BaseDomainService):
         0 continues, any other value opens an error box. The player leaves
         the town, so it is removed from the world presence list.
         """
-        if self.active_char_id:
+        if self.session.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
         await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
@@ -240,13 +202,13 @@ class SquareHandlers(BaseDomainService):
         result: 0 leaves the channel and clears the stored square (+0xB0/+0xB4
         of state 8); other values open an error box.
         """
-        if self.active_char_id:
+        if self.session.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
         await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
                                         note='leave square ack')
 
-    # Opcode backward-compatibility aliases
+    # Client opcode bindings
     on_2082 = handle_clear_tutorial
     on_2084 = handle_clear_opening
     on_2353 = handle_tutorial_monster_dead
@@ -254,7 +216,6 @@ class SquareHandlers(BaseDomainService):
     on_5045 = handle_back_to_square
     on_5124 = handle_get_gtarget_list
     on_5030 = handle_join_layer
-    on_5031 = handle_user_move
     on_5037 = handle_leave_layer
     on_5032 = handle_leave_square
     on_2016 = handle_enter_maptool

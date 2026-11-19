@@ -60,7 +60,7 @@ class Session:
         self.state = 'new'
         self.aes = None
         self.fast_key = None
-        self.app = GameSession(self)
+        self.app = GameSession(self) if server.role == 'game' else None
 
     def record(self, event, data=b'', **extra):
         self.server.record(self.peer, event, data, **extra)
@@ -134,7 +134,8 @@ class Session:
             await self.send_payload(connection_success(self.host_id, self.server.guid, self.peer),
                                     note='connection success')
             self.state = 'connected'
-            await self.app.on_connected()
+            if self.app is not None:
+                await self.app.on_connected()
         elif self.state != 'connected':
             raise ProtocolError('Unexpected message 0x%02x in state %s' % (kind, self.state))
         elif kind == 0x1c and len(payload) == 13:
@@ -147,7 +148,10 @@ class Session:
         elif kind in (RELIABLE_RELAY1, UNRELIABLE_RELAY1) and self.server.role == 'relay':
             await self.server.relay_groups.forward(self, payload)
         elif kind in (0x02, 0x03):
-            await self.app.on_user_message(payload[1:])
+            if self.app is not None:
+                await self.app.on_user_message(payload[1:])
+            else:
+                self.record('relay-user-message', payload[1:])
         elif kind == 0x01:
             await self.handle_rmi(payload)
         else:

@@ -16,7 +16,6 @@ from darkblood.games.network.messages import (
     QuestStartAck,
     TutorialQuestStartAck,
 )
-from darkblood.games.state import selected_character
 
 
 def _quest_id_after_tag(body: bytes) -> int:
@@ -85,7 +84,7 @@ class QuestHandlers(BaseDomainService):
             self.store().save()
         return uid
 
-    async def _grant_exp(self, char, exp):
+    async def grant_exp(self, char, exp):
         """Add EXP to char, send 5087 for each level gained and 5086 with the total.
 
         Shared by quest completion (2076) and monster kills (5063). Level
@@ -144,7 +143,7 @@ class QuestHandlers(BaseDomainService):
                 done.append(quest_id)
             char['u66'] = total
             char['gold'] = total
-            await self._grant_exp(char, exp)
+            await self.grant_exp(char, exp)
             from darkblood.player_management.characters import add_reward_items
             reward_items = [] if already else add_reward_items(char, items)
             self.store().save()
@@ -230,10 +229,7 @@ class QuestHandlers(BaseDomainService):
         Removes active quest from character's tracked log upon abandonment.
         """
         req = QuestGiveupReq.decode(body)
-        char = self.store().get(self.account, self.char_id) 
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
             self.store().save()
@@ -248,10 +244,7 @@ class QuestHandlers(BaseDomainService):
         Processes quest objective expiration or failure condition.
         """
         req = QuestFailReq.decode(body)
-        char = self.store().get(self.account, self.char_id) 
-        if not char:
-            chars = self.store().characters(self.account)
-            char = chars[0] if chars else None
+        char = self.current_char()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
             self.store().save()
@@ -259,7 +252,10 @@ class QuestHandlers(BaseDomainService):
         ack = QuestFailAck(result=0, quest_id=req.quest_id).encode()
         await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
 
-    # Opcode backward-compatibility aliases
+    # Client opcode bindings
     on_2073 = handle_quest_start
     on_2076 = handle_quest_complete
     on_2346 = handle_tutorial_quest_start
+
+    on_2078 = handle_quest_giveup
+    on_2080 = handle_quest_fail

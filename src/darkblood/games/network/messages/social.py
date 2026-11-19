@@ -12,7 +12,7 @@ from darkblood.games.network.messages.mail import (
     PostDeleteReq, PostDeleteAck, PostNewArrivalNot, PostReturnReq, PostReturnAck
 )
 from darkblood.games.network.messages.party import (
-    UserMoveNot, UserJoinSquareNot, UserLeaveSquareNot,
+    UserJoinSquareNot, UserLeaveSquareNot,
     PartyInviteReq, PartyInviteAck, PartyInviteNot,
     PartyJoinReq, PartyJoinAck, PartyLeaveReq, PartyLeaveAck,
     PartyKickReq, PartyKickAck, PartyAcceptInviteReq, PartyAcceptInviteAck,

@@ -1,4 +1,22 @@
-# Session handoff — 2026-11-17 (compressed)
+# Session handoff — 2026-11-20 (compressed)
+
+## Server compatibility cleanup — saita machine, 2026-11-20
+
+- The user confirmed that the cleanup covers Python server adapters. The
+  original client's native `steam_api.dll` hook remains part of local startup.
+- The startup registry rejects duplicate opcode owners. Removed the anonymous
+  login fallback, implicit character selection, and synthetic stall, arena,
+  pet, and town position requests. Character selection and authentication
+  are per game connection. All 171 headless tests passed.
+- Restarted the server and diagnostic profile. Both original client windows
+  authenticated as distinct accounts (`OfflinePlayer` and `Player2`), sent
+  character selection, and exchanged traffic through the relay.
+- Town presence is indexed by square and layer. The relay reuses the
+  serialized roster across recipients of each membership update. Client
+  playback profiling and shared dungeon instance ownership remain open.
+- The Cash Shop catalog path is configured on the server machine only.
+  Its default is `darkblood-client-data` beside the repo. Remote clients
+  do not need `DARKBLOOD_CLIENT_DATA`.
 
 ## Quest abandonment and performance review — saita machine, 2026-11-20
 

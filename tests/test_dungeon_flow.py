@@ -5,7 +5,6 @@ import unittest
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.core import hashing
 from darkblood.games import session
-from darkblood.games.state import selected_character
 
 
 class DungeonFlowTest(ServerTestCase):
@@ -37,7 +36,6 @@ class DungeonFlowTest(ServerTestCase):
             await client.expect_event(2007)
 
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            selected_character['id'] = char_id
 
             # 1. Map transition / Gate (2344 -> 2345)
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))

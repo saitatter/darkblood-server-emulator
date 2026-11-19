@@ -75,9 +75,7 @@ class WorldFlowTest(ServerTestCase):
 
     def test_multi_client_town_presence_and_mutual_spawns(self):
         async def scenario(client1):
-            world = GameWorldManager.get()
-            world.players.clear()
-            world.squares.clear()
+            world = GameWorldManager._instance = GameWorldManager()
 
             # 1. Client 1 logs in, creates character "Warrior1", and selects it
             await lobby_flow(client1)

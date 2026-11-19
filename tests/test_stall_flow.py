@@ -21,8 +21,6 @@ from darkblood.games.network.messages.stalls import (
     PersonalShopBuyAck,
     PersonalShopBuyReq,
     PersonalShopChangeNot,
-    PersonalShopChangeTitleAck,
-    PersonalShopChangeTitleReq,
     PersonalShopCloseAck,
     PersonalShopCloseReq,
     PersonalShopCloseNot,
@@ -88,17 +86,17 @@ class StallFlowTest(ServerTestCase):
                 client2.send_event(2006, struct.pack('<iQ', 0x7fffffff, buyer_id))
                 await client2.expect_event(2007)
 
-                # 2. Seller opens stall via Opcode 2078
+                # 2. Seller opens stall via Opcode 2340
                 open_req = PersonalShopOpenReq(
                     title='Rare Potions Stall',
                     items=[(item_uid, 2, 3000)]  # sell 2 for 3000 AR each
                 ).encode()
-                client1.send_event(2078, open_req)
+                client1.send_event(2340, open_req)
 
-                # Expect Opcode 2079 (eEGS_PERSONALSHOP_OPEN_ACK)
-                _, ack2079 = await client1.expect_event(2079)
-                self.assertEqual(struct.unpack_from('<i', ack2079, 0)[0], 0)  # result 0
-                self.assertIn('Rare Potions Stall'.encode('utf-16le'), ack2079)
+                # Expect Opcode 2341 (eEGS_PERSONALSHOP_START_ACK)
+                _, ack2341 = await client1.expect_event(2341)
+                self.assertEqual(struct.unpack_from('<i', ack2341, 0)[0], 0)  # result 0
+                self.assertIn('Rare Potions Stall'.encode('utf-16le'), ack2341)
 
                 # Verify stall is active in PersonalShopManager
                 stall = PersonalShopManager.get().get_stall(seller_id)
@@ -106,16 +104,6 @@ class StallFlowTest(ServerTestCase):
                 self.assertEqual(stall.title, 'Rare Potions Stall')
                 self.assertIn(item_uid, stall.items)
                 self.assertEqual(stall.items[item_uid].price, 3000)
-
-                # 3. Seller changes stall title via Opcode 2090
-                title_req = PersonalShopChangeTitleReq(title='Discount Mega Potions').encode()
-                client1.send_event(2090, title_req)
-
-                # Expect Opcode 2091 (eEGS_PERSONALSHOP_CHANGE_TITLE_ACK)
-                _, ack2091 = await client1.expect_event(2091)
-                self.assertEqual(struct.unpack_from('<i', ack2091, 0)[0], 0)
-                self.assertIn('Discount Mega Potions'.encode('utf-16le'), ack2091)
-                self.assertEqual(stall.title, 'Discount Mega Potions')
 
                 # 4. Buyer browses seller stall products via Opcode 6021
                 browse_req = PersonalShopGetProductsReq(seller_uid=seller_id).encode()
@@ -125,15 +113,15 @@ class StallFlowTest(ServerTestCase):
                 _, ack6022 = await client2.expect_event(6022)
                 self.assertEqual(struct.unpack_from('<i', ack6022, 0)[0], 0)
                 self.assertEqual(struct.unpack_from('<q', ack6022, 4)[0], seller_id)
-                self.assertIn('Discount Mega Potions'.encode('utf-16le'), ack6022)
+                self.assertIn('Rare Potions Stall'.encode('utf-16le'), ack6022)
 
-                # 5. Buyer purchases 1 item from seller stall via Opcode 2080
+                # 5. Buyer purchases 1 item from seller stall via Opcode 5242
                 buy_req = PersonalShopBuyReq(seller_uid=seller_id, item_uid=item_uid, count=1).encode()
-                client2.send_event(2080, buy_req)
+                client2.send_event(5242, buy_req)
 
-                # Expect Opcode 2081 (eEGS_PERSONALSHOP_BUY_ACK)
-                _, ack2081 = await client2.expect_event(2081)
-                self.assertEqual(struct.unpack_from('<i', ack2081, 0)[0], 0)
+                # Expect Opcode 5243 (eERC_PERSONALSHOP_BUYITEM_ACK)
+                _, ack5243 = await client2.expect_event(5243)
+                self.assertEqual(struct.unpack_from('<i', ack5243, 0)[0], 0)
 
                 # Verify atomic gold transfer:
                 # Buyer spent 3000 gold: 25000 -> 22000
@@ -153,14 +141,14 @@ class StallFlowTest(ServerTestCase):
                 # Stall stock reduced: 2 -> 1
                 self.assertEqual(stall.items[item_uid].count, 1)
 
-                # 6. Seller closes stall via Opcode 2088
+                # 6. Seller closes stall via Opcode 2342
                 close_req = PersonalShopCloseReq(owner_uid=seller_id).encode()
-                client1.send_event(2088, close_req)
+                client1.send_event(2342, close_req)
 
-                # Expect Opcode 2089 (eEGS_PERSONALSHOP_CLOSE_ACK)
-                _, ack2089 = await client1.expect_event(2089)
-                self.assertEqual(struct.unpack_from('<i', ack2089, 0)[0], 0)
-                self.assertEqual(struct.unpack_from('<q', ack2089, 4)[0], seller_id)
+                # Expect Opcode 2343 (eEGS_PERSONALSHOP_CLOSE_ACK)
+                _, ack2343 = await client1.expect_event(2343)
+                self.assertEqual(struct.unpack_from('<i', ack2343, 0)[0], 0)
+                self.assertEqual(struct.unpack_from('<q', ack2343, 4)[0], seller_id)
 
                 # Stall removed from active manager
                 self.assertIsNone(PersonalShopManager.get().get_stall(seller_id))
@@ -332,17 +320,6 @@ class StallWireMessagesTest(unittest.TestCase):
         encoded_ack = ack.encode()
         self.assertEqual(struct.unpack_from('<i', encoded_ack, 0)[0], 0)
         self.assertIn('Grand Emporium'.encode('utf-16le'), encoded_ack)
-
-    def test_personal_shop_change_title_req_and_ack(self):
-        req = PersonalShopChangeTitleReq(title='New Store Name')
-        encoded = req.encode()
-        decoded = PersonalShopChangeTitleReq.decode(encoded)
-        self.assertEqual(decoded.title, 'New Store Name')
-
-        ack = PersonalShopChangeTitleAck(result=0, title='New Store Name')
-        encoded_ack = ack.encode()
-        self.assertEqual(struct.unpack_from('<i', encoded_ack, 0)[0], 0)
-        self.assertIn('New Store Name'.encode('utf-16le'), encoded_ack)
 
     def test_personal_shop_buy_req_and_ack(self):
         req = PersonalShopBuyReq(seller_uid=555, item_uid=12345, count=3)

@@ -181,8 +181,8 @@ class ArenaFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
-    def test_league_season_rankings_and_aliases_flow(self):
-        """End-to-end league rankings and client opcode aliases (2446, 2448, 2452, 2454, 2456, 2475, 2477)."""
+    def test_league_season_rankings_and_team_flow(self):
+        """Exercise league ranks, arena lists, and the arena team lifecycle."""
         async def scenario(client):
             await lobby_flow(client)
             client.send_event(2012, create_request('RankChallenger'))
@@ -209,47 +209,34 @@ class ArenaFlowTest(ServerTestCase):
             self.assertEqual(my_rank_ack.result, 0)
             self.assertGreaterEqual(my_rank_ack.my_rank, 1)
 
-            # 3. Test Opcode Alias: Arena Square List (2446 -> 2447)
-            client.send_event(2446, messages.ArenaSquareListReq(server_key=1).encode())
-            _, ack2447 = await client.expect_event(2447)
-            self.assertEqual(struct.unpack_from('<i', ack2447[:4])[0], 0)
+            # 3. Arena Square List (2304 -> 2305)
+            client.send_event(2304, messages.ArenaSquareListReq(server_key=1).encode())
+            _, ack2305 = await client.expect_event(2305)
+            self.assertEqual(struct.unpack_from('<i', ack2305[:4])[0], 0)
 
-            # 4. Test Opcode Alias: Arena Room List (2448 -> 2449)
-            client.send_event(2448, messages.ArenaGetRoomListReq(page=0).encode())
-            _, ack2449 = await client.expect_event(2449)
-            self.assertEqual(struct.unpack_from('<i', ack2449[:4])[0], 0)
+            # 4. Arena Room List (2306 -> 2307)
+            client.send_event(2306, messages.ArenaGetRoomListReq(page=0).encode())
+            _, ack2307 = await client.expect_event(2307)
+            self.assertEqual(struct.unpack_from('<i', ack2307[:4])[0], 0)
 
-            # 5. Test Opcode Alias: Team Create (2452 -> 2453)
-            client.send_event(2452, messages.ArenaTeamCreateReq(team_name="AliasTeam", team_type=1).encode())
-            _, ack2453 = await client.expect_event(2453)
-            alias_create_ack = messages.ArenaTeamCreateAck.decode(ack2453)
-            self.assertEqual(alias_create_ack.result, 0)
-            self.assertEqual(alias_create_ack.team_name, "AliasTeam")
+            # 5. Team Create (5269 -> 5270)
+            client.send_event(5269, messages.ArenaTeamCreateReq(team_name="ArenaTeam", team_type=1).encode())
+            _, ack5270 = await client.expect_event(5270)
+            create_ack = messages.ArenaTeamCreateAck.decode(ack5270)
+            self.assertEqual(create_ack.result, 0)
+            self.assertEqual(create_ack.team_name, "ArenaTeam")
 
-            # 6. Test Opcode Alias: Team Join (2454 -> 2455)
-            client.send_event(2454, messages.ArenaTeamJoinReq(team_id=alias_create_ack.team_id).encode())
-            _, ack2455 = await client.expect_event(2455)
-            alias_join_ack = messages.ArenaTeamJoinAck.decode(ack2455)
-            self.assertEqual(alias_join_ack.result, 0)
-            self.assertEqual(alias_join_ack.team_id, alias_create_ack.team_id)
+            # 6. Team Join (5271 -> 5272)
+            client.send_event(5271, messages.ArenaTeamJoinReq(team_id=create_ack.team_id).encode())
+            _, ack5272 = await client.expect_event(5272)
+            join_ack = messages.ArenaTeamJoinAck.decode(ack5272)
+            self.assertEqual(join_ack.result, 0)
+            self.assertEqual(join_ack.team_id, create_ack.team_id)
 
-            # 7. Test Opcode Alias: Team Leave (2456 -> 2457)
-            client.send_event(2456, messages.ArenaTeamLeaveReq().encode())
-            _, ack2457 = await client.expect_event(2457)
-            self.assertEqual(struct.unpack_from('<i', ack2457[:4])[0], 0)
-
-            # 8. Test Opcode Alias: League Rank List (2475 -> 2476)
-            client.send_event(2475, messages.LeagueSeasonArenaGetRankReq(season_id=1).encode())
-            _, ack2476 = await client.expect_event(2476)
-            alias_ranks = messages.LeagueSeasonArenaGetRankAck.decode(ack2476)
-            self.assertEqual(alias_ranks.result, 0)
-            self.assertEqual(alias_ranks.season_id, 1)
-
-            # 9. Test Opcode Alias: League My Rank (2477 -> 2478)
-            client.send_event(2477, messages.LeagueSeasonArenaGetMyRankReq(season_id=1).encode())
-            _, ack2478 = await client.expect_event(2478)
-            alias_my_rank = messages.LeagueSeasonArenaGetMyRankAck.decode(ack2478)
-            self.assertEqual(alias_my_rank.result, 0)
+            # 7. Team Leave (5274 -> 5275)
+            client.send_event(5274, messages.ArenaTeamLeaveReq().encode())
+            _, ack5275 = await client.expect_event(5275)
+            self.assertEqual(struct.unpack_from('<i', ack5275[:4])[0], 0)
 
         self.run_async(self.with_server(scenario))
 

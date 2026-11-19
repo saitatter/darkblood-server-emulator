@@ -140,7 +140,7 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | automatic | 2008 `eEGS_GET_CHARLIST_REQ` | 2009 | `0x0077CFA0`: u32 result, `0x10` vector of character, `0x10` vector (`0x004B94C0`), u8 slots, u8, bool, `0x17` map (`0x007680E0`), `0x13` (`0x006B9F80`) | Verified: "N SLOT" = first u8 |
 | Creation | 2012 `eEGS_CREATE_CHARACTER_REQ` | 2013 | `0x00758070`: u32 result, character, u8 (→ `0x00F44E58`) | Verified: character appears |
 | Ok on character | 2006 `eEGS_SELECT_CHAR_REQ` (i32, u64 char id) | 2007 `eEGS_SELECT_CHAR_ACK` | `0x007AA4B0`: u32 result, struct `0x00A40760` (651 bytes, full stats/visuals/skills), `0x10` vector `0x004B9210` | Verified |
-| World layer | 5030 `eERC_JOIN_LAYER_REQ` (i32, u64 layer id) | 5031 `eERC_JOIN_LAYER_ACK` | `0x00787A70`: u32 result, u64 layer_id, u64 instance_id, u8 tag (0 = absent) | Verified |
+| World layer | 5030 `eERC_JOIN_LAYER_REQ` (i32 prefix, u64 layer ID, bool) | 5031 `eERC_JOIN_LAYER_ACK` | `0x00787A70`: u32 result, i64 square ID, i64 layer ID, empty vector, bool, i64 | Layer change verified |
 | Enter map | 2016 `eEGS_ENTER_MAPTOOL_REQ` | 2017 `eEGS_ENTER_MAPTOOL_ACK` | `0x00757D20`: u32 result (0 triggers Scene 5) | Verified |
 | Dungeon entrance (walk into town exit) | 2010 → 5001 `_singleplay` → 5043 `eERC_SELECT_DUNGEON_REQ` (i32, J-wstring gate id `Act1_G1`) | 5044 `eERC_SELECT_DUNGEON_ACK` | `0x007702E0`: u32 result, `0x17` map, `0x13` set, untagged J-wstring gate id (looked up by `0x006B2C00`, "Invalidation in m_pjGateProp" if unknown), `0x13` set. Then app state → dungeon gate (world map table) | Verified live: Gnogue Haram gate map shown |
 | Click dungeon on gate map | 5009 `eERC_CHANGE_MAPCODE_REQ` (i32, J-wstring map code `Act1_G1_A10`, bool) | 5010 `eERC_CHANGE_MAPCODE_ACK` | No JUserClient handler; JAppStateDungeonGate vf20 → `0x006D4A00` (app state 8): u32 result, untagged J-wstring map code, bool (meaning unknown; echoed) | Verified live |
@@ -252,9 +252,9 @@ then calls `0x009662E0` to remove the peer.
 The emulator keeps the selected `5028` channel during `2006`. On a
 `5030` layer change, it sends the acknowledgment, tells the old layer
 to remove the mover, and sends reciprocal `5027` then `5096` announcements
-within the destination channel and layer. The headless movement path is
-also filtered by layer. Two-client headless tests verify the routing and
-peer UIDs. In-game visibility and relay-driven positions remain unverified.
+within the destination channel and layer. Two-client headless tests verify
+the routing and peer UIDs. Two live clients verified that town positions
+travel through the ProudNet peer relay.
 Local static evidence is in `research/town-peer-*.c`.
 
 Disconnect, return to character select (`5037`), leave square (`5032`) and
@@ -683,7 +683,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   Tag `0x1E` chat struct (`channel: u8, sender: wstring, target: wstring, message: wstring`). Intercepts GM console commands (`/gold`, `/levelup`, `/sp`, `/item`).
 - `2078 eEGS_QUEST_GIVEUP_REQ` -> `2079 eEGS_QUEST_GIVEUP_ACK` (`0x006223B0`, reader `0x00A559F0`):
   observed request `J-wstring (timestamp text, meaning unknown), u32 quest_id` (same shape as 2073) -> `result: i32 (0)`, tag `0x10` i32 quest-id vector, 18-byte jInfo, tag `0x10` i32 vector, tag `0x10` item vector. Removes quest from active storage. The client looks each id up (`0x00A7B390`) and drops the ack if it is unknown.
-  Route by the exact string-plus-ID shape before handling the local stall alias. Verified live with a 42-byte timestamp and a subsequent 2073 accept for the abandoned quest.
+  2078 is owned by the quest handler. Stall open uses 2340. Verified live with a 42-byte timestamp and a subsequent 2073 accept for the abandoned quest.
 - `2080 eEGS_QUEST_FAIL_REQ` -> `2081 eEGS_QUEST_FAIL_ACK` (`0x006223B0`):
   `quest_id: u32` (request assumed to share the 2078 J-wstring prefix; not yet observed) -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
 - `2254 eEGS_MAGICENCHANT_ENCHANT_REQ` -> `2255 eEGS_MAGICENCHANT_ENCHANT_ACK` (`0x00796DC0`):

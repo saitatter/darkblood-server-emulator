@@ -27,7 +27,7 @@ class StallItem:
 
 @dataclass
 class PersonalShopOpenReq:
-    """Opcode 2078 (eEGS_PERSONALSHOP_OPEN_REQ) / Opcode 2340 (eEGS_PERSONALSHOP_START_REQ).
+    """Opcode 2340 (eEGS_PERSONALSHOP_START_REQ).
 
     Client initiates stall opening with title and items for sale.
     Wire format support:
@@ -85,7 +85,7 @@ class PersonalShopOpenReq:
 
 @dataclass
 class PersonalShopOpenAck:
-    """Opcode 2079 (eEGS_PERSONALSHOP_OPEN_ACK) / Opcode 2341 (eEGS_PERSONALSHOP_START_ACK).
+    """Opcode 2341 (eEGS_PERSONALSHOP_START_ACK).
 
     Server response confirming player stall opening.
     Wire format (0x00601AA0 -> FUN_00A55D70):
@@ -125,7 +125,7 @@ class PersonalShopOpenAck:
 
 @dataclass
 class PersonalShopCloseReq:
-    """Opcode 2088 (eEGS_PERSONALSHOP_CLOSE_REQ) / Opcode 2342 (eEGS_PERSONALSHOP_CLOSE_REQ)."""
+    """Opcode 2342 (eEGS_PERSONALSHOP_CLOSE_REQ)."""
     owner_uid: int = 0
 
     @classmethod
@@ -141,7 +141,7 @@ class PersonalShopCloseReq:
 
 @dataclass
 class PersonalShopCloseAck:
-    """Opcode 2089 (eEGS_PERSONALSHOP_CLOSE_ACK) / Opcode 2343 (eEGS_PERSONALSHOP_CLOSE_ACK)."""
+    """Opcode 2343 (eEGS_PERSONALSHOP_CLOSE_ACK)."""
     result: int = 0
     owner_uid: int = 0
 
@@ -150,38 +150,8 @@ class PersonalShopCloseAck:
 
 
 @dataclass
-class PersonalShopChangeTitleReq:
-    """Opcode 2090 (eEGS_PERSONALSHOP_CHANGE_TITLE_REQ)."""
-    title: str = ''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopChangeTitleReq':
-        data = strip_prefix(data)
-        if data:
-            try:
-                title, _ = read_wide(data, 0)
-                return cls(title=title)
-            except Exception:
-                pass
-        return cls()
-
-    def encode(self) -> bytes:
-        return wide_string(self.title)
-
-
-@dataclass
-class PersonalShopChangeTitleAck:
-    """Opcode 2091 (eEGS_PERSONALSHOP_CHANGE_TITLE_ACK)."""
-    result: int = 0
-    title: str = ''
-
-    def encode(self) -> bytes:
-        return struct.pack('<i', self.result) + wide_string(self.title)
-
-
-@dataclass
 class PersonalShopBuyReq:
-    """Opcode 2080 (eEGS_PERSONALSHOP_BUY_REQ) / Opcode 5242 (eERC_PERSONALSHOP_BUYITEM_REQ)."""
+    """Opcode 5242 (eERC_PERSONALSHOP_BUYITEM_REQ)."""
     seller_uid: int = 0
     item_uid: int = 0
     count: int = 1
@@ -203,7 +173,7 @@ class PersonalShopBuyReq:
 
 @dataclass
 class PersonalShopBuyAck:
-    """Opcode 2081 (eEGS_PERSONALSHOP_BUY_ACK) / Opcode 5243 (eERC_PERSONALSHOP_BUYITEM_ACK).
+    """Opcode 5243 (eERC_PERSONALSHOP_BUYITEM_ACK).
 
     Format (OneERC_PERSONALSHOP_BUYITEM_ACK):
       vecItemOut >> jPersonalShop >> nCurrentAr

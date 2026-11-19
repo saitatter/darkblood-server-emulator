@@ -4,7 +4,6 @@ import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
-from darkblood.games.state import selected_character
 
 
 class InventoryFlowTest(ServerTestCase):
@@ -25,7 +24,6 @@ class InventoryFlowTest(ServerTestCase):
             ]
             char['sp'] = 7
             char['gold'] = 500
-            selected_character['id'] = char_id
             session.GameSession.store().save()
 
             # 1. Drag item (2036 -> 2037)
@@ -313,7 +311,6 @@ class SkillCostTest(ServerTestCase):
             await client.expect_event(2007)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             char['sp'] = 3
-            selected_character['id'] = char_id
             session.GameSession.store().save()
 
             # skill 5 -> level 2 (0 + 2 SP) and skill 254 -> level 1 (1 SP)

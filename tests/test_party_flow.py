@@ -8,7 +8,7 @@ from darkblood.games.network.messages.party import (
     PartyAcceptInviteAck, PartyAcceptInviteNot, PartyAcceptInviteReq,
     PartyInviteAck, PartyInviteNot, PartyInviteReq,
     PartyJoinAck, PartyJoinReq, PartyKickAck, PartyKickReq,
-    PartyLeaveAck, PartyLeaveReq, UserJoinSquareNot, UserLeaveSquareNot, UserMoveNot
+    PartyLeaveAck, PartyLeaveReq, UserJoinSquareNot, UserLeaveSquareNot
 )
 from darkblood.games.world import GameWorldManager, PartyManager
 from headless_client import HeadlessClient
@@ -16,29 +16,6 @@ from headless_client import HeadlessClient
 
 class PartyWireMessagesTest(unittest.TestCase):
     """Unit tests for spatial movement and party wire message serialization."""
-
-    def test_user_move_message_roundtrip(self):
-        # 1. Full 28-byte packet
-        msg = UserMoveNot(char_id=1001, x=123.5, y=-456.25, z=78.0, angle=1.57, move_state=2)
-        encoded = msg.encode()
-        self.assertEqual(len(encoded), 28)
-
-        decoded = UserMoveNot.decode(encoded)
-        self.assertEqual(decoded.char_id, 1001)
-        self.assertAlmostEqual(decoded.x, 123.5, places=3)
-        self.assertAlmostEqual(decoded.y, -456.25, places=3)
-        self.assertAlmostEqual(decoded.z, 78.0, places=3)
-        self.assertAlmostEqual(decoded.angle, 1.57, places=2)
-        self.assertEqual(decoded.move_state, 2)
-
-        # 2. 20-byte packet with 0x7FFFFFFF prefix
-        raw_prefix = b'\xff\xff\xff\x7f' + struct.pack('<ffffi', 10.0, 20.0, 30.0, 0.5, 1)
-        dec_prefix = UserMoveNot.decode(raw_prefix)
-        self.assertAlmostEqual(dec_prefix.x, 10.0, places=3)
-        self.assertAlmostEqual(dec_prefix.y, 20.0, places=3)
-        self.assertAlmostEqual(dec_prefix.z, 30.0, places=3)
-        self.assertAlmostEqual(dec_prefix.angle, 0.5, places=2)
-        self.assertEqual(dec_prefix.move_state, 1)
 
     def test_user_join_and_leave_square_messages(self):
         # Join message
@@ -126,12 +103,10 @@ class PartyWireMessagesTest(unittest.TestCase):
 class MultiplayerAndPartyFlowTest(ServerTestCase):
     """End-to-end integration flow tests with multi-client network sessions."""
 
-    def test_multiplayer_movement_and_spatial_broadcast(self):
-        """Verify Opcode 5030 / 5031 movement decoding and spatial broadcasting to nearby peers."""
+    def test_town_join_and_leave_notifications(self):
+        """Verify the server announces peers joining and leaving a town square."""
         async def scenario(client1):
-            world = GameWorldManager.get()
-            world.players.clear()
-            world.squares.clear()
+            world = GameWorldManager._instance = GameWorldManager()
 
             # Client 1 joins square as "Runner1"
             await lobby_flow(client1)
@@ -161,35 +136,6 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 self.assertEqual(join_not.char_id, char_id2)
                 self.assertEqual(join_not.char_name, 'Watcher2')
 
-                # Client 1 moves: sends Opcode 5030 with coordinates
-                move_req = UserMoveNot(char_id=char_id1, x=150.0, y=250.0, z=35.0, angle=1.2, move_state=1)
-                client1.send_event(5030, move_req.encode())
-
-                # Client 2 should receive movement broadcast (Opcode 5031)
-                _, move_broadcast = await client2.expect_event(5031)
-                moved_peer = UserMoveNot.decode(move_broadcast)
-                self.assertEqual(moved_peer.char_id, char_id1)
-                self.assertAlmostEqual(moved_peer.x, 150.0, places=2)
-                self.assertAlmostEqual(moved_peer.y, 250.0, places=2)
-                self.assertAlmostEqual(moved_peer.z, 35.0, places=2)
-                self.assertAlmostEqual(moved_peer.angle, 1.2, places=2)
-                self.assertEqual(moved_peer.move_state, 1)
-
-                # Verify position was updated in GameWorldManager
-                p1 = world.get_player(char_id1)
-                self.assertAlmostEqual(p1.x, 150.0, places=2)
-                self.assertAlmostEqual(p1.y, 250.0, places=2)
-
-                # Now Client 2 sends Opcode 5031 directly
-                move_req2 = UserMoveNot(char_id=char_id2, x=500.0, y=600.0, z=0.0, angle=3.0, move_state=0)
-                client2.send_event(5031, move_req2.encode())
-
-                # Client 1 receives Client 2's movement
-                _, move_bcast2 = await client1.expect_event(5031)
-                moved_peer2 = UserMoveNot.decode(move_bcast2)
-                self.assertEqual(moved_peer2.char_id, char_id2)
-                self.assertAlmostEqual(moved_peer2.x, 500.0, places=2)
-
                 # Client 2 leaves square (Opcode 5032)
                 client2.send_event(5032, b'')
                 await client2.expect_event(5033)
@@ -208,10 +154,8 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
     def test_party_lifecycle_invite_join_leave_kick(self):
         """End-to-end party management flow across multiple connected clients."""
         async def scenario(client1):
-            world = GameWorldManager.get()
+            world = GameWorldManager._instance = GameWorldManager()
             pm = PartyManager.get()
-            world.players.clear()
-            world.squares.clear()
             pm.parties.clear()
             pm.player_party.clear()
 

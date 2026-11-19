@@ -4,7 +4,6 @@ import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
-from darkblood.games.state import selected_character
 from darkblood.games.network.messages.pets import (
     PetCreateAck,
     PetCreateReq,
@@ -152,7 +151,6 @@ class PetsFlowTest(ServerTestCase):
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
 
-            selected_character['id'] = char_id
             char = session.GameSession.store().get('OfflinePlayer', char_id)
 
             # 1. Monster Taming: Insert (2348 -> 2349)
@@ -237,21 +235,14 @@ class PetsFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertIsNone(char.get('summoned_pet'))
 
-            # 11. Pet Compatibility Summon (2508 -> 2469)
-            client.send_event(2508, PetSummonReq(pet_slot=1).encode())
-            _, ack2469_compat = await client.expect_event(2469)
-            res, slot = struct.unpack_from('<IH', ack2469_compat, 0)
-            self.assertEqual(res, 0)
-            self.assertEqual(slot, 1)
-
-            # 12. Pet Lifecycle: Delete (2466 -> 2467)
+            # 11. Pet Lifecycle: Delete (2466 -> 2467)
             client.send_event(2466, PetDeleteReq(pet_uid=10).encode())
             _, ack2467 = await client.expect_event(2467)
             self.assertEqual(struct.unpack_from('<Iq', ack2467, 0), (0, 10))
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(len(char.get('pets', [])), 0)
 
-            # 13. Item Use: PetCall egg item consumption activates pet
+            # 12. Item Use: PetCall egg item consumption activates pet
             char['items'] = [
                 {'uid': 1001, 'code': 'PetCall001', 'container': 3, 'slot': 0, 'count': 1},
                 {'uid': 1002, 'code': 'ridecall0', 'container': 3, 'slot': 1, 'count': 1},

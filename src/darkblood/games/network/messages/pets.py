@@ -451,10 +451,3 @@ class PetNickChangeAck:
                 + b'\x10' + varuint(0)
                 + struct.pack('<q', self.pet_uid)
                 + wide_string(self.new_name))
-
-
-# Aliases for Pet Call & Ride Call
-PetCallReq = PetSummonReq
-PetCallAck = PetSummonAck
-RideCallReq = RidingRideObjectReq
-RideCallAck = RidingRideObjectAck

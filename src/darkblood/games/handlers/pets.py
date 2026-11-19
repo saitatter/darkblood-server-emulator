@@ -237,17 +237,6 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2485, ack, correlation),
                                         note=f'pet evolution ack (uid={new_uid})')
 
-    async def on_2508(self, correlation, body):
-        # Compatibility / PetCall summon request -> responds with 2469
-        req = PetSummonReq.decode(body)
-        char = self.current_char()
-        if char:
-            char['summoned_pet'] = req.pet_slot
-            self.store().save()
-        ack = PetSummonAck(result=0, pet_slot=req.pet_slot).encode()
-        await self.transport.send_event(event(2469, ack, correlation),
-                                        note=f'pet call / summon ack (slot={req.pet_slot})')
-
     async def on_2510(self, correlation, body):
         # eEGS_PET_NICK_CHANGE_REQ (0x007A16DA) -> 2511 eEGS_PET_NICK_CHANGE_AKC (0x00781CD0)
         req = PetNickChangeReq.decode(body)
@@ -263,7 +252,7 @@ class PetHandlers(BaseDomainService):
                                         note=f'pet nick change ack (uid={req.pet_uid}, name={req.new_name})')
 
     # Helper for item use integration
-    async def _apply_pet_or_mount_item(self, char, code):
+    async def apply_pet_or_mount_item(self, char, code):
         """When an inventory item starting with PetCall or ridecall is consumed."""
         if not char or not code:
             return

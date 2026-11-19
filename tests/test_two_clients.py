@@ -1,4 +1,5 @@
 """Two game connections play different characters at the same time (multibox)."""
+import asyncio
 import struct
 import unittest
 
@@ -90,10 +91,17 @@ class TwoClientsTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
-    def test_client_without_ticket_gets_default_account(self):
+    def test_client_requires_valid_account_ticket(self):
         async def scenario(client):
             await client.connect()
-            await client.expect_event(2)  # eE_ACCEPT_NOT; no 5386 answer
+            await client.expect_event(2)
+            client.send_event(2008)
+            with self.assertRaises(asyncio.TimeoutError):
+                await asyncio.wait_for(client.expect_event(2009), 0.1)
+            client.send_event(5386, b'invalid')
+            with self.assertRaises(asyncio.TimeoutError):
+                await asyncio.wait_for(client.expect_event(5020), 0.1)
+            client.send_event(5386, b'\x00\x88DBACC:OfflinePlayer;Message bytes=13 data=01472C68')
             _, body = await client.expect_event(5020)
             self.assertEqual(_welcome_account(body), (1, 'OfflinePlayer'))
 
