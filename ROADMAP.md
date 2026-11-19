@@ -116,10 +116,11 @@ Final objective: launch without the original services, establish a local session
   - Handle player join notification (`5021 eERC_USER_JOIN_SQUARE_NOT`) and player leave notification (`5022 eERC_USER_LEAVE_SQUARE_NOT`).
   - Live clients crossed between layers and exchanged reliable relay control
     frames. The relay now binds group membership to the request's character
-    UID. Character rebinding is verified headlessly.
+    UID. Both client bindings were checked after a live reconnect. The
+    same-connection character replacement is covered headlessly.
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
-  - Capture the encryption and routing returns from the client peer-send
-    path at `0x00B762AC` and `0x00B763D3`.
+  - Retest the 512-bit ProudNet Fast setting with both clients in town.
+    Live traces isolated the previous 128-bit failure to encryption.
 - [x] **Party System**:
   - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).
   - Party join, leave, and kick (`2102/2103 eEGS_PARTY_JOIN`, `5054/5055 eERC_ACCEPT_INVITE`, `5056 ACCEPT_INVITE_NOT`, `2104/2105 LEAVE`, `2106/2107 KICK`).

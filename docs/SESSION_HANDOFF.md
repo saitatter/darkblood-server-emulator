@@ -1,5 +1,30 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Live relay binding replay — saita machine, 2026-11-19
+
+- The updated server accepted both reconnecting clients. The selection ACKs
+  returned Mage1 (UID 2) and ElfHunter1 (UID 3). Their subsequent JoinGroup
+  requests carried those UIDs, and both rosters mapped them to relay HostIDs
+  6 and 7 on the same layer. Both clients received the reciprocal 5027 notices.
+- Reliable peer transport carried `0x32` / `0x33` and internal peer RMIs
+  `0xFDEA`–`0xFDEC`. No peer user message appeared in the sampled traffic.
+  The local decoder `research/live-relay-resume.py` reads from the current
+  gamectl session's wire offset and reassembles relay TCP frames.
+- At the user's request, stopped the previous multibox processes and launched
+  `OfflinePlayer` and `Player2` with the peer-send breakpoint profile in
+  `research/client/bp.txt`. The previous profile is backed up as
+  `bp.txt.before-peer-send-next`, and the old trace is in
+  `research/hook-before-peer-send-relaunch.log`. The new hook log confirms
+  the probe addresses were armed. The existing server stayed up.
+- Live probes then isolated the failure. Town sends to relay HostIDs 10 and
+  11 used mode 2 (`[ebp+0x1C]` at `0x00B762AC`) and returned 0 from
+  encryption before routing. Mode 1 sends to the server returned 1.
+  In the matching client image, `0x00B82D90` sizes the Fast schedule from
+  the negotiated key size, and cipher dispatch `0x00B82AE0` accepts only
+  512, 1024 and 2048 bits. The previous server supplied 128 bits. It now
+  advertises 512 bits and includes 64-byte Fast keys in peer joins, while
+  retaining 128-bit AES. All 173 headless tests passed.
+
 ## Relay character binding and peer-send trace — saita machine, 2026-11-19
 
 - Continued from `4845213`. Both multibox clients were connected to the game

@@ -83,7 +83,9 @@ class HeadlessClient:
         # 0x05, bool, fixed-width settings (reader 0xB70DE0), scalar-length DER key
         size, start = read_scalar(hint, 2 + len(server_settings()))
         n, e = parse_public_key(hint[start:start + size])
-        session_key, fast_key = os.urandom(16), os.urandom(16)
+        # The two key sizes follow the Nagle byte in the connection hint.
+        aes_bits, fast_bits = struct.unpack_from('<ii', hint, 21)
+        session_key, fast_key = os.urandom(aes_bits // 8), os.urandom(fast_bits // 8)
         self.aes = AES(session_key)
         self.send(b'\x06' + blob(oaep_encrypt(n, e, session_key))
                   + blob(envelope_encrypt(self.aes, fast_key)))

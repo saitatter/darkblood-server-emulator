@@ -22,6 +22,7 @@ class RelayFlowTest(ServerTestCase):
     def test_relay_handshake_without_welcome(self):
         async def scenario(client):
             await client.connect()
+            self.assertEqual(struct.unpack_from('<ii', client.received[0], 21), (128, 512))
             client.send_event(2131)
             try:
                 payload = await asyncio.wait_for(client.expect(0x02), 0.5)
@@ -47,6 +48,11 @@ class RelayFlowTest(ServerTestCase):
             while True:
                 payload = await client.expect(1)
                 rmi_id, group_id = struct.unpack_from('<HI', payload, 1)
+                if rmi_id == 0xF619:
+                    custom_size, offset = read_scalar(payload, 11)
+                    aes_size, offset = read_scalar(payload, offset + custom_size + 4)
+                    fast_size, _ = read_scalar(payload, offset + aes_size)
+                    self.assertEqual((aes_size, fast_size), (16, 64))
                 if rmi_id == 3001:
                     size, start = read_scalar(payload, 7)
                     reader = JSerBufferReader(payload[start:])

@@ -8,6 +8,8 @@ import struct
 
 MAGIC = b'\x13\x57'
 MAX_FRAME = 1024 * 1024
+# The client's Fast cipher dispatch (0x00B82AE0) accepts 512, 1024 or 2048 bits.
+FAST_KEY_BITS = 512
 
 
 class ProtocolError(ValueError):

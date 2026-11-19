@@ -5,7 +5,7 @@ import struct
 from dataclasses import dataclass, field
 from itertools import count
 
-from darkblood.core.network.proudnet import ProtocolError, frame, read_scalar, scalar
+from darkblood.core.network.proudnet import FAST_KEY_BITS, ProtocolError, frame, read_scalar, scalar
 from darkblood.core.serialization.jser import varuint
 
 
@@ -143,7 +143,7 @@ class RelayGroups:
         group = self.groups[key]
         if newcomer:
             for other in group.members.values():
-                aes_key, fast_key = os.urandom(16), os.urandom(16)
+                aes_key, fast_key = os.urandom(16), os.urandom(FAST_KEY_BITS // 8)
                 await self.send(transport, p2p_member_join(group.host_id, other.host_id, aes_key, fast_key),
                                 'relay peer joined')
                 await self.send(other, p2p_member_join(group.host_id, transport.host_id, aes_key, fast_key),

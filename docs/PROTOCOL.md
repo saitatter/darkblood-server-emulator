@@ -55,7 +55,7 @@ ServerSettings (reader 0x00B70DE0, defaults 0x00B82850, copied to client+0x638):
   i32 client message max len   i32 default timeout ms (60000)
   u8  direct-P2P start cond.   i32 over-send threshold
   u8  Nagle                    i32 AES key length in bits (+0x1C; 128 used)
-  i32 fast key length in bits (+0x20; must be > 0, the random generator fails on 0)
+  i32 fast key length in bits (+0x20; 512 used)
   u8 +0x24, u8 +0x25, u8 +0x26, u8 +0x27, u8 +0x2C, u8 +0x2D, u8 +0x2E, i32 +0x28
 blob RSA public key            ProudNet scalar length + PKCS#1 DER RSAPublicKey
 ```
@@ -73,7 +73,12 @@ plaintext | pad filler (pad bytes) | u32 CRC-32(plaintext) | u8 pad      pad = 1
 ```
 
   CRC-32 is the standard table at `0x00E45D50` (`0x00B95F60`). The server checks the CRC of every decrypted message; the fast key in type 6 decrypts with a valid CRC, which confirms the reconstruction.
-- Fast encryption (type `0x27`, key setup `0x00B82D90`, RC4-like) is not used by observed traffic and is not implemented.
+- Fast encryption is mode 2 in the reliable `0x26` and unreliable `0x27`
+  envelopes. Key setup `0x00B82D90` sizes the schedule from the negotiated key
+  length. Dispatch `0x00B82AE0` accepts 512, 1024 or 2048 bits. Live town
+  peer sends failed in mode 2 with the former 128-bit setting. The relay
+  supplies 64-byte Fast keys and forwards encrypted peer payloads opaquely.
+  The server's own application endpoint still decodes mode 1 (AES).
 
 ### Encrypted messages (type 0x26)
 

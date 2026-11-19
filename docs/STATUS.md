@@ -12,8 +12,14 @@ from the subsequent transport send.
 JoinGroup now uses the character UID in its payload, removing the dependency
 on game selection order. The same connection can change characters, and a
 leave for the former character preserves its replacement. All 173 headless
-tests passed. The patched server is listening on ports 9400 and 9401, with
-a two-client replay pending.
+tests passed. A live reconnect verified both character UIDs in the shared
+roster and reciprocal 5027 notices.
+
+The next client trace captured town sends failing inside mode 2 encryption
+at `0x00B762AC` and `0x00B763FD`. The Fast cipher only dispatches key
+schedules of 512, 1024 or 2048 bits at `0x00B82AE0`. The emulator advertised
+128 bits and now supplies 512-bit Fast keys in both settings and member joins.
+All 173 headless tests pass. Live verification of the new key size is pending.
 
 ## Relay group isolation — Cristian, 2026-11-19
 

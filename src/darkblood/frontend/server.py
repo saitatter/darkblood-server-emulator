@@ -15,7 +15,9 @@ import uuid
 from pathlib import Path
 from darkblood import REPO_ROOT
 from darkblood.core.network.crypto import AES, CryptoError, RSAKey, envelope_decrypt
-from darkblood.core.network.proudnet import ProtocolError, connection_success, frame, pop_frame, read_scalar, scalar
+from darkblood.core.network.proudnet import (
+    FAST_KEY_BITS, ProtocolError, connection_success, frame, pop_frame, read_scalar, scalar,
+)
 from darkblood.frontend.relay import RELAY_RMI, RelayGroups
 from darkblood.games.session import GameSession
 
@@ -25,7 +27,6 @@ ROOT = REPO_ROOT
 logger = logging.getLogger('ProudNet')
 
 AES_KEY_BITS = 128
-FAST_KEY_BITS = 128
 
 
 def server_settings():
