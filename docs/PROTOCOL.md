@@ -232,6 +232,31 @@ Evidence: matching executable hash in STATUS.md; local mapped image
 confirms the reader calls independently of inferred decompiler signatures.
 Headless flow checks the complete default body; live acceptance is pending.
 
+### Player visibility across town layers (Cristian, 2026-11-18)
+
+The local capture has live `5030` bodies of `ffffff7f` followed by the
+u64 layer ID and a trailing bool. `5031` at `0x00787A70` stores the
+confirmed layer at local player `+0xF0` and refreshes the scene. `5027`
+at `0x00787790` passes each peer summary and the recipient's current
+layer to `0x00967590`. That routine looks up the summary's first i64
+as the peer UID and creates a `JUser` entry when needed. `5096` at
+`0x0078C990` looks up an existing peer by UID before applying details.
+`5039` at `0x00789450` reads a u32 result and i64 peer UID on success,
+then calls `0x009662E0` to remove the peer.
+
+The emulator keeps the selected `5028` channel during `2006`. On a
+`5030` layer change, it sends the acknowledgment, tells the old layer
+to remove the mover, and sends reciprocal `5027` then `5096` announcements
+within the destination channel and layer. The headless movement path is
+also filtered by layer. Two-client headless tests verify the routing and
+peer UIDs. In-game visibility and relay-driven positions remain unverified.
+Local static evidence is in `research/town-peer-*.c`.
+
+Disconnect, return to character select (`5037`), leave square (`5032`) and
+channel changes also announce `5039` to old layer viewers. Removal checks that
+the departing session owns the world registration. After `5037`, a new `5028`
+chooses a channel and leaves the character list off-world until selection.
+
 ### Town party invitation notice (Cristian, 2026-11-18, static + headless)
 
 The `5051` client handler `0x007706E0` requires SquarePlay and sends the payload

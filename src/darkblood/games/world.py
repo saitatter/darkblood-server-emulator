@@ -7,11 +7,12 @@ broadcasts (Opcode 5096 UpdateCharInfoNot), spatial movement broadcasting
 """
 import asyncio
 import logging
+import struct
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
 from darkblood.core.serialization.jser import event, wide_string
-from darkblood.games.entities.character import Character
+from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.network.messages.lobby import encode_join_layer_not
 from darkblood.games.network.messages.party import (
     PartyAcceptInviteNot, PartyInfoNot, PartyInviteNot, PartyMemberInfo,
@@ -28,6 +29,7 @@ class WorldPlayer:
     char_id: int
     char_data: dict
     square_id: int = 1
+    layer_id: int = field(default_factory=layer_net_id)
     x: float = 0.0
     y: float = 0.0
     z: float = 0.0
@@ -90,12 +92,15 @@ class GameWorldManager:
         cids = self.squares.get(square_id, set())
         return [self.players[cid] for cid in cids if cid in self.players]
 
-    async def broadcast_to_square(self, square_id: int, ev: bytes, exclude_char_id: Optional[int] = None, note: str = ""):
+    async def broadcast_to_square(self, square_id: int, ev: bytes, exclude_char_id: Optional[int] = None,
+                                  note: str = "", layer_id: Optional[int] = None):
         """Broadcast an event payload to all players in a square channel."""
         for cid in list(self.squares.get(square_id, set())):
             if cid == exclude_char_id:
                 continue
             p = self.players.get(cid)
+            if p and layer_id is not None and p.layer_id != layer_id:
+                continue
             if p and p.session and getattr(p.session, 'transport', None):
                 try:
                     await p.session.transport.send_event(ev, note=note)
@@ -130,6 +135,7 @@ class GameWorldManager:
             new_player.square_id,
             layer_not_ev,
             exclude_char_id=new_player.char_id,
+            layer_id=new_player.layer_id,
             note=f"join layer not 5027 for {new_char.name} ({new_player.char_id})"
         )
 
@@ -139,6 +145,7 @@ class GameWorldManager:
             new_player.square_id,
             spawn_ev,
             exclude_char_id=new_player.char_id,
+            layer_id=new_player.layer_id,
             note=f"update char info 5096 for {new_char.name} ({new_player.char_id})"
         )
 
@@ -148,7 +155,7 @@ class GameWorldManager:
             if cid == new_player.char_id:
                 continue
             existing = self.players.get(cid)
-            if existing:
+            if existing and existing.layer_id == new_player.layer_id:
                 c = Character.from_dict(existing.char_data)
                 existing_players.append((existing, c))
 
@@ -217,12 +224,30 @@ class GameWorldManager:
             note=f"user leave square not ({char_id})"
         )
 
-    async def broadcast_user_move(self, move: UserMoveNot, square_id: int = 1, opcode: int = 5031):
+    async def broadcast_layer_leave(self, player: WorldPlayer, layer_id: int):
+        """5039 removes the departed character from the old layer on the client."""
+        await self.broadcast_to_square(player.square_id, event(5039, struct.pack('<Iq', 0, player.char_id)),
+                                       exclude_char_id=player.char_id, layer_id=layer_id,
+                                       note=f"leave layer not ({player.char_id})")
+
+    async def broadcast_player_departure(self, player: WorldPlayer):
+        await self.broadcast_layer_leave(player, player.layer_id)
+        await self.broadcast_user_leave(player.char_id, player.square_id)
+
+    async def remove_session_player(self, session):
+        """Send departure once, for the session that owns the registration."""
+        player = self.unregister_player(session.active_char_id, session=session)
+        if player is not None:
+            await self.broadcast_player_departure(player)
+
+    async def broadcast_user_move(self, move: UserMoveNot, square_id: int = 1, opcode: int = 5031,
+                                  layer_id: Optional[int] = None):
         """Broadcast Opcode 5030 / 5031 (eERC_USER_MOVE_NOT) to square occupants."""
         await self.broadcast_to_square(
             square_id,
             event(opcode, move.encode()),
             exclude_char_id=move.char_id,
+            layer_id=layer_id,
             note=f"user move not ({move.char_id} -> {move.x:.1f}, {move.y:.1f}, {move.z:.1f})"
         )
 

@@ -85,8 +85,10 @@ class WorldSessionTest(ServerTestCase):
             self.assertIsNone(self.world.get_player(101))
             self.assertIsNone(self.parties.get_player_party(101))
             self.assertNotIn(101, self.world.squares[7])
-            observer.transport.send_event.assert_awaited_once()
-            packet = observer.transport.send_event.await_args.args[0]
-            self.assertEqual(parse_event(packet)[0], 5022)
+            # One departure: 5039 removes the peer from the layer, 5022 from the square.
+            self.assertEqual(
+                [parse_event(call.args[0])[0] for call in observer.transport.send_event.await_args_list],
+                [5039, 5022],
+            )
 
         self.run_async(scenario())

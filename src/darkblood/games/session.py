@@ -29,6 +29,7 @@ class GameSession:
         self.transport = transport
         self.account = 'OfflinePlayer'  # single local account (Steam shim persona)
         self.active_char_id = None
+        self.square_id = 1
 
         # Composition: PacketDispatcher and Domain Services
         self.dispatcher = PacketDispatcher()
@@ -122,10 +123,7 @@ class GameSession:
             fallback.cancel()
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager
-            world = GameWorldManager.get()
-            player = world.unregister_player(self.active_char_id, session=self)
-            if player:
-                await world.broadcast_user_leave(self.active_char_id, player.square_id)
+            await GameWorldManager.get().remove_session_player(self)
 
     async def on_user_message(self, data):
         try:

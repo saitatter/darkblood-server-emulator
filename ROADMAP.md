@@ -114,6 +114,7 @@ Final objective: launch without the original services, establish a local session
   - Broadcast player position, rotation, and animation state to nearby players in the same square/layer (`5030/5031 eERC_USER_MOVE_NOT`).
   - Handle player join notification (`5021 eERC_USER_JOIN_SQUARE_NOT`) and player leave notification (`5022 eERC_USER_LEAVE_SQUARE_NOT`).
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
+  - Verify two live clients after the `5030` layer routing and `5039` departure fix.
 - [x] **Party System**:
   - Party creation and invite (`2100 eEGS_PARTY_INVITE_REQ` / `2101 eEGS_PARTY_INVITE_ACK`, `5049/5050 eERC_INVITE_REQ/ACK`, `5051 eERC_INVITE_NOT`).
   - Party join, leave, and kick (`2102/2103 eEGS_PARTY_JOIN`, `5054/5055 eERC_ACCEPT_INVITE`, `5056 ACCEPT_INVITE_NOT`, `2104/2105 LEAVE`, `2106/2107 KICK`).

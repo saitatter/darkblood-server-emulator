@@ -146,6 +146,7 @@ class FrontendHandlers(BaseDomainService):
         Connects the client session to a chosen town channel and delivers relay address.
         """
         square_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
+        self.session.square_id = square_id
         await self.transport.send_event(
             event(5029, JoinSquareAck(result=0, square_id=square_id).encode(), correlation),
             note='join square ack'
@@ -155,17 +156,14 @@ class FrontendHandlers(BaseDomainService):
             event(5134, RelayAddressNot(port=RELAY_PORT).encode()),
             note='relay address not'
         )
-        # Register in GameWorldManager only if a character has already been selected
-        if self.active_char_id:
-            try:
-                from darkblood.games.world import GameWorldManager
-                char = self.store().get(self.account, self.active_char_id)
-                if char:
-                    player = GameWorldManager.get().register_player(self.session or self, self.active_char_id, char, square_id=square_id)
-                    await GameWorldManager.get().broadcast_player_spawn(player)
-                    await GameWorldManager.get().broadcast_user_join(player)
-            except Exception:
-                pass
+        from darkblood.games.world import GameWorldManager
+        world = GameWorldManager.get()
+        previous = world.get_player(self.active_char_id)
+        if previous and previous.session is self.session and previous.square_id != square_id:
+            player = world.register_player(self.session, previous.char_id, previous.char_data, square_id=square_id)
+            await world.broadcast_player_departure(previous)
+            await world.broadcast_player_spawn(player)
+            await world.broadcast_user_join(player)
 
     async def handle_get_char_list(self, correlation: int, body: bytes):
         """Opcode 2008 (eEGS_GET_CHARLIST_REQ) -> 2009 (eEGS_GET_CHARLIST_ACK).
@@ -213,7 +211,8 @@ class FrontendHandlers(BaseDomainService):
         # Register in GameWorldManager and broadcast mutual character spawns
         try:
             from darkblood.games.world import GameWorldManager
-            player = GameWorldManager.get().register_player(self.session or self, char_id, char, square_id=1)
+            player = GameWorldManager.get().register_player(self.session or self, char_id, char,
+                                                            square_id=self.square_id)
             await GameWorldManager.get().broadcast_player_spawn(player)
             await GameWorldManager.get().broadcast_user_join(player)
         except Exception:

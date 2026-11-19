@@ -1,5 +1,15 @@
 # Research status and handoff
 
+## Town layer visibility routing — Cristian, 2026-11-18
+
+Preserved the selected channel and used live `5030` layer IDs for peer
+visibility. Added `5039` removal for old layer viewers and reannouncements
+in the destination layer. See `docs/PROTOCOL.md`. All 165 headless tests pass.
+Live rendering and relay position synchronization remain open.
+The departure path now sends `5039` on disconnect, explicit leave, and channel
+change. Returning to character select keeps the old character off-world when
+the connection chooses another channel.
+
 ## Town party invitation notice — Cristian, 2026-11-18
 
 Ghidra and x86 disassembly confirmed the 5051 host summary and room fields.
