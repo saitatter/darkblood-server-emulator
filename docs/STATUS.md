@@ -1,5 +1,14 @@
 # Research status and handoff
 
+## Party retention and overlapping reconnect cleanup — Cristian, 2026-11-18
+
+Source review found that square re-registration removed party membership and that an
+older connection's cleanup could unregister a replacement session. Registration now
+keeps the party and updates its transport. Disconnect and 5037/5032 removal check
+session ownership and broadcast departure only after removal. Closing transports
+reject writes. Three regression tests and the full suite pass locally (167 tests).
+Live verification is pending. Co-op dungeon entry remains open.
+
 ## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
 
 Major subsystems implemented, integrated, and verified with 155 automated tests:

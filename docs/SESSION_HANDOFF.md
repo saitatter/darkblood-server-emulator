@@ -1,5 +1,47 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Cristian pause — 2026-11-18 (analysis and test tooling)
+
+- Ghidra 12.2 and the REA CLI and MCP tools are available locally. The static
+  fixture `research/unpacked.analysis.exe` and its source dump `research/session.bin`
+  are present. The full Ghidra project and decompiled function corpus mentioned
+  below belong to the saita setup and were absent from this checkout. The fixture
+  is for static analysis only. Keep any Ghidra output under git-ignored `research/`.
+- `tools/tail_wire.py` reads the existing `logs/wire.jsonl`, prints the latest
+  matching events, and exits. A continuous `--follow` mode for errors and
+  unhandled opcodes is a proposal from the collaborator discussion.
+- The collaborator also suggested restarting the server during a live test to
+  exercise reconnect. A restart disconnects the client. The shim can bring it
+  back to the server list, where the player resumes through the lobby.
+- The three tooling suggestions (full local Ghidra export, continuous log
+  monitoring, and a live restart check) were recorded for later consideration.
+  This check inspected local files only. PR #5 contains the party and reconnect
+  lifecycle fix described below, with 167 passing tests and live validation pending.
+
+## Cristian resume — 2026-11-18 (party and reconnect lifecycle)
+
+- Workspace `C:/Users/cri99/Projects/darkblood-server-emulator`. PR #3 was closed
+  without merging. Started branch `fix/resume-2026-11-18` from fetched `origin/main`
+  at `27fce6b`, preserving the previous notes branch and untracked `docs/LOCAL_SETUP.md`.
+- Before extending co-op dungeon entry, source review found that `register_player()`
+  called `unregister_player()`, which also removed party membership. Rejoining a square
+  therefore dissolved the leader's party or removed a member. Registration now replaces
+  world presence while keeping the party and rebinding the party member's session.
+- Disconnect, leave-layer (5037), and leave-square (5032) now remove presence only when
+  the requesting session owns the current registration. A delayed old disconnect or
+  leave request preserves a replacement connection. Departure notifications are emitted
+  once, upon actual removal. Closing transports reject writes before framing/logging.
+- Added three regression tests in `tests/test_world_sessions.py` covering square changes,
+  party transport replacement, overlapping reconnect cleanup, stale leave requests and
+  leave-then-disconnect notification duplication. Existing multiplayer/party tests also pass.
+- Validation on this machine uses `research/venv/Scripts/python.exe`. Baseline 164 tests
+  passed with socket warnings. After the fix, all 167 tests pass in about eight seconds
+  with no socket warnings in that run. `git diff --check` passes. The sandbox blocked
+  asyncio's local socketpair, so socket tests required approved execution outside it.
+- Live client verification remains pending. Co-op dungeon synchronization remains the
+  next implementation milestone. The 5014 nonempty maps/vector and shared room entry
+  still need recovered schemas before implementing multi-player start payloads.
+
 Compressed on 2026-11-17 at the user's request. Earlier entries (2026-11-16 and the first part of 2026-11-17,
 ~800 lines) are in git history: `git log -p -- docs/SESSION_HANDOFF.md`. Evidence that still matters is
 summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/STATUS.md`.

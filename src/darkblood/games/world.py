@@ -52,8 +52,10 @@ class GameWorldManager:
 
     def register_player(self, session, char_id: int, char_data: dict, square_id: int = 1) -> WorldPlayer:
         """Register a character entering the world."""
-        # Clean up existing registration if reconnecting
-        self.unregister_player(char_id)
+        # Re-entering a square or replacing a connection keeps party membership.
+        previous = self.players.get(char_id)
+        if previous:
+            self.squares.get(previous.square_id, set()).discard(char_id)
 
         player = WorldPlayer(
             session=session,
@@ -63,10 +65,16 @@ class GameWorldManager:
         )
         self.players[char_id] = player
         self.squares.setdefault(square_id, set()).add(char_id)
+        party = PartyManager.get().get_player_party(char_id)
+        if party:
+            party.members[char_id].session = session
         return player
 
-    def unregister_player(self, char_id: int) -> Optional[WorldPlayer]:
+    def unregister_player(self, char_id: int, session=None) -> Optional[WorldPlayer]:
         """Remove player on disconnect or return to character select."""
+        player = self.players.get(char_id)
+        if session is not None and (player is None or player.session is not session):
+            return None
         player = self.players.pop(char_id, None)
         if player:
             square_players = self.squares.get(player.square_id, set())
