@@ -22,6 +22,16 @@ Peers in town are still invisible. Two live clients, shim `bp.txt` tracer:
   (P2PGroup_MemberJoin_Ack: group HostID, member HostID, event id), or the P2P
   0x32/0x33 exchange that repeats every ~1.7 s never completes. Next: trace inside
   `0x00B55A30` (call via `[this-0xAC]+0x14`) for the failure reason.
+- Follow-up: `0x00B55A30` is an adjustor thunk to `0x00B75710` (builds user message type 2,
+  calls `Send` `0x00B3FEC0`). SendTo uses the relay NetClient (not the game one) and
+  `Send` returns 0 only for the peer HostID. Core per-destination send `0x00B76050`:
+  encrypted messages need `GetCryptSessionKey` (vtable +0x54, `0x00B4B1F0`, peer key at
+  peer+0xA0, valid flag +0x3E8) and, for reliable sends, NextEncryptCount (+0x44); failures
+  log "CStartServerParameter.m_enableP2PEncryptedMessaging=false" / "Failed to Gain
+  NextEncryptCount!!". Peer keys come from 0xF619 (`0x00B56830`: AES blob length =
+  settings key bits/8, we send 16 bytes for 128 bits). Pending trace (bp.txt is set):
+  `0x00B761C2` eax (crypt key), `0x00B76229` eax (encrypt count), error sites
+  `0x00B765BB`/`0x00B765D9`/`0x00B76712`. Bring both characters to town and walk.
 - Ruled out for town: 5024-5026 (party/duel/arena/siege P2P reports, `0x0094F7D0`) and
   `SetPeerInfo` (`0x0095BB70`, arena/duel/room paths only). There is no UDP socket.
 - Tooling: both clients write the same `research/client/hook_log.txt`, so lines from the
