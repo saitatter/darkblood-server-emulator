@@ -1,6 +1,11 @@
 """Square/room relay endpoint and relay PIDL (JoinGroup/JoinGroupACK)."""
+import asyncio
+import os
 import struct
+from dataclasses import dataclass, field
+from itertools import count
 
+from darkblood.core.network.proudnet import ProtocolError, frame, read_scalar, scalar
 from darkblood.core.serialization.jser import varuint
 from darkblood.games.state import selected_character
 
@@ -32,7 +37,6 @@ RELAY_GROUP_HOST_ID = 0x10000  # local choice; any HostID distinct from peers
 
 
 def join_group_ack(group_host_id, members):
-    from darkblood.core.network.proudnet import scalar
     body = b'' + varuint(len(members))
     for char_uid, host_id in members:
         body += b'' + struct.pack('<QI', char_uid, host_id)
@@ -49,9 +53,7 @@ def join_group_ack(group_host_id, members):
 # session keys, ...). Fields without a recovered meaning are sent as 0.
 P2P_GROUP_MEMBER_JOIN = 0xF619
 
-# Relay connections that joined the square group: HostID -> (transport, char UID).
-# One group for now (single local square/channel).
-GROUP_MEMBERS = {}
+P2P_GROUP_MEMBER_LEAVE = 0xF61E
 
 
 def p2p_member_join(group_host_id, member_host_id, aes_key, fast_key, event_id=0):
@@ -72,64 +74,118 @@ def p2p_member_join(group_host_id, member_host_id, aes_key, fast_key, event_id=0
 RELIABLE_RELAY1, RELIABLE_RELAY2 = 0x15, 0x19
 
 
-async def forward_reliable_relay(transport, payload):
-    from darkblood.core.network.proudnet import read_scalar, scalar
-    count, offset = read_scalar(payload, 1)
-    dests = []
-    for _ in range(count):
-        host_id, frame_no = struct.unpack_from('<iI', payload, offset)
-        offset += 8
-        dests.append((host_id, frame_no))
-    length, offset = read_scalar(payload, offset)
-    data = payload[offset:offset + length]
-    members = _live_members()
-    for host_id, frame_no in dests:
-        target = members.get(host_id)
-        if target is None:
-            transport.record('relay-drop', payload, dest=host_id)
-            continue
-        out = bytes([RELIABLE_RELAY2]) + struct.pack('<iI', transport.host_id, frame_no) + scalar(len(data)) + data
-        target[0].writer.write(_frame(out))
-    await transport.writer.drain()
+@dataclass
+class RelayGroup:
+    host_id: int
+    members: dict = field(default_factory=dict)
 
 
-def _frame(payload):
-    from darkblood.core.network.proudnet import frame
-    return frame(payload)
+class RelayGroups:
+    """Group membership and reliable forwarding for one relay listener."""
 
+    def __init__(self):
+        self.groups = {}
+        self.memberships = {}
+        self.host_ids = count(RELAY_GROUP_HOST_ID)
+        self.lock = asyncio.Lock()
 
-def _live_members():
-    for host_id, (transport, _) in list(GROUP_MEMBERS.items()):
-        if transport.writer.is_closing():
-            del GROUP_MEMBERS[host_id]
-    return GROUP_MEMBERS
+    @staticmethod
+    def group_key(args, char_id):
+        kind, scope_uid, layer_uid, _ = struct.unpack('<Iqqq', args)
+        if kind == 0 and scope_uid == -1:
+            # The first town JoinGroup can precede the client learning the
+            # square UID. Use the game-world registration when it is available.
+            from darkblood.games.world import GameWorldManager
+            player = GameWorldManager.get().get_player(char_id)
+            scope_uid = player.square_id if player else 1
+        return kind, scope_uid, layer_uid
 
+    @staticmethod
+    async def send(member, payload, note):
+        if not member.writer.is_closing():
+            try:
+                await member.send_payload(payload, note=note)
+            except (ConnectionError, OSError):
+                pass
 
-async def relay_rmi(transport, rmi_id, args):
-    import os
-    transport.record('relay-rmi', args, rmi=RELAY_RMI[rmi_id])
-    if rmi_id == 1001:
-        if getattr(transport, 'char_id', None) is None:
-            from darkblood.games.state import pending_relay
-            transport.char_id = pending_relay.popleft() if pending_relay else selected_character['id']
-        members = _live_members()
-        newcomer = transport.host_id not in members
-        members[transport.host_id] = (transport, transport.char_id)
+    async def handle_rmi(self, transport, rmi_id, args):
+        transport.record('relay-rmi', args, rmi=RELAY_RMI[rmi_id])
+        if len(args) != struct.calcsize('<Iqqq'):
+            raise ProtocolError('Invalid relay group arguments')
+        async with self.lock:
+            if rmi_id == 1001:
+                if getattr(transport, 'char_id', None) is None:
+                    from darkblood.games.state import pending_relay
+                    transport.char_id = pending_relay.popleft() if pending_relay else selected_character['id']
+                await self.join(transport, self.group_key(args, transport.char_id))
+            elif self.memberships.get(transport) == self.group_key(args, getattr(transport, 'char_id', None)):
+                await self.remove(transport, notify_departing=True)
+
+    async def join(self, transport, key):
+        newcomer = self.memberships.get(transport) != key
         if newcomer:
-            # Introduce the newcomer and every existing member to each other
-            # (one shared key pair per pair of peers).
-            for host_id, (other, char_id) in members.items():
-                if host_id == transport.host_id:
-                    continue
+            await self.remove(transport, notify_departing=True)
+            if key not in self.groups:
+                self.groups[key] = RelayGroup(next(self.host_ids))
+            self.memberships[transport] = key
+        group = self.groups[key]
+        if newcomer:
+            for other in group.members.values():
                 aes_key, fast_key = os.urandom(16), os.urandom(16)
-                await transport.send_payload(p2p_member_join(RELAY_GROUP_HOST_ID, host_id, aes_key, fast_key),
-                                             note='P2P member join %d -> %d' % (host_id, transport.host_id))
-                await other.send_payload(p2p_member_join(RELAY_GROUP_HOST_ID, transport.host_id, aes_key, fast_key),
-                                         note='P2P member join %d -> %d' % (transport.host_id, host_id))
-        roster = [(char_id, host_id) for host_id, (_, char_id) in members.items()]
-        for host_id, (member, _) in members.items():
+                await self.send(transport, p2p_member_join(group.host_id, other.host_id, aes_key, fast_key),
+                                'relay peer joined')
+                await self.send(other, p2p_member_join(group.host_id, transport.host_id, aes_key, fast_key),
+                                'relay peer joined')
+            group.members[transport.host_id] = transport
+        roster = [(member.char_id, member.host_id) for member in group.members.values()]
+        for member in group.members.values():
             if member is transport or newcomer:
-                await member.send_payload(join_group_ack(RELAY_GROUP_HOST_ID, roster),
-                                          note='relay JoinGroupACK 3001 (%d members)' % len(roster))
-    elif rmi_id == 1002:
-        GROUP_MEMBERS.pop(transport.host_id, None)
+                await self.send(member, join_group_ack(group.host_id, roster),
+                                'relay JoinGroupACK 3001 (%d members)' % len(roster))
+
+    async def remove(self, transport, notify_departing=False):
+        key = self.memberships.pop(transport, None)
+        if key is None:
+            return
+        group = self.groups[key]
+        del group.members[transport.host_id]
+        if not group.members:
+            del self.groups[key]
+        # ProudS2C 0xF61E reads member HostID then group HostID.
+        payload = b'\x01' + struct.pack('<HII', P2P_GROUP_MEMBER_LEAVE, transport.host_id, group.host_id)
+        for other in group.members.values():
+            await self.send(other, payload, 'relay peer left')
+        if notify_departing:
+            await self.send(transport, payload, 'relay group left')
+
+    async def disconnect(self, transport):
+        async with self.lock:
+            await self.remove(transport)
+
+    async def forward(self, transport, payload):
+        result = read_scalar(payload, 1)
+        if result is None:
+            raise ProtocolError('Truncated relay destination count')
+        n, offset = result
+        if not 0 <= n <= (len(payload) - offset) // 8:
+            raise ProtocolError('Invalid relay destination count')
+        end = offset + 8 * n
+        result = read_scalar(payload, end)
+        if result is None:
+            raise ProtocolError('Truncated relay payload length')
+        length, start = result
+        if length < 0 or start + length != len(payload):
+            raise ProtocolError('Invalid relay payload length')
+
+        async with self.lock:
+            group = self.groups.get(self.memberships.get(transport))
+            if group is None:
+                return
+            for host_id, frame_no in struct.iter_unpack('<iI', payload[offset:end]):
+                target = group.members.get(host_id)
+                if target is None or target.writer.is_closing():
+                    transport.record('relay-drop', payload, dest=host_id)
+                    continue
+                out = (bytes([RELIABLE_RELAY2]) + struct.pack('<iI', transport.host_id, frame_no)
+                       + scalar(length) + payload[start:])
+                target.writer.write(frame(out))

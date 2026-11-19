@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Relay group isolation — Cristian, 2026-11-19
+
+Town joins now use the observed square and layer identifiers for relay
+membership. A moved or disconnected peer is removed with `0xF61E`.
+Reliable forwarding stays within the sender's group. Headless coverage uses
+three local relay connections. Live player visibility remains open.
+
 ## Town layer visibility routing — Cristian, 2026-11-18
 
 Preserved the selected channel and used live `5030` layer IDs for peer

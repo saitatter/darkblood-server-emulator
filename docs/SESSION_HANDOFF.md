@@ -1,5 +1,17 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Relay group isolation — Cristian, 2026-11-19
+
+- The town trace changes the layer UID in `JoinGroup` when walking between
+  subareas. The previous relay used one global roster. It now separates groups
+  by the identifiers in the request and limits forwarding to the current group.
+- Disassembly of `0xF61E` confirmed member HostID followed by group HostID.
+  Group moves, explicit leaves, and disconnects now send this notification.
+- The headless relay regression covers two layers, membership changes, a stale
+  leave, and forwarding isolation. Live visual verification remains open.
+  The relay still uses the existing FIFO to associate the first connection
+  with a character. See `docs/PROTOCOL.md` for the wire observations.
+
 ## Town layer visibility — Cristian, 2026-11-18
 
 - A reported player visibility issue led to comparing live `5030` requests
