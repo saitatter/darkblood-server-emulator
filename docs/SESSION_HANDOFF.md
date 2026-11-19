@@ -1,5 +1,29 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Standalone Server Assets (Elimination of external data_root requirement) — saita machine, 2026-11-20
+
+- Per user request to eliminate `data_root` / external client data dependency:
+  Exported all client dictionary tables required by the server into clean, normalized TSV and JSON files in `assets/`:
+  - `starter_equipment.tsv` (default class equipment)
+  - `char_stats.tsv` (per-class HP, MP, UpExp progression)
+  - `levelup_ap.tsv` (level up AP rewards)
+  - `item_durabilities.tsv` (equipment max durability)
+  - `equip_index.tsv` (item grade, demand level, demand class)
+  - `item_fields.tsv` (item BuyPrice, SellPrice, BagSize)
+  - `npcs.tsv` & `stores.tsv` (NPC IDs and store inventory lists)
+  - `monsters.tsv` (monster HP, Lv, Exp, DropCnt)
+  - `money_drops.tsv` (AR gold drop ranges)
+  - `skills.tsv` (SP and AR learning demand costs)
+  - `map_gates.tsv` (dungeon gate to dungeon IDs)
+  - `quests.tsv`, `quest_missions.tsv`, `quest_chains.tsv`, `quest_item_groups.tsv` (quest rewards, chains, objectives, items)
+  - `tutorial_rewards.tsv` (complete and skip rewards)
+  - `cash_items.tsv`, `cash_packages.tsv`, `random_boxes.json` (cash shop items, packages, random box tables)
+  - `looting.json` (dungeon monster drop tables, looting items, groups)
+- Created `tools/export_assets.py` to regenerate all asset tables reproducibly from client Lua if ever needed. Total asset size is only ~1.6 MB.
+- Updated `src/darkblood/games/game_data/client_dict.py` to read directly from `assets/` by default.
+  Added test override support via `_env_override()` so in-memory mock tests in the test suite run flawlessly.
+- All 172 unit tests pass standalone with `DARKBLOOD_CLIENT_DATA="C:\does_not_exist"`.
+
 ## Dungeon difficulty, end-of-dungeon chest & stats, quest item tracking — saita machine, 2026-11-20
 
 - **Dungeon difficulty switching (Issue 1)**:

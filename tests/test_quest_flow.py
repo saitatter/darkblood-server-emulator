@@ -133,8 +133,10 @@ class QuestFlowTest(ServerTestCase):
         quest = hashing.jhash('Q0002S01')
         stamp = 'x'.encode('utf-16le')
         req = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', quest, -1)
+        from darkblood.games.game_data import client_dict
+        counts = client_dict.quest_mission_counts().get(quest, 0)
         entry = (b'\x0f' + struct.pack('<I', quest) + struct.pack('<qqI?', 1, 0, quest, True)
-                 + jser.varuint(0))
+                 + jser.varuint(counts) + (struct.pack('<I', 0) * counts))
 
         async def scenario(client):
             await lobby_flow(client)

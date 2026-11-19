@@ -1,0 +1,1125 @@
+{
+  "states": {
+    "ZemBoxCode0": [
+      [
+        0.3846139053,
+        [
+          "ZemList8"
+        ]
+      ],
+      [
+        0.3076911243,
+        [
+          "ZemList1"
+        ]
+      ],
+      [
+        0.2307683432,
+        [
+          "ZemList15"
+        ]
+      ],
+      [
+        0.07692278107,
+        [
+          "ZemList29"
+        ]
+      ]
+    ],
+    "ZemBoxCode1": [
+      [
+        0.4545433884,
+        [
+          "ZemList9"
+        ]
+      ],
+      [
+        0.2727260331,
+        [
+          "ZemList16"
+        ]
+      ],
+      [
+        0.09090867769,
+        [
+          "ZemList30"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList23",
+          "ZemList23"
+        ]
+      ]
+    ],
+    "ZemBoxCode2": [
+      [
+        0.4545433884,
+        [
+          "ZemList10"
+        ]
+      ],
+      [
+        0.3636347108,
+        [
+          "ZemList3"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList24",
+          "ZemList24"
+        ]
+      ]
+    ],
+    "ZemBoxCode3": [
+      [
+        0.7499906251,
+        [
+          "ZemList18"
+        ]
+      ],
+      [
+        0.249996875,
+        [
+          "ZemList32"
+        ]
+      ]
+    ],
+    "ZemBoxCode4": [
+      [
+        0.3333322222,
+        [
+          "ZemList12"
+        ]
+      ],
+      [
+        0.2666657778,
+        [
+          "ZemList5"
+        ]
+      ],
+      [
+        0.1999993333,
+        [
+          "ZemList19"
+        ]
+      ],
+      [
+        0.06666644445,
+        [
+          "ZemList33"
+        ]
+      ],
+      [
+        0.1333328889,
+        [
+          "ZemList26",
+          "ZemList26"
+        ]
+      ]
+    ],
+    "ZemBoxCode5": [
+      [
+        0.4545433884,
+        [
+          "ZemList13"
+        ]
+      ],
+      [
+        0.3636347108,
+        [
+          "ZemList6"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList27",
+          "ZemList27"
+        ]
+      ]
+    ],
+    "ZemBoxCode6": [
+      [
+        0.4166649306,
+        [
+          "ZemList14"
+        ]
+      ],
+      [
+        0.3333319445,
+        [
+          "ZemList7"
+        ]
+      ],
+      [
+        0.2499989583,
+        [
+          "ZemList21"
+        ]
+      ]
+    ],
+    "ZemBoxCode7": [
+      [
+        0.3846139053,
+        [
+          "ZemList43"
+        ]
+      ],
+      [
+        0.3076911243,
+        [
+          "ZemList36"
+        ]
+      ],
+      [
+        0.2307683432,
+        [
+          "ZemList50"
+        ]
+      ],
+      [
+        0.07692278107,
+        [
+          "ZemList64"
+        ]
+      ]
+    ],
+    "ZemBoxCode8": [
+      [
+        0.4545433884,
+        [
+          "ZemList44"
+        ]
+      ],
+      [
+        0.2727260331,
+        [
+          "ZemList51"
+        ]
+      ],
+      [
+        0.09090867769,
+        [
+          "ZemList65"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList58",
+          "ZemList58"
+        ]
+      ]
+    ],
+    "ZemBoxCode9": [
+      [
+        0.4545433884,
+        [
+          "ZemList45"
+        ]
+      ],
+      [
+        0.3636347108,
+        [
+          "ZemList38"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList59",
+          "ZemList59"
+        ]
+      ]
+    ],
+    "ZemBoxCode10": [
+      [
+        0.7499906251,
+        [
+          "ZemList53"
+        ]
+      ],
+      [
+        0.249996875,
+        [
+          "ZemList67"
+        ]
+      ]
+    ],
+    "ZemBoxCode11": [
+      [
+        0.3333322222,
+        [
+          "ZemList47"
+        ]
+      ],
+      [
+        0.2666657778,
+        [
+          "ZemList40"
+        ]
+      ],
+      [
+        0.1999993333,
+        [
+          "ZemList54"
+        ]
+      ],
+      [
+        0.06666644445,
+        [
+          "ZemList68"
+        ]
+      ],
+      [
+        0.1333328889,
+        [
+          "ZemList61",
+          "ZemList61"
+        ]
+      ]
+    ],
+    "ZemBoxCode12": [
+      [
+        0.4545433884,
+        [
+          "ZemList48"
+        ]
+      ],
+      [
+        0.3636347108,
+        [
+          "ZemList41"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList62",
+          "ZemList62"
+        ]
+      ]
+    ],
+    "ZemBoxCode13": [
+      [
+        0.4166649306,
+        [
+          "ZemList49"
+        ]
+      ],
+      [
+        0.3333319445,
+        [
+          "ZemList42"
+        ]
+      ],
+      [
+        0.2499989583,
+        [
+          "ZemList56"
+        ]
+      ]
+    ],
+    "ZemBoxCode16": [
+      [
+        0.3846139053,
+        [
+          "ZemList88"
+        ]
+      ],
+      [
+        0.3076911243,
+        [
+          "ZemList81"
+        ]
+      ],
+      [
+        0.2307683432,
+        [
+          "ZemList95"
+        ]
+      ],
+      [
+        0.07692278107,
+        [
+          "ZemList109"
+        ]
+      ]
+    ],
+    "ZemBoxCode17": [
+      [
+        0.4545433884,
+        [
+          "ZemList89"
+        ]
+      ],
+      [
+        0.2727260331,
+        [
+          "ZemList96"
+        ]
+      ],
+      [
+        0.09090867769,
+        [
+          "ZemList110"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList103",
+          "ZemList103"
+        ]
+      ]
+    ],
+    "ZemBoxCode18": [
+      [
+        0.4545433884,
+        [
+          "ZemList90"
+        ]
+      ],
+      [
+        0.3636347108,
+        [
+          "ZemList83"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList104",
+          "ZemList104"
+        ]
+      ]
+    ],
+    "ZemBoxCode19": [
+      [
+        0.7499906251,
+        [
+          "ZemList98"
+        ]
+      ],
+      [
+        0.249996875,
+        [
+          "ZemList112"
+        ]
+      ]
+    ],
+    "ZemBoxCode20": [
+      [
+        0.3333322222,
+        [
+          "ZemList92"
+        ]
+      ],
+      [
+        0.2666657778,
+        [
+          "ZemList85"
+        ]
+      ],
+      [
+        0.1999993333,
+        [
+          "ZemList99"
+        ]
+      ],
+      [
+        0.06666644445,
+        [
+          "ZemList113"
+        ]
+      ],
+      [
+        0.1333328889,
+        [
+          "ZemList106",
+          "ZemList106"
+        ]
+      ]
+    ],
+    "ZemBoxCode21": [
+      [
+        0.4545433884,
+        [
+          "ZemList93"
+        ]
+      ],
+      [
+        0.3636347108,
+        [
+          "ZemList86"
+        ]
+      ],
+      [
+        0.1818173554,
+        [
+          "ZemList107",
+          "ZemList107"
+        ]
+      ]
+    ],
+    "ZemBoxCode22": [
+      [
+        0.4166649306,
+        [
+          "ZemList94"
+        ]
+      ],
+      [
+        0.3333319445,
+        [
+          "ZemList87"
+        ]
+      ],
+      [
+        0.2499989583,
+        [
+          "ZemList101"
+        ]
+      ]
+    ]
+  },
+  "groups": {
+    "ZemList1": [
+      [
+        "CmagbodCash5",
+        1
+      ]
+    ],
+    "ZemList2": [],
+    "ZemList3": [
+      [
+        "CmagbelCash15",
+        1
+      ],
+      [
+        "CmagbelCash16",
+        1
+      ],
+      [
+        "CmagbelCash17",
+        1
+      ]
+    ],
+    "ZemList4": [],
+    "ZemList5": [
+      [
+        "CmagderCash25",
+        1
+      ]
+    ],
+    "ZemList6": [
+      [
+        "CmaggloCash31",
+        1
+      ]
+    ],
+    "ZemList7": [
+      [
+        "CmaghelCash37",
+        1
+      ],
+      [
+        "CmaghelCash38",
+        1
+      ]
+    ],
+    "ZemList8": [
+      [
+        "CmagbodCash1",
+        1
+      ]
+    ],
+    "ZemList9": [
+      [
+        "CmagcloCash9",
+        1
+      ]
+    ],
+    "ZemList10": [
+      [
+        "CmagbelCash13",
+        1
+      ]
+    ],
+    "ZemList11": [],
+    "ZemList12": [
+      [
+        "CmagderCash22",
+        1
+      ]
+    ],
+    "ZemList13": [
+      [
+        "CmaggloCash29",
+        1
+      ],
+      [
+        "CmaggloCash30",
+        1
+      ]
+    ],
+    "ZemList14": [
+      [
+        "CmaghelCash34",
+        1
+      ],
+      [
+        "CmaghelCash36",
+        1
+      ]
+    ],
+    "ZemList15": [
+      [
+        "CmagbodCash3",
+        1
+      ]
+    ],
+    "ZemList16": [
+      [
+        "CmagcloCash8",
+        1
+      ],
+      [
+        "CmagcloCash11",
+        1
+      ]
+    ],
+    "ZemList17": [],
+    "ZemList18": [
+      [
+        "CmagshoCash21",
+        1
+      ]
+    ],
+    "ZemList19": [
+      [
+        "CmagderCash24",
+        1
+      ]
+    ],
+    "ZemList20": [],
+    "ZemList21": [
+      [
+        "CmaghelCash35",
+        1
+      ]
+    ],
+    "ZemList22": [],
+    "ZemList23": [
+      [
+        "CmagcloCash7",
+        1
+      ]
+    ],
+    "ZemList24": [
+      [
+        "CmagbelCash12",
+        1
+      ],
+      [
+        "CmagbelCash14",
+        1
+      ]
+    ],
+    "ZemList25": [],
+    "ZemList26": [
+      [
+        "CmagderCash26",
+        1
+      ],
+      [
+        "CmagderCash27",
+        1
+      ]
+    ],
+    "ZemList27": [
+      [
+        "CmaggloCash28",
+        1
+      ],
+      [
+        "CmaggloCash32",
+        1
+      ],
+      [
+        "CmaggloCash33",
+        1
+      ]
+    ],
+    "ZemList28": [],
+    "ZemList29": [
+      [
+        "CmagbodCash2",
+        1
+      ],
+      [
+        "CmagbodCash4",
+        1
+      ],
+      [
+        "CmagbodCash6",
+        1
+      ]
+    ],
+    "ZemList30": [
+      [
+        "CmagcloCash10",
+        1
+      ]
+    ],
+    "ZemList31": [],
+    "ZemList32": [
+      [
+        "CmagshoCash18",
+        1
+      ],
+      [
+        "CmagshoCash19",
+        1
+      ],
+      [
+        "CmagshoCash20",
+        1
+      ]
+    ],
+    "ZemList33": [
+      [
+        "CmagderCash23",
+        1
+      ]
+    ],
+    "ZemList34": [],
+    "ZemList35": [],
+    "ZemList36": [
+      [
+        "CmagbodCash43",
+        1
+      ]
+    ],
+    "ZemList37": [],
+    "ZemList38": [
+      [
+        "CmagbelCash53",
+        1
+      ],
+      [
+        "CmagbelCash54",
+        1
+      ],
+      [
+        "CmagbelCash55",
+        1
+      ]
+    ],
+    "ZemList39": [],
+    "ZemList40": [
+      [
+        "CmagderCash63",
+        1
+      ]
+    ],
+    "ZemList41": [
+      [
+        "CmaggloCash69",
+        1
+      ]
+    ],
+    "ZemList42": [
+      [
+        "CmaghelCash75",
+        1
+      ],
+      [
+        "CmaghelCash76",
+        1
+      ]
+    ],
+    "ZemList43": [
+      [
+        "CmagbodCash39",
+        1
+      ]
+    ],
+    "ZemList44": [
+      [
+        "CmagcloCash47",
+        1
+      ]
+    ],
+    "ZemList45": [
+      [
+        "CmagbelCash51",
+        1
+      ]
+    ],
+    "ZemList46": [],
+    "ZemList47": [
+      [
+        "CmagderCash60",
+        1
+      ]
+    ],
+    "ZemList48": [
+      [
+        "CmaggloCash67",
+        1
+      ],
+      [
+        "CmaggloCash68",
+        1
+      ]
+    ],
+    "ZemList49": [
+      [
+        "CmaghelCash72",
+        1
+      ],
+      [
+        "CmaghelCash74",
+        1
+      ]
+    ],
+    "ZemList50": [
+      [
+        "CmagbodCash41",
+        1
+      ]
+    ],
+    "ZemList51": [
+      [
+        "CmagcloCash46",
+        1
+      ],
+      [
+        "CmagcloCash49",
+        1
+      ]
+    ],
+    "ZemList52": [],
+    "ZemList53": [
+      [
+        "CmagshoCash59",
+        1
+      ]
+    ],
+    "ZemList54": [
+      [
+        "CmagderCash62",
+        1
+      ]
+    ],
+    "ZemList55": [],
+    "ZemList56": [
+      [
+        "CmaghelCash73",
+        1
+      ]
+    ],
+    "ZemList57": [],
+    "ZemList58": [
+      [
+        "CmagcloCash45",
+        1
+      ]
+    ],
+    "ZemList59": [
+      [
+        "CmagbelCash50",
+        1
+      ],
+      [
+        "CmagbelCash52",
+        1
+      ]
+    ],
+    "ZemList60": [],
+    "ZemList61": [
+      [
+        "CmagderCash64",
+        1
+      ],
+      [
+        "CmagderCash65",
+        1
+      ]
+    ],
+    "ZemList62": [
+      [
+        "CmaggloCash66",
+        1
+      ],
+      [
+        "CmaggloCash70",
+        1
+      ],
+      [
+        "CmaggloCash71",
+        1
+      ]
+    ],
+    "ZemList63": [],
+    "ZemList64": [
+      [
+        "CmagbodCash40",
+        1
+      ],
+      [
+        "CmagbodCash42",
+        1
+      ],
+      [
+        "CmagbodCash44",
+        1
+      ]
+    ],
+    "ZemList65": [
+      [
+        "CmagcloCash48",
+        1
+      ]
+    ],
+    "ZemList66": [],
+    "ZemList67": [
+      [
+        "CmagshoCash56",
+        1
+      ],
+      [
+        "CmagshoCash57",
+        1
+      ],
+      [
+        "CmagshoCash58",
+        1
+      ]
+    ],
+    "ZemList68": [
+      [
+        "CmagderCash61",
+        1
+      ]
+    ],
+    "ZemList69": [],
+    "ZemList70": [],
+    "ZemList81": [
+      [
+        "CmagbodCash81",
+        1
+      ]
+    ],
+    "ZemList82": [],
+    "ZemList83": [
+      [
+        "CmagbelCash91",
+        1
+      ],
+      [
+        "CmagbelCash92",
+        1
+      ],
+      [
+        "CmagbelCash93",
+        1
+      ]
+    ],
+    "ZemList84": [],
+    "ZemList85": [
+      [
+        "CmagderCash101",
+        1
+      ]
+    ],
+    "ZemList86": [
+      [
+        "CmaggloCash107",
+        1
+      ]
+    ],
+    "ZemList87": [
+      [
+        "CmaghelCash113",
+        1
+      ],
+      [
+        "CmaghelCash114",
+        1
+      ]
+    ],
+    "ZemList88": [
+      [
+        "CmagbodCash77",
+        1
+      ]
+    ],
+    "ZemList89": [
+      [
+        "CmagcloCash85",
+        1
+      ]
+    ],
+    "ZemList90": [
+      [
+        "CmagbelCash89",
+        1
+      ]
+    ],
+    "ZemList91": [],
+    "ZemList92": [
+      [
+        "CmagderCash98",
+        1
+      ]
+    ],
+    "ZemList93": [
+      [
+        "CmaggloCash105",
+        1
+      ],
+      [
+        "CmaggloCash106",
+        1
+      ]
+    ],
+    "ZemList94": [
+      [
+        "CmaghelCash110",
+        1
+      ],
+      [
+        "CmaghelCash112",
+        1
+      ]
+    ],
+    "ZemList95": [
+      [
+        "CmagbodCash79",
+        1
+      ]
+    ],
+    "ZemList96": [
+      [
+        "CmagcloCash84",
+        1
+      ],
+      [
+        "CmagcloCash87",
+        1
+      ]
+    ],
+    "ZemList97": [],
+    "ZemList98": [
+      [
+        "CmagshoCash97",
+        1
+      ]
+    ],
+    "ZemList99": [
+      [
+        "CmagderCash100",
+        1
+      ]
+    ],
+    "ZemList100": [],
+    "ZemList101": [
+      [
+        "CmaghelCash111",
+        1
+      ]
+    ],
+    "ZemList102": [],
+    "ZemList103": [
+      [
+        "CmagcloCash83",
+        1
+      ]
+    ],
+    "ZemList104": [
+      [
+        "CmagbelCash88",
+        1
+      ],
+      [
+        "CmagbelCash90",
+        1
+      ]
+    ],
+    "ZemList105": [],
+    "ZemList106": [
+      [
+        "CmagderCash102",
+        1
+      ],
+      [
+        "CmagderCash103",
+        1
+      ]
+    ],
+    "ZemList107": [
+      [
+        "CmaggloCash104",
+        1
+      ],
+      [
+        "CmaggloCash108",
+        1
+      ],
+      [
+        "CmaggloCash109",
+        1
+      ]
+    ],
+    "ZemList108": [],
+    "ZemList109": [
+      [
+        "CmagbodCash78",
+        1
+      ],
+      [
+        "CmagbodCash80",
+        1
+      ],
+      [
+        "CmagbodCash82",
+        1
+      ]
+    ],
+    "ZemList110": [
+      [
+        "CmagcloCash86",
+        1
+      ]
+    ],
+    "ZemList111": [],
+    "ZemList112": [
+      [
+        "CmagshoCash94",
+        1
+      ],
+      [
+        "CmagshoCash95",
+        1
+      ],
+      [
+        "CmagshoCash96",
+        1
+      ]
+    ],
+    "ZemList113": [
+      [
+        "CmagderCash99",
+        1
+      ]
+    ],
+    "ZemList114": [],
+    "ZemList115": []
+  }
+}

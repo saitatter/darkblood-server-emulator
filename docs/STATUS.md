@@ -1,5 +1,24 @@
 # Research status and handoff
 
+## Standalone Server Assets and Client Data Elimination — 2026-11-20
+
+The server no longer requires external client Lua dictionaries (`darkblood-client-data` or `$DARKBLOOD_CLIENT_DATA`).
+All required game tables have been extracted into normalized TSV and JSON files under `assets/` (~1.6 MB total):
+- Default starter equipment (`assets/starter_equipment.tsv`)
+- Character stats and progression (`assets/char_stats.tsv`)
+- Level up AP rewards (`assets/levelup_ap.tsv`)
+- Equipment durability and grade/demand specifications (`assets/item_durabilities.tsv`, `assets/equip_index.tsv`, `assets/item_fields.tsv`)
+- NPC and store vendor catalogs (`assets/npcs.tsv`, `assets/stores.tsv`)
+- Monster combat and drop parameters (`assets/monsters.tsv`, `assets/money_drops.tsv`)
+- Skill SP and AR demand tables (`assets/skills.tsv`)
+- Dungeon map gates (`assets/map_gates.tsv`)
+- Quests, mission objectives, chains, and item groups (`assets/quests.tsv`, `assets/quest_missions.tsv`, `assets/quest_chains.tsv`, `assets/quest_item_groups.tsv`)
+- Tutorial rewards (`assets/tutorial_rewards.tsv`)
+- Cash shop item properties, packages, and random box state probabilities (`assets/cash_items.tsv`, `assets/cash_packages.tsv`, `assets/random_boxes.json`)
+- Dungeon monster drop tables (`assets/looting.json`)
+
+All 172 unit tests pass completely standalone without any external client data directory.
+
 ## Server Cash Shop catalog — 2026-11-20
 
 The purchase handler loads product IDs, item codes, and quantities from the

@@ -1,0 +1,6 @@
+mode	item_code	count
+complete	Aneca0001	1
+complete	Ihppa0000	5
+complete	Imppa0000	5
+skip	Ihppa0000	2
+skip	Imppa0000	2

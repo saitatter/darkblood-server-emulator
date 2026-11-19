@@ -1,16 +1,12 @@
-"""Read game tables from the private decompiled client data (never committed).
+"""Read game tables from normalized assets or fallback client data.
 
-Source: lua_src/ in the private workspace built by tools/build_client_data.py
-(unluac output of Data/Dict/*.lua). Location: $DARKBLOOD_CLIENT_DATA, default
-../darkblood-client-data next to this repository. When the files are absent
-every lookup returns empty results, so the server still runs.
+Primary source: assets/ directory containing normalized TSV and JSON tables
+exported by tools/export_assets.py. When present, the server runs completely
+standalone without needing raw client Lua files.
 
-Only the fields the server needs are parsed, with line-based scanning of the
-unluac output (keys are emitted sorted, one per line):
-  npc.lua        DictNpc entries:     ID = "<npc>" ... StoreList = {"<store>", ...}
-  storelist.lua  DictStoreList:Load:  ID = "<store>" ... StoreList = {{"<item>", n}, ...}
-Client keys these strings with JHashString (models.jhash).
+Fallback/test override source: $DARKBLOOD_CLIENT_DATA or ../darkblood-client-data/lua_src/data/dict.
 """
+import json
 import os
 import re
 from functools import lru_cache
@@ -20,6 +16,7 @@ from darkblood.core.hashing import jhash
 
 
 ROOT = REPO_ROOT
+ASSETS_DIR = REPO_ROOT / 'assets'
 ID_RE = re.compile(r'^ {4}ID = "([^"]+)",?$')
 NAME_RE = re.compile(r'^ {6}"([^"]+)",?$')
 ITEM_RE = re.compile(r'^ {6}\{"([^"]+)", (-?\d+)\},?$')
@@ -29,6 +26,28 @@ def data_root():
     env = os.environ.get('DARKBLOOD_CLIENT_DATA')
     base = Path(env) if env else ROOT.parent / 'darkblood-client-data'
     return base / 'lua_src' / 'data' / 'dict'
+
+
+def _env_override(filename: str):
+    """Return Path to a test override file if explicitly placed in DARKBLOOD_CLIENT_DATA."""
+    env = os.environ.get('DARKBLOOD_CLIENT_DATA')
+    if env:
+        p = Path(env) / 'lua_src' / 'data' / 'dict' / filename
+        if p.is_file():
+            return p
+    return None
+
+
+def _quest_override_files():
+    """Return quest files if explicitly placed in DARKBLOOD_CLIENT_DATA."""
+    env = os.environ.get('DARKBLOOD_CLIENT_DATA')
+    if env:
+        root = Path(env) / 'lua_src' / 'data' / 'dict'
+        if root.is_dir():
+            files = sorted(root.glob('quest_*.lua'))
+            if files:
+                return files
+    return []
 
 
 def _entries(path, item_re):
@@ -60,12 +79,39 @@ def _entries(path, item_re):
 @lru_cache(maxsize=None)
 def npc_stores():
     """jhash(npc id) -> (npc id, [store ids])."""
+    override = _env_override('npc.lua')
+    if override:
+        return {jhash(npc): (npc, stores) for npc, stores in _entries(override, NAME_RE)}
+
+    tsv = ASSETS_DIR / 'npcs.tsv'
+    if tsv.is_file():
+        out = {}
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if parts:
+                nid = parts[0]
+                stores = parts[1].split(',') if len(parts) > 1 and parts[1] else []
+                out[jhash(nid)] = (nid, stores)
+        return out
     return {jhash(npc): (npc, stores) for npc, stores in _entries(data_root() / 'npc.lua', NAME_RE)}
 
 
 @lru_cache(maxsize=None)
 def store_items():
     """store id -> [(item id, count)] (count -1 = unlimited)."""
+    override = _env_override('storelist.lua')
+    if override:
+        return {store: [(item, int(n)) for item, n in items]
+                for store, items in _entries(override, ITEM_RE)}
+
+    tsv = ASSETS_DIR / 'stores.tsv'
+    if tsv.is_file():
+        out = {}
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 3:
+                out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
+        return out
     return {store: [(item, int(n)) for item, n in items]
             for store, items in _entries(data_root() / 'storelist.lua', ITEM_RE)}
 
@@ -83,24 +129,42 @@ def items_for_npc(npc_hash):
                 items.append((item, count))
     return npc[0], items
 
+
 QUEST_KEY_RE = re.compile(r'^ {4}(\w+) = (?:"([^"]*)"|(-?[\d.]+)),?$')
 UNIT_VALUE_RE = re.compile(r'^ {8}(?:"([^"]+)"|(-?\d+)),?$')
 
 
 def _quest_files():
+    q_override = _quest_override_files()
+    if q_override:
+        return q_override
     root = data_root()
     return sorted(root.glob('quest_act*.lua')) if root.exists() else []
 
 
 @lru_cache(maxsize=None)
 def quests():
-    """jhash(quest id) -> {'id', 'exp', 'gold', 'gp', 'items', 'select'} from DictQuest:LoadQuest.
+    """jhash(quest id) -> {'id', 'exp', 'gold', 'gp', 'items', 'select', 'offer'} from DictQuest:LoadQuest."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv = ASSETS_DIR / 'quests.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 7:
+                    qid, exp, gold, gp, offer, reward, select = parts[:7]
+                    out[jhash(qid)] = dict(
+                        id=qid,
+                        exp=int(float(exp)),
+                        gold=int(float(gold)),
+                        gp=int(float(gp)),
+                        items=reward or None,
+                        select=select or None,
+                        offer=offer or None,
+                    )
+            return out
 
-    Rewards: RewardExp, RewardGold, RewardGP, RewardItemG (group given in
-    full) and RewardSelectG (group the player picks one entry from).
-    OfferItemG ('offer') is the group handed over when the quest is accepted
-    (e.g. LLQ0008S01o = Iquea0310, delivered for Q0008S01's mission QM815).
-    """
     out = {}
     for path in _quest_files():
         section, entry = None, {}
@@ -130,7 +194,19 @@ def quests():
 
 @lru_cache(maxsize=None)
 def item_groups():
-    """GroupID -> [(item id, second field (meaning unknown, observed 0), count)]."""
+    """GroupID -> [(item id, second field, count)]."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv = ASSETS_DIR / 'quest_item_groups.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 4:
+                    gid, item, f2, cnt = parts[:4]
+                    out.setdefault(gid, []).append((item, int(f2), int(cnt)))
+            return out
+
     out = {}
     for path in _quest_files():
         section, group, unit = None, None, []
@@ -171,8 +247,19 @@ def quest_rewards(quest_hash, select_index=-1):
 
 @lru_cache(maxsize=None)
 def default_equipment():
-    """Job -> [item ids] from DictItem:LoadDefaultEquipItem (defaultequipitem.lua)."""
-    path = data_root() / 'defaultequipitem.lua'
+    """Job -> [item ids] from DictItem:LoadDefaultEquipItem."""
+    override = _env_override('defaultequipitem.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'starter_equipment.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 2:
+                    out.setdefault(int(parts[0]), []).append(parts[1])
+            return out
+
+    path = override or (data_root() / 'defaultequipitem.lua')
     out, section, job, inside = {}, None, None, False
     if not path.exists():
         return out
@@ -199,8 +286,6 @@ def default_equipment():
     return out
 
 
-# Keys are CharacterClass values (0 = Warrior, as sent on the wire). The map
-# used to start at 1, so every Warrior lookup fell back to the formula below.
 CLASS_SECTION_MAP = {
     0: 'LoadStatWarrior',
     1: 'LoadStatKnight',
@@ -214,8 +299,24 @@ CLASS_SECTION_MAP = {
 
 @lru_cache(maxsize=None)
 def char_level_stats():
-    """Returns mapping (char_class, level) -> {'upexp', 'hp', 'mp'} parsed from charstat.lua."""
-    path = data_root() / 'charstat.lua'
+    """Returns mapping (char_class, level) -> {'upexp', 'hp', 'mp'}."""
+    override = _env_override('charstat.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'char_stats.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 5:
+                    cls_id, lv, hp, mp, upexp = parts[:5]
+                    out[(int(cls_id), int(lv))] = {
+                        'hp': int(float(hp)),
+                        'mp': int(float(mp)),
+                        'upexp': int(float(upexp)),
+                    }
+            return out
+
+    path = override or (data_root() / 'charstat.lua')
     out = {}
     if not path.exists():
         return out
@@ -258,7 +359,18 @@ def char_level_stat(char_class: int, level: int) -> dict:
 @lru_cache(maxsize=1)
 def level_up_ap():
     """AP awarded at each level in the client's DictChar:LoadLevelUp table."""
-    path = data_root() / 'levelup.lua'
+    override = _env_override('levelup.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'levelup_ap.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 2:
+                    out[int(parts[0])] = int(parts[1])
+            return out
+
+    path = override or (data_root() / 'levelup.lua')
     if not path.is_file():
         return {}
     return {int(level): int(ap) for ap, level in re.findall(
@@ -266,18 +378,25 @@ def level_up_ap():
         path.read_text(encoding='utf-8', errors='replace'))}
 
 
-
 ITEM_FIELD_RE = re.compile(r'^ {4}(\w+) = (-?\d+),?$')
 
 
 @lru_cache(maxsize=None)
 def item_int_fields():
-    """{item id: {field: int}} for the integer top-level fields of every
-    item_*.lua dictionary (e.g. BuyPrice, SellPrice, BagSize).
+    """{item id: {field: int}} for integer top-level fields (BuyPrice, SellPrice, BagSize)."""
+    tsv = ASSETS_DIR / 'item_fields.tsv'
+    if tsv.is_file():
+        out = {}
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 4:
+                out[parts[0]] = {
+                    'BuyPrice': int(parts[1]),
+                    'SellPrice': int(parts[2]),
+                    'BagSize': int(parts[3]),
+                }
+        return out
 
-    Keys are emitted sorted and ItemID sorts after BagSize/BuyPrice, so the
-    fields seen since the entry start ("  {") belong to the next ItemID.
-    """
     out = {}
     root = data_root()
     if not root.exists():
@@ -311,13 +430,16 @@ ITEM_ID_RE = re.compile(r'^ {4}ItemID = "([^"]+)",?$')
 
 @lru_cache(maxsize=None)
 def item_durabilities():
-    """Returns {item id: max Durability} from the item_equip*.lua dictionaries.
+    """Returns {item id: max Durability}."""
+    tsv = ASSETS_DIR / 'item_durabilities.tsv'
+    if tsv.is_file():
+        out = {}
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                out[parts[0]] = float(parts[1])
+        return out
 
-    Keys are emitted sorted, so Durability precedes ItemID inside an entry.
-    The client stores the maximum as item prop +0xBE and treats an item whose
-    current durability (Item +0x07, f32) is <= 0 as broken (0x00A49920): broken
-    gear is skipped when equipment stats are summed (0x009D89B0).
-    """
     out = {}
     for name in ITEM_EQUIP_FILES:
         path = data_root() / name
@@ -348,10 +470,20 @@ TUTORIAL_REWARD_RE = re.compile(r'\{RewardItemAmount = (\d+), RewardItemID = "([
 
 @lru_cache(maxsize=None)
 def tutorial_rewards():
-    """{'complete': [(item, n)], 'skip': [(item, n)]} from tutorialreward.lua
-    (DictTutorialReward:CompleteLoad / :SkipLoad)."""
+    """{'complete': [(item, n)], 'skip': [(item, n)]}."""
+    override = _env_override('tutorialreward.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'tutorial_rewards.tsv'
+        if tsv.is_file():
+            out = {'complete': [], 'skip': []}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
+            return out
+
     out = {'complete': [], 'skip': []}
-    path = data_root() / 'tutorialreward.lua'
+    path = override or (data_root() / 'tutorialreward.lua')
     if not path.exists():
         return out
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -384,7 +516,18 @@ ENTRY_ITEM_RE = re.compile(r'"([^"]+)",\s*(-?\d+),\s*(-?\d+)')
 @lru_cache(maxsize=None)
 def cash_items():
     """{ItemID: {'type': int, 'adj': str}} for item_cash.lua DictItem:LoadItem entries."""
-    path = data_root() / 'item_cash.lua'
+    override = _env_override('item_cash.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'cash_items.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    out[parts[0]] = {'type': int(parts[1]), 'adj': parts[2]}
+            return out
+
+    path = override or (data_root() / 'item_cash.lua')
     if not path.exists():
         return {}
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -409,7 +552,18 @@ def cash_items():
 @lru_cache(maxsize=None)
 def cash_packages():
     """{GroupID: [(ItemID, count)]} from DictItem:LoadPackage (PACKAGEnnn)."""
-    path = data_root() / 'item_cash.lua'
+    override = _env_override('item_cash.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'cash_packages.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
+            return out
+
+    path = override or (data_root() / 'item_cash.lua')
     if not path.exists():
         return {}
     section = _section(path.read_text(encoding='utf-8', errors='replace'), 'DictItem:LoadPackage')
@@ -425,7 +579,20 @@ def cash_packages():
 def random_boxes():
     """(states, groups) from DictRandomBox: states = {RandomID: [(prob, [GroupID])]},
     groups = {GroupID: [(ItemID, count)]}."""
-    path = data_root() / 'item_cash.lua'
+    override = _env_override('item_cash.lua')
+    if not override:
+        json_path = ASSETS_DIR / 'random_boxes.json'
+        if json_path.is_file():
+            data = json.loads(json_path.read_text(encoding='utf-8'))
+            states = {}
+            for rid, grades in data.get('states', {}).items():
+                states[rid] = [(float(g['prob']), g['groups']) for g in grades]
+            groups = {}
+            for gid, items in data.get('groups', {}).items():
+                groups[gid] = [(item, int(cnt)) for item, cnt in items]
+            return states, groups
+
+    path = override or (data_root() / 'item_cash.lua')
     if not path.exists():
         return {}, {}
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -452,12 +619,26 @@ def random_boxes():
 
 @lru_cache(maxsize=None)
 def monsters():
-    """{jhash(ID) & 0xFFFFFFFF: {'id', 'exp', 'lv', 'drop_cnt'}} from monster.lua.
+    """{jhash(ID) & 0xFFFFFFFF: {'id', 'exp', 'lv', 'drop_cnt'}} from monster.lua."""
+    override = _env_override('monster.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'monsters.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 5:
+                    mid, hp, lv, exp, drop = parts[:5]
+                    out[jhash(mid) & 0xFFFFFFFF] = {
+                        'id': mid,
+                        'hp': float(hp),
+                        'lv': int(lv),
+                        'exp': float(exp),
+                        'drop_cnt': int(drop),
+                    }
+            return out
 
-    5063 (MONSTER_DEAD_REQ) carries the monster's template hash.
-    """
-    from darkblood.core.hashing import jhash
-    path = data_root() / 'monster.lua'
+    path = override or (data_root() / 'monster.lua')
     if not path.exists():
         return {}
     out = {}
@@ -485,7 +666,20 @@ def looting():
       looting_items {LootingID: (OneItemID or '', [GroupID])}
       groups        {GroupID: [ItemID]}
     """
-    path = data_root() / 'itemlooting.lua'
+    override = _env_override('itemlooting.lua')
+    if not override:
+        json_path = ASSETS_DIR / 'looting.json'
+        if json_path.is_file():
+            data = json.loads(json_path.read_text(encoding='utf-8'))
+            items = {}
+            for lid, val in data.get('looting_items', {}).items():
+                if isinstance(val, (list, tuple)):
+                    items[lid] = (val[0], val[1])
+                else:
+                    items[lid] = (val.get('one_item', ''), val.get('groups', []))
+            return data.get('mon_looting', {}), items, data.get('groups', {})
+
+    path = override or (data_root() / 'itemlooting.lua')
     if not path.exists():
         return {}, {}, {}
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -531,7 +725,16 @@ def looting():
 
 @lru_cache(maxsize=None)
 def equip_index():
-    """[(ItemID, Grade, DemandLv, Demand1Class)] for every item_equip*.lua entry."""
+    """[(ItemID, Grade, DemandLv, Demand1Class)] for equipment entries."""
+    tsv = ASSETS_DIR / 'equip_index.tsv'
+    if tsv.is_file():
+        out = []
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 4:
+                out.append((parts[0], int(parts[1]), int(parts[2]), parts[3]))
+        return out
+
     out = []
     for name in ITEM_EQUIP_FILES:
         path = data_root() / name
@@ -551,9 +754,19 @@ def equip_index():
 
 @lru_cache(maxsize=None)
 def money_drops():
-    """{item id: (GoldMin, GoldMax)} for the AR drop items (Gmara*) of
-    item_moneysetting.lua. Picking one up adds AR instead of an item."""
-    path = data_root() / 'item_moneysetting.lua'
+    """{item id: (GoldMin, GoldMax)} for AR drop items."""
+    override = _env_override('item_moneysetting.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'money_drops.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    out[parts[0]] = (float(parts[1]), float(parts[2]))
+            return out
+
+    path = override or (data_root() / 'item_moneysetting.lua')
     if not path.exists():
         return {}
     out = {}
@@ -568,13 +781,19 @@ def money_drops():
 
 @lru_cache(maxsize=None)
 def skill_costs():
-    """{(skill index, level): (DemandPoint SP, DemandAr)} from skill.lua LoadSkill.
+    """{(skill index, level): (DemandPoint SP, DemandAr)} from skill table."""
+    override = _env_override('skill.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'skills.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 4:
+                    out[(int(parts[0]), int(parts[1]))] = (int(parts[2]), int(parts[3]))
+            return out
 
-    The wire skill index (2050/2697, sKindNameIndex) is the entry's NameIndex,
-    which unluac writes as "005" or 254. Every DemandAr in the shipped table
-    is 0, so learning costs SP only.
-    """
-    path = data_root() / 'skill.lua'
+    path = override or (data_root() / 'skill.lua')
     if not path.exists():
         return {}
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -604,11 +823,25 @@ def skill_learn_cost(skill_index: int, current: int, target: int):
 
 @lru_cache(maxsize=None)
 def quest_mission_objectives():
-    """Mapping: mission id ("QM807") -> [(quest_id_hash, objective_index, target_value)].
+    """Mapping: mission id ("QM807") -> [(quest_id_hash, objective_index, target_value)]."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv_m = ASSETS_DIR / 'quest_missions.tsv'
+        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
+        if tsv_m.is_file() and tsv_c.is_file():
+            targets = {}
+            for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 4:
+                    targets[parts[0]] = int(parts[3])
+            out = {}
+            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    qid, idx, mid = parts[0], int(parts[1]), parts[2]
+                    out.setdefault(mid, []).append((jhash(qid) & 0xFFFFFFFF, idx, targets.get(mid, 1)))
+            return out
 
-    Every LoadMission entry of quest_act*.lua, whatever its MissionType; the
-    objective index is the mission's position in its quest's MissionID list.
-    """
     root = data_root()
     if not root.exists():
         return {}
@@ -637,10 +870,19 @@ def quest_mission_objectives():
 
 @lru_cache(maxsize=None)
 def quest_mission_counts():
-    """Mapping: quest_id_hash (int) -> count of missions.
+    """Mapping: quest_id_hash (int) -> count of missions."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
+        if tsv_c.is_file():
+            counts = {}
+            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    qhash = jhash(parts[0]) & 0xFFFFFFFF
+                    counts[qhash] = counts.get(qhash, 0) + 1
+            return counts
 
-    Parsed from LoadQuest in quest_*.lua.
-    """
     root = data_root()
     if not root.exists():
         return {}
@@ -659,10 +901,28 @@ def quest_mission_counts():
 
 @lru_cache(maxsize=None)
 def quest_item_objectives():
-    """Mapping: item_code (str) -> [(quest_id_hash, objective_index, target_count)].
+    """Mapping: item_code (str) -> [(quest_id_hash, objective_index, target_count)]."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv_m = ASSETS_DIR / 'quest_missions.tsv'
+        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
+        if tsv_m.is_file() and tsv_c.is_file():
+            mission_defs = {}
+            for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 4 and parts[1] == '1':
+                    mid, tid, tval = parts[0], parts[2], int(parts[3])
+                    mission_defs[mid] = (tid, tval)
+            out = {}
+            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    qid, idx, mid = parts[0], int(parts[1]), parts[2]
+                    if mid in mission_defs:
+                        tid, tval = mission_defs[mid]
+                        out.setdefault(tid, []).append((jhash(qid) & 0xFFFFFFFF, idx, tval))
+            return out
 
-    Parsed from LoadMission (MissionType == '1') and LoadQuest in quest_*.lua.
-    """
     root = data_root()
     if not root.exists():
         return {}
@@ -698,11 +958,21 @@ def quest_item_objectives():
 
 @lru_cache(maxsize=None)
 def gate_dungeons():
-    """Mapping: gate_id ("Act1_G1") -> list of dungeon_ids (["Act1_G1_A1", ...]).
+    """Mapping: gate_id ("Act1_G1") -> list of dungeon_ids (["Act1_G1_A1", ...])."""
+    override = _env_override('maplist.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'map_gates.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 2:
+                    gid = parts[0]
+                    dlist = parts[1].split(',') if parts[1] else []
+                    out[gid] = dlist
+            return out
 
-    Parsed from DictMap:LoadGate in maplist.lua.
-    """
-    path = data_root() / 'maplist.lua'
+    path = override or (data_root() / 'maplist.lua')
     if not path.exists():
         return {}
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -719,10 +989,30 @@ def gate_dungeons():
 
 @lru_cache(maxsize=None)
 def quest_monster_objectives():
-    """Mapping: monster_id (str) -> [(quest_id_hash, objective_index, target_count)].
+    """Mapping: monster_id (str) -> [(quest_id_hash, objective_index, target_count)]."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv_m = ASSETS_DIR / 'quest_missions.tsv'
+        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
+        if tsv_m.is_file() and tsv_c.is_file():
+            mission_defs = {}
+            for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 4 and parts[1] == '0':
+                    mid, tid, tval = parts[0], parts[2], int(parts[3])
+                    mission_defs[mid] = (tid, tval)
+            out = {}
+            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 3:
+                    qid, idx, mid = parts[0], int(parts[1]), parts[2]
+                    if mid in mission_defs:
+                        target_mon, tval = mission_defs[mid]
+                        qhash = jhash(qid) & 0xFFFFFFFF
+                        out.setdefault(target_mon, []).append((qhash, idx, tval))
+                        out.setdefault(jhash(target_mon) & 0xFFFFFFFF, []).append((qhash, idx, tval))
+            return out
 
-    Parsed from LoadMission and LoadQuest in quest_act*.lua.
-    """
     root = data_root()
     if not root.exists():
         return {}

@@ -92,8 +92,8 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2698[:4])[0], 0)
             self.assertEqual(ack2698[4], 0x17)  # map tag
             sp, gold = struct.unpack_from('<iq', ack2698[-12:])
-            # No skill.lua in the test data: every level is free.
-            self.assertEqual((sp, gold), (7, 500))
+            # Learning skill 101 to lv 2 (step 9) costs 2 SP; skills 5, 251, 35 at lv 1 are free (0 SP).
+            self.assertEqual((sp, gold), (5, 500))
 
             # 10. Change bag property (2048 -> 2049)
             client.send_event(2048, struct.pack('<qB', 2, 3))

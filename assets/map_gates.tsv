@@ -1,0 +1,10 @@
+gate_id	dungeon_ids
+Act1_G1	Act1_G1_A1,Act1_G1_A2,Act1_G1_A3,Act1_G1_A4
+Act1_G2	Act1_G2_B1,Act1_G2_B2,Act1_G2_B3,Act1_G2_B4,Act1_G2_B5
+Act2_G1	Act2_G1_A1,Act2_G1_A2,Act2_G1_A3
+Act2_G2	Act2_G2_B1,Act2_G2_B2,Act2_G2_B3,Act2_G2_B4,Act2_G2_R1
+Act3_G1	Act3_G1_A1,Act3_G1_A2,Act3_G1_A3,Act3_G1_A4
+Act3_G2	Act3_G2_B1,Act3_G2_B2,Act3_G2_B3,Act3_G2_B4,Act3_G2_R1,Act3_G2_R2
+Act4_G1	Act4_G1_A1,Act4_G1_A2,Act4_G1_A3,Act4_G1_A4,Act4_G1_A5
+Act4_G2	Act4_G2_B1,Act4_G2_B2,Act4_G2_B3,Act4_G2_B4,Act4_G2_B5,Act4_G2_R1,Act4_G2_R2
+Citadel	Citadel_A1,Citadel_A2,Citadel_A3,Citadel_A4,Citadel_A5
