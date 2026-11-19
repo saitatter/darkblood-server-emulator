@@ -1,5 +1,14 @@
 # Session handoff — 2026-11-17 (compressed)
 
+## Town party invitation notice — Cristian, 2026-11-18
+
+- `5051` now sends the host summary and room fields read by `0x00A4AD10`.
+  The host IDs are mapped by the UI at `0x0062BE50` and `0x0062BE63`.
+  Town invites use constructor defaults for the room fields. See `docs/PROTOCOL.md`
+  for the schema and the ignored `research/dungeon-invite-*.c` outputs.
+- `5055/5056` were absent from the checked handler table and room dispatcher.
+  Live validation of the invite dialog and shared room entry remains open.
+
 ## Room join and invite sender — Cristian, 2026-11-18
 
 - Mapped the `5003` room UID, the outer `5004` reply, and the member record

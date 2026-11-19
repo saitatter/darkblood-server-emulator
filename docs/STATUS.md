@@ -1,5 +1,11 @@
 # Research status and handoff
 
+## Town party invitation notice — Cristian, 2026-11-18
+
+Ghidra and x86 disassembly confirmed the 5051 host summary and room fields.
+The server sends the corrected shape for town invitations. The wire fixture
+and multi-client headless party flow cover it. Live dialog verification is open.
+
 ## Dungeon room join and invite sender — Cristian, 2026-11-18
 
 Mapped the 5003 request, 5004 outer reply and member record from the local

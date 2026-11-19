@@ -70,10 +70,16 @@ class PartyWireMessagesTest(unittest.TestCase):
         inv_ack = PartyInviteAck(result=0, target_uid=7777).encode()
         self.assertEqual(PartyInviteAck.decode(inv_ack).result, 0)
 
-        inv_not = PartyInviteNot(inviter_uid=6666, party_id=1, inviter_name='LeaderX').encode()
+        inv_not = PartyInviteNot(inviter_uid=6666, inviter_square_uid=4, inviter_name='LeaderX').encode()
+        self.assertEqual(inv_not, (
+            bytes.fromhex('00 0400000000000000 0a1a000000000000 00000000 8e')
+            + 'LeaderX'.encode('utf-16le')
+            + bytes.fromhex('00ffff00') + b'\xff' * 16 + b'\x00' * 83
+            + b'\x80' + b'\xff' * 10
+        ))
         dec_not = PartyInviteNot.decode(inv_not)
         self.assertEqual(dec_not.inviter_uid, 6666)
-        self.assertEqual(dec_not.party_id, 1)
+        self.assertEqual(dec_not.inviter_square_uid, 4)
         self.assertEqual(dec_not.inviter_name, 'LeaderX')
 
         # Join req / ack
@@ -253,7 +259,7 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 self.assertEqual(inv_not.inviter_uid, char_id1)
 
                 # 2. Client 2 accepts invite via Opcode 2102 (eEGS_PARTY_JOIN_REQ)
-                client2.send_event(2102, PartyJoinReq(party_id=inv_not.party_id, host_uid=char_id1).encode())
+                client2.send_event(2102, PartyJoinReq(host_uid=inv_not.inviter_uid).encode())
                 _, ack2103 = await client2.expect_event(2103)
                 join_ack = PartyJoinAck.decode(ack2103)
                 self.assertEqual(join_ack.result, 0)
