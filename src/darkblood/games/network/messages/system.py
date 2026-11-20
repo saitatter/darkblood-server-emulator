@@ -183,16 +183,22 @@ class AchieveGetListReq:
 
 @dataclass
 class AchieveEntry:
-    """Completed achievement, struct 0x00A1ED90: i32 id, bool, i32, time64.
+    """Achievement state, struct 0x00A1ED90: i32 id, bool, i32, time64.
 
-    The id is JHashString(AchieveID). The bool and second i32 are not
-    recovered (sent 0); the time is assumed to be Unix seconds.
+    The id is JHashString(AchieveID), as loaded by 0x00A50DA0. The bool is
+    sent as "completed" and the i32 as 0; neither is confirmed. The time is
+    assumed to be Unix seconds.
     """
     achieve_hash: int
     completed_at: int = 0
 
     def encode(self) -> bytes:
-        return struct.pack('<I?iq', self.achieve_hash & 0xFFFFFFFF, False, 0, self.completed_at)
+        return struct.pack('<I?iq', self.achieve_hash & 0xFFFFFFFF, True, 0, self.completed_at)
+
+    def completion_block(self) -> bytes:
+        """13-byte block (0x00A1E7E0) whose first u32 0x0079D240 looks up and
+        announces by name; the other 9 bytes are not recovered (zeros)."""
+        return struct.pack('<I', self.achieve_hash & 0xFFFFFFFF) + b'\x00' * 9
 
 
 @dataclass
@@ -203,7 +209,7 @@ class AchieveGetListAck:
       tag 0x17 map 0x005EC140: 0x0F, u32 division, i64 counter
       tag 0x17 map 0x00A3DC50: 0x0F, u32 achieve hash, AchieveEntry
       bool (not recovered, sent 0)
-    then tag 0x10 vector 0x0076B0C0 of 13-byte blocks (not recovered, empty).
+    then tag 0x10 vector 0x0076B0C0 of 13-byte completion blocks.
     The old stub put a stray 0x0A byte before the bool.
     """
     result: int = 0
@@ -219,7 +225,27 @@ class AchieveGetListAck:
         return (struct.pack('<i', self.result)
                 + b'\x17' + varuint(len(self.divisions)) + divs
                 + b'\x17' + varuint(len(self.completed)) + done
-                + b'\x00' + b'\x10' + varuint(0))
+                + b'\x00' + b'\x10' + varuint(len(self.completed))
+                + b''.join(e.completion_block() for e in self.completed))
+
+
+@dataclass
+class AchieveUpdateReq:
+    """Opcode 2444: eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0).
+
+    tag 0x10 vector of u32 achievement hashes the client completed itself
+    (group/hidden achievements); answered by 2445 (u32 result, 0x0074B830).
+    Not yet observed live.
+    """
+    hashes: list = field(default_factory=list)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AchieveUpdateReq':
+        data = strip_prefix(data)
+        if not data or data[0] != 0x10:
+            raise WireError('2444 without a vector tag')
+        count, offset = read_varuint(data, 1)
+        return cls(list(struct.unpack_from('<%dI' % count, data, offset)))
 
 
 @dataclass
@@ -257,15 +283,16 @@ class AchieveChangeNot:
 class AchieveCompleteNot:
     """Opcode 2330: eEGS_ACHIEVE_COMPLETE_NOT (0x0079D240).
 
-    tag 0x10 vector of AchieveEntry (0x0076EA70 -> 0x00A1ED90); the handler
-    looks each id up (0x00AABAB0) and prints the completion message. Then a
-    tag 0x10 vector of 13-byte blocks (0x00A1E7E0, not recovered, empty).
+    tag 0x10 vector of AchieveEntry (0x0076EA70 -> 0x00A1ED90), applied to the
+    achievement page; tag 0x10 vector of 13-byte completion blocks
+    (0x00A1E7E0): for each, the handler looks the first u32 up (0x00AABAB0)
+    and prints the completion message.
     """
     entries: list = field(default_factory=list)
 
     def encode(self) -> bytes:
         return (b'\x10' + varuint(len(self.entries)) + b''.join(e.encode() for e in self.entries)
-                + b'\x10' + varuint(0))
+                + b'\x10' + varuint(len(self.entries)) + b''.join(e.completion_block() for e in self.entries))
 
 
 # =========================================================================

@@ -42,8 +42,10 @@ class AchievementFlowTest(ServerTestCase):
             _, done = await client.expect_event(2330)
             self.assertEqual(done[:2], b'\x10\x81')
             achieve_hash, flag, extra, stamp = struct.unpack_from('<I?iq', done, 2)
-            self.assertEqual(achieve_hash, jhash('OSACHV25Lv1') & 0xFFFFFFFF)
-            self.assertEqual(done[-2:], b'\x10\x80')
+            self.assertEqual((achieve_hash, flag), (jhash('OSACHV25Lv1') & 0xFFFFFFFF, True))
+            # Second vector: the 13-byte block 0x0079D240 announces by name.
+            self.assertEqual(done[2 + 17:2 + 17 + 6], b'\x10\x81' + struct.pack('<I', achieve_hash))
+            self.assertEqual(len(done), 2 + 17 + 2 + 13)
             self.assertEqual(char['achieve_divisions'], {'25': 550, '24': 87})
 
             # The list now carries the totals and the completed entry.
@@ -51,6 +53,18 @@ class AchievementFlowTest(ServerTestCase):
             _, ack = await client.expect_event(2328)
             self.assertIn(b'\x0f' + struct.pack('<Iq', 25, 550), ack)
             self.assertIn(b'\x0f' + struct.pack('<I', achieve_hash) + struct.pack('<I', achieve_hash), ack)
+            self.assertTrue(ack.endswith(b'\x10\x81' + struct.pack('<I', achieve_hash) + b'\x00' * 9))
+
+            # 2444: the client reports a hidden achievement it completed itself;
+            # unknown ids are ignored.
+            hidden = jhash('HACHV10001Lv1') & 0xFFFFFFFF
+            client.send_event(2444, b'\x10\x82' + struct.pack('<II', hidden, 0x12345678))
+            _, ack2445 = await client.expect_event(2445)
+            self.assertEqual(ack2445, struct.pack('<I', 0))
+            _, done = await client.expect_event(2330)
+            self.assertEqual(done[:2], b'\x10\x81')
+            self.assertEqual(struct.unpack_from('<I', done, 2)[0], hidden)
+            self.assertIn('HACHV10001Lv1', char['achievements'])
 
         self.run_async(self.with_server(scenario))
 

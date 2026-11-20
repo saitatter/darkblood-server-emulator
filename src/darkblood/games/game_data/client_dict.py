@@ -957,13 +957,11 @@ def quest_item_objectives():
 
 
 @lru_cache(maxsize=None)
-def achievements():
-    """Counter achievements (Type 0) from DictAchieve:LoadAchieveInfo.
+def achievement_table():
+    """Every DictAchieve:LoadAchieveInfo entry: [(achieve_id, type, division, goal, accumulate)].
 
-    Returns [(achieve_id, division, goal, accumulate)]. A Type 0 achievement
-    completes when its AchieveDivision counter reaches GoalAmount: summed over
-    runs when Accumulate is 1, within one report when it is 0. Group types
-    (2/3, GroupCondition) are not included.
+    goal is 0 for entries without GoalAmount (group types 2/3 use
+    GroupCondition and are completed through the client's 2444 report).
     """
     override = _env_override('achieve.lua')
     if not override:
@@ -972,8 +970,8 @@ def achievements():
             out = []
             for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
                 parts = line.split('\t')
-                if len(parts) >= 4:
-                    out.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3])))
+                if len(parts) >= 5:
+                    out.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4])))
             return out
     path = override or (data_root() / 'achieve.lua')
     if not path.exists():
@@ -982,11 +980,20 @@ def achievements():
     out = []
     for entry in _top_entries(section):
         fields = dict(re.findall(r'^    (\w+) = "?([^",{]*)"?,?$', entry, re.M))
-        if fields.get('Type') != '0' or 'GoalAmount' not in fields:
+        if 'AchieveID' not in fields:
             continue
-        out.append((fields['AchieveID'], int(fields['AchieveDivision']),
-                    int(float(fields['GoalAmount'])), int(fields.get('Accumulate') or 0)))
+        out.append((fields['AchieveID'], int(fields.get('Type') or 0), int(fields.get('AchieveDivision') or 0),
+                    int(float(fields.get('GoalAmount') or 0)), int(fields.get('Accumulate') or 0)))
     return out
+
+
+def achievements():
+    """Counter achievements: [(achieve_id, division, goal, accumulate)] for Type 0 with a goal.
+
+    A Type 0 achievement completes when its AchieveDivision counter reaches
+    GoalAmount: summed over runs when Accumulate is 1, within one report when 0.
+    """
+    return [(a, d, g, acc) for a, kind, d, g, acc in achievement_table() if kind == 0 and g > 0]
 
 
 @lru_cache(maxsize=None)

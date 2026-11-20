@@ -8,7 +8,7 @@ an achievement completes when the relevant value reaches its GoalAmount
 import time
 
 from darkblood.core.hashing import jhash
-from darkblood.games.game_data.client_dict import achievements
+from darkblood.games.game_data.client_dict import achievement_table, achievements
 
 
 def apply_division_report(char, amounts, now=None):
@@ -27,6 +27,23 @@ def apply_division_report(char, amounts, now=None):
             continue
         source = totals if accumulate else best
         if source.get(str(division), 0) >= goal:
+            done[achieve_id] = stamp
+            completed.append(achieve_id)
+    return completed
+
+
+def apply_client_completions(char, hashes, now=None):
+    """Record achievements the client reports as completed (2444).
+
+    Only ids from the achievement table are accepted; returns the new ones.
+    """
+    by_hash = {jhash(row[0]) & 0xFFFFFFFF: row[0] for row in achievement_table()}
+    done = char.setdefault('achievements', {})
+    stamp = int(now if now is not None else time.time())
+    completed = []
+    for value in hashes:
+        achieve_id = by_hash.get(value & 0xFFFFFFFF)
+        if achieve_id and achieve_id not in done:
             done[achieve_id] = stamp
             completed.append(achieve_id)
     return completed

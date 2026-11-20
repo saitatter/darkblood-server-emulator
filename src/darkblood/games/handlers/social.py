@@ -388,6 +388,28 @@ class SocialHandlers(BaseDomainService):
         await self.transport.send_event(event(2328, ack, correlation),
                                         note=f'achieve get list ack ({len(entries)} completed)')
 
+    async def on_2444(self, correlation, body):
+        # eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0): vector of u32 achievement
+        # hashes completed client-side -> 2445 (u32 result, 0x0074B830), then 2330.
+        from darkblood.games import achievements
+        from darkblood.games.network.messages import AchieveCompleteNot, AchieveEntry, AchieveUpdateReq
+        self.transport.record('achieve-update', body)
+        char = self.current_char()
+        completed = []
+        try:
+            report = AchieveUpdateReq.decode(body)
+        except (WireError, struct.error, IndexError):
+            report = None
+        if char is not None and report is not None:
+            completed = achievements.apply_client_completions(char, report.hashes)
+            self.store().save()
+        await self.transport.send_event(event(2445, struct.pack('<I', 0), correlation),
+                                        note='achieve update ack')
+        if completed:
+            entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
+            await self.transport.send_event(event(2330, AchieveCompleteNot(entries).encode()),
+                                            note='achievements completed: %s' % ', '.join(completed))
+
     async def on_2446(self, correlation, body):
         # eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447
         # (0x0074B830 reads only the u32 result), then 2330 for completions.

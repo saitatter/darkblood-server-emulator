@@ -152,10 +152,10 @@ def export_dungeon_maps():
 
 
 def export_achievements():
-    """Counter achievements: AchieveID, division, goal, accumulate (2328/2330/2446)."""
-    lines = ['achieve_id\tdivision\tgoal\taccumulate']
-    for achieve_id, division, goal, accumulate in client_dict.achievements():
-        lines.append(f"{achieve_id}\t{division}\t{goal}\t{accumulate}")
+    """All achievements: AchieveID, type, division, goal (0 = none), accumulate."""
+    lines = ['achieve_id\ttype\tdivision\tgoal\taccumulate']
+    for row in client_dict.achievement_table():
+        lines.append('\t'.join(str(v) for v in row))
     out = ASSETS_DIR / 'achievements.tsv'
     out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     print(f"Exported {len(lines)-1} achievements to {out.name}")
