@@ -163,7 +163,7 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(refused, struct.pack('<I', results.INVALID_STATE))
                 host.send_event(5088, struct.pack('<i?', 0x7fffffff, True), correlation=53)
                 correlation, looting = await host.expect_event(5089)
-                self.assertEqual((correlation, looting), (53, struct.pack('<i?', 0, False)))  # result, inverse
+                self.assertEqual((correlation, looting), (53, struct.pack('<i?', 0, True)))  # result, echoed mode
                 _, synced = await guest.expect_event(5089)
                 self.assertEqual(synced, looting)
 

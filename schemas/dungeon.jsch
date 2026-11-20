@@ -370,9 +370,10 @@ message 5012 ChangeRoomInfoAck ok_only
 end
 
 message 5088 ChangeItemObtainReq header?
-  ## Looting mode checkbox. Sender 0x0058B380 (0x13E0), caller 0x0054F86C: one
-  ## bool, 1 when the box was unchecked (the new checked state).
-  bool checked
+  ## Looting mode button. Sender 0x0058B380 (0x13E0), caller 0x0054F86C: one bool,
+  ## 1 when the control reads unchecked after its own click toggle. Which value is
+  ## random and which free looting is not recovered.
+  bool mode
 end
 
 message 5089 ChangeItemObtainAck
@@ -381,8 +382,9 @@ message 5089 ChangeItemObtainAck
   ## anything but 0 takes the error path. A bool-only body therefore never reached
   ## the checkbox (live trace 2026-11-21: 0x0054F910 not called). Then one bool: the
   ## page stores (value != 1) at +0xB4 and 0x0054F910 checks the box when +0xB4 == 1.
-  ## The button (0x0054F86C) sends 1 when the box was unchecked, so the ack carries
-  ## the inverse of the request.
+  ## Live trace 2026-11-21: the control flips itself before 0x0054F86C reads it, so
+  ## the button sends 1 after an inverse ack every time. Echoing the request leaves
+  ## the box opposite to it, and the next click sends the other mode.
   i32 result
-  bool random_loot
+  bool mode
 end

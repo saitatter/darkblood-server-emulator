@@ -60,7 +60,7 @@ class DungeonRoom:
     started: bool = False
     # 5047 join requests waiting for the host: char id -> (session, correlation).
     join_requests: dict = field(default_factory=dict)
-    loot_mode: bool = False  # 5088 looting checkbox state (which mode 'checked' means is unverified)
+    loot_mode: bool = False  # 5088 looting mode (which value is random looting is unverified)
 
 
 class DungeonHandlers(BaseDomainService):
@@ -156,19 +156,19 @@ class DungeonHandlers(BaseDomainService):
                                 event(5012, ack), 'change room info (member sync)')
 
     async def on_5088(self, correlation, body):
-        # eERC_CHANGE_ITEM_OBTAIN_REQ (looting checkbox) -> 5089. The client checks
-        # the box when the ack value != 1, so the ack carries the inverse.
+        # eERC_CHANGE_ITEM_OBTAIN_REQ (looting mode button) -> 5089 (i32 result, bool).
+        # Echoing the mode alternates the two modes (see the 5089 schema notes).
         try:
-            checked = ChangeItemObtainReq.decode(body).checked
+            mode = ChangeItemObtainReq.decode(body).mode
         except (WireError, struct.error):
             return
         room = self.room
         if room is not None:
             if room.host is not self.session:
                 return
-            room.loot_mode = checked
-        ack = ChangeItemObtainAck(random_loot=not checked).encode()
-        await self.transport.send_event(event(5089, ack, correlation), note='change item obtain ack (checked=%s)' % checked)
+            room.loot_mode = mode
+        ack = ChangeItemObtainAck(mode=mode).encode()
+        await self.transport.send_event(event(5089, ack, correlation), note='change item obtain ack (mode=%d)' % mode)
         if room is not None:
             await self._notify_room(room, [m for m in room.members if m is not self.session],
                                     event(5089, ack), 'change item obtain (member sync)')

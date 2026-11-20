@@ -674,7 +674,7 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - **Live trace 2026-11-21 (bp.txt)**: (1) Capacity works: an earlier run stored `max 2`; this run the combo
   (0x00AF54C8) was on index 2 = "4", preselected as `max - 2`. (2) Loot: 5089 starts with
   `0x00A1EA20(0)`, which reads an **i32 result** (returns -1 when the read fails, error path otherwise),
-  so the bool-only ack never reached 0x0054F910. 5089 is now `i32 result, bool`. Check other handlers
+  so the bool-only ack never reached 0x0054F910. 5089 is now `i32 result, bool`. A second trace showed the control flips itself before 0x0054F86C reads it, so an inverse ack made every click send 1; the ack now echoes the mode. Check other handlers
   that start with 0x00A1EA20(0) for the same missing result. (3) Join request: the host's Accept ran
   the host branch (0x0063A695 eax=1) and sent 5049; the requester got 5051 but its
   `OnBtn_Party_Accept` never ran. A 5049 for a pending 5047 requester now joins it directly (5004 on
