@@ -47,7 +47,7 @@
 | `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:244 | cards (0x004AFD30) |
 | `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:250 | album (0x004D6E60) |
 
-## dungeon (43 of 161 fields)
+## dungeon (43 of 162 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
