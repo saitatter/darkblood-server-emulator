@@ -110,6 +110,8 @@ class RelayFlowTest(ServerTestCase):
 
                 request(second, 1001, second_destination)
                 self.assertEqual(await leave_notice(first), (host_b, group_a))
+                # The departing client first drops each remaining peer, then itself.
+                self.assertEqual(await leave_notice(second), (host_a, group_a))
                 self.assertEqual(await leave_notice(second), (host_b, group_a))
                 self.assertEqual(await roster(second), (group_b, {102: host_b, 103: host_c}))
                 self.assertEqual(await roster(third), (group_b, {102: host_b, 103: host_c}))
@@ -120,6 +122,7 @@ class RelayFlowTest(ServerTestCase):
 
                 replacement = group_args(5, 104)
                 request(second, 1001, replacement)
+                self.assertEqual(await leave_notice(second), (host_c, group_b))
                 self.assertEqual(await leave_notice(second), (host_b, group_b))
                 self.assertEqual(await leave_notice(third), (host_b, group_b))
                 self.assertEqual(await roster(second), (group_b, {104: host_b, 103: host_c}))

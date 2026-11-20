@@ -169,10 +169,18 @@ class RelayGroups:
         if not group.members:
             del self.groups[key]
         # ProudS2C 0xF61E reads member HostID then group HostID.
-        payload = b'\x01' + struct.pack('<HII', P2P_GROUP_MEMBER_LEAVE, transport.host_id, group.host_id)
+        def leave(member_host_id):
+            return b'\x01' + struct.pack('<HII', P2P_GROUP_MEMBER_LEAVE, member_host_id, group.host_id)
+        payload = leave(transport.host_id)
         for other in group.members.values():
             await self.send(other, payload, 'relay peer left')
         if notify_departing:
+            # The departing client must also drop its peers. Without this it
+            # kept the old P2P entry (and keys) for each remaining member and
+            # ignored the fresh keys of the next 0xF619 join, so after a town
+            # layer change neither client could read the other's movement.
+            for other in group.members.values():
+                await self.send(transport, leave(other.host_id), 'relay peer left (to departing)')
             await self.send(transport, payload, 'relay group left')
 
     async def disconnect(self, transport):
