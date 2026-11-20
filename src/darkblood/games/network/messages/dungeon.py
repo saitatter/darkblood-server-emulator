@@ -44,21 +44,29 @@ __all__ = [
 
 @dataclass
 class RoomInfo:
-    """Untagged jRoomInfo, reader 0x00A49380, shared by 5002 and 5004."""
+    """Untagged jRoomInfo, reader 0x00A49380, shared by 5002, 5004 and 2011.
+    Destinations: +0, +8, +0x2C, +0x2E, +0x30, +0x24, +0x34, +0x3C, +0x40,
+    +0x44. The find-party row filler (near 0x0062DA71) prints UI_625 with
+    +0x2E / +0x2C as the player count, picks the status layer from +0x30
+    (1 or 2 -> layer 2, 8 -> layer 1, anything else -> "FULL") and passes
+    +0x44 to 0x0074B3E0. Gate, map and difficulty follow the create order
+    (szRoomName << nGateID << nMapID << sMapDiff << sMaxNumUser).
+    """
     room_id: int = 0
     name: str = ''
-    req_c: int = -1
-    req_d: int = 1
-    req_a: int = -1
+    max_users: int = 4
+    cur_users: int = 1
+    state: int = 1  # 1 open (layer 2); 8 assumed in game; exact labels not recovered
     host_uid: int = 0
-    req_b: int = -1
-    req_d_end: int = 1  # sent equal to req_d so far
+    gate_id: int = -1
+    map_id: int = -1
+    diff: int = -1
 
     def encode(self) -> bytes:
         b = bytearray()
         b += struct.pack('<q', self.room_id)
         b += wide_string(self.name)
-        b += struct.pack('<hhiqqiih', self.req_c, self.req_d, self.req_a, self.host_uid, 0, self.req_b, -1, self.req_d_end)
+        b += struct.pack('<hhiqqiih', self.max_users, self.cur_users, self.state, self.host_uid, 0, self.gate_id, self.map_id, self.diff)
         return bytes(b)
 
     @classmethod
@@ -66,14 +74,14 @@ class RoomInfo:
         kw = {}
         kw['room_id'] = r.read_i64()
         kw['name'] = r.read_wstring()
-        kw['req_c'] = r.read_i16()
-        kw['req_d'] = r.read_i16()
-        kw['req_a'] = r.read_i32()
+        kw['max_users'] = r.read_i16()
+        kw['cur_users'] = r.read_i16()
+        kw['state'] = r.read_i32()
         kw['host_uid'] = r.read_i64()
         r.read_i64()
-        kw['req_b'] = r.read_i32()
-        r.read_i32()
-        kw['req_d_end'] = r.read_i16()
+        kw['gate_id'] = r.read_i32()
+        kw['map_id'] = r.read_i32()
+        kw['diff'] = r.read_i16()
         return cls(**kw)
 
     @classmethod

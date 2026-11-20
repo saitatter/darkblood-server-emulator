@@ -7,17 +7,23 @@ extern Character from darkblood.games.entities.character encode=encode_world_det
 extern Item from darkblood.games.entities.items
 
 struct RoomInfo
-  ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002 and 5004.
+  ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002, 5004 and 2011.
+  ## Destinations: +0, +8, +0x2C, +0x2E, +0x30, +0x24, +0x34, +0x3C, +0x40,
+  ## +0x44. The find-party row filler (near 0x0062DA71) prints UI_625 with
+  ## +0x2E / +0x2C as the player count, picks the status layer from +0x30
+  ## (1 or 2 -> layer 2, 8 -> layer 1, anything else -> "FULL") and passes
+  ## +0x44 to 0x0074B3E0. Gate, map and difficulty follow the create order
+  ## (szRoomName << nGateID << nMapID << sMapDiff << sMaxNumUser).
   i64 room_id
   wstr name
-  i16 req_c = -1
-  i16 req_d = 1
-  i32 req_a = -1
+  i16 max_users = 4
+  i16 cur_users = 1
+  i32 state = 1              # 1 open (layer 2); 8 assumed in game; exact labels not recovered
   i64 host_uid
   i64 _
-  i32 req_b = -1
-  i32 _ = -1
-  i16 req_d_end = 1          # sent equal to req_d so far
+  i32 gate_id = -1
+  i32 map_id = -1
+  i16 diff = -1
 end
 
 message 2011 RoomInfoListAck

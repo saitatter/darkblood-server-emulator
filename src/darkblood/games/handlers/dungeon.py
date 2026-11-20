@@ -78,13 +78,15 @@ class DungeonHandlers(BaseDomainService):
                 continue
             if wait_only and room.started:
                 continue
-            if gate != -1 and info.req_a != gate:
+            if gate != -1 and info.gate_id != gate:
                 continue
-            if map_id != -1 and info.req_b != map_id:
+            if map_id != -1 and info.map_id != map_id:
                 continue
-            rooms.append(info)
+            rooms.append(self._room_info(room))
         # Page size of the client list is not recovered: everything on one page.
-        ack = RoomInfoListAck(show_only_wait=wait_only, page=0, rooms=rooms, pages=1)
+        # The last field is shown plus one (live: 1 displayed "1 / 2"), so it is
+        # the last page index.
+        ack = RoomInfoListAck(show_only_wait=wait_only, page=0, rooms=rooms, pages=0)
         await self.transport.send_event(event(2011, ack.encode(), correlation),
                                         note='room info list ack (%d rooms)' % len(rooms))
 
@@ -108,8 +110,8 @@ class DungeonHandlers(BaseDomainService):
             return
         await self.leave_room()
         server = self.transport.server
-        info = RoomInfo(room_id=next(server.room_ids), name=name, req_a=a, req_b=b, req_c=c, req_d=d, req_d_end=d,
-                        host_uid=char['id'])
+        info = RoomInfo(room_id=next(server.room_ids), name=name, gate_id=a, map_id=b, diff=c,
+                        max_users=d if 0 < d <= 4 else 4, cur_users=1, host_uid=char['id'])
         self.room = DungeonRoom(info, self.session, {self.session: char})
         server.dungeon_rooms[info.room_id] = self.room
         ack = CreateRoomAck(room=info, relay=relay_address())
@@ -134,7 +136,7 @@ class DungeonHandlers(BaseDomainService):
                 result = results.INVALID_STATE
             elif room.started:
                 result = results.ALREADY_PLAY_GAME
-            elif len(room.members) >= 4:
+            elif len(room.members) >= room.info.max_users:
                 result = results.JOIN_FAIL_ROOM_FULL
         if result:
             await self.transport.send_event(event(5004, JoinRoomAck(result=result).encode(), correlation),
@@ -146,7 +148,7 @@ class DungeonHandlers(BaseDomainService):
         room.members[self.session] = char
         self.room = room
         roster = [RoomMember(Character.from_dict(record)) for record in room.members.values()]
-        ack = JoinRoomAck(room=room.info, host_uid=room.info.host_uid, members=roster, relay=relay_address())
+        ack = JoinRoomAck(room=self._room_info(room), host_uid=room.info.host_uid, members=roster, relay=relay_address())
         await self.transport.send_event(event(5004, ack.encode(), correlation), note='join room ack')
         if is_new and self.room is room:
             joined = RoomMemberJoinedNot(RoomMember(Character.from_dict(char)))
@@ -422,6 +424,13 @@ class DungeonHandlers(BaseDomainService):
             entries.append(ItemDropEntry(drop_uid=self.next_drop_uid, item_id=jhash(code), count=count))
         await self.transport.send_event(event(5064, DropItemNot(source_id=source_id, drops=entries).encode()),
                                         note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
+
+    @staticmethod
+    def _room_info(room):
+        """jRoomInfo with the live member count and state (1 open, 8 started)."""
+        from dataclasses import replace
+        state = 8 if room.started else (1 if len(room.members) < room.info.max_users else 0)
+        return replace(room.info, cur_users=len(room.members), state=state)
 
     def _current_char(self):
         char = self.current_char()

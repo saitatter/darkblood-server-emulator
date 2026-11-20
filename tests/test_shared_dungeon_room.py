@@ -48,14 +48,15 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(struct.unpack_from('<q', gate_info)[0] > room_id, True)
                 self.assertIn(wide('Gate room'), gate_info)
 
+                gate_live = gate_info  # one member, open (state 1): same as the create ack
                 # 2010: nPage, bWait, nGateID, nMapID, sDiff -> the gate's open rooms.
                 guest.send_event(2010, struct.pack('<ii?iih', 0x7fffffff, 0, True, gate, -1, -1))
                 _, listing = await guest.expect_event(2011)
-                self.assertEqual(listing, struct.pack('<I?i', 0, True, 0) + bytes.fromhex('1081') + gate_info
-                                 + struct.pack('<i', 1))
+                self.assertEqual(listing, struct.pack('<I?i', 0, True, 0) + bytes.fromhex('1081') + gate_live
+                                 + struct.pack('<i', 0))
                 guest.send_event(2010, struct.pack('<ii?iih', 0x7fffffff, 0, False, gate + 1, -1, -1))
                 _, listing = await guest.expect_event(2011)
-                self.assertEqual(listing, struct.pack('<I?i', 0, False, 0) + bytes.fromhex('1080') + struct.pack('<i', 1))
+                self.assertEqual(listing, struct.pack('<I?i', 0, False, 0) + bytes.fromhex('1080') + struct.pack('<i', 0))
 
                 # The host moves back to the first room for the rest of the flow.
                 host.send_event(5001, wide('Shared test') + struct.pack('<iihh', -1, -1, -1, 4))
@@ -70,7 +71,10 @@ class SharedDungeonRoomTest(ServerTestCase):
                 guest.send_event(5003, struct.pack('<iq', 0x7fffffff, room_id), correlation=35)
                 correlation, joined = await guest.expect_event(5004)
                 self.assertEqual(correlation, 35)
-                self.assertEqual(joined, (b'\0' * 4 + room_info + struct.pack('<q', host_id) + b'\x10\x82'
+                # jRoomInfo: id, name, max users, current users (now 2), ...
+                at = 8 + len(wide('Shared test')) + 2
+                joined_info = room_info[:at] + struct.pack('<h', 2) + room_info[at + 2:]
+                self.assertEqual(joined, (b'\0' * 4 + joined_info + struct.pack('<q', host_id) + b'\x10\x82'
                                           + member_bytes(host_id) + member_bytes(guest_id) + relay + b'\0\0'))
                 _, notice = await host.expect_event(5035)
                 self.assertEqual(notice, member_bytes(guest_id) + b'\0')
