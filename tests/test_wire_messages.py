@@ -5,7 +5,7 @@ import unittest
 from tests.common import ROOT
 from darkblood.core import hashing
 from darkblood.core.serialization import jser
-from darkblood.games.entities.character import layer_net_id
+from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.games.network import messages
@@ -80,13 +80,13 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(encoded[4:], b'\x10\x80')
 
     def test_level_up_and_change_exp_not_messages(self):
-        lvl = messages.LevelUpNot(char_uid=777, new_level=10, exp=25, total_ap=27, remaining_ap=10, flag=True)
+        lvl = messages.LevelUpNot(ap_slots=[10, 10], char_uid=777, new_level=10, exp=25, total_ap=27, flag=True)
         enc_lvl = lvl.encode()
         # No tag bytes: 0x1E / array tag are not on the wire (0x00B35010).
         self.assertEqual(enc_lvl[0:1], bytes.fromhex('82'))
         self.assertEqual(struct.unpack_from('<IIqBII?', enc_lvl, 1), (10, 10, 777, 10, 25, 27, True))
 
-        exp = messages.ChangeExpNot(exp_total=25000, exp_details=(50, 100, 0, 0, 0, 0, 0, 0))
+        exp = messages.ChangeExpNot(exp_total=25000, gain_0=50, gain_1=100)
         enc_exp = exp.encode()
         self.assertEqual(struct.unpack_from('<i', enc_exp, 0)[0], 25000)
         # 8 x i32 then an empty J-wstring (0x00A49E20 ends with 0x00B35AB0).
@@ -524,12 +524,12 @@ class WireMessagesTest(unittest.TestCase):
         not_disc = messages.FriendMyDisconnectionNot(char_uid=777, notify=True).encode()
         self.assertEqual(struct.unpack_from('<q?', not_disc), (777, True))
 
-        not_info = messages.UpdateCharInfoNot(char_details=b'\x01\x02\x03', layer_net_id=555).encode()
-        self.assertEqual(not_info[:3], b'\x01\x02\x03')
-        self.assertEqual(struct.unpack_from('<q', not_info[3:])[0], 555)
+        char = Character(name='Spawned')
+        not_info = messages.UpdateCharInfoNot(character=char, guild_name='Guild').encode()
+        self.assertEqual(not_info, char.encode_world_details() + jser.wide_string('Guild'))
 
     def test_character_nick_change_encoding(self):
-        req = messages.CharNickChangeReq.decode(jser.wide_string('NewHero') + struct.pack('<q', 123))
+        req = messages.CharNickChangeReq.decode(struct.pack('<q', 123) + jser.wide_string('NewHero'))
         self.assertEqual(req.new_name, 'NewHero')
         self.assertEqual(req.item_uid, 123)
         ack = messages.CharNickChangeAck(result=0, items=[], new_name='NewHero').encode()
@@ -548,7 +548,7 @@ class WireMessagesTest(unittest.TestCase):
         payload = b'\x01\x02\x03\x04'
         req = messages.KeyboardSetCustomKeyReq.decode(payload)
         self.assertEqual(req.keys_blob, payload)
-        ack = messages.KeyboardSetCustomKeyAck(result=0, keys_blob=payload).encode()
+        ack = messages.KeyboardSetCustomKeyAck(result=0, keys=payload.decode('utf-16le')).encode()
         self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
         self.assertIn(payload, ack)
 

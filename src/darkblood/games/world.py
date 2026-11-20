@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from darkblood.core.serialization.jser import event, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.network.messages.lobby import JoinLayerNot, PageCharTemp
+from darkblood.games.network.messages.system import UpdateCharInfoNot
 from darkblood.games.network.messages.party import (
     PartyAcceptInviteNot, PartyInfoNot, PartyInviteNot, PartyMemberInfo,
     UserJoinSquareNot, UserLeaveSquareNot
@@ -161,7 +162,8 @@ class GameWorldManager:
             note=f"join layer not 5027 for {new_char.name} ({new_player.char_id})"
         )
 
-        new_details = build_char_details(new_char) + wide_string(getattr(new_char, 'guild_name', '') or '')
+        new_details = UpdateCharInfoNot(character=new_char,
+                                        guild_name=getattr(new_char, 'guild_name', '') or '').encode()
         spawn_ev = event(5096, new_details)
         await self.broadcast_to_square(
             new_player.square_id,
@@ -203,7 +205,7 @@ class GameWorldManager:
                 logger.debug("Failed sending 5027 to newcomer: %s", e)
 
             for ep, ec in existing_players:
-                details = build_char_details(ec) + wide_string(getattr(ec, 'guild_name', '') or '')
+                details = UpdateCharInfoNot(character=ec, guild_name=getattr(ec, 'guild_name', '') or '').encode()
                 try:
                     await new_player.session.transport.send_event(
                         event(5096, details),

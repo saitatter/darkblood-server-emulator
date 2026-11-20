@@ -4,7 +4,7 @@ import unittest
 
 from tests.common import ServerTestCase, chat_request, create_request, lobby_flow
 from darkblood.games.network.messages import (
-    FriendListAddReq, FriendListUpdateReq, RequestCharInfoReq, RequestItemInfoReq, UseSpeakerItemReq,
+    CharNickChangeReq, FriendListAddReq, FriendListUpdateReq, RequestCharInfoReq, RequestItemInfoReq, UseSpeakerItemReq,
     GuildCreateProposalReq, GuildNameChangeReq, GuildNoticeModifyReq, GuildPersonGradeModifyReq,
     PostDeleteReq, PostGetAppendItemReq, PostListReq, PostReadReq, PostReturnReq, PostSendReq,
 )
@@ -177,7 +177,7 @@ class SocialFlowTest(ServerTestCase):
 
             # 31. Character nickname change (2310 -> 2311)
             from darkblood.core.serialization.jser import wide_string
-            nick_payload = wide_string('RenamedHero') + struct.pack('<q', 123)
+            nick_payload = CharNickChangeReq(item_uid=123, new_name='RenamedHero').encode()
             client.send_event(2310, nick_payload)
             _, ack2311 = await client.expect_event(2311)
             self.assertEqual(struct.unpack_from('<i', ack2311)[0], 0)

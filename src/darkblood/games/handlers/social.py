@@ -258,7 +258,8 @@ class SocialHandlers(BaseDomainService):
 
     async def on_5040(self, correlation, body):
         # eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890).
-        from darkblood.games.network.messages import ChatAck, ChatReq, LevelUpNot
+        from darkblood.games.network.messages import ChatAck, ChatReq
+        from darkblood.games.progression import level_up_not
         from darkblood.games.progression import MAX_LEVEL, add_ap, advance_level
         req = ChatReq.decode(body)
         msg = req.message.strip()
@@ -290,7 +291,7 @@ class SocialHandlers(BaseDomainService):
                     level = previous + gained
                     advance_level(char, level, exp=0)
                     self.store().save()
-                    await self.transport.send_event(event(5087, LevelUpNot.from_character(char).encode()),
+                    await self.transport.send_event(event(5087, level_up_not(char).encode()),
                                                     note=f'gm levelup not (level={level})')
                 system_reply = f'[GM] Leveled up by {gained}. Current level: {previous + gained}, SP: {char.get("sp", 0)}'
             elif cmd == '/sp' and len(parts) > 1 and char:
@@ -351,7 +352,7 @@ class SocialHandlers(BaseDomainService):
         if char:
             char['custom_keys'] = body.hex()
             self.store().save()
-        ack = KeyboardSetCustomKeyAck(result=0, keys_blob=req.keys_blob).encode()
+        ack = KeyboardSetCustomKeyAck(result=0, keys=req.keys_blob.decode('utf-16le', errors='ignore')).encode()
         await self.transport.send_event(event(2320, ack, correlation), note='keyboard set custom key ack')
 
     async def on_5351(self, correlation, body):
@@ -381,10 +382,12 @@ class SocialHandlers(BaseDomainService):
     async def on_2327(self, correlation, body):
         # eEGS_ACHIEVE_GET_LIST_REQ -> 2328 eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveEntry, AchieveGetListAck
+        from darkblood.games.network.messages import AchieveCompletion, AchieveEntry, AchieveGetListAck
         char = self.current_char() or {}
         entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char)]
-        ack = AchieveGetListAck(divisions=achievements.division_totals(char), completed=entries).encode()
+        ack = AchieveGetListAck(divisions=achievements.division_totals(char),
+                                completed={e.achieve_hash: e for e in entries},
+                                completions=[AchieveCompletion(e.achieve_hash) for e in entries]).encode()
         await self.transport.send_event(event(2328, ack, correlation),
                                         note=f'achieve get list ack ({len(entries)} completed)')
 
@@ -392,7 +395,7 @@ class SocialHandlers(BaseDomainService):
         # eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0): vector of u32 achievement
         # hashes completed client-side -> 2445 (u32 result, 0x0074B830), then 2330.
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveCompleteNot, AchieveEntry, AchieveUpdateReq
+        from darkblood.games.network.messages import AchieveCompleteNot, AchieveCompletion, AchieveEntry, AchieveUpdateReq
         self.transport.record('achieve-update', body)
         char = self.current_char()
         completed = []
@@ -407,14 +410,14 @@ class SocialHandlers(BaseDomainService):
                                         note='achieve update ack')
         if completed:
             entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
-            await self.transport.send_event(event(2330, AchieveCompleteNot(entries).encode()),
+            await self.transport.send_event(event(2330, AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]).encode()),
                                             note='achievements completed: %s' % ', '.join(completed))
 
     async def on_2446(self, correlation, body):
         # eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447
         # (0x0074B830 reads only the u32 result), then 2330 for completions.
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveCompleteNot, AchieveDivUpdateReq, AchieveEntry
+        from darkblood.games.network.messages import AchieveCompleteNot, AchieveCompletion, AchieveDivUpdateReq, AchieveEntry
         self.transport.record('achieve-div-update', body)
         char = self.current_char()
         completed = []
@@ -429,7 +432,7 @@ class SocialHandlers(BaseDomainService):
                                         note='achieve div update ack')
         if completed:
             entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
-            await self.transport.send_event(event(2330, AchieveCompleteNot(entries).encode()),
+            await self.transport.send_event(event(2330, AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]).encode()),
                                             note='achievements completed: %s' % ', '.join(completed))
 
     async def on_5165(self, correlation, body):

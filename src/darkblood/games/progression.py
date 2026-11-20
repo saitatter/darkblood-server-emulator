@@ -34,3 +34,10 @@ def advance_level(char, level, exp):
     stats = char_level_stat(int(char.get('char_class', 0)), level)
     char.update(level=level, exp=exp, max_hp=stats['hp'], max_mp=stats['mp'],
                 sp=min(MAX_AP, char.get('sp', 0) + gain), total_ap=min(MAX_AP, total + gain))
+
+
+def level_up_not(char):
+    """5087 for a character dict; both AP array entries hold the remaining AP, as in 2007."""
+    from darkblood.games.network.messages import LevelUpNot
+    return LevelUpNot(ap_slots=[char['sp'], char['sp']], char_uid=char['id'], new_level=char['level'],
+                      exp=char['exp'], total_ap=char['total_ap'])

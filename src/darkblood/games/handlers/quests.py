@@ -17,7 +17,7 @@ from darkblood.games.network.messages import (
     QuestStartAck,
     TutorialQuestStartAck,
 )
-from darkblood.games.progression import MAX_LEVEL, advance_level
+from darkblood.games.progression import MAX_LEVEL, advance_level, level_up_not
 
 
 def _quest_id_after_tag(body: bytes) -> int:
@@ -159,13 +159,13 @@ class QuestHandlers(BaseDomainService):
             char_exp -= req_exp
             level += 1
             advance_level(char, level, char_exp)
-            level_notifications.append(LevelUpNot.from_character(char))
+            level_notifications.append(level_up_not(char))
         char['exp'] = char_exp
         for level_not in level_notifications:
             await self.transport.send_event(event(5087, level_not.encode()),
                                             note=f'level up not (level={level_not.new_level})')
         # The client displays the gained XP from jGainExp +0x08.
-        exp_ack = ChangeExpNot(exp_total=char_exp, exp_details=(0, 0, exp, 0, 0, 0, 0, 0)).encode()
+        exp_ack = ChangeExpNot(exp_total=char_exp, gain_2=exp).encode()
         await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
 
     async def handle_quest_complete(self, correlation: int, body: bytes):

@@ -1,0 +1,232 @@
+# Notices, options, level/EXP, renames, keys, titles, achievements, second
+# password and target lists. Format: schemas/README.md.
+
+domain system Dark Blood protocol wire messages - System domain.
+
+extern Character from darkblood.games.entities.character encode=encode_world_details
+extern Item from darkblood.games.entities.items
+
+message 2594 HttpNoticeCheckReq bare
+  ## Captured bodies are empty.
+end
+
+message 2595 HttpNoticeCheckAck
+  ## Handler 0x005A5110.
+  i32 result
+  bool watch                 # bWatch
+end
+
+message 2216 PlayOptionUpdateReq
+  ## Sender 0x00794ED0: 0x00B353D0 uid, then a struct (0x00A488D0) whose 0x1E tag
+  ## writes no byte. Captures carry no header. The struct is kept raw.
+  i64 char_uid
+  rest raw
+end
+
+message 2406 CharVerifyStatReq header?
+  ## Sender 0x0079ABF0 writes one struct; captures mostly carry the header.
+  rest raw_payload
+end
+
+message 2407 CharVerifyStatAck
+  ## On_eEGS_CHAR_VERIFY_STAT_ACK 0x0074B830.
+  i32 result
+end
+
+message 5087 LevelUpNot
+  ## On_eERC_LEVEL_UP_NOT 0x0078CCF0. Reader 0x00A49160 reads the AP array first,
+  ## then the fixed fields; the handler indexes the array to write the player's
+  ## remaining AP. The 0x1E and array tag checks consume no byte.
+  ## Build it with darkblood.games.progression.level_up_not.
+  array<u32> ap_slots        # both entries hold the remaining AP, as in 2007
+  i64 char_uid
+  u8 new_level = 1
+  u32 exp
+  u32 total_ap
+  bool flag = true
+end
+
+message 5086 ChangeExpNot
+  ## On_eERC_CHANGE_EXP_NOT 0x0078D170. jGainExp (0x00A49E20): 8 x i32 and a
+  ## J-wstring. Sending the last field as a float made the message fail to parse.
+  i32 exp_total              # nExpTotal, written to player +0x78
+  i32 gain_0                 # jGainExp fields; meanings not recovered
+  i32 gain_1
+  i32 gain_2                 # the server puts the gained EXP here
+  i32 gain_3
+  i32 gain_4
+  i32 gain_5
+  i32 gain_6
+  i32 gain_7
+  wstr text
+end
+
+message 2310 CharNickChangeReq header?
+  ## Sender 0x007989B0: 0x00B353D0 then a J-wstring (the earlier decoder read the
+  ## name first).
+  i64 item_uid               # meaning of the i64 not confirmed
+  wstr new_name
+end
+
+message 2311 CharNickChangeAck
+  ## Handler 0x00780200.
+  i32 result
+  vector<Item> items
+  wstr new_name
+end
+
+message 2319 KeyboardSetCustomKeyReq
+  ## No sender recovered; the body is kept raw.
+  rest keys_blob
+end
+
+message 2320 KeyboardSetCustomKeyAck
+  ## Handler 0x00753960.
+  i32 result
+  wstr keys                  # the request blob decoded as UTF-16 (earlier behaviour)
+end
+
+message 2335 TitleChangeReq header?
+  ## Sender 0x00799700: one 4-byte value.
+  i32 title_id
+end
+
+message 2336 TitleChangeAck ok_only
+  ## Handler 0x007751C0.
+  i32 result
+  i32 title_id
+end
+
+message 2327 AchieveGetListReq header?
+end
+
+struct AchieveEntry
+  ## Achievement state, struct 0x00A1ED90. The id is JHashString(AchieveID), as
+  ## loaded by 0x00A50DA0. The bool is sent as "completed" and the i32 as 0;
+  ## neither is confirmed. The time is assumed to be Unix seconds.
+  h32 achieve_hash
+  bool _ = true
+  i32 _
+  i64 completed_at
+end
+
+struct AchieveCompletion
+  ## 13-byte block (0x00A1E7E0): 0x0079D240 looks up the first u32 and announces
+  ## the achievement by name. The other 9 bytes are not recovered.
+  h32 achieve_hash
+  raw[9] _
+end
+
+message 2328 AchieveGetListAck ok_only
+  ## Handler 0x0079D650: result, struct 0x00A3E760 (tag 0x1E writes no byte),
+  ## then the completion vector 0x0076B0C0.
+  i32 result
+  map<u32,i64> divisions     # 0x005EC140: division -> counter
+  map<h32,AchieveEntry> completed  # 0x00A3DC50
+  bool _                     # not recovered
+  vector<AchieveCompletion> completions
+end
+
+message 2444 AchieveUpdateReq header?
+  ## Sender 0x007992D0: hashes of achievements the client completed itself
+  ## (group/hidden). Answered by 2445. Not yet observed live.
+  vector<u32> hashes
+end
+
+message 2446 AchieveDivUpdateReq
+  ## Sent after a dungeon run; captures carry no header. Per-run deltas
+  ## (division 24: 192, 194, 70, ...).
+  map<u32,i64> amounts
+end
+
+message 2329 AchieveChangeNot
+  ## Handler 0x0076C720.
+  map<?> _
+  map<?> _
+  map<?> _
+end
+
+message 2330 AchieveCompleteNot
+  ## Handler 0x0079D240: entries (0x0076EA70 -> 0x00A1ED90) applied to the
+  ## achievement page, then completion blocks (0x00A1E7E0) whose first u32 is
+  ## looked up (0x00AABAB0) to print the completion message.
+  vector<AchieveEntry> entries
+  vector<AchieveCompletion> completions
+end
+
+message 2283 PromotionNot ok_only
+  ## Handler 0x00797F00.
+  i32 result
+  u8 new_class = 1
+  i32 sp
+  map<?> _
+end
+
+message 2286 RebirthCoinChangeNot ok_only
+  ## Handler 0x007983B0: owned rebirth coins stored at player +0x7C; a positive
+  ## difference shows UI_2653 ("received N coins").
+  i32 result
+  i16 coins = 10
+end
+
+message 2709 UseArenaSpItemReq header?
+  i64 item_uid
+end
+
+message 2710 UseArenaSpItemAck ok_only
+  ## Handler 0x007A7CA0.
+  i32 result
+  vector<Item> consumed_items
+  i32 arena_sp
+end
+
+message 5256 SecondPassCreateReq header?
+  ## Sender 0x0079AD90 writes a J-wstring.
+  wstr password
+end
+
+message 5257 SecondPassCreateAck
+  ## Handler 0x0075B020.
+  i32 result
+end
+
+message 5258 SecondPassModifyReq header?
+  ## Sender 0x0079AEB0 writes two J-wstrings.
+  wstr old_password
+  wstr new_password
+end
+
+message 5259 SecondPassModifyAck
+  ## Handler 0x0075B050.
+  i32 result
+end
+
+message 5260 SecondPassAuthReq header?
+  ## Sender 0x0079AFE0 writes a J-wstring.
+  wstr password
+end
+
+message 5261 SecondPassAuthAck
+  ## Handler 0x0075B080.
+  i32 result
+end
+
+struct TargetState
+  ## Struct 0x00A49B50 (also the 5046 vecTargetState element). Meanings not recovered.
+  i32 value
+  bool flag_a
+  bool flag_b
+end
+
+message 5125 GTargetListAck
+  ## Dispatcher 0x00874550 -> 0x00873490 (schema from tools/extract_schemas.py).
+  u32 result
+  vector<TargetState> targets
+end
+
+message 5096 UpdateCharInfoNot
+  ## Handler 0x0078C990. Sent by the world manager as character details
+  ## (0x00A52630) followed by the guild name.
+  Character character = Character()
+  wstr guild_name
+end
