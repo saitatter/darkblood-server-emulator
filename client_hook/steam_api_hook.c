@@ -750,7 +750,8 @@ static void ResetLocalUserUid(void) {
  * key i64 at +0x10, isnil byte at +0x21). After the Lobby fade, 0x007850F0
  * walks that map and calls 0x0076F900 for every non-local entry; its model
  * lookup returns NULL and the client crashed at 0x0076F98D (live 2026-11-21,
- * the client that still saw the other player). Remove them with the client's
+ * the client that still saw the other player). Remove them, and the stale
+ * local entry, with the client's
  * own 5039 (eERC_LEAVE_LAYER_NOT) path: 0x009662E0, thiscall (i64 uid), ret 8. */
 static void __stdcall RemoveUser(DWORD lo, DWORD hi) {
     __asm {
@@ -794,7 +795,12 @@ static void ForgetRemoteUsers(void) {
         DWORD key[2], next = 0, left = 0, parent = 0;
         if (!SafeRead(node + 0x21, &nil, 1) || nil) break;
         if (!SafeRead(node + 0x10, key, 8)) break;
-        if (key[0] != selfUid[0] || key[1] != selfUid[1]) { uids[count][0] = key[0]; uids[count][1] = key[1]; count++; }
+        /* The own entry goes too: it is keyed by the old character UID, and once
+         * ResetLocalUserUid sets the local UID to -1 the loop no longer
+         * recognises it as local (live 2026-11-21: crash at 0x0076F98D after
+         * the peer was removed). A fresh login reaches the Lobby with no
+         * entry for the not yet selected character. */
+        uids[count][0] = key[0]; uids[count][1] = key[1]; count++;
         if (!SafeRead(node + 8, &next, 4)) break;
         if (SafeRead(next + 0x21, &nil, 1) && !nil) {
             while (SafeRead(next, &left, 4) && SafeRead(left + 0x21, &nil, 1) && !nil) next = left;
@@ -809,8 +815,12 @@ static void ForgetRemoteUsers(void) {
             node = parent;
         }
     }
-    for (i = 0; i < count; i++) RemoveUser(uids[i][0], uids[i][1]);
-    RawLogFmt("[RECONNECT] removed %d remote user(s) from the user map", count);
+    for (i = 0; i < count; i++) {
+        RawLogFmt("[RECONNECT] user map entry %08X:%08X%s", uids[i][1], uids[i][0],
+                  uids[i][0] == selfUid[0] && uids[i][1] == selfUid[1] ? " (local)" : "");
+        RemoveUser(uids[i][0], uids[i][1]);
+    }
+    RawLogFmt("[RECONNECT] removed %d user(s) from the user map", count);
 }
 
 static int __cdecl ReturnToLobbyIfDisconnected(void) {
