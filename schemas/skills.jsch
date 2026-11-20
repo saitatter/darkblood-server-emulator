@@ -1,0 +1,119 @@
+# Skill learning, speeches, locks and AP. Format: schemas/README.md.
+# Sender writers (research/opcode_xrefs.tsv senders): 0x00B35190 writes 2 bytes,
+# 0x00B352B0 4 bytes, 0x00B35100 1 byte, 0x00B353D0 8 bytes (calibrated on captures).
+
+domain skills Dark Blood protocol wire messages - Skills domain.
+
+extern Item from darkblood.games.entities.items
+
+struct LearnedSkill
+  ## Value of the learned-skill map, element reader 0x004ACB80. Shared by 2698
+  ## (0x007A74A0) and 2007 (0x004B1240 inside 0x00A40760); the map key is the skill index.
+  u16 skill_index
+  u8 level
+  wstr speech
+  bool locked
+  bool _                     # meaning unknown
+end
+
+struct SkillLevel
+  ## Element of the 2697 request vector: tag 0x0F, then the pair.
+  lit 0f
+  u16 skill_index
+  u8 level
+end
+
+message 2050 LearnSkillReq header?
+  ## Sender 0x0078DB30: 0x00B35190 sKindNameIndex, 0x00B35100 ucLevel.
+  u16 skill_index
+  u8 level = 1
+end
+
+message 2051 LearnSkillAck
+  ## On_eEGS_LEARN_SKILL_ACK 0x0078DBE0.
+  i32 result
+  u16 skill_index
+  u8 level = 1
+  i32 remain_sp = 100
+  i64 remain_gold = 10000
+end
+
+message 2117 UpdateSkillLockedReq header?
+  ## Sender 0x00791B90: 0x00B35190 sKindNameIndex, 0x00B35630 bLocked.
+  i16 skill_index
+  bool locked
+end
+
+message 2118 UpdateSkillLockedAck
+  ## On_eEGS_UPDATE_SKILL_LOCKED_ACK 0x00752C70.
+  i32 result
+  i16 skill_index
+  bool locked
+end
+
+message 2053 ModifySkillSpeechReq header?
+  ## Sender 0x0078DE90: 0x00B35190 sKindNameIndex, 0x00B35A40 strSpeech (J-wstring).
+  u16 skill_index
+  wstr speech
+end
+
+message 2054 ModifySkillSpeechAck
+  ## On_eEGS_MODIFY_SKILL_SPEECH_ACK 0x0078E090.
+  i32 result
+  u16 skill_index
+  wstr speech
+end
+
+message 2055 DeleteSkillSpeechReq header?
+  ## Sender 0x0078DF40: 0x00B35190 sKindNameIndex.
+  u16 skill_index
+end
+
+message 2056 DeleteSkillSpeechAck
+  ## On_eEGS_DELETE_SKILL_SPEECH_ACK 0x0078E270.
+  i32 result
+  u16 skill_index
+end
+
+message 2280 InitSkillNot ok_only
+  ## Handler 0x00797740.
+  i32 result
+  i32 sp
+  map<?> _
+end
+
+message 2111 UseLearnSkillItemReq header?
+  ## Sender 0x0078BB60: 0x00B353D0 item uid, 0x00B352B0 skill id (4 bytes).
+  i64 item_uid
+  i32 skill_id
+end
+
+message 2112 UseLearnSkillItemAck ok_only
+  ## Handler 0x0078BCD0.
+  i32 result
+  i16 skill_id
+  u8 skill_level = 1
+  i32 item_code
+  i32 count = 1
+  vector<Item> items
+  i32 sp
+end
+
+message 2109 InsertApNot
+  ## Handler 0x00790480.
+  i32 current_ap
+  i32 total_ap
+end
+
+message 2697 LearnSkillListReq header
+  ## Sender 0x007A73D0. Captures always carry the header.
+  vector<SkillLevel> skills
+end
+
+message 2698 LearnSkillListAck
+  ## On_opcode_2698 0x007A74A0.
+  i32 result
+  map<u16,LearnedSkill> skills
+  i32 remain_sp = 100
+  i64 remain_gold = 10000
+end

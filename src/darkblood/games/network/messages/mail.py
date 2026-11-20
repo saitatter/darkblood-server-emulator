@@ -6,7 +6,7 @@ import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, varuint, wide_string
+from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -130,14 +130,14 @@ class PostSendReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostSendReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
+        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         recipient = r.read_wstring()
         title = r.read_wstring()
         items = r.read_tagged_vector(lambda r1: r1.read_i64())
         gold = r.read_i64()
         extra = r.read_i64()
         is_cod = r.read_bool()
-        return cls(header=header, recipient=recipient, title=title, items=items, gold=gold, extra=extra, is_cod=is_cod)
+        return cls(recipient=recipient, title=title, items=items, gold=gold, extra=extra, is_cod=is_cod)
 
 
 @dataclass
@@ -181,9 +181,9 @@ class PostReadReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostReadReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
+        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         mail_uid = r.read_i64()
-        return cls(header=header, mail_uid=mail_uid)
+        return cls(mail_uid=mail_uid)
 
 
 @dataclass
@@ -229,10 +229,10 @@ class PostGetAppendItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostGetAppendItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
+        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         mail_uid = r.read_i64()
         item_record = r.read_rest()
-        return cls(header=header, mail_uid=mail_uid, item_record=item_record)
+        return cls(mail_uid=mail_uid, item_record=item_record)
 
 
 @dataclass
@@ -292,9 +292,9 @@ class PostReturnReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostReturnReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
+        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         mail_id = r.read_i64()
-        return cls(header=header, mail_id=mail_id)
+        return cls(mail_id=mail_id)
 
 
 @dataclass
@@ -344,9 +344,9 @@ class PostDeleteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostDeleteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
+        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         mail_uids = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(header=header, mail_uids=mail_uids)
+        return cls(mail_uids=mail_uids)
 
 
 @dataclass

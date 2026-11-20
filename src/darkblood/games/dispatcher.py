@@ -3,6 +3,8 @@
 import logging
 from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
 
+from darkblood.core.serialization.jser import WireError
+
 
 logger = logging.getLogger(__name__)
 Handler = Callable[[Any, int, bytes], Awaitable[None]]
@@ -32,6 +34,11 @@ class PacketDispatcher:
         controller = getattr(session, session_attr) if session_attr else session
         try:
             await handler(controller, correlation, body)
+        except WireError as exc:
+            # Generated decoders are strict. A body that does not match its
+            # schema is recorded and dropped; the connection stays open.
+            logger.warning('Malformed opcode %d body (%s): %s', opcode, exc, body.hex())
+            session.transport.record('bad-request', body, opcode=opcode, error=str(exc))
         except Exception:
             logger.exception('Error handling opcode %d', opcode)
             raise

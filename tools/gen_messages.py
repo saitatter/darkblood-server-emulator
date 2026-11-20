@@ -156,8 +156,8 @@ class Parser:
         if m:
             kind, inner = m.groups()
             if inner == '?':
-                if kind not in ('vector', 'set', 'map'):
-                    self.fail('only vector/set/map may have an unknown element type')
+                if kind not in ('vector', 'set', 'map', 'array'):
+                    self.fail('only vector/set/map/array may have an unknown element type')
                 return Type('empty', kind)
             args = [self.parse_type(a) for a in split_type_args(inner)]
             if len(args) != (2 if kind == 'map' else 1):
@@ -183,7 +183,8 @@ class Parser:
     def parse_default(self, text, ftype):
         if text.endswith('()'):
             fn = text[:-2]
-            if fn not in self.schema.imports and not any(s.name == fn for s in self.schema.structs):
+            if (fn not in self.schema.imports and fn not in self.schema.externs
+                    and not any(s.name == fn for s in self.schema.structs)):
                 self.fail('default factory %s is not imported' % fn)
             return text
         if ftype.kind in ('wstr', 'ipv4'):
@@ -408,6 +409,8 @@ class PythonBackend:
         if t.kind == 'extern':
             return '%s.%s()' % (expr, self.schema.externs[t.name].encode)
         if t.kind == 'empty':
+            if t.name == 'array':
+                return "b'\\x80'"
             return "b'\\x%02x\\x80'" % TAGS[t.name]
         e = 'e%d' % depth
         if t.kind in ('vector', 'set', 'array', 'pairs'):
@@ -439,6 +442,8 @@ class PythonBackend:
         if t.kind in ('struct', 'extern'):
             return '%s.read(%s)' % (t.name, reader)
         if t.kind == 'empty':
+            if t.name == 'array':
+                return '%s.read_empty_container(None)' % reader
             return '%s.read_empty_container(0x%02X)' % (reader, TAGS[t.name])
         inner = 'r%d' % (depth + 1)
         item = 'lambda %s: %s' % (inner, self.dec(t.args[0], inner, depth + 1))

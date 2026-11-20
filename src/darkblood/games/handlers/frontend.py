@@ -7,6 +7,7 @@ from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character, delete_seconds_left
 from darkblood.games.entities.items import EQUIPPED, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
+from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.frontend.relay import RELAY_PORT
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
@@ -15,6 +16,7 @@ from darkblood.games.network.messages import (
     JoinSquareAck,
     QuestHistoryNot,
     RelayAddressNot,
+    QuickSlot,
     SelectCharacterAck,
     UndeleteCharacterAck,
 )
@@ -84,15 +86,15 @@ def build_select_char_ack(char):
     return SelectCharacterAck(
         result=0,
         character=c,
-        active_quests=active,
+        active_quests=sorted(active, key=lambda q: q.uid),
         bags=bags,
         items=items,
-        skills=char.get('skills', {}) if isinstance(char, dict) else {},
-        skill_speeches=char.get('skill_speeches', {}) if isinstance(char, dict) else {},
-        locked_skills=char.get('locked_skills', []) if isinstance(char, dict) else [],
-        quickslots=[(q['type'], q['slot'], q['ref_id'], q['ref_uid'])
-                    for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()
-                    if 'slot' in q],
+        skills=learned_skill_map(char.get('skills', {}), char.get('skill_speeches', {}),
+                                 char.get('locked_skills', [])) if isinstance(char, dict) else {},
+        quickslots=[QuickSlot(*q) for q in sorted(
+            (q['type'], q['slot'], q['ref_id'], q['ref_uid'])
+            for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()
+            if 'slot' in q)],
     ).encode()
 
 

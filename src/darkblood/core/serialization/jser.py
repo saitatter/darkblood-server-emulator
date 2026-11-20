@@ -209,12 +209,15 @@ class JSerBufferReader:
         self.expect_tag(0x13)
         return self.read_vector(item_parser)
 
-    def read_empty_container(self, tag: int) -> None:
-        """A container whose element layout is not recovered: only the empty form is accepted."""
-        self.expect_tag(tag)
+    def read_empty_container(self, tag) -> None:
+        """A container whose element layout is not recovered: only the empty form is accepted.
+
+        tag None is an untagged fixed array (count only)."""
+        if tag is not None:
+            self.expect_tag(tag)
         count = self.read_varuint()
         if count:
-            raise WireError(f'Container 0x{tag:02X} with {count} elements of unknown layout')
+            raise WireError(f'Container {tag} with {count} elements of unknown layout')
 
     def read_rest(self) -> bytes:
         return self.read_bytes(self.remaining)

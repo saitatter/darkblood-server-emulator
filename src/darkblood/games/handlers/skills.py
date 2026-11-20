@@ -4,6 +4,7 @@ from darkblood.games.network.messages import (
     DeleteSkillSpeechAck,
     DeleteSkillSpeechReq,
     LearnSkillAck,
+    LearnedSkill,
     LearnSkillListAck,
     LearnSkillListReq,
     LearnSkillReq,
@@ -17,6 +18,16 @@ from darkblood.games.network.messages import (
 from darkblood.games.handlers.base import BaseDomainService
 
 
+def learned_skill_map(skills, speeches=None, locked=()):
+    """Stored skills ({index: level}, keys may be strings) -> map for 2698 and 2007."""
+    speeches = speeches or {}
+    locked = {int(x) for x in locked}
+    result = {}
+    for sidx, lvl in ((int(k), int(v)) for k, v in skills.items()):
+        result[sidx] = LearnedSkill(sidx, lvl, speeches.get(str(sidx), ''), sidx in locked)
+    return result
+
+
 class SkillHandlers(BaseDomainService):
     """Skill learning, skill trees, quickslots and skill custom speech."""
 
@@ -27,7 +38,7 @@ class SkillHandlers(BaseDomainService):
         from darkblood.games.game_data.client_dict import skill_learn_cost
         skills = char.get('skills', {})
         sp = ar = 0
-        for sidx, lvl in wanted:
+        for sidx, lvl in wanted:  # (index, level) pairs
             s, a = skill_learn_cost(int(sidx), int(skills.get(str(sidx), 0)), int(lvl))
             sp, ar = sp + s, ar + a
         if sp > char.get('sp', 0) or ar > char.get('gold', 0):
@@ -64,20 +75,20 @@ class SkillHandlers(BaseDomainService):
         remain_sp = remain_gold = 0
         learned_skills = {}
         if char:
-            if not self._charge_skills(char, req.skills):
+            if not self._charge_skills(char, [(s.skill_index, s.level) for s in req.skills]):
                 await self.transport.send_event(event(2698, LearnSkillListAck(result=1).encode(), correlation),
                                                 note='learn skill list fail (not enough SP/AR)')
                 return
             skills = char.setdefault('skills', {})
-            for sidx, lvl in req.skills:
-                skills[str(sidx)] = lvl
-                learned_skills[sidx] = lvl
+            for s in req.skills:
+                skills[str(s.skill_index)] = s.level
+                learned_skills[s.skill_index] = s.level
             self.store().save()
             remain_gold = char.get('gold', 0)
             remain_sp = char.get('sp', 0)
         else:
-            learned_skills = {sidx: lvl for sidx, lvl in req.skills}
-        ack = LearnSkillListAck(result=0, skills=learned_skills,
+            learned_skills = {s.skill_index: s.level for s in req.skills}
+        ack = LearnSkillListAck(result=0, skills=learned_skill_map(learned_skills),
                                 remain_sp=remain_sp, remain_gold=remain_gold).encode()
         await self.transport.send_event(event(2698, ack, correlation),
                                         note=f'learn skill list ack ({len(learned_skills)} skills)')

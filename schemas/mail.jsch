@@ -36,7 +36,7 @@ message 2220 PostListAck ok_only
   bool notify
 end
 
-message 2221 PostSendReq header
+message 2221 PostSendReq header?
   ## Sender 0x00795D40.
   wstr recipient
   wstr title
@@ -55,7 +55,7 @@ message 2222 PostSendAck ok_only
   i16 max_daily_send_count = 30
 end
 
-message 2223 PostReadReq header
+message 2223 PostReadReq header?
   ## Sender 0x00796390.
   i64 mail_uid
 end
@@ -66,7 +66,7 @@ message 2224 PostReadAck
   i64 mail_uid
 end
 
-message 2225 PostGetAppendItemReq header
+message 2225 PostGetAppendItemReq header?
   ## Sender 0x007965F0.
   i64 mail_uid
   rest item_record           # item record written by 0x00A4FAA0; not decoded
@@ -85,7 +85,7 @@ message 2227 PostNewArrivalNot bare
   ## result word is unverified.
 end
 
-message 2234 PostReturnReq header
+message 2234 PostReturnReq header?
   ## No sender recovered in research/opcode_xrefs.tsv (call site near 0x00A33907).
   i64 mail_id
 end
@@ -96,7 +96,7 @@ message 2235 PostReturnAck ok_only
   vector<i64> mail_uids
 end
 
-message 2236 PostDeleteReq header
+message 2236 PostDeleteReq header?
   ## Sender 0x00796470: header, then tag 0x10 vector (0x004CB5E0).
   vector<i64> mail_uids
 end

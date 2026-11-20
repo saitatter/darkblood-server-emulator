@@ -4,6 +4,7 @@ import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
+from darkblood.games.network.messages import ModifySkillSpeechReq, UseLearnSkillItemReq
 
 
 class InventoryFlowTest(ServerTestCase):
@@ -106,8 +107,7 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iqB', ack2049), (0, 2, 3))
 
             # 11. Modify skill speech (2053 -> 2054)
-            shout = 'Die!'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(2053, struct.pack('<H', 101) + struct.pack(f'<{len(shout)}s', shout))
+            client.send_event(2053, ModifySkillSpeechReq(skill_index=101, speech='Die!').encode())
             _, ack2054 = await client.expect_event(2054)
             self.assertEqual(struct.unpack_from('<iH', ack2054), (0, 101))
 
@@ -258,7 +258,7 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2251[:4])[0], 0)
 
             # 41. Use learn skill item (2111 -> 2112)
-            client.send_event(2111, struct.pack('<qh', 1, 105))
+            client.send_event(2111, UseLearnSkillItemReq(item_uid=1, skill_id=105).encode())
             _, ack2112 = await client.expect_event(2112)
             self.assertEqual(struct.unpack_from('<i', ack2112[:4])[0], 0)
 

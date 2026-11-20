@@ -1,0 +1,201 @@
+# Server/channel lists, character selection, squares and relay. Format: schemas/README.md.
+
+domain lobby Dark Blood protocol wire messages - Lobby domain.
+
+extern Character from darkblood.games.entities.character encode=encode_world_details
+extern Bag from darkblood.games.entities.items
+extern Item from darkblood.games.entities.items
+extern ActiveQuest from darkblood.games.missions.quests encode=encode_entry
+extern LearnedSkill from darkblood.games.network.messages.skills
+import layer_net_id from darkblood.games.entities.character
+
+struct GameServer
+  ## Server List entry of 2403 (reader 0x00A496B0, constructor 0x0074DF70).
+  wstr name = 'Offline'
+  u16 u16                    # meaning unknown
+  u64 u64                    # meaning unknown
+  bool flag_a                # meaning unknown
+  bool flag_b                # meaning unknown
+  bool flag_c = true         # meaning unknown
+end
+
+struct ChannelSquare
+  ## Channel List entry of 2022 (reader 0x00A49700).
+  u64 square_id = 1
+  wstr name = 'Channel 1'
+  u32 a                      # meaning unknown
+  u32 load = 100             # 100 = "Normal · [Good]" in the UI
+  u32 c                      # meaning unknown
+end
+
+struct QuickSlot
+  ## 2007 quickslot element 0x00A49DC0 (25 bytes, defaults 0x0049F690),
+  ## loaded by 0x00966080 at 0x007AA8A6.
+  u8 type                    # 0 item, 1 skill
+  u8 slot
+  i32 ref_id                 # nRefID
+  i64 ref_uid                # nRefUID
+  bool _                     # meaning unknown
+  i64 _                      # meaning unknown
+  u16 _ = 0xFFFF             # meaning unknown
+end
+
+message 2007 SelectCharacterAck
+  ## Handler 0x007AA4B0: untagged struct 0x00A40760 starting with the result (the
+  ## handler peeks it with 0x00A1EA20(1) and the reader rereads the same word),
+  ## nested character details (0x00A52630), then the fields below. Field
+  ## meanings are unknown unless commented; they are sent as zero or empty.
+  u32 result
+  array<?> _                 # 0x00A3ED30, max 3
+  array<?> _                 # 0x00A1E840, max 10
+  Character character = Character()
+  u64 _
+  u64 _
+  u64 _
+  u64 _
+  u8 _
+  u8 _
+  map<?> _                   # 0x00A40720
+  vector<Bag> bags           # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
+  vector<Item> items         # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
+  vector<QuickSlot> quickslots  # 0x004B2C30 (+0x2B3)
+  vector<?> _                # 0x00A3EEC0
+  map<u16,LearnedSkill> skills  # 0x004B1240, element reader 0x004ACB80 (as 2698)
+  map<?> _                   # 0x0076E560
+  set<?> _                   # 0x0076A8C0
+  map<?> _                   # 0x00A3E410
+  u64 _
+  u32 _
+  u32 _
+  pairs<ActiveQuest> active_quests  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
+  set<?> _                   # 0x005EE0F0
+  raw[18] _                  # 0x00641E00
+  set<?> _                   # 0x005EE0F0
+  u64 _
+  u64 _
+  u64 _
+  u32 _
+  u64 _
+  u64 _
+  vector<?> _                # 0x004B1A60
+  u64 _
+  bool _
+  bool _
+  f32 _
+  u64 _
+  u64 _
+  map<?> _                   # 0x00485220
+  map<?> _                   # 0x00485220
+  wstr _                     # 0x00B35AB0
+  map<?> _                   # 0x0074C1D0: two maps and a bool
+  map<?> _
+  bool _
+  map<?> _                   # 0x00A3EA00
+  u64 _
+  u64 _
+  u32 _
+  vector<?> _                # 0x004DA660
+  vector<?> _                # 0x004DA660
+  u16 _
+  u64 _
+  u64 _
+  map<?> _                   # 0x005F9190
+  map<?> _                   # 0x0076ABA0
+  map<?> _                   # 0x00A1E8C0: map, u64, bool, u64
+  u64 _
+  bool _
+  u64 _
+  vector<?> _                # 0x00A3EDD0
+  u32 _                      # 0x00A1EEA0: u32, 3 x u64
+  u64 _
+  u64 _
+  u64 _
+  map<?> _                   # 0x00A1E900: map + vector
+  vector<?> _
+  u16 _
+  vector<?> _                # 0x004DA660
+  map<?> _                   # 0x005F9150
+  u16 _
+  map<?> _                   # 0x00485220
+  vector<?> _                # 0x004B9210
+end
+
+message 5029 JoinSquareAck
+  ## Reader 0x00757AD0.
+  u32 result
+  u64 square_id = 1
+end
+
+message 5134 RelayAddressNot
+  ## Reader 0x0075AAE0: implicit 0x1E struct = 6 raw bytes (0x00A48910) written to
+  ## the relay buffer; the handler then calls JP2PClient::Connect (0x00956C80).
+  ipv4 ip = '127.0.0.1'      # network byte order
+  u16 port = 9401
+end
+
+message 5046 BackToSquareAck
+  ## Handler 0x007897F0; names from "nJoinSquareUID >> nJoinLayerNetID >>
+  ## vecTargetState >> bUseWaypoint >> iCurAr". Outside SquarePlay the handler
+  ## validates the layer id like CanEnter, stores it at player+0xF0, changes to
+  ## eAS_SquarePlay and reconnects the relay.
+  u32 result
+  u64 square_uid = 1
+  u64 layer_net_id = layer_net_id()
+  vector<?> _                # vecTargetState (0x00773870), element layout unknown
+  bool use_waypoint
+  i64 cur_ar                 # iCurAr: current AR; 0 showed 0 AR in town until relog
+end
+
+struct RelayJoinGroupAck
+  ## ProudNet relay RMI 3001 JoinGroupACK (relay PIDL), not a JEvent.
+  lit 0003
+  u16 _ = 3001               # RMI id
+  u32 group_host_id = 0x10000
+end
+
+struct PageCharTemp
+  ## Player entry of 5027 (reader 0x00A494B0, writer 0x00A49530).
+  i64 char_id
+  f32 x
+  f32 y
+  f32 z
+  wstr name
+  u8 char_class = 1
+  i64 level = 1
+  i64 guild_uid
+  wstr guild_name
+  u64 server_bits            # server-list key in bits 54-58 (0x00A614A0): key << 54
+end
+
+message 5027 JoinLayerNot
+  ## Handler 0x00787790: vecPageCharTemp, vecDuel. Spawns players in the town layer.
+  vector<PageCharTemp> players
+  vector<?> _                # vecDuel
+end
+
+message 2014 DeleteCharacterReq header
+  ## Live: ffffff7f 0200000000000000 deletes character 2.
+  i64 char_uid               # nDelCharUID
+end
+
+message 2015 DeleteCharacterAck
+  ## On_eEGS_DELETE_CHARACTER_ACK 0x00758370.
+  i32 result
+  i64 char_uid               # nDelCharUID
+  i32 complete_time          # nUserDelCompleteTime (0 = instant)
+end
+
+message 2247 UndeleteCharacterAck
+  ## Handler 0x0075A8A0. Result 0 clears the pending deletion of that slot
+  ## (0x006F02E0 with flag 0, time 0). Request 2246 has the same body as 2014.
+  i32 result
+  i64 char_uid
+end
+
+message 5165 ArenaBackToSquareReq bare
+end
+
+message 5166 ArenaBackToSquareAck
+  ## Handler 0x00758550.
+  i32 result
+end

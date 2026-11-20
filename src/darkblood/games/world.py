@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from darkblood.core.serialization.jser import event, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
-from darkblood.games.network.messages.lobby import encode_join_layer_not
+from darkblood.games.network.messages.lobby import JoinLayerNot, PageCharTemp
 from darkblood.games.network.messages.party import (
     PartyAcceptInviteNot, PartyInfoNot, PartyInviteNot, PartyMemberInfo,
     UserJoinSquareNot, UserLeaveSquareNot
@@ -148,11 +148,11 @@ class GameWorldManager:
             z=new_player.z,
             guild_uid=getattr(new_char, 'guild_uid', 0),
             guild_name=getattr(new_char, 'guild_name', '') or '',
-            server_id=OFFLINE_SERVER_ID,
+            server_bits=OFFLINE_SERVER_ID << 54,  # key in bits 54-58 (0x00A614A0)
         )
 
         # 1. Notify others in square of newcomer
-        layer_not_ev = event(5027, encode_join_layer_not([new_p_data]))
+        layer_not_ev = event(5027, JoinLayerNot(players=[PageCharTemp(**new_p_data)]).encode())
         await self.broadcast_to_square(
             new_player.square_id,
             layer_not_ev,
@@ -190,13 +190,13 @@ class GameWorldManager:
                     z=ep.z,
                     guild_uid=getattr(ec, 'guild_uid', 0),
                     guild_name=getattr(ec, 'guild_name', '') or '',
-                    server_id=OFFLINE_SERVER_ID,
+                    server_bits=OFFLINE_SERVER_ID << 54,  # key in bits 54-58 (0x00A614A0)
                 )
                 for ep, ec in existing_players
             ]
             try:
                 await new_player.session.transport.send_event(
-                    event(5027, encode_join_layer_not(ex_data_list)),
+                    event(5027, JoinLayerNot(players=[PageCharTemp(**p) for p in ex_data_list]).encode()),
                     note=f"join layer not 5027 with {len(ex_data_list)} players for newcomer"
                 )
             except Exception as e:

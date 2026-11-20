@@ -7,6 +7,7 @@ from darkblood.core import hashing
 from darkblood.core.serialization import jser
 from darkblood.games.entities.character import layer_net_id
 from darkblood.games.entities.items import Item
+from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.games.network import messages
 
 
@@ -56,10 +57,11 @@ class WireMessagesTest(unittest.TestCase):
         # Captured wire packet from client: ffffff7f 10 83 0f 050001 0f fb0001 0f 230001
         raw_req = bytes.fromhex('ffffff7f10830f0500010ffb00010f230001')
         req = messages.LearnSkillListReq.decode(raw_req)
-        self.assertEqual(req.skills, [(5, 1), (251, 1), (35, 1)])
+        self.assertEqual([(s.skill_index, s.level) for s in req.skills], [(5, 1), (251, 1), (35, 1)])
 
         # Test ack encoding
-        ack = messages.LearnSkillListAck(result=0, skills={5: 1, 251: 1, 35: 1}, remain_sp=100, remain_gold=10000)
+        ack = messages.LearnSkillListAck(result=0, skills=learned_skill_map({5: 1, 251: 1, 35: 1}),
+                                        remain_sp=100, remain_gold=10000)
         encoded = ack.encode()
         self.assertEqual(encoded[:4], b'\x00\x00\x00\x00')
         self.assertEqual(encoded[4], 0x17)  # map tag
@@ -186,7 +188,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<iqB', ack.encode()), (0, 2, 3))
 
     def test_skill_speech_messages(self):
-        req_mod = messages.ModifySkillSpeechReq.decode(struct.pack('<H', 105) + 'Fire!'.encode('utf-16le'))
+        req_mod = messages.ModifySkillSpeechReq.decode(struct.pack('<H', 105) + jser.wide_string('Fire!'))
         self.assertEqual(req_mod.skill_index, 105)
 
         ack_mod = messages.ModifySkillSpeechAck(result=0, skill_index=105, speech='Fire!')
@@ -439,12 +441,13 @@ class WireMessagesTest(unittest.TestCase):
 
     def test_select_char_ack_carries_learned_skills(self):
         # 2007 map 0x4B1240 shares the 2698 element reader 0x4ACB80.
-        skills = {'5': 2, '35': 1}
-        smap = messages.skills.encode_skill_map(skills, {'5': 'Hi'}, [35])
+        skills = learned_skill_map({'5': 2, '35': 1}, {'5': 'Hi'}, [35])
+        smap = messages.LearnSkillListAck(skills=skills).encode()[4:-12]
         self.assertEqual(smap[:2], b'\x17\x82')
         self.assertEqual(smap[2:8], b'\x0f' + struct.pack('<HHB', 5, 5, 2))
-        ack = messages.SelectCharacterAck(skills=skills, skill_speeches={'5': 'Hi'},
-                                          locked_skills=[35]).encode()
+        self.assertEqual(smap[8:15], jser.wide_string('Hi') + b'\x00\x00')
+        self.assertEqual(smap[-2:], b'\x01\x00')  # skill 35 locked
+        ack = messages.SelectCharacterAck(skills=skills).encode()
         self.assertIn(smap, ack)
         empty = messages.SelectCharacterAck().encode()
         self.assertEqual(len(ack) - len(empty), len(smap) - 2)
@@ -724,7 +727,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', ack[:4])[0], 0)
 
     def test_use_learn_skill_item(self):
-        req = messages.UseLearnSkillItemReq.decode(struct.pack('<qh', 99, 105))
+        req = messages.UseLearnSkillItemReq.decode(struct.pack('<qi', 99, 105))
         self.assertEqual(req.item_uid, 99)
         self.assertEqual(req.skill_id, 105)
         ack = messages.UseLearnSkillItemAck(
