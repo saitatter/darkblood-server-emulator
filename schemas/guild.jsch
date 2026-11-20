@@ -1,0 +1,169 @@
+# Guild creation, membership, money, notices and skills. Format: schemas/README.md.
+# Request senders are from research/opcode_xrefs.tsv; writer widths as in skills.jsch.
+# `wrest`/`wstrz` keep the earlier raw UTF-16 forms where no sender is recovered.
+
+domain guild Dark Blood protocol wire messages - Guild domain.
+
+extern Item from darkblood.games.entities.items
+
+message 2570 GuildOrAttendanceAck
+  ## Reply to 2569, reader 0x00772160.
+  u32 result
+  map<?> _                   # 0x0076AE20
+end
+
+message 2150 GuildCreateReq header?
+  ## No sender recovered; kept as the earlier raw UTF-16 form.
+  wrest guild_name
+end
+
+message 5121 GuildCreateProposalReq header?
+  ## Sender 0x007935F0 writes a J-wstring.
+  wstr guild_name
+end
+
+message 2151 GuildCreateAck ok_only
+  ## On_eEGS_GUILD_CREATE_ACK 0x00793720.
+  i32 result
+  i64 guild_uid = 1
+  wstrz guild_name           # null-terminated UTF-16 as sent so far; reader not checked
+  i64 remain_gold
+end
+
+message 5122 GuildCreateProposalAck
+  ## On_eERC_GUILD_CREATE_PROPOSAL_ACK 0x00759750.
+  i32 result
+end
+
+message 2155 GuildPersonJoinReq header?
+  ## Sender 0x00793DF0.
+  i64 guild_uid
+end
+
+message 2156 GuildPersonJoinAck
+  ## On_eEGS_GUILD_PERSON_JOIN_ACK 0x0075A220.
+  i32 result
+end
+
+message 2160 GuildInviteReq header?
+  ## No sender recovered; kept as the earlier raw UTF-16 form.
+  wrest char_name
+end
+
+message 2161 GuildInviteAck
+  ## On_eEGS_GUILD_INVITE_ACK 0x00759870.
+  i32 result
+end
+
+message 2162 GuildPersonLeaveReq header?
+  ## Sender 0x00793C90 writes no fields.
+end
+
+message 2163 GuildPersonLeaveAck
+  ## On_eEGS_GUILD_PERSON_LEAVE_ACK 0x00759CA0.
+  i32 result
+end
+
+message 2179 GuildMoneyInReq header?
+  ## Sender 0x007941A0.
+  i64 amount
+end
+
+message 2180 GuildMoneyInAck ok_only
+  ## On_eEGS_GUILD_MONEY_IN_ACK 0x00794250.
+  i32 result
+  i64 remain_gold            # written to player +0x70
+end
+
+message 2181 GuildMoneyOutReq header?
+  ## Sender 0x007943C0.
+  i64 amount
+end
+
+message 2182 GuildMoneyOutAck ok_only
+  ## On_eEGS_GUILD_MONEY_OUT_ACK 0x00794470.
+  i32 result
+  i64 remain_gold            # written to player +0x70
+end
+
+message 2183 GuildLevelUpReq header?
+  ## Sender 0x007945E0 writes no fields.
+end
+
+message 2184 GuildLevelUpAck ok_only
+  ## On_eEGS_GUILD_LEVEL_UP_ACK 0x00753380.
+  i32 result
+  i16 new_level = 1
+end
+
+message 2185 GuildNoticeModifyReq header?
+  ## Sender 0x00794660 writes a J-wstring.
+  wstr notice
+end
+
+message 2186 GuildNoticeModifyAck
+  ## On_eEGS_GUILD_NOTICE_MODIFY_ACK 0x0075A120.
+  i32 result
+end
+
+message 2188 GuildNoticeDeleteReq header?
+  ## No fields known.
+end
+
+message 2189 GuildNoticeDeleteAck
+  ## On_eEGS_GUILD_NOTICE_DELETE_ACK 0x0074B830.
+  i32 result
+end
+
+message 2214 GuildAllSkillInitReq header?
+  ## No fields known.
+end
+
+message 2215 GuildAllSkillInitAck ok_only
+  ## Handler 0x00752D80.
+  i32 result
+  i32 param                  # meaning unknown
+end
+
+message 2314 GuildNameChangeReq header?
+  ## Sender 0x00798A70: 0x00B353D0 then a J-wstring (the earlier decoder read the
+  ## name first).
+  i64 item_uid               # meaning of the i64 not confirmed
+  wstr new_name
+end
+
+message 2315 GuildNameChangeAck
+  ## Handler 0x00780590.
+  i32 result
+  vector<Item> items
+  wstr new_name
+end
+
+message 2157 GuildInfoNot
+  ## Handler 0x00752FF0. Guild struct not recovered: 64 zero bytes.
+  raw[64] _
+end
+
+message 2158 GuildPersonListNot
+  ## Handler 0x0077ABA0.
+  vector<?> _                # guild members
+end
+
+message 2164 GuildPersonGradeModifyReq header?
+  ## Sender 0x00793D10: tag 0x10 vector (0x004CB5E0), then 0x00B35190.
+  vector<i64> member_uids
+  i16 new_grade = 1
+end
+
+message 2165 GuildPersonGradeModifyAck ok_only
+  ## Handler 0x00753170.
+  i32 result
+  i64 member_uid
+  i16 new_grade = 1
+end
+
+message 2205 GuildSkillNot
+  ## Handler 0x00779390.
+  bool flag
+  vector<?> _
+end

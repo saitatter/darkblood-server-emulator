@@ -172,7 +172,7 @@ class Parser:
             return Type('raw', size=int(m.group(1)))
         if text in SCALARS:
             return Type('scalar', text)
-        if text in ('wstr', 'rest', 'ipv4'):
+        if text in ('wstr', 'wstrz', 'wrest', 'rest', 'ipv4'):
             return Type(text)
         if text in self.schema.externs:
             return Type('extern', text)
@@ -187,7 +187,7 @@ class Parser:
                     and not any(s.name == fn for s in self.schema.structs)):
                 self.fail('default factory %s is not imported' % fn)
             return text
-        if ftype.kind in ('wstr', 'ipv4'):
+        if ftype.kind in ('wstr', 'wstrz', 'wrest', 'ipv4'):
             if not re.match(r"'[^'\\]*'$", text):
                 self.fail('string defaults use single quotes')
             return text
@@ -202,7 +202,7 @@ class Parser:
     def parse_field(self, line, owner):
         code, _, comment = line.partition('#')
         code, comment = code.strip(), comment.strip()
-        if owner.fields and owner.fields[-1].type.kind == 'rest':
+        if owner.fields and owner.fields[-1].type.kind in ('rest', 'wrest'):
             self.fail('rest must be the last field')
         m = re.match(r'lit\s+([0-9A-Fa-f ]+)$', code)
         if m:
@@ -221,13 +221,13 @@ class Parser:
             if any(f.name == name for f in owner.fields):
                 self.fail('duplicate field %r' % name)
         else:
-            if ftype.kind in ('vector', 'set', 'map', 'pairs', 'array', 'struct', 'extern', 'rest'):
+            if ftype.kind in ('vector', 'set', 'map', 'pairs', 'array', 'struct', 'extern', 'rest', 'wrest'):
                 self.fail('anonymous fields must be scalars, strings, raw bytes or vector<?>')
             if default and default.endswith('()'):
                 self.fail('anonymous fields take constant defaults')
         if ftype.kind == 'empty' and name != ANON:
             self.fail('%s must be anonymous (_)' % ftype)
-        if ftype.kind == 'rest' and not owner.is_message:
+        if ftype.kind in ('rest', 'wrest') and not owner.is_message:
             self.fail('rest is only allowed in messages')
         owner.fields.append(Field(ftype, name, default, comment))
 
@@ -353,7 +353,7 @@ class PythonBackend:
     def py_type(self, t):
         if t.kind == 'scalar':
             return SCALARS[t.name][1]
-        if t.kind in ('wstr', 'ipv4'):
+        if t.kind in ('wstr', 'wstrz', 'wrest', 'ipv4'):
             return 'str'
         if t.kind in ('raw', 'rest'):
             return 'bytes'
@@ -371,7 +371,7 @@ class PythonBackend:
             return f.default
         if t.kind == 'scalar':
             return {'bool': 'False', 'float': '0.0'}.get(SCALARS[t.name][1], '0')
-        if t.kind == 'wstr':
+        if t.kind in ('wstr', 'wstrz', 'wrest'):
             return "''"
         if t.kind == 'ipv4':
             return "'0.0.0.0'"
@@ -398,6 +398,10 @@ class PythonBackend:
             return "struct.pack('<%s', %s)" % (SCALARS[t.name][0], expr)
         if t.kind == 'wstr':
             return 'wide_string(%s)' % expr
+        if t.kind == 'wstrz':
+            return "%s.encode('utf-16le') + b'\\x00\\x00'" % expr
+        if t.kind == 'wrest':
+            return "%s.encode('utf-16le')" % expr
         if t.kind == 'ipv4':
             return 'bytes(int(o) for o in %s.split(\'.\'))' % expr
         if t.kind == 'raw':
@@ -433,6 +437,10 @@ class PythonBackend:
             return '%s.%s()' % (reader, SCALARS[t.name][2])
         if t.kind == 'wstr':
             return '%s.read_wstring()' % reader
+        if t.kind == 'wstrz':
+            return '%s.read_wstring_z()' % reader
+        if t.kind == 'wrest':
+            return "%s.read_rest().decode('utf-16le', errors='replace').rstrip('\\x00')" % reader
         if t.kind == 'ipv4':
             return "'.'.join(str(o) for o in %s.read_bytes(4))" % reader
         if t.kind == 'raw':

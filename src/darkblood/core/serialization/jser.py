@@ -174,6 +174,14 @@ class JSerBufferReader:
         raw = self.read_bytes(byte_len)
         return raw.decode('utf-16le', errors='replace').rstrip('\x00')
 
+    def read_wstring_z(self) -> str:
+        """UTF-16LE up to and including a 0x0000 terminator (no length prefix)."""
+        start = self.offset
+        while True:
+            unit = self.read_bytes(2)
+            if unit == b'\x00\x00':
+                return self.data[start:self.offset - 2].decode('utf-16le', errors='replace')
+
     def read_string(self) -> str:
         byte_len = self.read_varuint()
         raw = self.read_bytes(byte_len)

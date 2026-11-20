@@ -4,6 +4,7 @@ import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games.network.messages import (
+    GuildCreateProposalReq, GuildNameChangeReq, GuildNoticeModifyReq, GuildPersonGradeModifyReq,
     PostDeleteReq, PostGetAppendItemReq, PostListReq, PostReadReq, PostReturnReq, PostSendReq,
 )
 
@@ -71,7 +72,7 @@ class SocialFlowTest(ServerTestCase):
 
             # 11. Guild create proposal (5121 -> 5122)
             gname = 'Vanguard'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(5121, gname)
+            client.send_event(5121, GuildCreateProposalReq(guild_name='Vanguard').encode())
             _, ack5122 = await client.expect_event(5122)
             self.assertEqual(struct.unpack_from('<i', ack5122)[0], 0)
 
@@ -119,7 +120,7 @@ class SocialFlowTest(ServerTestCase):
 
             # 20. Guild notice modify (2185 -> 2186)
             gnotice = 'Guild rules apply'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(2185, gnotice)
+            client.send_event(2185, GuildNoticeModifyReq(notice='Guild rules apply').encode())
             _, ack2186 = await client.expect_event(2186)
             self.assertEqual(struct.unpack_from('<i', ack2186)[0], 0)
 
@@ -187,7 +188,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2311)[0], 0)
 
             # 32. Guild name change (2314 -> 2315)
-            gname_payload = wide_string('RenamedGuild') + struct.pack('<q', 456)
+            gname_payload = GuildNameChangeReq(item_uid=456, new_name='RenamedGuild').encode()
             client.send_event(2314, gname_payload)
             _, ack2315 = await client.expect_event(2315)
             self.assertEqual(struct.unpack_from('<i', ack2315)[0], 0)
@@ -253,7 +254,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iq', ack2182), (0, 10300))
 
             # 45. Guild person grade modify (2164 -> 2165)
-            client.send_event(2164, struct.pack('<qh', 888, 2))
+            client.send_event(2164, GuildPersonGradeModifyReq(member_uids=[888], new_grade=2).encode())
             _, ack2165 = await client.expect_event(2165)
             self.assertEqual(struct.unpack_from('<iqh', ack2165), (0, 888, 2))
 
@@ -264,7 +265,7 @@ class SocialFlowTest(ServerTestCase):
 
             # 47. Guild notice modify (2185 -> 2186)
             notice_text = 'Welcome allies'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(2185, notice_text)
+            client.send_event(2185, GuildNoticeModifyReq(notice='Welcome allies').encode())
             _, ack2186 = await client.expect_event(2186)
             self.assertEqual(struct.unpack_from('<i', ack2186)[0], 0)
 

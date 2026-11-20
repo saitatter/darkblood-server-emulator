@@ -1,5 +1,6 @@
 """Shared test fixtures and helpers for Dark Blood server test suite."""
 import asyncio
+import logging
 import os
 from pathlib import Path
 import struct
@@ -45,9 +46,33 @@ class ServerTestCase(unittest.TestCase):
         await server.start()
         port = server.server.sockets[0].getsockname()[1]
         client = HeadlessClient(port=port)
-        try:
-            return await scenario(client)
-        finally:
-            await client.close()
-            server.server.close()
-            await server.server.wait_closed()
+        # A request the generated decoder rejects is dropped by the dispatcher;
+        # fail the test instead of letting it pass on a missing reply.
+        with self.assertNoLogs_dispatcher():
+            try:
+                return await scenario(client)
+            finally:
+                await client.close()
+                server.server.close()
+                await server.server.wait_closed()
+
+    def assertNoLogs_dispatcher(self):
+        test = self
+
+        class _Guard(logging.Handler):
+            def __enter__(self):
+                self.records = []
+                logging.getLogger('darkblood.games.dispatcher').addHandler(self)
+                return self
+
+            def emit(self, record):
+                if record.levelno >= logging.WARNING:
+                    self.records.append(self.format(record))
+
+            def __exit__(self, *exc):
+                logging.getLogger('darkblood.games.dispatcher').removeHandler(self)
+                if self.records and exc[0] is None:
+                    test.fail('dispatcher reported: ' + '; '.join(self.records))
+                return False
+
+        return _Guard()

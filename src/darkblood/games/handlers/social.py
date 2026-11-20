@@ -112,8 +112,8 @@ class SocialHandlers(BaseDomainService):
 
     async def on_5121(self, correlation, body):
         # eERC_GUILD_CREATE_PROPOSAL_REQ (0x00790000.c:2514) -> 5122 eERC_GUILD_CREATE_PROPOSAL_ACK (0x00759750).
-        from darkblood.games.network.messages import GuildCreateProposalAck, GuildCreateReq
-        req = GuildCreateReq.decode(body)
+        from darkblood.games.network.messages import GuildCreateProposalAck, GuildCreateProposalReq
+        req = GuildCreateProposalReq.decode(body)
         self.transport.record('guild-proposal-req', body, name=req.guild_name)
         ack = GuildCreateProposalAck(result=0).encode()
         await self.transport.send_event(event(5122, ack, correlation),
@@ -476,9 +476,10 @@ class SocialHandlers(BaseDomainService):
         # eEGS_GUILD_PERSON_GRADE_MODIFY_REQ -> 2165 eEGS_GUILD_PERSON_GRADE_MODIFY_ACK (0x00753170).
         from darkblood.games.network.messages import GuildPersonGradeModifyAck, GuildPersonGradeModifyReq
         req = GuildPersonGradeModifyReq.decode(body)
-        self.transport.record('guild-person-grade-modify-req', body, member_uid=req.member_uid, new_grade=req.new_grade)
-        ack = GuildPersonGradeModifyAck(result=0, member_uid=req.member_uid, new_grade=req.new_grade).encode()
-        await self.transport.send_event(event(2165, ack, correlation), note=f'guild person grade modify ack (member={req.member_uid})')
+        member_uid = req.member_uids[0] if req.member_uids else 0
+        self.transport.record('guild-person-grade-modify-req', body, member_uids=req.member_uids, new_grade=req.new_grade)
+        ack = GuildPersonGradeModifyAck(result=0, member_uid=member_uid, new_grade=req.new_grade).encode()
+        await self.transport.send_event(event(2165, ack, correlation), note=f'guild person grade modify ack (member={member_uid})')
 
     # =========================================================================
     # Party Subsystem Handlers (Opcodes 2100-2107, 5049-5056)

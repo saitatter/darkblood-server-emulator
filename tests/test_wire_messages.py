@@ -537,7 +537,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertIn(b'N\x00e\x00w\x00H\x00e\x00r\x00o\x00', ack)
 
     def test_guild_name_change_encoding(self):
-        req = messages.GuildNameChangeReq.decode(jser.wide_string('NewGuild') + struct.pack('<q', 456))
+        req = messages.GuildNameChangeReq.decode(struct.pack('<q', 456) + jser.wide_string('NewGuild'))
         self.assertEqual(req.new_name, 'NewGuild')
         self.assertEqual(req.item_uid, 456)
         ack = messages.GuildNameChangeAck(result=0, items=[], new_name='NewGuild').encode()
@@ -695,8 +695,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<iq', ack_out), (0, 3000))
 
     def test_guild_member_grade_modify(self):
-        req = messages.GuildPersonGradeModifyReq.decode(struct.pack('<qh', 888, 3))
-        self.assertEqual(req.member_uid, 888)
+        req = messages.GuildPersonGradeModifyReq.decode(b'\x10' + jser.varuint(1) + struct.pack('<qh', 888, 3))
+        self.assertEqual(req.member_uids, [888])
         self.assertEqual(req.new_grade, 3)
         ack = messages.GuildPersonGradeModifyAck(result=0, member_uid=888, new_grade=3).encode()
         self.assertEqual(struct.unpack_from('<iqh', ack), (0, 888, 3))
@@ -708,8 +708,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<ih', ack), (0, 3))
 
     def test_guild_notice_modify(self):
-        notice_bytes = 'Guild Notice'.encode('utf-16le') + b'\x00\x00'
-        req = messages.GuildNoticeModifyReq.decode(notice_bytes)
+        req = messages.GuildNoticeModifyReq.decode(jser.wide_string('Guild Notice'))
         self.assertEqual(req.notice, 'Guild Notice')
         ack = messages.GuildNoticeModifyAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack), (0,))
