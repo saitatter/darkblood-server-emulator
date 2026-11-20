@@ -5,7 +5,7 @@ import time
 
 from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character, delete_seconds_left
-from darkblood.games.entities.items import Bag, Item
+from darkblood.games.entities.items import EQUIPPED, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.frontend.relay import RELAY_PORT
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
@@ -180,7 +180,14 @@ class FrontendHandlers(BaseDomainService):
         ack = struct.pack('<I', 0) + b'\x10' + varuint(len(chars))
         for char in chars:
             ack += encode_character(char)
-        ack += (b'\x10' + varuint(0) + struct.pack('<BB?', CHAR_SLOTS, 0, False)
+        # Second vector: Item records (0x004B94C0) copied by 0x00538DF0 into
+        # the character-select item list. Sent empty, every model showed the
+        # bare class default (only the class weapon/shield). Worn items carry
+        # their character's id as owner so each model gets its own gear.
+        worn = [Item(owner=char['id'], **item) for char in chars
+                for item in char.get('items', []) if item.get('container') == EQUIPPED]
+        ack += b'\x10' + varuint(len(worn)) + b''.join(item.encode() for item in worn)
+        ack += (struct.pack('<BB?', CHAR_SLOTS, 0, False)
                 + b'\x17' + varuint(0) + b'\x13' + varuint(0))
         await self.transport.send_event(event(2009, ack, correlation),
                                         note='char list ack (%d)' % len(chars))

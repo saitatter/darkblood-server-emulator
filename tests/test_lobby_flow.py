@@ -4,6 +4,7 @@ import time
 import unittest
 
 from darkblood.games.entities.character import Character
+from darkblood.games.entities.items import Item
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
@@ -47,6 +48,15 @@ class LobbyFlowTest(ServerTestCase):
             _, ack2247 = await client.expect_event(2247)
             self.assertEqual(struct.unpack_from('<iq', ack2247), (0, char_id))
             self.assertNotIn('delete_time', store.get('OfflinePlayer', char_id))
+
+            # 2009 carries the worn items for the character-select models,
+            # owned by their character (0x00538DF0).
+            client.send_event(2008, b'')
+            _, ack2009 = await client.expect_event(2009)
+            worn = [i for i in store.get('OfflinePlayer', char_id)['items'] if i['container'] == 1]
+            self.assertTrue(worn)
+            for item in worn:
+                self.assertIn(Item(owner=char_id, **item).encode(), ack2009)
 
             # An expired deletion is purged when the list is requested.
             store.get('OfflinePlayer', char_id)['delete_time'] = int(time.time()) - 1
