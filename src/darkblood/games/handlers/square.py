@@ -134,7 +134,15 @@ class SquareHandlers(BaseDomainService):
         Client handler: 0x007897F0.
         Transitions the player entity from a dungeon session back to the default town square.
         """
-        await self.session.dungeon.leave_room()
+        # Leaving a party has its own request (5005). Back to square ends only the
+        # solo room; a party survives the gate or a run and is open again. Leaving
+        # it here sent 5036 for the host, and the member saw "all members left the
+        # party" when the leader closed the dungeon gate (live 2026-11-21).
+        room = self.session.dungeon.room
+        if room is not None and room.info.name == '_singleplay':
+            await self.session.dungeon.leave_room()
+        elif room is not None:
+            room.started = False
         # Return to the layer the player left town from: after GamePlay the
         # client places the unit by that layer's waypoint (0x008EC230).
         ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=self._town_layer(),

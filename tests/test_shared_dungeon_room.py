@@ -167,6 +167,15 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, synced = await guest.expect_event(5089)
                 self.assertEqual(synced, looting)
 
+                # Closing the dungeon gate (5045, back to square) keeps the party:
+                # both members are still listed and the guest gets no 5036.
+                host.send_event(5045, struct.pack('<i', 0x7fffffff))
+                await host.expect_event(5046)
+                guest.send_event(5060, struct.pack('<iq', 0x7fffffff, room_id))
+                _, still = await guest.expect_event(5061)
+                self.assertEqual(struct.unpack_from('<Iq', still), (0, room_id))
+                self.assertEqual(still[12:14], bytes.fromhex('1082'))  # two members
+
                 host.send_event(5005)
                 await host.expect_event(5006)
                 _, departure = await guest.expect_event(5036)

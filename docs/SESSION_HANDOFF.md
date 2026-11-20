@@ -682,6 +682,14 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   the GameRoom page is unverified.
 - **Find user (2024 -> 2025)**: the request is low/high level, page, job (7 = eCK_Max), layer, square;
   2025 is `i32 result, vector<RoomMemberInfo>`. The server sent an empty list; now online players.
+- **Live 2026-11-21 (later)**: Find user, join request and the looting button work. 5045 (back to square)
+  left the room, so a leader closing the dungeon gate sent 5036 for the host and the member saw "all
+  members left the party"; 5045 now ends only the `_singleplay` room. The looting mode is stored in
+  `DungeonRoom.loot_mode` only: drops (5064/5114) are still per player, as dungeons are not shared yet.
+  The leader's dungeon gate took 10+ s of black screen; the server answered 5043 at once and nothing was
+  pending, so the wait is client-side. Both clients send 5024 (`P2P_DIRECT_CONNECT_RESULT_NOT`: bool +
+  peer char id) after joining a room; it is unhandled. `sample.txt` now takes the sampling interval in
+  ms (shim) to profile that wait.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.

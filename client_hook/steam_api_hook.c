@@ -1014,15 +1014,24 @@ static void InstallHooks() {
 
 
 /* Periodic main-thread sampler (diagnostic): logs EIP and code-range return
- * addresses from the stack every 5 s. Enabled when sample.txt exists. */
+ * addresses from the stack. Enabled when sample.txt exists; its first number is
+ * the interval in ms (100..60000, default 5000), sampling stops after 10 min. */
 static DWORD g_mainThreadId;
+static DWORD SampleInterval(void) {
+    char text[16] = {0}; DWORD got = 0, ms = 0; int i;
+    HANDLE f = CreateFileA("sample.txt", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (f != INVALID_HANDLE_VALUE) { ReadFile(f, text, sizeof(text) - 1, &got, NULL); CloseHandle(f); }
+    for (i = 0; text[i] >= '0' && text[i] <= '9'; i++) ms = ms * 10 + (text[i] - '0');
+    return ms >= 100 && ms <= 60000 ? ms : 5000;
+}
 static DWORD WINAPI SamplerThread(LPVOID unused) {
     HANDLE thread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT, FALSE, g_mainThreadId);
-    int round;
+    DWORD interval = SampleInterval();
+    int round, rounds = (int)(600000 / interval);
     if (!thread) return 0;
-    for (round = 0; round < 120; round++) {
+    for (round = 0; round < rounds; round++) {
         CONTEXT c; DWORD stack[256]; char line[1400]; int len, i, found = 0;
-        Sleep(5000);
+        Sleep(interval);
         c.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
         if (SuspendThread(thread) == (DWORD)-1) break;
         if (!GetThreadContext(thread, &c)) { ResumeThread(thread); break; }
