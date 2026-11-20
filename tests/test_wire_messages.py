@@ -7,6 +7,7 @@ from darkblood.core import hashing
 from darkblood.core.serialization import jser
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
+from darkblood.games.handlers.commerce import store_record
 from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.games.network import messages
 
@@ -170,12 +171,12 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<H', enc, 2)[0], 5)
 
     def test_store_info_ack(self):
-        ack = messages.StoreInfoAck(npc_id=1, items=[('Ihppa0001', -1)]).encode()
+        ack = messages.StoreInfoAck(npc_id=1, records=[store_record('Ihppa0001', -1)]).encode()
         self.assertEqual(ack[8:10], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<I', ack, 10)[0], hashing.jhash('Ihppa0001'))
         # +0x18 stock (0 = "Not enough products", 0x0059A5DC), +0x1A -1.
         self.assertEqual(struct.unpack_from('<hh', ack, 10 + 0x18), (-1, -1))
-        record = messages.commerce.store_record('Ihppa0001', 3, price=150)
+        record = store_record('Ihppa0001', 3, price=150).encode()
         self.assertEqual(struct.unpack_from('<IIIi', record), (hashing.jhash('Ihppa0001'), 150, 0, 0))
         self.assertEqual(struct.unpack_from('<h', record, 0x18)[0], 3)
 
@@ -389,12 +390,12 @@ class WireMessagesTest(unittest.TestCase):
         ack_ct = messages.CancelTradeAck(result=0, items=[]).encode()
         self.assertEqual(ack_ct[:5], b'\x00\x00\x00\x00\x10')
 
-        req_iti = messages.InsertTradeItemReq.decode(struct.pack('<qi', 9999, 1))
+        req_iti = messages.InsertTradeItemReq.decode(struct.pack('<qH', 9999, 1))
         self.assertEqual((req_iti.item_uid, req_iti.slot), (9999, 1))
         ack_iti = messages.InsertTradeItemAck(result=0, items=[]).encode()
         self.assertEqual(ack_iti[:5], b'\x00\x00\x00\x00\x10')
 
-        req_dti = messages.DeleteTradeItemReq.decode(struct.pack('<q', 9999))
+        req_dti = messages.DeleteTradeItemReq.decode(struct.pack('<qq', 9999, 0))
         self.assertEqual(req_dti.item_uid, 9999)
         ack_dti = messages.DeleteTradeItemAck(result=0, items=[]).encode()
         self.assertEqual(ack_dti[:5], b'\x00\x00\x00\x00\x10')
@@ -745,12 +746,12 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<q', not_del), (123,))
 
     def test_depot_save_and_load_currency(self):
-        req_save = messages.DepotSaveArReq.decode(struct.pack('<q', 10000))
+        req_save = messages.DepotSaveArReq.decode(struct.pack('<qq', 10000, 0))
         self.assertEqual(req_save.gold, 10000)
         ack_save = messages.DepotSaveArAck(result=0, new_gold=10000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_save[:4])[0], 0)
 
-        req_load = messages.DepotLoadArReq.decode(struct.pack('<q', 5000))
+        req_load = messages.DepotLoadArReq.decode(struct.pack('<qq', 5000, 0))
         self.assertEqual(req_load.gold, 5000)
         ack_load = messages.DepotLoadArAck(result=0, new_gold=5000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_load[:4])[0], 0)

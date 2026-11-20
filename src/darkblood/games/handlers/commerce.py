@@ -24,7 +24,10 @@ from darkblood.games.network.messages import (
     HttpNoticeCheckAck,
     InsertTradeItemAck,
     InsertTradeItemReq,
-    MonsterCardEmptyAck,
+    MonsterCardAlbumAck,
+    MonsterCardDeckAck,
+    MonsterCardListAck,
+    StoreRecord,
     PlayOptionUpdateReq,
     RepurchaseItemAck,
     RepurchaseItemReq,
@@ -74,6 +77,19 @@ from darkblood.player_management.characters import (
 )
 from darkblood.games.handlers.base import BaseDomainService
 
+MONSTER_CARD_ACKS = {2602: MonsterCardListAck, 2609: MonsterCardDeckAck, 2618: MonsterCardAlbumAck}
+
+
+def store_record(item: str, stock: int = -1, price: int = None) -> StoreRecord:
+    """Store record for an item id; price defaults to the item's BuyPrice.
+
+    The stock is clamped to i16 (storelist.lua -1 = unlimited)."""
+    if price is None:
+        from darkblood.games.game_data.client_dict import item_field
+        price = item_field(item, 'BuyPrice', 0)
+    return StoreRecord(item_hash=jhash(item), price=price & 0xFFFFFFFF,
+                       stock=max(-0x8000, min(0x7FFF, stock)))
+
 
 class CommerceHandlers(BaseDomainService):
     """Store transactions, buybacks, cash packages, Steam integration and P2P trade."""
@@ -82,7 +98,7 @@ class CommerceHandlers(BaseDomainService):
         return self.current_char()
 
     async def _monster_card_empty(self, correlation, opcode):
-        await self.transport.send_event(event(opcode, MonsterCardEmptyAck(opcode=opcode).encode(), correlation),
+        await self.transport.send_event(event(opcode, MONSTER_CARD_ACKS[opcode]().encode(), correlation),
                                         note=f'monster card ack {opcode} (empty)')
 
     async def on_2065(self, correlation, body):
@@ -91,7 +107,7 @@ class CommerceHandlers(BaseDomainService):
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
         from darkblood.games.game_data import client_dict
         npc, items = client_dict.items_for_npc(npc_id)
-        ack = StoreInfoAck(npc_id=npc_id, items=items).encode()
+        ack = StoreInfoAck(npc_id=npc_id, records=[store_record(i, c) for i, c in items]).encode()
         await self.transport.send_event(event(2066, ack, correlation),
                                         note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 

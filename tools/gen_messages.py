@@ -181,8 +181,9 @@ class Parser:
         self.fail('unknown type %r (structs must be defined before use)' % text)
 
     def parse_default(self, text, ftype):
-        if text.endswith('()'):
-            fn = text[:-2]
+        m = re.match(r'(\w+)\((.*)\)$', text)
+        if m:
+            fn = m.group(1)
             if (fn not in self.schema.imports and fn not in self.schema.externs
                     and not any(s.name == fn for s in self.schema.structs)):
                 self.fail('default factory %s is not imported' % fn)
@@ -223,7 +224,7 @@ class Parser:
         else:
             if ftype.kind in ('vector', 'set', 'map', 'pairs', 'array', 'struct', 'extern', 'rest', 'wrest'):
                 self.fail('anonymous fields must be scalars, strings, raw bytes or vector<?>')
-            if default and default.endswith('()'):
+            if default and default.endswith(')'):
                 self.fail('anonymous fields take constant defaults')
         if ftype.kind == 'empty' and name != ANON:
             self.fail('%s must be anonymous (_)' % ftype)
@@ -302,8 +303,8 @@ class Parser:
         client = self.names[opcode]
         direction = 'request' if client.endswith('_REQ') else 'reply'
         header = 'header?' if 'header?' in flags else ('header' if 'header' in flags else '')
-        if header and direction != 'request':
-            self.fail('%s is not a request; only requests carry the header word' % client)
+        if header and client.endswith('_ACK'):
+            self.fail('%s is a server reply; only client-sent messages carry the header word' % client)
         if any(s.opcode == opcode for s in self.schema.structs):
             self.fail('opcode %d defined twice' % opcode)
         return Struct(name, opcode=opcode, client_name=client, direction=direction, header=header,
@@ -370,8 +371,11 @@ class PythonBackend:
     def default(self, f):
         t = f.type
         if f.default is not None:
-            if f.default.endswith('()'):
-                return 'field(default_factory=%s)' % f.default[:-2]
+            m = re.match(r'(\w+)\((.*)\)$', f.default)
+            if m:
+                if m.group(2):
+                    return 'field(default_factory=lambda: %s)' % f.default
+                return 'field(default_factory=%s)' % m.group(1)
             return f.default
         if t.kind == 'scalar':
             return {'bool': 'False', 'float': '0.0'}.get(SCALARS[t.name][1], '0')

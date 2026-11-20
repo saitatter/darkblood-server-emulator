@@ -1,0 +1,251 @@
+# NPC stores, cash, trade, depot gold, Steam purchases and monster cards.
+# Format: schemas/README.md.
+
+domain commerce Dark Blood protocol wire messages - Commerce domain.
+
+extern Item from darkblood.games.entities.items
+
+struct StoreRecord
+  ## 32-byte store record (raw copy 0x00A489D0), found by item hash 0x00581070.
+  ## Fields read by the shop UI (flags 0x0059A280, disable 0x0059A5DC, buy 0x0059AD60).
+  ## Build with darkblood.games.handlers.commerce.store_record.
+  h32 item_hash              # +0x00 jhash(item id)
+  u32 price                  # +0x04 AR price: flag 1 when it exceeds player gold (+0x70)
+  u32 _                      # +0x08 price in the currency at player +0x268 (flag 2)
+  i32 _                      # +0x0C price in the currency at player +0x27C (flag 4)
+  raw[8] _                   # +0x10 unknown
+  i16 stock = -1             # +0x18: 0 disables the item ("JERI_STOREMAXNUM_00"); -1 unlimited
+  i16 _ = -1                 # +0x1A: -1 = max buy count is the item's stack size (dict +0x19E)
+  raw[4] _                   # +0x1C unknown
+end
+
+message 2066 StoreInfoAck
+  ## Handler 0x007842C0. Draft schema from tools/extract_schemas.py.
+  u32 result
+  h32 npc_id                 # stored at store window +0xCC (NPC id echoed, assumption)
+  vector<StoreRecord> records
+  vector<?> _                # item structs (0x0077CEB0 -> 0x00A53F50)
+end
+
+message 2370 CurrentCashAck
+  ## Case in 0x004DCCC0 -> 0x004CFDF0: result, implicit struct (reader
+  ## 0x00AC82A0, stored at +0x124) logged as cash and mileage.
+  u32 result
+  i64 cash
+  u32 mileage
+end
+
+message 2067 BuyItemReq header?
+  ## Sender 0x0078F720: 0x00B352B0, 0x00B352B0, 0x00B35190.
+  i32 store_id               # NPC id
+  i32 item_id
+  u16 count = 1
+end
+
+message 2068 BuyItemAck ok_only
+  ## On_eEGS_BUY_ITEM_ACK 0x0077E2F0.
+  i32 result
+  raw[32] store_record       # StoreRecord bytes (0x00A489D0)
+  i32 u32_1                  # meaning unknown
+  i64 gold                   # player gold, written to +0x70
+  vector<Item> items         # 0x004B94C0
+  i32 u32_2                  # meaning unknown
+  u16 u16_1                  # meaning unknown
+  i64 i64_1                  # meaning unknown
+  i32 u32_3                  # meaning unknown
+end
+
+message 2069 SellItemReq header?
+  ## Sender 0x0078F7E0. Live (2026-11-17): ffffff7f, i32 npc id, i64 item uid, u16 count.
+  i32 npc_id
+  i64 item_uid
+  u16 count = 1
+end
+
+message 2070 SellItemAck ok_only
+  ## On_eEGS_SELL_ITEM_ACK 0x0077E8E0.
+  i32 result
+  vector<Item> items         # 0x004B9210
+  i64 gold                   # player gold, written to +0x70
+  Item repurchase_item = Item('', 0)  # repurchase record: Item 0x00A53F50 + i32 + i64
+  i32 _
+  i64 _
+  set<?> _                   # 0x006B9200
+end
+
+message 2071 RepurchaseItemReq header?
+  ## Sender 0x0078F8A0.
+  i64 item_uid
+end
+
+message 2072 RepurchaseItemAck ok_only
+  ## On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30.
+  i32 result
+  vector<Item> items         # 0x004B9210
+  i64 gold
+end
+
+message 2086 BuyLifeWaterReq header?
+  ## Sender 0x0078FEF0.
+  bool flag = true           # bLifeWater
+end
+
+message 2087 BuyLifeWaterAck
+  ## On_eEGS_BUY_LIFE_WATER_ACK 0x0078FF90.
+  i32 result
+  bool flag = true
+  i64 remain_currency
+end
+
+message 5069 RequestTradeReq header?
+  ## Sender 0x0078E450.
+  i64 target_uid
+end
+
+message 5070 RequestTradeAck
+  ## Handler 0x00770E50.
+  i32 result
+  i64 target_uid
+  wstr target_name
+  u8 _
+  u8 _
+end
+
+message 5071 AcceptRequestTradeReq header?
+  ## Sender 0x0078E500.
+  i64 source_uid
+end
+
+message 5072 AcceptRequestTradeAck
+  ## Handler 0x007587B0.
+  i32 result
+  i64 source_uid
+  i64 target_uid
+end
+
+message 5073 CancelTradeReq bare
+  ## Sender 0x0078E990 writes no fields.
+end
+
+message 5074 CancelTradeAck
+  ## Handler 0x0077DE00.
+  i32 result
+  vector<Item> items
+end
+
+message 5075 InsertTradeItemReq header?
+  ## Sender 0x0078E5E0: 0x00B353D0 uid, 0x00B35190 (2 bytes; the earlier decoder read 4).
+  i64 item_uid
+  u16 slot
+end
+
+message 5076 InsertTradeItemAck
+  ## Handler 0x0077D980.
+  i32 result
+  vector<Item> items
+end
+
+message 5077 DeleteTradeItemReq header?
+  ## Sender 0x0078E770: two 0x00B353D0 values.
+  i64 item_uid
+  i64 _                      # meaning unknown
+end
+
+message 5078 DeleteTradeItemAck
+  ## Handler 0x0077DBB0.
+  i32 result
+  vector<Item> items
+end
+
+message 5079 UpdateTradeArReq header?
+  ## Sender 0x0078EA10.
+  i64 gold
+end
+
+message 5080 UpdateTradeArAck
+  ## Handler 0x00758940.
+  i32 result
+  i64 char_uid
+  i64 gold
+end
+
+message 5081 AcceptTradeReq bare
+  ## Sender 0x0078EAC0 writes no fields.
+end
+
+message 5082 AcceptTradeAck
+  ## Handler 0x0078EB40.
+  i32 result
+  i64 char_uid
+  bool accepted = true
+end
+
+message 5083 FinallyAcceptTradeReq bare
+  ## Sender 0x0078ED70 writes no fields.
+end
+
+message 5084 FinallyAcceptTradeAck
+  i32 result
+end
+
+message 2228 DepotSaveArReq header?
+  ## Sender 0x007950A0: two 0x00B353D0 values.
+  i64 gold
+  i64 _                      # meaning unknown
+end
+
+message 2229 DepotSaveArAck ok_only
+  ## Handler 0x00795220.
+  i32 result
+  map<?> _
+  i64 new_gold               # new storage gold
+end
+
+message 2230 DepotLoadArReq header?
+  ## Sender 0x00795160: two 0x00B353D0 values.
+  i64 gold
+  i64 _                      # meaning unknown
+end
+
+message 2231 DepotLoadArAck ok_only
+  ## Handler 0x00795490.
+  i32 result
+  map<?> _
+  i64 new_gold               # new storage gold
+end
+
+message 2712 SteamInitBuyItemNot header
+  ## Sender Lua_BuyItem 0x004D1B10: SteamID (ISteamUser vf08), vector of ProductID
+  ## (writer 0x004C7C40; DictCash:LoadProductList in item_cash.lua).
+  ## Live: ffffff7f 0100000001001001 10 81 20010000 (product 288).
+  u64 steam_id
+  vector<u32> product_ids
+end
+
+message 2714 SteamFinalizeBuyItemAck
+  ## JAppPageCashshop vf20 (0x004DCCC0) -> 0x004DB680.
+  u32 result
+  vector<u32> values         # 0x004D6E60, copied to inventory +0x38 by 0x00830300; meaning unknown
+  bool flag                  # selects the result message text
+  bool applied = true        # refreshes inventory/cash views and shows the purchase message
+end
+
+message 2602 MonsterCardListAck
+  ## JAppPageMonsterCard vf20 (0x0060B500) -> 0x00603C40; requested by 0x005E3620.
+  ## No card system on the server yet: containers are empty.
+  u32 result
+  vector<?> _                # cards (0x004AFD30)
+  map<?> _                   # 0x005F6540
+end
+
+message 2609 MonsterCardDeckAck
+  ## 0x00603F10.
+  u32 result
+  vector<?> _                # cards (0x004AFD30)
+end
+
+message 2618 MonsterCardAlbumAck
+  ## 0x006046A0.
+  u32 result
+  vector<?> _                # album (0x004D6E60)
+end

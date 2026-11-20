@@ -4,7 +4,10 @@ import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
-from darkblood.games.network.messages import ModifySkillSpeechReq, UseLearnSkillItemReq
+from darkblood.games.network.messages import (
+    DeleteTradeItemReq, DepotLoadArReq, DepotSaveArReq, InsertTradeItemReq, ModifySkillSpeechReq,
+    UseLearnSkillItemReq,
+)
 
 
 class InventoryFlowTest(ServerTestCase):
@@ -178,12 +181,12 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iq', ack5072[:12]), (0, 777))
 
             # 25. Insert trade item (5075 -> 5076)
-            client.send_event(5075, struct.pack('<qi', 1, 0))
+            client.send_event(5075, InsertTradeItemReq(item_uid=1, slot=0).encode())
             _, ack5076 = await client.expect_event(5076)
             self.assertEqual(struct.unpack_from('<i', ack5076)[0], 0)
 
             # 26. Delete trade item (5077 -> 5078)
-            client.send_event(5077, struct.pack('<q', 1))
+            client.send_event(5077, DeleteTradeItemReq(item_uid=1).encode())
             _, ack5078 = await client.expect_event(5078)
             self.assertEqual(struct.unpack_from('<i', ack5078)[0], 0)
 
@@ -263,12 +266,12 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2112[:4])[0], 0)
 
             # 42. Depot save AR (2228 -> 2229)
-            client.send_event(2228, struct.pack('<q', 10000))
+            client.send_event(2228, DepotSaveArReq(gold=10000).encode())
             _, ack2229 = await client.expect_event(2229)
             self.assertEqual(struct.unpack_from('<i', ack2229[:4])[0], 0)
 
             # 43. Depot load AR (2230 -> 2231)
-            client.send_event(2230, struct.pack('<q', 5000))
+            client.send_event(2230, DepotLoadArReq(gold=5000).encode())
             _, ack2231 = await client.expect_event(2231)
             self.assertEqual(struct.unpack_from('<i', ack2231[:4])[0], 0)
 
