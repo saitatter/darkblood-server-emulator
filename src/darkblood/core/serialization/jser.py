@@ -6,6 +6,11 @@ import struct
 import zlib
 
 
+# Header word of every client request body: 0x00A1E620 writes it, and reply
+# handlers read the same slot as the result via 0x00A1EA20. Observed live.
+REQUEST_HEADER = 0x7FFFFFFF
+
+
 def varuint(value):
     if not 0 <= value <= 0xffffffff:
         raise ValueError('JSerBuffer length must fit uint32')
@@ -176,4 +181,28 @@ class JSerBufferReader:
     def read_vector(self, item_parser):
         count = self.read_varuint()
         return [item_parser(self) for _ in range(count)]
+
+    def expect_tag(self, tag: int) -> None:
+        """Consume a container tag byte (0x0F..0x1A; 0x00B35010 skips others)."""
+        got = self.read_u8()
+        if got != tag:
+            raise WireError(f'Expected tag 0x{tag:02X}, got 0x{got:02X} at offset {self.offset - 1}')
+
+    def read_tagged_vector(self, item_parser):
+        """Tag 0x10, J-varuint count, elements."""
+        self.expect_tag(0x10)
+        return self.read_vector(item_parser)
+
+    def read_tagged_map(self, key_parser, value_parser):
+        """Tag 0x17, J-varuint count, then per pair tag 0x0F, key, value."""
+        self.expect_tag(0x17)
+        result = {}
+        for _ in range(self.read_varuint()):
+            self.expect_tag(0x0F)
+            key = key_parser(self)
+            result[key] = value_parser(self)
+        return result
+
+    def read_rest(self) -> bytes:
+        return self.read_bytes(self.remaining)
 

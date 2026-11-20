@@ -188,6 +188,7 @@ Major subsystems implemented, integrated, and verified with 155 automated tests:
   - Verified in `tests/test_arena_flow.py`.
 - **Mailbox System with Attachments**:
   - Implemented `MailHandlers` (`src/darkblood/games/handlers/mail.py`) and wire messages (`src/darkblood/games/network/messages/mail.py`).
+  - Since 2026-11-20 the wire messages are generated from `schemas/mail.jsch` (`tools/gen_messages.py`). Requests include the `0x7FFFFFFF` header word, and 2220 entries carry no `0x1E` byte.
   - Opcodes 2219-2227, 2234-2237 (Mail listing, send with attached gold and items, read, claim items into inventory, delete, return, new arrival notice).
   - Verified in `tests/test_mail_flow.py`.
 - **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**:

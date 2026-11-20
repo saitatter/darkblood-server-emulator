@@ -11,6 +11,8 @@ run_server.py                    entry point from the repo root (python run_serv
 assets/                          normalized tables the server ships (opcodes, items, quests,
                                  maps, achievements, cash shop...); tools/export_assets.py
                                  regenerates them from an extracted client
+schemas/                         message schemas (*.jsch); tools/gen_messages.py generates
+                                 games/network/messages/<domain>.py from them
 src/darkblood/
   __main__.py                    python -m darkblood (src/ on sys.path)  -> C#: DarkBlood (host)
   core/                                                                   -> C#: DarkBlood.Core
@@ -52,9 +54,11 @@ tools/                           gamectl, MCP server, headless client, asset exp
 - Dependencies point downward: `core` imports nothing from the package;
   `games` may use `core`; `frontend` hosts `games.session`; handlers never
   import `session` (shared helpers live next to the handlers that own them).
-- New opcode: add the message dataclass to the matching
-  `games/network/messages/<domain>.py` (docstring starts with `Opcode N:` and
-  names the client reader addresses), then an `on_<opcode>` method in the
+- New opcode: describe the message in `schemas/<domain>.jsch` and run
+  `python tools/gen_messages.py` (see `schemas/README.md`). Domains that are
+  not converted yet still use hand-written dataclasses in
+  `games/network/messages/<domain>.py`. Their docstring starts with
+  `Opcode N:` and names the client reader addresses. Then add an `on_<opcode>` method in the
   matching `games/handlers/*.py` service, then a headless test. Regenerate
   `docs/OPCODE_REGISTRY.md` with `python tools/gen_opcode_registry.py`.
 - Domain rules that are not wire handling (progression, achievements, loot)

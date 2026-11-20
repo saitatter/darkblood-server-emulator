@@ -3,10 +3,8 @@ import struct
 import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
-from darkblood.core.serialization.jser import wide_string
 from darkblood.games.network.messages.mail import (
     PostDeleteReq,
-    PostEntry,
     PostGetAppendItemReq,
     PostListReq,
     PostReadReq,
@@ -40,7 +38,7 @@ class MailFlowTest(ServerTestCase):
             GameSession.store().save()
 
             # 1. Post List (Empty initially)
-            client.send_event(2219, PostListReq().dummy.to_bytes(4, 'little'))
+            client.send_event(2219, PostListReq().encode())
             _, ack2220 = await client.expect_event(2220)
             self.assertEqual(struct.unpack_from('<I', ack2220, 0)[0], 0)
 
@@ -67,7 +65,7 @@ class MailFlowTest(ServerTestCase):
             self.assertEqual(len(char1_updated['items']), initial_item_count - 1)
 
             # 3. Check outbox for PostMaster
-            client.send_event(2219, b'\x00\x00\x00\x00')
+            client.send_event(2219, PostListReq().encode())
             _, ack2220_out = await client.expect_event(2220)
             self.assertEqual(struct.unpack_from('<I', ack2220_out, 0)[0], 0)
 
@@ -76,7 +74,7 @@ class MailFlowTest(ServerTestCase):
             await client.expect_event(2007)
 
             # 4. MailRecipient checks inbox: should see 1 unread mail with item & gold
-            client.send_event(2219, b'\x00\x00\x00\x00')
+            client.send_event(2219, PostListReq().encode())
             _, ack2220_in = await client.expect_event(2220)
             self.assertEqual(struct.unpack_from('<I', ack2220_in, 0)[0], 0)
 
@@ -91,7 +89,7 @@ class MailFlowTest(ServerTestCase):
             self.assertEqual(mail['is_read'], 0)
 
             # 5. Read mail
-            client.send_event(2223, PostReadReq(mail_uid=mail_uid).mail_uid.to_bytes(8, 'little'))
+            client.send_event(2223, PostReadReq(mail_uid=mail_uid).encode())
             _, ack2224 = await client.expect_event(2224)
             self.assertEqual(struct.unpack_from('<iq', ack2224), (0, mail_uid))
 
@@ -103,7 +101,7 @@ class MailFlowTest(ServerTestCase):
             char2_gold_before = char2_before.get('gold', 0)
             char2_items_before = len(char2_before.get('items', []))
 
-            client.send_event(2225, PostGetAppendItemReq(mail_uid=mail_uid).mail_uid.to_bytes(8, 'little'))
+            client.send_event(2225, PostGetAppendItemReq(mail_uid=mail_uid).encode())
             _, ack2226 = await client.expect_event(2226)
             self.assertEqual(struct.unpack_from('<iqq', ack2226[:20]), (0, mail_uid, 15000))
 
@@ -112,9 +110,7 @@ class MailFlowTest(ServerTestCase):
             self.assertEqual(len(char2_after.get('items', [])), char2_items_before + 1)
 
             # 7. Delete mail
-            del_req = PostDeleteReq(mail_uids=[mail_uid]).encode()
-            # On wire: b'\x10' + varuint(1) + mail_uid
-            client.send_event(2236, struct.pack('<q', mail_uid))
+            client.send_event(2236, PostDeleteReq(mail_uids=[mail_uid]).encode())
             _, ack2237 = await client.expect_event(2237)
             self.assertEqual(struct.unpack_from('<i', ack2237, 0)[0], 0)
 
@@ -152,7 +148,7 @@ class MailFlowTest(ServerTestCase):
             await client.expect_event(2007)
 
             # Receiver returns the mail
-            client.send_event(2234, struct.pack('<q', mail_uid))
+            client.send_event(2234, PostReturnReq(mail_id=mail_uid).encode())
             _, ack2235 = await client.expect_event(2235)
             self.assertEqual(struct.unpack_from('<i', ack2235, 0)[0], 0)
 

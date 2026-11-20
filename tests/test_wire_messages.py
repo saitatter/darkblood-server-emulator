@@ -332,26 +332,46 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<ii', ack), (0, 0))
 
     def test_mailbox_messages(self):
-        req_send = messages.PostSendReq.decode(b'')
-        self.assertIsNotNone(req_send)
+        # Client requests start with the 0x7FFFFFFF header word (live: 2219 = ffffff7f 00).
+        self.assertEqual(messages.PostListReq().encode(), bytes.fromhex('ffffff7f00'))
+        self.assertEqual(messages.PostListReq.decode(bytes.fromhex('ffffff7f00')).flag, False)
+
+        send = messages.PostSendReq(recipient='Bob', title='Hi', items=[7, 8], gold=50, extra=5, is_cod=True)
+        self.assertEqual(messages.PostSendReq.decode(send.encode()), send)
+        with self.assertRaises(jser.WireError):
+            messages.PostSendReq.decode(b'')
         ack_send = messages.PostSendAck(result=0, items=[]).encode()
         self.assertEqual(ack_send[:5], b'\x00\x00\x00\x00\x10')
+        self.assertEqual(messages.PostSendAck(result=0xCE).encode(), struct.pack('<i', 0xCE))
 
-        req_read = messages.PostReadReq.decode(struct.pack('<q', 12345))
-        self.assertEqual(req_read.mail_uid, 12345)
+        raw_read = bytes.fromhex('ffffff7f') + struct.pack('<q', 12345)
+        self.assertEqual(messages.PostReadReq.decode(raw_read).mail_uid, 12345)
         ack_read = messages.PostReadAck(result=0, mail_uid=12345).encode()
         self.assertEqual(struct.unpack_from('<iq', ack_read), (0, 12345))
 
-        req_item = messages.PostGetAppendItemReq.decode(struct.pack('<q', 54321))
-        self.assertEqual(req_item.mail_uid, 54321)
+        # 2225 carries an item record after the uid (0x00A4FAA0); it is kept raw.
+        raw_item = bytes.fromhex('ffffff7f') + struct.pack('<q', 54321) + b'\x01\x02'
+        req_item = messages.PostGetAppendItemReq.decode(raw_item)
+        self.assertEqual((req_item.mail_uid, req_item.item_record), (54321, b'\x01\x02'))
+        self.assertEqual(req_item.encode(), raw_item)
         ack_item = messages.PostGetAppendItemAck(result=0, mail_uid=54321, gold=500, items=[]).encode()
         self.assertEqual(struct.unpack_from('<iqq', ack_item[:20]), (0, 54321, 500))
 
-        del_payload = b'\x10' + jser.varuint(2) + struct.pack('<qq', 101, 102)
+        del_payload = bytes.fromhex('ffffff7f') + b'\x10' + jser.varuint(2) + struct.pack('<qq', 101, 102)
         req_del = messages.PostDeleteReq.decode(del_payload)
         self.assertEqual(req_del.mail_uids, [101, 102])
-        ack_del = messages.PostDeleteAck(result=0, mail_uids=[101, 102]).encode()
-        self.assertEqual(ack_del[:5], b'\x00\x00\x00\x00\x10')
+        self.assertEqual(req_del.encode(), del_payload)
+        ack_del = messages.PostDeleteAck(result=0, mail_uids=[101, 102])
+        self.assertEqual(ack_del.encode()[:5], b'\x00\x00\x00\x00\x10')
+        self.assertEqual(messages.PostDeleteAck.decode(ack_del.encode()), ack_del)
+
+    def test_mail_list_has_no_struct_tag(self):
+        # 0x00B35010 consumes no byte for tag 0x1E: the entry starts with its uid.
+        entry = messages.PostEntry(uid=0x1122334455667788, title='T')
+        ack = messages.PostListAck(inbox={entry.uid: entry}).encode()
+        self.assertEqual(ack[:7], b'\x00\x00\x00\x00\x17\x81\x0f')
+        self.assertEqual(struct.unpack_from('<qq', ack, 7), (entry.uid, entry.uid))
+        self.assertEqual(messages.PostListAck.OPCODE, 2220)
 
     def test_trade_messages(self):
         req_tr = messages.RequestTradeReq.decode(struct.pack('<q', 8888))
@@ -747,7 +767,7 @@ class WireMessagesTest(unittest.TestCase):
         not_mail = messages.PostNewArrivalNot().encode()
         self.assertEqual(not_mail, b'')
 
-        req_ret = messages.PostReturnReq.decode(struct.pack('<q', 777))
+        req_ret = messages.PostReturnReq.decode(bytes.fromhex('ffffff7f') + struct.pack('<q', 777))
         self.assertEqual(req_ret.mail_id, 777)
         ack_ret = messages.PostReturnAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_ret[:4])[0], 0)

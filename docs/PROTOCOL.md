@@ -129,6 +129,8 @@ Handlers such as `0x0077CFA0` reject an ACK whose u64 differs from the client's 
 
 **Body cursor:** `0x00A1EA20(peek)` reads the leading u32 result; with `peek = 0` the shared cursor stays after it, and readers created by `0x00A1E6A0` continue from there.
 
+**Request header word:** client requests use the same slot. Senders build the event with `0x00408C60(opcode, -1, -1)` and open the body with `0x00A1E620`. That call writes a 4-byte word before the first field, observed as `0x7FFFFFFF` (`ffffff7f`) in every captured request (2219 = `ffffff7f 00`). Recovered from the mail senders `0x00796270`, `0x00795D40`, `0x00796390`, `0x007965F0` and `0x00796470` (2026-11-20). Generated messages (`schemas/*.jsch`) expose it as `header` (requests) or `result` (replies). Hand-written decoders still strip or skip it case by case.
+
 **Container tags:** `0x00B35010` validates a tag byte only for tags 15..26 (`0x0F`..`0x1A`). Observed: `0x0F` map entry, `0x10` vector, `0x13` set-like container, `0x17` map. Struct tag `0x1E` is outside the range and is *not* written. Vectors and maps start with a J-varuint count; fixed arrays (`0x00A48DD0`) are a J-varuint count ≤ capacity followed by elements.
 
 Reader widths: `0x00B35150` u8, `0x00B35680` bool, `0x00B351E0` u16, `0x00B35300` u32, `0x00B35560` 4 bytes, `0x00B35430`/`0x00B356F0` 8 bytes, `0x00B35AB0` J-wstring.

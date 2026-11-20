@@ -1,5 +1,29 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Schema-generated messages — saita machine, 2026-11-20 (night)
+
+- **New pipeline**, modelled on MHServerEmu's `proto/` → protogen → `src/Gazillion`.
+  `schemas/<domain>.jsch` is the source of truth. `python tools/gen_messages.py`
+  writes `games/network/messages/<domain>.py` with a `DO NOT EDIT` header,
+  `OPCODE` class constants, and strict `decode`/`read`. Names are validated
+  against `assets/opcodes.tsv`. `tests/test_generated_messages.py` fails when
+  a generated module is stale. Format: `schemas/README.md`. Only **mail** is
+  converted. Next: convert other domains one at a time, then a C# backend.
+- **Request header word (static analysis plus captures)**: every client request
+  body starts with a 4-byte word (`ffffff7f`) written by `0x00A1E620`. Mail
+  senders `0x00796270`, `0x00795D40`, `0x00796390`, `0x007965F0` and
+  `0x00796470` were decompiled. The old mail decoders ignored it, so 2223/2225/2234
+  read the uid shifted by 4 bytes. 2236 is a `0x10` vector after the header; the
+  old raw-i64 fallback was a test artifact and is gone. Tests now send the real
+  form.
+- **2220 struct tag removed**: `PostEntry` emitted `0x1E`, which `0x00B35010`
+  does not consume (2026-11-16 correction). Non-empty inboxes would have
+  shifted every field. Inbox/outbox are now `dict[uid, PostEntry]`.
+- **Not yet confirmed live**: mail with a non-empty inbox, and the 2219 `flag`
+  byte (meaning unknown). The 2225 trailing item record (`0x00A4FAA0`) is kept
+  raw in `item_record`.
+- 179 headless tests pass.
+
 ## Gate, result screen, dyeing, tutorial exit, hotbar — saita machine, 2026-11-20 (late)
 
 Read this first; it corrects two claims in the "Dungeon difficulty" section below.

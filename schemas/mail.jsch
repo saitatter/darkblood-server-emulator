@@ -1,0 +1,109 @@
+# Mailbox (post) messages. Source of truth for
+# src/darkblood/games/network/messages/mail.py; regenerate with
+#     python tools/gen_messages.py
+#
+# Wire conventions (see schemas/README.md):
+#   every JEvent body starts with an i32 header word (written by 0x00A1E620,
+#   read as the result by 0x00A1EA20). Requests carry 0x7FFFFFFF there;
+#   replies carry the result code. `ok_only` replies stop after a non-zero result.
+
+domain mail Mailbox wire messages (eEGS_POST_*).
+
+extern Item from darkblood.games.entities.items
+
+struct PostEntry
+  ## Mail header and payload (deserializer 0x00A55920, 0x8C bytes in memory).
+  ## The 0x1E struct check in the reader consumes no wire byte, so no tag is written.
+  i64 uid                    # +0x00
+  u8 post_type               # +0x08: 0 normal, 1 system, 2 returned
+  i64 sender_uid             # +0x09
+  bool is_read               # +0x11
+  bool has_item              # +0x12
+  bool can_return = true     # +0x13
+  i32 remain_days = 30       # +0x14
+  i64 gold                   # +0x18
+  i64 send_time              # +0x20
+  wstr sender_name           # +0x28
+  wstr title                 # +0x44
+  wstr content               # +0x60
+  vector<Item> items         # +0x7C
+end
+
+message 2219 PostListReq request
+  ## Sender 0x00796270. Observed live body: ffffff7f 00.
+  bool flag                  # 0x00B35630 argument; meaning unknown
+end
+
+message 2220 PostListAck reply ok_only
+  ## Handler 0x007AEF70. Map values are read by 0x00784F30.
+  map<i64,PostEntry> inbox   # key = mail uid
+  map<i64,PostEntry> outbox  # key = mail uid
+  u32 unread_count
+  bool notify
+end
+
+message 2221 PostSendReq request
+  ## Sender 0x00795D40.
+  wstr recipient
+  wstr title
+  vector<i64> items          # attached item uids (0x004CB5E0)
+  i64 gold                   # attached gold
+  i64 extra                  # COD price
+  bool is_cod
+end
+
+message 2222 PostSendAck reply ok_only
+  ## Handler 0x00795F40.
+  vector<Item> items         # updated inventory items
+  i64 remain_gold
+  i16 daily_send_count = 1
+  i16 max_daily_send_count = 30
+end
+
+message 2223 PostReadReq request
+  ## Sender 0x00796390.
+  i64 mail_uid
+end
+
+message 2224 PostReadAck reply
+  ## Handler 0x0075A660.
+  i64 mail_uid
+end
+
+message 2225 PostGetAppendItemReq request
+  ## Sender 0x007965F0.
+  i64 mail_uid
+  rest item_record           # item record written by 0x00A4FAA0; not decoded
+end
+
+message 2226 PostGetAppendItemAck reply ok_only
+  ## Handler 0x0077F8E0.
+  i64 mail_uid
+  i64 gold
+  vector<Item> items
+end
+
+message 2227 PostNewArrivalNot reply bare
+  ## Handler 0x007965B0. Sent as an empty body; whether the handler reads a
+  ## header word is unverified.
+end
+
+message 2234 PostReturnReq request
+  ## No sender recovered in research/opcode_xrefs.tsv (call site near 0x00A33907).
+  i64 mail_id
+end
+
+message 2235 PostReturnAck reply ok_only
+  ## Handler 0x00771470.
+  vector<i64> mail_uids
+end
+
+message 2236 PostDeleteReq request
+  ## Sender 0x00796470: header, then tag 0x10 vector (0x004CB5E0).
+  vector<i64> mail_uids
+end
+
+message 2237 PostDeleteAck reply ok_only
+  ## Handler 0x007715F0.
+  vector<i64> mail_uids
+end

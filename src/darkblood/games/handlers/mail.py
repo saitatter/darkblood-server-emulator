@@ -76,16 +76,16 @@ class MailHandlers(BaseDomainService):
     async def on_2219(self, correlation, body):
         # eEGS_POST_REQUEST_LIST_REQ (0x007962F0) -> 2220 eEGS_POST_REQUEST_LIST_ACK (0x007AEF70).
         req = PostListReq.decode(body)
-        self.transport.record('post-request-list-req', body, dummy=req.dummy)
+        self.transport.record('post-request-list-req', body, flag=req.flag)
         char = self.current_char()
         char_id = char.get('id', self.char_id) if char else self.char_id
 
         inbox_rows = self.store().get_mail_inbox(char_id)
         outbox_rows = self.store().get_mail_outbox(char_id)
 
-        inbox = [self._to_post_entry(r) for r in inbox_rows]
-        outbox = [self._to_post_entry(r) for r in outbox_rows]
-        unread_count = len([m for m in inbox if not m.is_read])
+        inbox = {r['uid']: self._to_post_entry(r) for r in inbox_rows}
+        outbox = {r['uid']: self._to_post_entry(r) for r in outbox_rows}
+        unread_count = len([m for m in inbox.values() if not m.is_read])
         notify = unread_count > 0
 
         ack = PostListAck(result=0, inbox=inbox, outbox=outbox, unread_count=unread_count, notify=notify).encode()

@@ -3,6 +3,9 @@ import struct
 import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
+from darkblood.games.network.messages import (
+    PostDeleteReq, PostGetAppendItemReq, PostListReq, PostReadReq, PostReturnReq, PostSendReq,
+)
 
 
 class SocialFlowTest(ServerTestCase):
@@ -16,7 +19,7 @@ class SocialFlowTest(ServerTestCase):
             await client.expect_event(2007)
 
             # 1. Post list (2219 -> 2220)
-            client.send_event(2219, struct.pack('<i', 0x7fffffff))
+            client.send_event(2219, PostListReq().encode())
             _, ack2220 = await client.expect_event(2220)
             self.assertEqual(struct.unpack_from('<i', ack2220)[0], 0)
 
@@ -131,22 +134,22 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2215)[0], 0)
 
             # 23. Mailbox send (2221 -> 2222)
-            client.send_event(2221, b'')
+            client.send_event(2221, PostSendReq().encode())
             _, ack2222 = await client.expect_event(2222)
             self.assertEqual(struct.unpack_from('<i', ack2222)[0], 0)
 
             # 24. Mailbox read (2223 -> 2224)
-            client.send_event(2223, struct.pack('<q', 888))
+            client.send_event(2223, PostReadReq(mail_uid=888).encode())
             _, ack2224 = await client.expect_event(2224)
             self.assertEqual(struct.unpack_from('<iq', ack2224), (0, 888))
 
             # 25. Mailbox get append item (2225 -> 2226)
-            client.send_event(2225, struct.pack('<q', 888))
+            client.send_event(2225, PostGetAppendItemReq(mail_uid=888).encode())
             _, ack2226 = await client.expect_event(2226)
             self.assertEqual(struct.unpack_from('<iq', ack2226[:12]), (0, 888))
 
             # 26. Mailbox delete (2236 -> 2237)
-            client.send_event(2236, struct.pack('<q', 888))
+            client.send_event(2236, PostDeleteReq(mail_uids=[888]).encode())
             _, ack2237 = await client.expect_event(2237)
             self.assertEqual(struct.unpack_from('<i', ack2237)[0], 0)
 
@@ -266,7 +269,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2186)[0], 0)
 
             # 48. Post return (2234 -> 2235)
-            client.send_event(2234, struct.pack('<q', 12345))
+            client.send_event(2234, PostReturnReq(mail_id=12345).encode())
             _, ack2235 = await client.expect_event(2235)
             self.assertEqual(struct.unpack_from('<i', ack2235[:4])[0], 0)
 
