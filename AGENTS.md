@@ -7,7 +7,7 @@ verified findings and next investigation target. Update that handoff before endi
 each session, along with roadmap/status and relevant evidence notes, then push.
 
 
-Read `README.md`, `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` before resuming implementation. Last update: 2026-11-16, second session (key exchange through character creation).
+Read `README.md`, `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` before resuming implementation.
 
 Write and maintain all project documentation in English, as explicitly requested by the user.
 
@@ -15,7 +15,7 @@ Write and maintain all project documentation in English, as explicitly requested
 
 `main` is the clean source-only publication branch. The earlier history remains on local `master` and includes extracted game assets. Do not push `master`, use `git push --all`, or mirror the repository. Extracted assets remain on disk but are ignored on `main`.
 
-Goal: make the supplied Dark Blood client playable with a local offline server. This is incomplete. Current milestone: encrypted ProudNet session, server/channel lists, character list and creation verified on screen. Next: select-character response 2007 (`0x007AA4B0`, struct `0x00A40760`).
+Goal: make the supplied Dark Blood client playable with a local offline server. Town play, dungeons, quests, inventory, economy and two-client town presence work; shared dungeon instances and many zero-filled fields remain. The current milestone and next targets are in `docs/SESSION_HANDOFF.md`.
 
 ## Machine and repository
 

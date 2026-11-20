@@ -147,12 +147,12 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | automatic | 2021 `eEGS_SQUARELIST_REQ` (i32, u32) | 2022 | `0x0077A550`: u32 result, `0x10` vector of {u64 id, wstr name, u32, u32, u32} (`0x00A49700`) | Verified: "Channel 1 · Normal · [Good]" |
 | Channel Ok | 5028 `eERC_JOIN_SQUARE_REQ` (i32, u64 square) | 5029 | `0x00757AD0`: u32 result, u64 | Verified |
 | after 5029 | — | 5134 `eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT` | `0x0075AAE0`: no result word; implicit `0x1E` struct = 6 raw bytes (`0x00A48910`) written to the relay buffer at `[owner+0x6C]`: IPv4 bytes in network order + u16 LE port. Handler then calls `JP2PClient::Connect` (`0x00956C80`) | Verified: client connects to `127.0.0.1:9401` |
-| automatic | 2008 `eEGS_GET_CHARLIST_REQ` | 2009 | `0x0077CFA0`: u32 result, `0x10` vector of character, `0x10` vector (`0x004B94C0`), u8 slots, u8, bool, `0x17` map (`0x007680E0`), `0x13` (`0x006B9F80`) | Verified: "N SLOT" = first u8 |
+| automatic | 2008 `eEGS_GET_CHARLIST_REQ` | 2009 | `0x0077CFA0`: u32 result, `0x10` vector of character, `0x10` vector of worn Item records owned by their character (`0x004B94C0`, copied by `0x00538DF0` into the character-select item list; empty = bare class models), u8 slots, u8, bool, `0x17` map (`0x007680E0`), `0x13` (`0x006B9F80`) | Verified: "N SLOT" = first u8 |
 | Creation | 2012 `eEGS_CREATE_CHARACTER_REQ` | 2013 | `0x00758070`: u32 result, character, u8 (→ `0x00F44E58`) | Verified: character appears |
 | Ok on character | 2006 `eEGS_SELECT_CHAR_REQ` (i32, u64 char id) | 2007 `eEGS_SELECT_CHAR_ACK` | `0x007AA4B0`: u32 result, struct `0x00A40760` (651 bytes, full stats/visuals/skills), `0x10` vector `0x004B9210` | Verified |
 | World layer | 5030 `eERC_JOIN_LAYER_REQ` (i32 prefix, u64 layer ID, bool) | 5031 `eERC_JOIN_LAYER_ACK` | `0x00787A70`: u32 result, i64 square ID, i64 layer ID, empty vector, bool, i64 | Layer change verified |
 | Enter map | 2016 `eEGS_ENTER_MAPTOOL_REQ` | 2017 `eEGS_ENTER_MAPTOOL_ACK` | `0x00757D20`: u32 result (0 triggers Scene 5) | Verified |
-| Dungeon entrance (walk into town exit) | 2010 → 5001 `_singleplay` → 5043 `eERC_SELECT_DUNGEON_REQ` (i32, J-wstring gate id `Act1_G1`) | 5044 `eERC_SELECT_DUNGEON_ACK` | `0x007702E0`: u32 result, `0x17` map, `0x13` set, untagged J-wstring gate id (looked up by `0x006B2C00`, "Invalidation in m_pjGateProp" if unknown), `0x13` set of i32 map-id hashes (gate `+0x218`; quest-variant slots 4+ of a dungeon are offered only if their map hash is present, `0x006B5930`/`0x006C77E0`; server sends the active quests' `PlayMapID`). Then app state → dungeon gate (world map table) | Verified live: Gnogue Haram gate map shown |
+| Dungeon entrance (walk into town exit) | 2010 → 5001 `_singleplay` → 5043 `eERC_SELECT_DUNGEON_REQ` (i32, J-wstring gate id `Act1_G1`) | 5044 `eERC_SELECT_DUNGEON_ACK` | `0x007702E0`: u32 result, `0x17` history map (dungeon id → J-wstring map id, u8 m_ucDiff = highest cleared difficulty, u8 cleared flag; `0x00A4BC00` allows d when d-1 < m_ucDiff or d-1 == m_ucDiff with the flag), `0x13` set, untagged J-wstring gate id (looked up by `0x006B2C00`, "Invalidation in m_pjGateProp" if unknown), `0x13` set of active quest ids (gate `+0x218`; quest-variant map slots 4+ are offered and auto-selected by `0x006B5930`/`0x006C77E0`/`0x006D1120` only when the JHashString of the map's QuestLink (+0x44) is present). Then app state → dungeon gate (world map table) | Verified live: Gnogue Haram gate map shown |
 | Click dungeon on gate map | 5009 `eERC_CHANGE_MAPCODE_REQ` (i32, J-wstring map code `Act1_G1_A10`, bool) | 5010 `eERC_CHANGE_MAPCODE_ACK` | No JUserClient handler; JAppStateDungeonGate vf20 → `0x006D4A00` (app state 8): u32 result, untagged J-wstring map code, bool (meaning unknown; echoed) | Verified live |
 | Start game | 5013 `eERC_START_GAME_REQ` (i32, J-wstring map code) | 5014 `eERC_START_GAME_ACK` | `0x007880A0`: u32 result, u16, u32, untagged J-wstring **map code**, 3 × `0x17` map, `0x10` vector (`0x004B94C0`). An empty code crashed: `0x0098E630` returns NULL and `0x00788539` reads `+0x28` | Verified live: Lucid Forest Entrance loaded, monsters spawned, character moves |
 | Character deletion | 2014 `eEGS_DELETE_CHARACTER_REQ` (i64 char_uid) | 2015 `eEGS_DELETE_CHARACTER_ACK` | `0x00758370`: i32 result, i64 char_uid, i32 complete_time (0 = instant) | Verified |
@@ -162,20 +162,22 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_
 | Delete item | 2040 `eEGS_DELETE_ITEM_REQ` (i64 uid, i32 count) | 2041 `eEGS_DELETE_ITEM_ACK` | `0x00557420`: i32 result, i64 uid, i32 del_amount | Verified |
 | Equip item | 2042 `eEGS_EQUIP_ITEM_REQ` (i64 uid, i32 slot) | 2043 `eEGS_EQUIP_ITEM_ACK` | `0x007AE940`: i32 result, tag `0x10` vector of items | Verified |
 | Quickslot assign | 2044 `eEGS_ASSIGN_QUICKSLOT_REQ` (u8 type, u8 slot, i32 ref_id, i64 ref_uid) | 2045 `eEGS_ASSIGN_QUICKSLOT_ACK` | `0x0078C4A0`: i32 result, echoes slot/ref parameters | Verified |
-| Quickslot switch | 2046 `eEGS_SWITCH_QUCIKSLOT_REQ` (u8 type, u8 from, u8 to) | 2047 `eEGS_SWITCH_QUCIKSLOT_ACK` | `0x0078C790`: i32 result, u8 type, u8 from, u8 to | Verified |
+| Quickslot switch | 2046 `eEGS_SWITCH_QUCIKSLOT_REQ` (ffffff7f prefix, u8 type, u8 from, u8 to) | 2047 `eEGS_SWITCH_QUCIKSLOT_ACK` | `0x0078C790`: i32 result, u8 type, u8 from, u8 to | Verified |
 | Learn skill | 2050 `eEGS_LEARN_SKILL_REQ` (u16 skill_index, u8 level) | 2051 `eEGS_LEARN_SKILL_ACK` | `0x0078DBE0`: i32 result, u16 skill_index, u8 level, i32 remain_sp, i64 remain_gold | Verified |
 | Learn skill list | 2697 `eEGS_LEARN_SKILL_LIST_REQ` (prefix, tag 0x10 vector: tag 0x0F, u16 sidx, u8 lvl) | 2698 `eEGS_LEARN_SKILL_LIST_ACK` | `0x007A74A0`: i32 result, tag 0x17 map (0x0F, u16 key, u16 sidx, u8 lvl, wstring speech, bool lock, bool unk), i32 remain_sp, i64 remain_gold | Verified |
 | Http notice check | 2594 `eEGS_HTTPNOTICE_CHECK_REQ` | 2595 `eEGS_HTTPNOTICE_CHECK_ACK` | `0x005A5110`: i32 result, bool bWatch | Verified |
 | Play option update | 2216 `eEGS_PLAY_OPTION_UPDATE_REQ` (i64 char_uid, tag `0x1E` struct) | — | Fire-and-forget; consumed by server | Verified |
 | Invite list | 2024 `eEGS_GET_INVITELIST_REQ` | 2025 `eEGS_GET_INVITELIST_ACK` | `0x006A2E10`: i32 result, tag `0x10` empty vector | Verified |
 | Finish game / dungeon clear | 5017 `eERC_FINISH_GAME_REQ` (bool is_clear) | 5018 `eERC_FINISH_GAME_ACK` | `0x007ADB60`: u32 result, bool bVictory, wstring strPlayMapID, bool bSamePerson, tag 0x17 mapGuildPersonCnt; if victory: tag 0x17 mapSingleReward (0x0F, i64 uid, 40 raw bytes → JResultDirect `+0x74`: +4 num_total, +8/+0xC rates ×100 shown as "X", +0x10 EXP text, +0x20 extra-box count looped by `0x0071FF0F`, +0x24 extra-box price; +0, +0x14..+0x1C unknown), i32 nPartyRankFirst, i32 nPartyRankFinal, i32 nBoxGrade, i32 nExtraBoxCost, tag 0x10 vecBonusMonster | Verified |
-| Dyeing | 2210 `eEGS_USE_DYEING_ITEM_REQ` (`0x00505E30`): i64 dye item uid, i64 target item uid (-1 skin), u16, i32, u32 ARGB color, bool | 2211 `eEGS_USE_DYEING_ITEM_ACK` | coloring page `0x00511E50` → `0x00511B70`: i32 result, 10-byte dye block (`0x00A49BB0`: u16, i32, i32), tag 0x10 Item vector. No reply = client disconnects after the wait | Verified live 2026-11-20 |
-| Return to square | 5045 `eERC_BACK_TO_SQUARE_REQ` | 5046 `eERC_BACK_TO_SQUARE_ACK` | `0x007897F0`: i32 result, i64 square_uid, i64 layer_net_id, tag `0x10` vector, bool use_waypoint, i64 cur_area | Verified |
-| Dungeon rank reward | 5090 `eERC_CHOICE_REWARD_PARTYRANK_REQ` (i32 prefix, i32 card) | 5091 `eERC_CHOICE_REWARD_PARTYRANK_ACK` | `0x0078D660`: i32 result, i64 char_uid, tag `0x1E` 12-byte item reward, i32 box_type, i32 box_cost | Verified |
+| Dyeing | 2210 `eEGS_USE_DYEING_ITEM_REQ` (`0x00505E30`): i64 dye item uid, i64 target item uid (-1 skin), u16, i32, u32 ARGB color, bool | 2211 `eEGS_USE_DYEING_ITEM_ACK` | coloring page `0x00511E50` → `0x00511B70`: i32 result, 10-byte dye block (`0x00A49BB0`: u16, i32, i32), tag 0x10 Item vector. No reply = client disconnects after the wait Hair (stain Type 2) and skin (Type 3) dyes persist in 2007 details `+0x67`/`+0x71` (player `+0xCC`/`+0xD4`, apply `0x00515B40`) | Verified live 2026-11-20 (persistence headless only) |
+| Party invite by nickname | 5092 `eERC_INVITE_USE_NICK_REQ` (`0x007ABAA0`): ffffff7f + J-wstring nickname | 5050 `eERC_INVITE_ACK` | No dedicated ack; the sender waits for none. The server resolves the name and reuses the 5049 path | Headless |
+| Frame-rate telemetry | 2204 `eEGS_FRAME_STAT_NOT` (ffffff7f + 5 bytes) | none | Recorded only | Observed |
+| Return to square | 5045 `eERC_BACK_TO_SQUARE_REQ` | 5046 `eERC_BACK_TO_SQUARE_ACK` | `0x007897F0`: i32 result, i64 square_uid, i64 layer_net_id, tag `0x10` vector, bool use_waypoint, i64 iCurAr (current AR; 0 reset the town display after a dungeon, also used by 5031) | Verified |
+| Dungeon rank reward | 5090 `eERC_CHOICE_REWARD_PARTYRANK_REQ` (i32 prefix, i32 card) | 5091 `eERC_CHOICE_REWARD_PARTYRANK_ACK` | `0x0078D660`: i32 result, i64 char_uid, 12 raw bytes (`0x00AC82A0`: u32 item code shown by `0x00713AB0`, u16 ?, u16 count, u32 ?), i32 box_type, i32 box_cost; for the local player tag `0x10` Item vector and i64 gold | Verified |
 | Player death | 5093 `eERC_GAMEPLAY_DIE_CHAR_REQ` | 5094 `eERC_GAMEPLAY_DIE_CHAR_ACK` | `0x0078F090`: i32 result, i64 from, i64 to, bool bDie, i32 dmg, i32 cur_hp, i32 max_hp, u16 die_cnt, u16 coins | Verified |
 | Daily rebirth coin | 2448 `eEGS_DAILY_REBIRTH_COIN_USE_REQ` | 2449 `eEGS_DAILY_REBIRTH_COIN_USE_ACK` | `0x0079DC70`: i32 result, u16 daily_count, i32 remain_pcbang | Verified |
 | Level up notification | — | 5087 `eERC_LEVEL_UP_NOT` | `0x0078CCF0`: tag `0x1E` + tag `0x0D` (count 0) + i64 char_uid + u8 level + i32 hp + i32 mp + bool flag | Verified |
-| Exp notification | — | 5086 `eERC_CHANGE_EXP_NOT` | `0x0078D170`: i32 nExpTotal + tag `0x1E` jGainExp (8 x i32 + 1 x f32) | Verified |
+| Exp notification | — | 5086 `eERC_CHANGE_EXP_NOT` | `0x0078D170`: i32 nExpTotal (player `+0x78`) + jGainExp `0x00A49E20` (8 x i32 + J-wstring; a 4-byte float there made every 5086 fail to parse) | Verified |
 | Town layer membership | 5030 `eERC_JOIN_LAYER_REQ` (i32 prefix, u64 layer UID) | 5031 `eERC_JOIN_LAYER_ACK` | Layer changes confirmed on two live clients. Position updates use peer messages. | Layer change verified |
 | Square presence join | — | 5021 `eERC_USER_JOIN_SQUARE_NOT` | `i64 char_id, i32 square_id, 4 × f32 x/y/z/angle, u8 class, u8 level, wstr name`: broadcast to square occupants | Verified |
 | Square presence leave | — | 5022 `eERC_USER_LEAVE_SQUARE_NOT` | `i64 char_id, i32 reason`: broadcast to square occupants upon departure or disconnect | Verified |
@@ -577,7 +579,7 @@ Following character selection and relay attachment, the client interacts with tu
 | --- | --- | --- | --- |
 | `2131` (`eEGS_FRIEND_LIST_REQUEST_REQ`) | `0x007712E0` | `2132` (`eEGS_FRIEND_LIST_REQUEST_ACK`) | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
 | `2569` | `0x00772160` | `2570` | `u32 result` (0) + tag `0x17` map (`\x17\x00` empty map) |
-| `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) | `0x0077EEB0` | `2083` (`eEGS_CLEAR_TUTORIAL_ACK`) | `u32 result` (0) + tag `0x10` reward vector (empty = `10 80`). `0x006DBFA0(9)` is a state **getter** (JAppStateTutorial), not a transition; its method `0x006E5CE0` sends 2084, sets SquarePlay `+0x75` and fades into `g_jAS_Tutorial:On_Tutorial_FadeOut()` (`0x006F2EC0`) → `ChangeState(eAS_SquarePlay)`. See §7. |
+| `2082` (`eEGS_CLEAR_TUTORIAL_REQ`) | `0x0077EEB0` | `2083` (`eEGS_CLEAR_TUTORIAL_ACK`) | `u32 result` (0) + tag `0x10` Item vector applied by `0x007FEC40` (empty = `10 80`). The client then enters town without a new 2007, so the server sends the whole inventory (worn gear included) plus the rewards. `0x006DBFA0(9)` is a state **getter** (JAppStateTutorial), not a transition; its method `0x006E5CE0` sends 2084, sets SquarePlay `+0x75` and fades into `g_jAS_Tutorial:On_Tutorial_FadeOut()` (`0x006F2EC0`) → `ChangeState(eAS_SquarePlay)`. See §7. |
 | `2346` (`eEGS_TUTORIAL_QUEST_START_REQ`) | TalkBox `0x006481E0` | `2347` + `2074` | Request (`0x00799A60`): J-wstring tag + u32 quest id. 2347 is `u32 result` only. The server also sends 2074 to add the quest to the client's active list (hypothesis; see STATUS). |
 | `2390` (`eEGS_ROULETTE_MANAGER_INFO_REQ`) | `0x006CC6B0` | `2391` (`eEGS_ROULETTE_MANAGER_INFO_ACK`) | `u32 result` (0) + untagged 21 zero bytes (`0x00A48B80`) |
 | `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) | Sender `0x00799E60` | None | Notification sent on tutorial mob defeat |
@@ -746,11 +748,17 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2335 eEGS_TITLE_CHANGE_REQ` -> `2336 eEGS_TITLE_CHANGE_ACK` (`0x007751C0`):
   `title_id: i32` -> `result: i32 (0), title_id: i32`.
 - `2327 eEGS_ACHIEVE_GET_LIST_REQ` -> `2328 eEGS_ACHIEVE_GET_LIST_ACK` (`0x0079D650`):
-  empty -> `result: i32 (0), tag 0x1E, tag 0x17 map, tag 0x17 map, tag 0x0A bool, tag 0x10 vector`.
+  `result: i32`, struct `0x00A3E760` {tag `0x17` map `0x005EC140` (0x0F, u32 division, i64 counter),
+  tag `0x17` map `0x00A3DC50` (0x0F, u32 JHashString(AchieveID), entry `0x00A1ED90`: i32 id, bool, i32,
+  time64), bool}, tag `0x10` vector of 13-byte blocks (`0x0076B0C0`, not recovered).
+- `2446 eEGS_ACHIEVE_DIV_UPDATE_REQ` -> `2447` (u32 result): tag `0x17` map (0x0F, u32 division,
+  i64 per-run amount), sent after a dungeon run. Type 0 achievements (`achieve.lua`) complete when the
+  summed (Accumulate 1) or best single (Accumulate 0) amount reaches GoalAmount.
 - `2329 eEGS_ACHIEVE_CHANGE_NOT` (`0x0076C720`):
-  3x Tag `0x17` map: real-time achievement progress updates.
+  3x Tag `0x17` map: real-time achievement progress updates (not sent yet).
 - `2330 eEGS_ACHIEVE_COMPLETE_NOT` (`0x0079D240`):
-  2x Tag `0x10` vector: completed achievements and rewards.
+  tag `0x10` vector of `0x00A1ED90` entries (printed by name via `0x00AABAB0`), tag `0x10` vector of
+  13-byte blocks (`0x00A1E7E0`, not recovered).
 - `2362 eEGS_AVATAR_ZAM_INSERT_REQ` -> `2363 eEGS_AVATAR_ZAM_INSERT_ACK` (`0x00782D00`):
   `avatar_item_uid: i64, zam_item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
 - `2364 eEGS_AVATAR_ZAM_ERASE_REQ` -> `2365 eEGS_AVATAR_ZAM_ERASE_ACK` (`0x00782F40`):

@@ -1,5 +1,62 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Gate, result screen, dyeing, tutorial exit, hotbar — saita machine, 2026-11-20 (late)
+
+Read this first; it corrects two claims in the "Dungeon difficulty" section below.
+
+- **5018 result crash (cause from static analysis plus the client crash log)**:
+  `0x0071F9F0` copies the 40-byte mapSingleReward block to JResultDirect `+0x74`. Field `+0x20`
+  is the extra-box count: `0x0071FF0F` adds that many "extra_box" UI entries. The previous
+  encoder put damage there (5850/14400). The client froze about 80 s after 5018 and logged
+  `CRASH`. The fields are recovered in `SingleReward` (messages/dungeon.py). The earlier
+  claim that `+0x7C` is a float gauge rate was wrong, because that check belongs to another
+  class. The gauges read party member data.
+- **5044 gate (static)**: the history value is a J-wstring map id, `u8 m_ucDiff` and a
+  `u8` cleared flag. `0x00A4BC00` allows difficulty d when d-1 < m_ucDiff, or when
+  d-1 == m_ucDiff with the flag set. `0x006D1120` auto-selects the map whose Difficult
+  equals m_ucDiff, one step higher when cleared. Sending 3/1 everywhere therefore made
+  "Unique" the default. The server now keeps `char['dungeon_history']`, the highest cleared
+  difficulty from 5017 clears. Quest variants are excluded. History entries are sent only
+  for cleared dungeons. The trailing i32 set holds **active quest ids**, not map ids. The
+  gate hashes each map's `+0x44` (QuestLink) and offers or auto-selects the quest variant
+  (e.g. Act1_G1_A16 for Q0002S01 "Violent Monsters") only when it is present.
+  `assets/dungeon_maps.tsv` (MapID, DungeonID, Difficult, QuestLink) replaces the wrong
+  `quest_play_maps.tsv`. **Not yet confirmed live.**
+- **Dyeing (verified live)**: 2210 was unhandled, so the client dropped the connection
+  while waiting for 2211. 2210 now leads to 2211 (`0x00511B70`: i32, 10-byte dye block,
+  item vector) and the dye is consumed. The 2211 apply (`0x00515B40`) writes hair
+  (stain Type 2) and skin (Type 3) dyes to player `+0xCC`/`+0xD4`. 2007 fills those blocks
+  from details `+0x67`/`+0x71` (`0x0095A150`), so the server stores `hair_dye`/`skin_dye`
+  and resends them. Persistence is covered by a headless test only. Item dyes (weapon, gear,
+  pet) are not stored yet. They probably belong in the Item's two `0x00A4B250` arrays.
+- **Tutorial skip (verified live)**: `0x0077EEB0` applies the 2083 item vector and enters
+  town without a new 2007. The server now resends the whole inventory there, so a new
+  knight keeps its armour.
+- **Character select**: the second 2009 vector holds worn Item records per character
+  (`0x00538DF0`). It was empty, so all models looked bare. Not yet confirmed live.
+- **Hotbar**: 2046 carries the ffffff7f prefix. It was decoded as 255/255/255, so dragged
+  entries vanished. Not yet confirmed live.
+- **5092** invite by nickname (no dedicated ack, answered with 5050) and **2204**
+  telemetry (recorded only). No opcode in `logs/wire.jsonl` is unhandled any more.
+- Local DB note: Knight1/Knight2 had `tutorial_cleared` reset for the live test. A backup
+  copy is in the session scratchpad and is not part of the repo.
+
+- **Later the same session**: 5046/5031 now send `iCurAr` (current AR). The client showed
+  0 AR in town after a dungeon. 5086's jGainExp ends with a J-wstring, not a float. Every 5086
+  failed to parse, so the EXP bar moved only on level-up. The 5091 reward block starts with the
+  item code (`0x00713AB0`); a UID there showed "unknown item". Counter achievements: 2446
+  per-run division amounts are summed per character and complete Type 0 entries
+  (`assets/achievements.tsv`, keyed by JHashString(AchieveID), confirmed in `0x00A50DA0`).
+  2330 announces them and 2328 lists totals and completed entries. 5092 invites by nickname.
+  2204 is recorded. `tools/gen_opcode_registry.py` regenerates `docs/OPCODE_REGISTRY.md`. The
+  hand-written opcode tables in ROADMAP.md had wrong names and were replaced by a link.
+  These fixes are headless-tested only.
+
+Next targets: confirm the gate, character select, hotbar, town AR, EXP bar, chest names and
+achievement completion live. Then look at
+fields still sent as zero: item dyes, mapSingleReward `+0x00`/`+0x14..+0x1C`, the first
+5044 set, and the 2009 trailing map/set.
+
 ## Standalone Server Assets (Elimination of external data_root requirement) — saita machine, 2026-11-20
 
 - Per user request to eliminate `data_root` / external client data dependency:
@@ -32,6 +89,7 @@
   Now populated via `gate_dungeons()` from `maplist.lua` with `(dungeon_id, max_diff=3, state=1)` encoded in the `0x17` map
   as `\x0f + wide_string(dungeon_id) + wide_string(map_code) + struct.pack('<BB', 3, 1)`.
   This unlocks Normal, Hard, Master, and Hero difficulty selection on the dungeon gate UI.
+  **Superseded:** 3/1 also made the highest difficulty the default; see the section above.
 
 - **End-of-dungeon chest opening (Issue 2)**:
   In Opcode 5091 (`ChoiceRewardPartyRankAck`, handler `0x0078D660`), when `char_uid == local_player_uid`,
@@ -48,6 +106,8 @@
   and rank score calculations.
   Configured `FinishGameAck` to encode `<iifiiiiiii` with float `1.0f` at offset 8, and populated non-zero combat metrics
   (score, kill_count, max_combo, clear_time, damage_dealt).
+  **Wrong, reverted:** `+0x7C` here belongs to another class; this layout crashed the result
+  screen (`+0x20` is the extra-box count). See the section above.
 
 - **Quest "Support the Guards!" & Item Objectives (Issue 4)**:
   In `quest_act1.lua`, quest `Q0008S01` has two missions: `QM807` (meet Lloyd, index 0, type 5) and `QM815` (have Backup Order `Iquea0310`, index 1, type 1).

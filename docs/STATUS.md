@@ -1,5 +1,24 @@
 # Research status and handoff
 
+## Gate history, result screen, dyeing and tutorial exit — 2026-11-20
+
+- 5018: the 40-byte mapSingleReward block is recovered (`SingleReward`). `+0x20` is
+  the extra-box count looped by `0x0071FF0F`. Sending damage there froze and crashed
+  the result screen.
+- 5044: the history entries hold the highest cleared difficulty per dungeon, now
+  persisted per character. The trailing set holds active quest ids, which unlock the
+  quest variants of a dungeon (map QuestLink).
+- 2210/2211 dyeing is verified live. Hair and skin dyes persist through 2007 details
+  `+0x67`/`+0x71`.
+- 2083 resends the inventory: the tutorial skip enters town without a new 2007.
+  Verified live.
+- 2009 sends worn items for the character-select models. 2046 skips the request prefix.
+- 5092 nickname invite; 2204 telemetry is recorded.
+- 5046/5031 send the current AR (iCurAr). 5086 ends jGainExp with a J-wstring, so the EXP bar
+  updates. The 5091 reward block starts with the item code.
+- Counter achievements (2446 to 2330/2328) track per-character division totals.
+  All 176 headless tests pass.
+
 ## Party invitation acceptance — Cristian, 2026-11-20
 
 The server requires a pending invitation for `2102` and `5054` and consumes it

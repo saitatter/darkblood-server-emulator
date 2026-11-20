@@ -24,18 +24,20 @@ The project allows playing the original client offline via a local server (`127.
 * **Channel & Layer Transitions**: Switching between channels and field layers cleanly.
 
 ### 4. Dungeons, Combat & Quests
-* **Dungeon Lifecycle**: Tutorial dungeon entry, Act 1 dungeons, zone transitions, and combat loops.
-* **Monster Combat & EXP**: Monster death (`5063`) grants authentic EXP from client dictionary (`monster.lua`) and drives level-up progression.
-* **Dynamic Lua Loot Drops**: Integrated drop tables (`itemlooting.lua`) rolling monster drops scaled by HP ratios and player class requirements; drop announcement (`5064`) and pickup (`5065`/`5068`).
-* **Quest Progress Tracking**: Monster kills automatically advance active quest objectives (`quest_monster_objectives`) with real-time HUD updates (`2075`).
-* **Dungeon Victory & Clear Screen (5017 / 5018)**: Complete victory payload (`0x007ADB60`) with dynamic party rank calculation (**SSS, SS, S, A**) based on score and kill count, reward box grades, and 40-byte player clear statistics payload.
-* **Player Death & Revive (5093 / 5094)**: Character death opens the revive UI; resurrection consumes rebirth coins and restores HP.
+* **Dungeon Lifecycle**: Tutorial (with skip), Act 1 dungeons, layer transitions and combat loops.
+* **Dungeon Gate (5044)**: Per-character clear history unlocks difficulties in order (Normal first), and active quests unlock their quest variant of a dungeon.
+* **Monster Combat & EXP**: Monster death (`5063`) grants EXP from `monster.lua`, drives level-up (`5087`) and updates the EXP bar (`5086`).
+* **Loot**: Drop tables from `itemlooting.lua`, drop announcement (`5064`), item and AR pickup (`5065`/`5068`/`5114`).
+* **Quest Progress Tracking**: Kill and item objectives advance active quests with HUD updates (`2075`).
+* **Dungeon Result Screen (5017 / 5018)**: Clear payload with party rank, box grade and the recovered 40-byte reward block; reward chest pick (`5090`/`5091`).
+* **Player Death & Revive (5093 / 5094)**: Revive UI and rebirth coins.
+* **Achievements**: Counter achievements progress from the client's division reports (`2446`), complete with `2330` and list in `2328`.
 
 ### 5. Inventory & Equipment
-* **Item Management**: Drag-and-drop (`2036`/`2037`), stack division (`2250`), item use (`2038`), item deletion (`2040`), and weapon swapping (`2042`).
-* **Equipment Verification**: Slot-to-widget mapping (Weapon 1/2, Armor, Gloves, Boots, Belt, Shoulders, Cloak, Accessories, Helmet).
+* **Item Management**: Drag-and-drop (`2036`/`2037`), stack division (`2250`), item use (`2038`), deletion (`2040`), equip and weapon swap (`2042`), quickslots (`2044`/`2046`).
+* **Appearance**: Worn gear on character-select models (`2009`), hair and skin dyeing (`2210`/`2211`) persisted through login.
 * **Crafting & Upgrades**: Durability repairs (`2145`), Avatar Zam socket insertion/removal (`2362`/`2364`), item upgrades (`2115`), and spirit weapons (`2338`).
-* **Depot / Warehouse (Bancă)**: Gold deposits (`2228`/`2229`), gold withdrawals (`2230`/`2231`), shared depot expiry query (`2242`/`2243`), and depot slot expansions (`2461`/`2462`).
+* **Depot**: Gold deposits and withdrawals (`2228`–`2231`), shared depot expiry (`2242`), slot expansion (`2461`).
 
 ### 6. Skills & Combat Abilities
 * **Skill Learning**: Single skill learning (`2050`) and full skill tree batch learning (`2697`/`2698`).
@@ -51,50 +53,37 @@ The project allows playing the original client offline via a local server (`127.
 
 ## Architecture & Codebase
 
-The emulator follows a clean domain-driven architecture inspired by MHServerEmu:
+The server is a Python package laid out like MHServerEmu so it can be ported to C# later:
 
 ```
 src/darkblood/
-├── core/                       # ProudNet protocol, framing, cryptography, serialization
-│   ├── hashing.py              # DJB2 hashing (jhash)
-│   ├── proudnet/               # ProudNet transport, packet framing, handshake
-│   └── serialization/          # JSerBuffer, JEvent varints, strip_prefix
-├── frontend/                   # Network listeners (port 9400 game, 9401 relay)
-│   ├── server.py               # BootstrapServer, Session connection lifecycle
-│   └── relay.py                # Relay server listener
-├── player_management/          # Character & account persistence
-│   ├── characters.py           # Equipment rules, slot verification, rewards
-│   └── store.py                # SQLite CharacterStore backend
-└── games/                      # Game logic domain
-    ├── session.py              # GameSession routing and event loop
-    ├── game_data/              # Client dictionary readers (monsters, quests, items, loot)
-    ├── network/messages/       # Typed dataclass wire encoders and decoders
-    └── handlers/               # Modular domain mixins:
-        ├── arena.py            # Arena & duel matches
-        ├── commerce.py         # NPC shops, Steam billing, trade
-        ├── dungeon.py          # Dungeon instance, combat, monster dead, clear ack
-        ├── events.py           # World events, Gold Goblin
-        ├── guild.py            # Guild administration, skills, bank
-        ├── inventory.py        # Item drag/use/equip, bags, crafting, depot
-        ├── lobby.py            # Server/channel list, character creation/select
-        ├── quests.py           # Quest lifecycle & rewards
-        ├── skills.py           # Skill tree learning & management
-        ├── social.py           # Friends, party, chat, notifications
-        ├── square.py           # Town square presence & broadcast
-        └── system.py           # System settings, alarms, second password
+├── core/               # ProudNet framing, crypto, JSerBuffer serialization, JHashString
+├── frontend/           # Listeners: game (9400) and relay (9401)
+├── player_management/  # Character creation rules and the SQLite store
+└── games/
+    ├── session.py      # GameSession and the startup opcode dispatcher
+    ├── handlers/       # One service per domain: frontend, square, social, commerce,
+    │                   # inventory, skills, quests, dungeon, arena, pets, mail
+    ├── network/        # messages/<domain>.py dataclasses, result codes
+    ├── entities/       # Character and Item wire structs
+    ├── game_data/      # Readers for the normalized tables in assets/
+    └── world.py, progression.py, achievements.py, loot.py, stalls.py
 ```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the rules and the porting plan, and
+[docs/OPCODE_REGISTRY.md](docs/OPCODE_REGISTRY.md) (generated) for every opcode's status.
 
 ---
 
 ## Automated Test Suite
 
-The emulator includes **173 headless integration and unit tests** for network handshakes and protocol flows without launching graphics windows:
+The emulator includes **176 headless integration and unit tests** for network handshakes and protocol flows without launching graphics windows:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-* Tests cover: lobby handshake, character creation, SQLite storage, world entrance, monster EXP, dungeon victory rank calculation, inventory & depot flows, quest progression, cash shop, arena duels, and wire serialization.
+* Tests cover: lobby handshake, character creation, SQLite storage, world entrance, monster EXP, dungeon gate history and result screen, inventory, depot and dyeing, quest progression, achievements, party invites, cash shop, arena duels, and wire serialization.
 
 ---
 
@@ -120,9 +109,15 @@ To populate a new catalog from an existing local extraction, run
 `darkblood-client-data` directory. It also accepts an explicit `--source` path
 and creates a local override without overwriting an existing catalog.
 
-Purchases use the TSV at runtime. Package and random box contents still use
-the optional extracted game data. Players connecting to the server need no
-Cash Shop configuration.
+Purchases use the TSV at runtime. Package and random box contents come from
+`assets/cash_packages.tsv` and `assets/random_boxes.json`. Players connecting
+to the server need no Cash Shop configuration.
+
+### Game data
+
+The server runs from the normalized tables in `assets/` and needs no extracted
+client data. `python tools/export_assets.py` regenerates them from an extracted
+client (`DARKBLOOD_CLIENT_DATA` or the adjacent `darkblood-client-data`).
 
 ### 1. Build & Deploy Client Hook
 Build the x86 redirect hook with the game client closed:
@@ -167,6 +162,8 @@ python tools\gamectl.py stop           # Stop processes
 * [Session Handoff](docs/SESSION_HANDOFF.md): Latest findings, active tasks, and verified breakthroughs.
 * [Research Status](docs/STATUS.md): Reverse-engineering notes, evidence logs, and memory offsets.
 * [Recovered Protocol](docs/PROTOCOL.md): Wire framing, opcode tables, and client handler addresses.
+* [Opcode Registry](docs/OPCODE_REGISTRY.md): Generated per-opcode status (`python tools/gen_opcode_registry.py`).
+* [Architecture](docs/ARCHITECTURE.md): Package layout, rules, and porting notes.
 * [Roadmap](ROADMAP.md): Milestones, priority items, and development trajectory.
 * [Agent Guidelines](AGENTS.md): Working instructions, commit conventions, and synchronization rules.
 
@@ -174,6 +171,8 @@ python tools\gamectl.py stop           # Stop processes
 
 ## Current Roadmap & Next Steps
 
-* **P2P / UDP synchronization**: Multi-player dungeon synchronization.
-* **Mounts & Pets**: Activating mount summoning (`ridecall`) and pet items (`PetCall`).
-* **Party Dungeon Matchmaking**: Synchronizing dungeon parties across multiple client connections.
+* **Shared dungeon instances**: Party rooms owned by one instance with synchronized membership.
+* **Remaining zero-filled fields**: Item dyes, the unrecovered parts of the result and gate messages, and achievement rewards and group achievements (`2331`/`2332`, Type 2/3).
+* **Mounts & Pets**: Mount summoning (`ridecall`) and pet items (`PetCall`).
+
+See [ROADMAP.md](ROADMAP.md) for milestones.

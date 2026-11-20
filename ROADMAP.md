@@ -13,13 +13,13 @@ Final objective: launch without the original services, establish a local session
 | **P0: Enter the World** | Handshake, Auth, Lobby, Selection, Town entry | **Verified** | Town rendered, character visible, movement confirmed |
 | **P1: Transport & Serialization** | ProudNet framing, JSerBuffer, crypto, compression | **Verified** | Full regression test suite (`test_transport.py`), 11 tests |
 | **P2: Lobby & Account** | Character list, create, delete, versioned persistence | **Verified** | Name validation, persistent SQLite store, default gear |
-| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot |
+| **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot. 11-20: result screen, dyeing, tutorial-exit gear; gate history/quest variants, EXP bar, town AR, chest names and counter achievements await live checks |
 | **P4: Assets & Config** | JPK unpacker, Lua tables, dictionaries | **In Progress (~80%)** | Validated decoder, bundled Cash Shop purchase catalog, store/quest/stat/monster tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
 | **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress** | Town peer rendering and movement verified with two live clients. Shared dungeon instances remain open. |
 | **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **Verified (~95%)** | P2P trade, full mailbox with attachments, depot AR/slots, player stalls & broker marketplace live |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
-| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode ownership, world lifecycle | **In Progress** | Startup-validated opcode registry, per-connection identity, indexed town presence. 171 headless tests pass. Shared instance ownership remains open. |
+| **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode ownership, world lifecycle | **In Progress** | Startup-validated opcode registry, generated opcode registry doc, per-connection identity, indexed town presence, shared party-invite path. 176 headless tests pass. Shared instance ownership remains open. |
 | **P10: C# / .NET 8 Server Port** | High-performance C# server (MHServerEmu alignment) | **Planned** | Composition architecture, ProudNet wire layer, entity model, domain services |
 
 ---
@@ -271,196 +271,13 @@ Final objective: launch without the original services, establish a local session
 
 ---
 
-## Subsystem Opcode Reference & Implementation Status
+## Opcode Reference
 
-Below is the structured roadmap of client opcodes, categorized by gameplay subsystem.
-
-### 1. Authentication, Lobby & Account (Opcodes 2001 - 2023, 2402 - 2405, 5020, 5028)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 5020 | `eERC_WELCOME_NOT` | **Implemented** | Initial session handshake & client settings |
-| 2402 / 2403 | `eEGS_DB_LIST_REQ / ACK` | **Implemented** | Server list dialog (`0x00783CD0`) |
-| 2001 / 2002 | `eEGS_CHANNEL_LIST_REQ / ACK` | **Implemented** | Channel selection list (`0x00783F40`) |
-| 2021 / 2022 | `eEGS_AUTHENTICATE_REQ / ACK` | **Implemented** | User account authentication (`0x007841C0`) |
-| 5028 / 5029 | `eERC_VERSION_REQ / ACK` | **Implemented** | Client version check (`0x00784400`) |
-| 5134 | `eERC_SQUARE_RELAY_ANNOUNCE` | **Implemented** | Relay server endpoint (127.0.0.1:9401) |
-| 2008 / 2009 | `eEGS_CHAR_LIST_REQ / ACK` | **Implemented** | Character selection list (`0x00784860`) |
-| 2012 / 2013 | `eEGS_CREATE_CHARACTER_REQ / ACK` | **Implemented** | Character creation (`0x00784AC0`) |
-| 2014 / 2015 | `eEGS_DELETE_CHARACTER_REQ / ACK` | **Implemented** | Character deletion (`0x00758370`) |
-| 2006 / 2007 | `eEGS_SELECT_CHAR_REQ / ACK` | **Implemented** | Character select & world entry payload (`0x007AA4B0`) |
-| 2016 / 2017 | `eEGS_CHANGE_CHAR_SLOT_REQ / ACK` | Planned | Reordering characters in selection menu |
-
-### 2. Inventory, Items & Bag Management (Opcodes 2028 - 2049, 2115 - 2118, 2143 - 2146)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 2028 | `eEGS_CLOSE_BAG_REQ` | **Implemented** | Fire-and-forget bag window closed |
-| 2030 / 2031 | `eEGS_SWITCH_BAG_REQ / ACK` | **Implemented** | Bag container slot swap (`0x00557680`) |
-| 2032 / 2033 | `eEGS_CHANGE_BAG_NAME_REQ / ACK` | **Implemented** | Rename bag tab (`0x007528B0`) |
-| 2036 / 2037 | `eEGS_DRAG_ITEM_REQ / ACK` | **Implemented** | Drag item across inventory slots (`0x0077DF60`) |
-| 2038 / 2039 | `eEGS_USE_ITEM_REQ / ACK` | **Implemented** | Consume potion / food / buff (`0x0077D4C0`) |
-| 2040 / 2041 | `eEGS_DELETE_ITEM_REQ / ACK` | **Implemented** | Discard item from inventory (`0x00557420`) |
-| 2042 / 2043 | `eEGS_EQUIP_ITEM_REQ / ACK` | **Implemented** | Equip weapon / armor / accessory (`0x007AE940`) |
-| 2044 / 2045 | `eEGS_ASSIGN_QUICKSLOT_REQ / ACK` | **Implemented** | Map item/skill to quickslot (`0x0078C4A0`) |
-| 2046 / 2047 | `eEGS_SWITCH_QUICKSLOT_REQ / ACK` | **Implemented** | Reorder quickslot buttons (`0x0078C790`) |
-| 2048 / 2049 | `eEGS_CHANGE_BAG_PROPERTY_REQ / ACK` | **Implemented** | Bag category filter settings (`0x00774040`) |
-| 2115 / 2116 | `eEGS_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Equipment reinforcement & upgrading (`0x007909C0`) |
-| 2117 / 2118 | `eEGS_UPDATE_SKILL_LOCKED_REQ / ACK` | **Implemented** | Lock skill from accidental use (`0x00752C70`) |
-| 2143 / 2144 | `eEGS_DURABILITY_CHANGE_REQ / ACK` | **Implemented** | Item durability wear update (`0x00774AE0`) |
-| 2145 / 2146 | `eEGS_DURABILITY_REPAIR_REQ / ACK` | **Implemented** | Blacksmith durability repair (`0x007930D0`) |
-| 2050 / 2051 | `eEGS_LEARN_SKILL_REQ / ACK` | **Implemented** | Skill tree progression & level (`0x0078DB90`) |
-| 2053 / 2054 | `eEGS_MODIFY_SKILL_SPEECH_REQ / ACK` | **Implemented** | Custom skill shout text (`0x0078E090`) |
-| 2055 / 2056 | `eEGS_DELETE_SKILL_SPEECH_REQ / ACK` | **Implemented** | Clear skill shout text (`0x0078E270`) |
-| 2108 / 2109 | `eEGS_ITEM_DISASSEMBLE_REQ / ACK` | Planned | Salvage items into crafting materials |
-| 2110 / 2111 | `eEGS_ITEM_SOCKET_INSERT_REQ / ACK` | Planned | Insert jewel / gem into socket |
-| 2112 / 2113 | `eEGS_ITEM_SOCKET_REMOVE_REQ / ACK` | Planned | Extract jewel from socket |
-
-### 3. Economy, Stores & Trade (Opcodes 2065 - 2087, 5069 - 5084)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 2065 / 2066 | `eEGS_GET_STORE_INFO_REQ / ACK` | **Implemented** | Fetch NPC store item list (`0x007842C0`) |
-| 2067 / 2068 | `eEGS_BUY_ITEM_REQ / ACK` | **Implemented** | Buy items from store with gold (`0x0077E2F0`) |
-| 2069 / 2070 | `eEGS_SELL_ITEM_REQ / ACK` | **Implemented** | Sell items to vendor for gold (`0x0077E8E0`) |
-| 2071 / 2072 | `eEGS_REPURCHASE_ITEM_REQ / ACK` | **Implemented** | Repurchase sold items tab (`0x0077EC30`) |
-| 2086 / 2087 | `eEGS_BUY_LIFE_WATER_REQ / ACK` | **Implemented** | Purchase life water resurrection item (`0x0078FF90`) |
-| 5069 / 5070 | `eERC_REQUEST_TRADE_REQ / ACK` | **Implemented** | Direct player trade invite (`0x00770E50`) |
-| 5071 / 5072 | `eERC_ACCEPT_REQUEST_TRADE_REQ / ACK` | **Implemented** | Accept trade invitation (`0x007587B0`) |
-| 5073 / 5074 | `eERC_CANCEL_TRADE_REQ / ACK` | **Implemented** | Cancel active trade session (`0x0077DE00`) |
-| 5075 / 5076 | `eERC_INSERT_TRADE_ITEM_REQ / ACK` | **Implemented** | Stage item into trade slot (`0x0077D980`) |
-| 5077 / 5078 | `eERC_DELETE_TRADE_ITEM_REQ / ACK` | **Implemented** | Unstage item from trade slot (`0x0077DBB0`) |
-| 5079 / 5080 | `eERC_UPDATE_TRADE_AR_REQ / ACK` | **Implemented** | Update gold offered in trade (`0x00758940`) |
-| 5081 / 5082 | `eERC_ACCEPT_TRADE_REQ / ACK` | **Implemented** | Lock and accept trade terms (`0x0078EB40`) |
-| 5083 / 5084 | `eERC_FINALLY_ACCEPT_TRADE_REQ / ACK` | **Implemented** | Final trade transaction execution |
-| 2254 / 2255 | `eEGS_MAGICENCHANT_ENCHANT_REQ / ACK` | **Implemented** | Magic enchanting application (`0x00796DC0`) |
-| 2256 / 2257 | `eEGS_MAGICENCHANT_ERASE_OPTION_REQ/ACK`| **Implemented** | Erase magical option from gear (`0x00797120`)|
-| 2258 / 2259 | `eEGS_MAGICENCHANT_EXPEND_SLOT_REQ/ACK`| **Implemented** | Expand item socket slot (`0x0077FC60`) |
-| 2284 / 2285 | `eEGS_RANDOM_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Random item stat upgrade (`0x0077FED0`) |
-| 2672 / 2673 | `eEGS_FIX_ITEM_UPGRADE_REQ / ACK` | **Implemented** | Fixed item stat upgrade (`0x00783C40`) |
-| 2338 / 2339 | `eEGS_ITEM_SPIRIT_CHANGE_REQ / ACK` | **Implemented** | Spirit weapon stat transformation (`0x00780860`)|
-| 2078 / 2079 | `eEGS_PERSONALSHOP_OPEN_REQ / ACK` | Planned | Open personal shop stall in town |
-| 2080 / 2081 | `eEGS_PERSONALSHOP_BUY_REQ / ACK` | Planned | Purchase from player's personal stall |
-
-### 4. Quests, Tutorial & Dialogue (Opcodes 2073 - 2095, 2346 - 2358, 2410)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 2073 / 2074 | `eEGS_QUEST_ACCEPT_REQ / ACK` | **Implemented** | Start quest (`0x0076BA00`) |
-| 2076 / 2077 | `eEGS_QUEST_COMPLETE_REQ / ACK` | **Implemented** | Turn in quest, gold/EXP/items (`0x00656870`) |
-| 2082 / 2083 | `eEGS_CLEAR_TUTORIAL_REQ / ACK` | **Implemented** | Complete tutorial, enter Act 1 (`0x006E5CE0`) |
-| 2084 / 2085 | `eEGS_CHECK_TUTORIAL_REQ / ACK` | **Implemented** | Tutorial status query |
-| 2094 / 2095 | `eEGS_NPC_FIRST_MEET_REQ / ACK` | **Implemented** | NPC introductory dialogue (`0x00762E40`) |
-| 2346 / 2347 | `eEGS_TUTORIAL_QUEST_START_REQ / ACK` | **Implemented** | Tutorial quest chain init (`0x006481E0`) |
-| 2358 | `eEGS_GUIDE_BEGINNER_UPDATE_REQ` | **Implemented** | Beginner guide tooltip completion (`0x0079A3B0`) |
-| 2410 | `eEGS_QUEST_HISTORY_REFRESH_NOT` | **Implemented** | Restores completed quest log (`0x0076C1E0`) |
-| 2078 / 2079 | `eEGS_QUEST_GIVEUP_REQ / ACK` | **Implemented** | Abandon active quest (`0x006223B0`) |
-| 2080 / 2081 | `eEGS_QUEST_FAIL_REQ / ACK` | **Implemented** | Quest fail status handling (`0x006223B0`) |
-
-### 5. Dungeon, Monsters & Combat (Opcodes 5001 - 5095, 2422, 2448)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 5001 / 5002 | `eERC_CREATE_ROOM_REQ / ACK` | **Implemented** | Create dungeon instance room (`0x00788320`) |
-| 5009 / 5010 | `eERC_CHANGE_MAPCODE_REQ / ACK` | **Implemented** | Select dungeon stage map code (`0x006D4A00`) |
-| 5013 / 5014 | `eERC_START_GAME_REQ / ACK` | **Implemented** | Launch dungeon session (`0x00788640`) |
-| 5015 / 5016 | `eERC_CHANGE_TEAM_REQ / ACK` | **Implemented** | Switch team in multiplayer match |
-| 5030 / 5031 | `eERC_USER_MOVE_NOT` | **Implemented** | Position and movement synchronization |
-| 5043 / 5044 | `eERC_CHANGE_DUNGEON_GATE_REQ / ACK`| **Implemented** | Dungeon gate selection (`0x007894F0`) |
-| 5045 / 5046 | `eERC_BACK_TO_SQUARE_REQ / ACK` | **Implemented** | Leave dungeon, return to town (`0x007897F0`) |
-| 5049 / 5050 | `eERC_INVITE_REQ / ACK` | **Implemented** | Party invitation (`0x00758700`) |
-| 5054 / 5055 | `eERC_ACCEPT_INVITE_REQ / ACK` | **Implemented** | Accept party invitation |
-| 5063 | `eERC_MONSTER_DEAD_REQ` | **Implemented** | Monster killed event (`0x0078A690`) |
-| 5064 | `eERC_DROP_ITEM_NOT` | **Implemented** | Monster loot dropped on ground (`0x00784D10`) |
-| 5086 | `eERC_CHANGE_EXP_NOT` | **Implemented** | EXP bar update notification (`0x007775F0`) |
-| 5087 | `eERC_LEVEL_UP_NOT` | **Implemented** | Level-up animation and stat boost (`0x0078CCF0`) |
-| 5090 / 5091 | `eERC_CHOICE_REWARD_PARTYRANK_REQ/ACK`| **Implemented** | End-of-dungeon reward card pick (`0x0078D660`)|
-| 5093 / 5094 | `eERC_CHAR_DEAD_NOT / ACK` | **Implemented** | Player character death event (`0x0078D9C0`) |
-| 5095 | `eERC_CHANGE_DUNGEON_LAYER_NOT` | **Implemented** | Enter next dungeon layer/sub-area (`0x007900B0`)|
-| 2422 | `eEGS_ACTIVE_WARFLAG_REQ` | **Implemented** | Active war flag state update (`0x0079C300`) |
-| 2448 / 2449 | `eEGS_REBIRTH_COIN_REVIVE_REQ / ACK`| **Implemented** | Revive in dungeon using coin (`0x00795450`) |
-| 5065 / 5066 | `eERC_PICK_UP_ITEM_REQ / ACK` | **Implemented** | Pick up dropped loot from ground (`0x0078AD80`)|
-| 5068 | `eERC_PICK_UP_ITEM_RESULT_ACK` | **Implemented** | Broadcast item picked up by player (`0x0078AD80`)|
-| 5114 | `eERC_GET_DROP_AR_NOT` | **Implemented** | Gold dropped by monster picked up (`0x00792700`)|
-| 5096 | `eERC_UPDATE_CHAR_INFO_NOT` | **Implemented** | Real-time gear and visual sync (`0x0078C990`) |
-| 5344 / 5345 | `eERC_TREASURE_START / END_NOT` | **Implemented** | Treasure dungeon instance rounds (`0x007722F0`) |
-| 5346 | `eERC_CITADEL_REWARD_NOT` | **Implemented** | Citadel instance stage rewards (`0x007833F0`) |
-| 5362 | `eERC_GOLDGOBLIEN_APPEAR_NOT` | **Implemented** | Gold Goblin dungeon encounter (`0x007A6D10`) |
-| 5363 / 5364 | `eERC_GOLDGOBLIEN_ATTACK_REQ/ACK` | **Implemented** | Attack Gold Goblin (`0x00784A10`) |
-| 5365 / 5366 | `eERC_GOLDGOBLIEN_DEAD_REQ/ACK` | **Implemented** | Defeat Gold Goblin and claim loot (`0x00784CA0`)|
-| 5060 / 5061 | `eERC_MONSTER_SPAWN_NOT` | Planned | Dynamic monster wave spawn |
-
-### 6. Social, Friends, Guilds & Post (Opcodes 2128 - 2237, 2569 - 2595, 5040 - 5041)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 5040 / 5041 | `eERC_CHAT_REQ / ACK` | **Implemented** | Chat & GM console commands (`0x007AC890`) |
-| 2128 / 2129 | `eEGS_USE_SPEAKER_ITEM_REQ / ACK` | **Implemented** | Megaphone world shout message (`0x0077F320`) |
-| 2131 / 2132 | `eEGS_FRIEND_LIST_REQ / ACK` | **Implemented** | Request friends list (`0x00752110`) |
-| 2133 / 2134 | `eEGS_FRIEND_LIST_UPDATE_REQ / ACK` | **Implemented** | Update friend memo (`0x00752E80`) |
-| 2135 / 2136 | `eEGS_FRIEND_LIST_DELETE_REQ / ACK` | **Implemented** | Remove friend from list (`0x00759560`) |
-| 2139 / 2140 | `eEGS_FRIEND_LIST_ADD_REQ / ACK` | **Implemented** | Send friend request (`0x007591A0`) |
-| 5118 | `eERC_FRIEND_MY_CONNECTION_NOT` | **Implemented** | Friend came online notification (`0x0077A8A0`)|
-| 5119 | `eERC_FRIEND_MY_DISCONNECTION_NOT` | **Implemented** | Friend went offline notification (`0x00758FA0`)|
-| 5121 / 5122 | `eERC_GUILD_CREATE_PROPOSAL_REQ/ACK`| **Implemented** | Guild name availability check (`0x00759750`) |
-| 2150 / 2151 | `eEGS_GUILD_CREATE_REQ / ACK` | **Implemented** | Register new guild (`0x00793720`) |
-| 2155 / 2156 | `eEGS_GUILD_PERSON_JOIN_REQ / ACK` | **Implemented** | Accept guild member join (`0x0075A220`) |
-| 2160 / 2161 | `eEGS_GUILD_INVITE_REQ / ACK` | **Implemented** | Invite character to guild (`0x00759870`) |
-| 2162 / 2163 | `eEGS_GUILD_PERSON_LEAVE_REQ / ACK` | **Implemented** | Leave current guild (`0x00759CA0`) |
-| 2179 / 2180 | `eEGS_GUILD_MONEY_IN_REQ / ACK` | **Implemented** | Deposit gold into guild bank (`0x00794250`) |
-| 2181 / 2182 | `eEGS_GUILD_MONEY_OUT_REQ / ACK` | **Implemented** | Withdraw gold from guild bank (`0x00794470`) |
-| 2183 / 2184 | `eEGS_GUILD_LEVEL_UP_REQ / ACK` | **Implemented** | Upgrade guild level (`0x00753380`) |
-| 2185 / 2186 | `eEGS_GUILD_NOTICE_MODIFY_REQ / ACK` | **Implemented** | Set guild announcement (`0x0075A120`) |
-| 2188 / 2189 | `eEGS_GUILD_NOTICE_DELETE_REQ / ACK` | **Implemented** | Delete guild announcement (`0x0074B830`) |
-| 2214 / 2215 | `eEGS_GUILD_ALL_SKILL_INIT_REQ / ACK` | **Implemented** | Reset guild skill tree (`0x00752D80`) |
-| 2219 / 2220 | `eEGS_POST_LIST_REQ / ACK` | **Implemented** | Open mailbox mail list (`0x00753BE0`) |
-| 2221 / 2222 | `eEGS_POST_SEND_REQ / ACK` | **Implemented** | Compose and send mail (`0x00795F40`) |
-| 2223 / 2224 | `eEGS_POST_READ_REQ / ACK` | **Implemented** | Read mail content (`0x0075A660`) |
-| 2225 / 2226 | `eEGS_POST_GET_APPEND_ITEM_REQ / ACK` | **Implemented** | Claim attached items and gold (`0x0077F8E0`) |
-| 2227 | `eEGS_POST_NEW_ARRIVAL_NOT` | **Implemented** | Notification when new letter arrives (`0x007965B0`) |
-| 2234 / 2235 | `eEGS_POST_RETURN_REQ / ACK` | **Implemented** | Return letter with items to sender (`0x00771470`) |
-| 2236 / 2237 | `eEGS_POST_DELETE_REQ / ACK` | **Implemented** | Batch delete letters (`0x007715F0`) |
-| 2228 / 2229 | `eEGS_DEPOT_SAVE_AR_REQ / ACK` | **Implemented** | Deposit gold into personal warehouse (`0x00795220`) |
-| 2230 / 2231 | `eEGS_DEPOT_LOAD_AR_REQ / ACK` | **Implemented** | Withdraw gold from personal warehouse (`0x00795490`) |
-| 2461 / 2462 | `eEGS_DEPOT_SLOT_EXTEND_REQ / ACK` | **Implemented** | Expand depot storage tab slots (`0x007A3E20`) |
-| 2310 / 2311 | `eEGS_CHAR_NICK_CHANGE_REQ / ACK` | **Implemented** | Character rename scroll (`0x00780200`) |
-| 2314 / 2315 | `eEGS_GUILD_NAME_CHANGE_REQ / ACK` | **Implemented** | Guild rename scroll (`0x00780590`) |
-| 2319 / 2320 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ/ACK` | **Implemented** | Custom keybindings mapping (`0x00753960`) |
-| 2569 / 2570 | `eEGS_ATTENDANCE_CHECK_REQ / ACK` | **Implemented** | Daily attendance reward check |
-| 2594 / 2595 | `eEGS_HTTPNOTICE_CHECK_REQ / ACK` | **Implemented** | Web event notice check (`0x005A5110`) |
-
-### 7. Pets, Mounts & Monster Taming (Opcodes 2348 - 2351, 2434 - 2438, 2464 - 2474)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 2348 / 2349 | `eEGS_TAMEING_MONSTER_INSERT_REQ / ACK` | **Implemented** | Capture/tame monster (`0x00771A00`) |
-| 2350 / 2351 | `eEGS_TAMEING_MONSTER_DELETE_REQ / ACK` | **Implemented** | Release tamed monster (`0x00771BB0`) |
-| 2434 / 2435 | `eEGS_RIDING_CALL_REQ / ACK` | **Implemented** | Summon mount (`0x007A3820`) |
-| 2436 / 2437 | `eEGS_RIDING_DISMISS_REQ / ACK` | **Implemented** | Dismiss mount (`0x007A3B10`) |
-| 2438 | `eEGS_RIDING_SPEED_SYNC` | **Implemented** | Mount movement speed synchronization (`0x007A3DA0`) |
-| 2464 / 2465 | `eEGS_PET_CALL_REQ / ACK` | **Implemented** | Summon pet (`0x007A4100`) |
-| 2466 / 2467 | `eEGS_PET_DISMISS_REQ / ACK` | **Implemented** | Dismiss pet (`0x007A4390`) |
-| 2468 / 2469 | `eEGS_PET_INFO_REQ / ACK` | **Implemented** | Query pet status and stats (`0x007A4620`) |
-| 2470 / 2471 | `eEGS_PET_FEED_REQ / ACK` | **Implemented** | Feed pet to replenish satiety (`0x007A4950`) |
-| 2472 / 2473 | `eEGS_PET_NAME_CHANGE_REQ / ACK` | **Implemented** | Rename pet scroll (`0x007A4C80`) |
-| 2474 | `eEGS_PET_LEVEL_UP_NOT` | **Implemented** | Pet level-up event notification (`0x007A4F10`) |
-
-### 8. PvP Arena, Duels & League Ladders (Opcodes 2304 - 2309, 2446 - 2457, 2475 - 2478, 2550 - 2553, 5097 - 5113, 5138 - 5166, 5269 - 5275)
-| Opcode Pair | Name | Status | Function / Handler |
-|---|---|---|---|
-| 5097 / 5098 | `eERC_DUEL_START_REQ / ACK` | **Implemented** | Start 1v1 duel (`0x006CBE60`) |
-| 5099 | `eERC_DUEL_START_NOT` | **Implemented** | Broadcast duel start in town (`0x006CCDF0`) |
-| 5100 / 5101 | `eERC_DUEL_REQUEST / ACK` | **Implemented** | Challenge player to duel (`0x006C0A10`) |
-| 5105 / 5106 | `eERC_DUEL_RESULT / ACK` | **Implemented** | Duel match result (`0x006CC6B0`) |
-| 5108 | `eERC_DUEL_GIVEUP_NOT` | **Implemented** | Duel forfeit / surrender (`0x006CC8E0`) |
-| 5112 / 5113 | `eERC_DUEL_REFUSE / ACK` | **Implemented** | Decline duel request (`0x006B4120`) |
-| 2304 / 2305 | `eEGS_ARENA_SQUARELIST_REQ / ACK` | **Implemented** | List arena channels (`0x004B67F0`) |
-| 2306 / 2307 | `eEGS_ARENA_GET_ROOMLIST_REQ / ACK` | **Implemented** | List active arena rooms (`0x004B96D0`) |
-| 2308 / 2309 | `eEGS_ARENA_GET_INVITELIST_REQ / ACK`| **Implemented** | List arena invitations (`0x004B4680`) |
-| 5138 | `eERC_ARENA_JOIN_SQUARE_ACK` | **Implemented** | Enter arena lobby square (`0x007584A0`) |
-| 5145 / 5146 | `eERC_ARENA_JOIN_ROOM_REQ / ACK` | **Implemented** | Join arena match room (`0x004B4CD0`) |
-| 5148 / 5149 | `eERC_ARENA_LEAVE_ROOM_REQ / ACK` | **Implemented** | Leave arena match room (`0x004B5030`) |
-| 5153 / 5154 | `eERC_ARENA_CREATE_ROOM_REQ / ACK` | **Implemented** | Create new arena room (`0x004B58E0`) |
-| 5165 / 5166 | `eERC_ARENA_BACK_TO_SQUARE_ACK` | **Implemented** | Return from arena to town square (`0x00758550`) |
-| 5269 / 5270 | `eERC_ARENA_TEAM_CREATE_REQ / ACK` | **Implemented** | Create arena team (`0x0049BEF0`) |
-| 5271 / 5272 | `eERC_ARENA_TEAM_JOIN_REQ / ACK` | **Implemented** | Join arena team (`0x0049C4B0`) |
-| 5274 / 5275 | `eERC_ARENA_TEAM_LEAVE_REQ / ACK` | **Implemented** | Leave arena team (`0x00490100`) |
-| 2550 / 2551 | `eEGS_LEAGUE_SEASON_ARENA_GET_RANK_REQ/ACK` | **Implemented** | Arena season ladder rankings (`0x00499DC0`) |
-| 2552 / 2553 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_REQ/ACK`| **Implemented** | Player's arena rank and score (`0x00492A10`) |
-| 2709 / 2710 | `eEGS_USE_ARENA_SP_ITEM_REQ / ACK` | **Implemented** | Consume arena SP item (`0x007A7CA0`) |
+Per-opcode status lives in [`docs/OPCODE_REGISTRY.md`](docs/OPCODE_REGISTRY.md), generated by
+`python tools/gen_opcode_registry.py` from the client's own opcode table, the shim's handler
+map and the server dispatcher. The hand-written tables that used to be here had drifted from
+the client enum names (for example 2108 listed as item disassembly; the client calls it
+`eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_ACK`) and were removed.
 
 ---
 
