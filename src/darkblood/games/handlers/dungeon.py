@@ -166,9 +166,26 @@ class DungeonHandlers(BaseDomainService):
         if not dungeons:
             dungeons = [f"{gate}_A1", f"{gate}_A2", f"{gate}_A3", f"{gate}_A4"]
         dun_history = {d: (d, 3, 1) for d in dungeons}
-        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history).encode()
+        quest_maps = self._active_quest_maps()
+        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history, quest_maps=quest_maps).encode()
         await self.transport.send_event(event(5044, ack, correlation),
-                                        note=f'select dungeon ack ({gate}, {len(dun_history)} dungeons unlocked)')
+                                        note=f'select dungeon ack ({gate}, {len(dun_history)} dungeons unlocked, '
+                                             f'quest maps {quest_maps})')
+
+    def _active_quest_maps(self):
+        """PlayMapID maps of the selected character's active quests (5044 set)."""
+        from darkblood.games.game_data.client_dict import quest_play_maps
+        char = self.current_char()
+        if char is None:
+            return []
+        play_maps = quest_play_maps()
+        maps = []
+        for quest_id in char.get('quests_active', {}):
+            try:
+                maps.extend(play_maps.get(int(quest_id) & 0xFFFFFFFF, []))
+            except ValueError:
+                continue
+        return sorted(set(maps))
 
     async def on_5009(self, correlation, body):
         # eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f
@@ -194,10 +211,16 @@ class DungeonHandlers(BaseDomainService):
             ack = StartGameAck(result=1)
         else:
             ack = StartGameAck(map_code=request.map_code)
+            self._reset_dungeon_stats()
             if self.room is not None and self.room.host is self.session:
                 self.room.started = True
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
+
+    def _reset_dungeon_stats(self):
+        self.dungeon_kill_count = 0
+        self.dungeon_score = 0
+        self.dungeon_exp = 0
 
     async def on_5095(self, correlation, body):
         # eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x7900B0): ffffff7f + i64 layer_net_id.
@@ -247,6 +270,7 @@ class DungeonHandlers(BaseDomainService):
             self.dungeon_score = getattr(self, 'dungeon_score', 0) + max(1, exp) * 10
         char = self._current_char()
         if exp > 0 and char is not None:
+            self.dungeon_exp = getattr(self, 'dungeon_exp', 0) + exp
             await self.session.quests.grant_exp(char, exp)
             self.store().save()
         if char is not None:
@@ -281,7 +305,7 @@ class DungeonHandlers(BaseDomainService):
 
     async def on_5017(self, correlation, body):
         # eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60).
-        from darkblood.games.network.messages import FinishGameAck, FinishGameReq
+        from darkblood.games.network.messages import FinishGameAck, FinishGameReq, SingleReward
         req = FinishGameReq.decode(body)
         self.transport.record('finish-game-req', body, is_clear=req.is_clear)
         map_code = getattr(self, 'map_code', '')
@@ -292,45 +316,22 @@ class DungeonHandlers(BaseDomainService):
         char_uid = char.get('id', 0) if char else 0
 
         kill_count = getattr(self, 'dungeon_kill_count', 0)
-        max_combo = getattr(self, 'dungeon_max_combo', 0)
         score = getattr(self, 'dungeon_score', 0)
-        clear_time = getattr(self, 'dungeon_clear_time', 0)
-        damage_dealt = getattr(self, 'dungeon_damage_dealt', 0)
+        dungeon_exp = getattr(self, 'dungeon_exp', 0)
 
-        # Ensure realistic stats for gauge and ranking calculations
-        if kill_count > 0:
-            if score == 0:
-                score = kill_count * 1250
-            if max_combo == 0:
-                max_combo = min(50, max(5, kill_count * 3))
-            if clear_time == 0:
-                clear_time = max(20, kill_count * 8)
-            if damage_dealt == 0:
-                damage_dealt = kill_count * 450
-        else:
-            if score == 0:
-                score = 10000
-            if max_combo == 0:
-                max_combo = 10
-            if clear_time == 0:
-                clear_time = 35
-            if damage_dealt == 0:
-                damage_dealt = 2500
-
-        # Ranks: 1=SSS, 2=SS, 3=S, 4=A, 5=B, 6=C, 7=D
+        # Server-side rank heuristic. Ranks: 1=SSS, 2=SS, 3=S, 4=A.
         if score >= 50000 or kill_count >= 20:
-            rank = 1
-            box_grade = 4
+            rank, box_grade = 1, 4
         elif score >= 20000 or kill_count >= 10:
-            rank = 2
-            box_grade = 3
+            rank, box_grade = 2, 3
         elif score >= 5000 or kill_count >= 5:
-            rank = 3
-            box_grade = 2
+            rank, box_grade = 3, 2
         else:
-            rank = 4
-            box_grade = 1
+            rank, box_grade = 4, 1
 
+        # EXP was already granted per kill (5063 -> 5086), so the result
+        # screen only reports it. No extra boxes are offered.
+        reward = SingleReward(total=dungeon_exp, exp=dungeon_exp)
         ack = FinishGameAck(
             result=0,
             is_clear=req.is_clear,
@@ -340,11 +341,7 @@ class DungeonHandlers(BaseDomainService):
             rank_final=rank,
             box_grade=box_grade,
             extra_box_cost=0,
-            score=score,
-            kill_count=kill_count,
-            max_combo=max_combo,
-            clear_time=clear_time,
-            damage_dealt=damage_dealt,
+            reward=reward,
         ).encode()
         await self.transport.send_event(event(5018, ack, correlation),
                                         note=f'finish game ack ({map_code} clear={req.is_clear} rank={rank})')

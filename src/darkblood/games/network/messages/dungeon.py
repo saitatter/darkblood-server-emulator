@@ -126,19 +126,30 @@ class SelectDungeonAck:
     the gate property id (failure logs "Invalidation in m_pjGateProp"), so it
     echoes the 5043 request ("Act1_G1"). The map feeds 0x006BCD20 (SetDunHist),
     populating JDunHistory with cleared difficulties (m_ucDiff) to enable
-    Normal/Hard/Master/Hero selection.
+    Normal/Hard/Master/Hero selection. The first set (gate +0x268) is sent
+    empty; its element meaning is not recovered.
+
+    The trailing i32 set is copied to gate +0x218 and holds JHashString
+    values (0x00B3AEB0) of map ids. Each dungeon has 30 map slots
+    (prop +0xA0..+0x118); slots from index 4 up are quest variants such as
+    "Act1_G1_A16", and 0x006B5930 / 0x006C77E0 only offer one whose map id
+    hash is in this set. The server fills it with the PlayMapID maps of the
+    character's active quests.
     """
     result: int = 0
     gate_id: str = ''
     dun_history: dict = field(default_factory=dict)  # {dungeon_id: (map_code, max_diff, state)}
+    quest_maps: list = field(default_factory=list)  # map ids enabled by active quests
 
     def encode(self) -> bytes:
         hist_bytes = b''
         for dun_id, (map_code, max_diff, state) in self.dun_history.items():
             hist_bytes += b'\x0f' + wide_string(dun_id) + wide_string(map_code) + struct.pack('<BB', max_diff, state)
         hist_map = b'\x17' + varuint(len(self.dun_history)) + hist_bytes
+        hashes = sorted({jhash(m) & 0xFFFFFFFF for m in self.quest_maps})
+        quest_set = b'\x13' + varuint(len(hashes)) + b''.join(struct.pack('<I', h) for h in hashes)
         return (struct.pack('<I', self.result) + hist_map + b'\x13' + varuint(0)
-                + wide_string(self.gate_id) + b'\x13' + varuint(0))
+                + wide_string(self.gate_id) + quest_set)
 
 @dataclass
 class ChangeMapCodeAck:
@@ -430,6 +441,37 @@ class FinishGameReq:
         return cls(is_clear=is_clear)
 
 @dataclass
+class SingleReward:
+    """mapSingleReward value in 5018: a raw 40-byte block (0x00A1E7A0 reads
+    0x28 bytes; tag 0x1E is not on the wire).
+
+    0x0071F9F0 copies it to JResultDirect +0x74 (result page 0x1B, +0xD4).
+    Field uses recovered from the result screen builders:
+      +0x00  i32  unknown (sent as 0)
+      +0x04  i32  "num_total" (0x00720164)
+      +0x08  i32  explist row 1, shown as value / 100.0 after "X" (0x007212E9)
+      +0x0C  i32  explist row 2, shown as value / 100.0 after "X" (0x00721350)
+      +0x10  i32  explist row 0 text (0x007212D3)
+      +0x14..+0x1C  3 x i32 unknown (sent as 0)
+      +0x20  i32  extra box count: 0x0071FF0F loops this many times adding
+                  "extra_box" list entries, so it must stay small
+      +0x24  i32  extra box price ("num_price", 0x0071FE83)
+    The stylish/demolition/damage gauges are read from party member data,
+    not from this block.
+    """
+    total: int = 0
+    rate_a: int = 100
+    rate_b: int = 100
+    exp: int = 0
+    extra_box_count: int = 0
+    extra_box_price: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<10i', 0, self.total, self.rate_a, self.rate_b, self.exp,
+                           0, 0, 0, self.extra_box_count, self.extra_box_price)
+
+
+@dataclass
 class FinishGameAck:
     """Opcode 5018: eERC_FINISH_GAME_ACK (handler 0x007ADB60).
 
@@ -440,11 +482,8 @@ class FinishGameAck:
       bool flag (bSamePerson: False)
       tag 0x17 map (mapGuildPersonCnt: empty -> 0x17 + varuint(0))
       If is_clear:
-        tag 0x17 map (mapSingleReward: 0x17 + varuint(1) + 0x0f + i64 char_uid + 40 bytes)
-        i32 nPartyRankFirst (1)
-        i32 nPartyRankFinal (1)
-        i32 nBoxGrade (1)
-        i32 nExtraBoxCost (0)
+        tag 0x17 map mapSingleReward: 0x0F, i64 char_uid, SingleReward
+        i32 nPartyRankFirst, i32 nPartyRankFinal, i32 nBoxGrade, i32 nExtraBoxCost
         tag 0x10 vector (vecBonusMonster: empty -> 0x10 + varuint(0))
     """
     result: int = 0
@@ -456,12 +495,7 @@ class FinishGameAck:
     rank_final: int = 1
     box_grade: int = 1
     extra_box_cost: int = 0
-    reward_stats: bytes = b''
-    score: int = 0
-    kill_count: int = 0
-    max_combo: int = 0
-    clear_time: int = 0
-    damage_dealt: int = 0
+    reward: SingleReward = field(default_factory=SingleReward)
 
     def encode(self) -> bytes:
         buf = bytearray()
@@ -478,17 +512,7 @@ class FinishGameAck:
                 buf.extend(varuint(1))
                 buf.append(0x0f)
                 buf.extend(struct.pack('<q', self.char_uid))
-                if self.reward_stats and len(self.reward_stats) == 40:
-                    buf.extend(self.reward_stats)
-                else:
-                    score = self.score if self.score > 0 else 15000
-                    kill_count = self.kill_count if self.kill_count > 0 else 10
-                    max_combo = self.max_combo if self.max_combo > 0 else 15
-                    clear_time = self.clear_time if self.clear_time > 0 else 45
-                    damage = self.damage_dealt if self.damage_dealt > 0 else 3500
-                    buf.extend(struct.pack('<iifiiiiiii',
-                                           1, 1, 1.0, 0,
-                                           score, kill_count, max_combo, clear_time, damage, 0))
+                buf.extend(self.reward.encode())
             else:
                 buf.extend(varuint(0))
             # nPartyRankFirst, nPartyRankFinal, nBoxGrade, nExtraBoxCost

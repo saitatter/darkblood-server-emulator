@@ -138,7 +138,32 @@ class DungeonFlowTest(ServerTestCase):
             self.assertEqual((res, is_clear), (0, True))
             self.assertTrue(ack5018.endswith(b'\x10\x80'))
             # mapSingleReward must hold the player's own entry (uid = char id).
-            self.assertIn(b'\x17\x81\x0f' + struct.pack('<q', char_id), ack5018)
+            entry = ack5018.index(b'\x17\x81\x0f' + struct.pack('<q', char_id)) + 11
+            stats = struct.unpack_from('<10i', ack5018, entry)
+            # Extra-box count (+0x20) drives a UI loop on the result screen; it
+            # must not carry combat numbers (that froze and crashed the client).
+            self.assertEqual(stats[8], 0)
+            self.assertEqual(stats[1], stats[4])  # total == EXP reported
+
+        self.run_async(self.with_server(scenario))
+
+    def test_select_dungeon_offers_active_quest_maps(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('GateQuester', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            store = session.GameSession.store()
+            char = store.get('OfflinePlayer', char_id)
+            quest_id = hashing.jhash('Q0002S01')  # PlayMapID = {"Act1_G1_A16"}
+            char['quests_active'] = {str(quest_id): {'uid': 1, 'tracked': True, 'counters': [0]}}
+            store.save()
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            client.send_event(5043, struct.pack('<i', 0x7fffffff) + wide('Act1_G1'))
+            _, ack5044 = await client.expect_event(5044)
+            self.assertTrue(ack5044.endswith(b'\x13\x81' + struct.pack('<I', hashing.jhash('Act1_G1_A16'))))
 
         self.run_async(self.with_server(scenario))
 

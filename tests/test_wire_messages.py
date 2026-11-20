@@ -121,17 +121,29 @@ class WireMessagesTest(unittest.TestCase):
         req_5017 = messages.FinishGameReq.decode(b'\x01\x17\x81\x0f')
         self.assertTrue(req_5017.is_clear)
 
+        reward = messages.SingleReward(total=300, exp=300)
         ack_5018 = messages.FinishGameAck(result=0, is_clear=True, map_code='Act1_G1_A10', char_uid=123,
-                                          score=25000, kill_count=12, max_combo=18, clear_time=60, damage_dealt=5000).encode()
+                                          reward=reward).encode()
         self.assertEqual(struct.unpack_from('<I?', ack_5018[:5]), (0, True))
         self.assertTrue(ack_5018.endswith(b'\x10\x80'))
+        # mapSingleReward: one 0x0F entry, i64 uid, then the untagged 40-byte block.
+        entry = ack_5018.index(b'\x17\x81\x0f') + 3
+        self.assertEqual(struct.unpack_from('<q', ack_5018, entry)[0], 123)
+        stats = struct.unpack_from('<10i', ack_5018, entry + 8)
+        self.assertEqual(stats, (0, 300, 100, 100, 300, 0, 0, 0, 0, 0))
+        # +0x20 is the extra-box count the result screen loops over (0x0071FF0F).
+        self.assertEqual(len(reward.encode()), 40)
 
-        # SelectDungeonAck (5044) with history
+        # SelectDungeonAck (5044) with history and quest map hashes
         dun_hist = {'Act1_G1_A1': ('Act1_G1_A1', 3, 1)}
-        ack_5044 = messages.SelectDungeonAck(gate_id='Act1_G1', dun_history=dun_hist).encode()
+        ack_5044 = messages.SelectDungeonAck(gate_id='Act1_G1', dun_history=dun_hist,
+                                             quest_maps=['Act1_G1_A16']).encode()
         self.assertEqual(struct.unpack_from('<I', ack_5044[:4])[0], 0)
         self.assertEqual(ack_5044[4], 0x17)  # tag 0x17 map
         self.assertIn('Act1_G1'.encode('utf-16le'), ack_5044)
+        self.assertTrue(ack_5044.endswith(b'\x13\x81' + struct.pack('<I', hashing.jhash('Act1_G1_A16'))))
+        empty_5044 = messages.SelectDungeonAck(gate_id='Act1_G1').encode()
+        self.assertTrue(empty_5044.endswith(b'\x13\x80'))
 
         # ChoiceRewardPartyRankAck (5091)
         reward_item = Item(code='Ihppa0001', uid=1, owner=1, container=1, slot=0, count=1)
