@@ -90,16 +90,19 @@ class ChangeExpNot:
     """Opcode 5086: eERC_CHANGE_EXP_NOT (On_eERC_CHANGE_EXP_NOT 0x0078D170).
 
     Wire format:
-      i32 nExpTotal
-      tag 0x1E jGainExp: 8 x i32 + 1 x float (36 bytes).
+      i32 nExpTotal (written to player +0x78)
+      jGainExp (0x00A49E20, tag 0x1E not on the wire): 8 x i32, J-wstring.
+    The last field was sent as a 4-byte float: 0x00B35AB0 then read an
+    unterminated varint, the whole message failed to parse and the EXP bar
+    only moved on level-up (5087).
     """
     exp_total: int = 0
-    exp_details: tuple = (0, 0, 0, 0, 0, 0, 0, 0, 0.0)
+    exp_details: tuple = (0, 0, 0, 0, 0, 0, 0, 0)
+    text: str = ''
 
     def encode(self) -> bytes:
-        inner = struct.pack('<iiiiiiiif', *self.exp_details)
-        # Tag 0x1E is checked by 0x00B35010 (0x0078D170) without reading a byte.
-        return struct.pack('<i', self.exp_total) + inner
+        return (struct.pack('<i8i', self.exp_total, *self.exp_details)
+                + wide_string(self.text))
 
 @dataclass
 class CharNickChangeReq:

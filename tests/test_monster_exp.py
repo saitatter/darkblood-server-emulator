@@ -39,7 +39,7 @@ class MonsterExpTest(ServerTestCase):
             total, _, _, gained = struct.unpack_from('<iiii', exp)
             self.assertEqual(gained, 10)
             self.assertEqual(total, 10)
-            self.assertEqual(len(exp), 4 + 36)
+            self.assertEqual(len(exp), 4 + 32 + 1)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(char['exp'], total)
             char['exp'] = client_dict.char_level_stat(1, 1)['upexp'] - 10

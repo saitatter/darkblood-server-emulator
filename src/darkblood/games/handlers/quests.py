@@ -165,7 +165,7 @@ class QuestHandlers(BaseDomainService):
             await self.transport.send_event(event(5087, level_not.encode()),
                                             note=f'level up not (level={level_not.new_level})')
         # The client displays the gained XP from jGainExp +0x08.
-        exp_ack = ChangeExpNot(exp_total=char_exp, exp_details=(0, 0, exp, 0, 0, 0, 0, 0, 0.0)).encode()
+        exp_ack = ChangeExpNot(exp_total=char_exp, exp_details=(0, 0, exp, 0, 0, 0, 0, 0)).encode()
         await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
 
     async def handle_quest_complete(self, correlation: int, body: bytes):

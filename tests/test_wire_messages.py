@@ -84,13 +84,13 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(enc_lvl[0:1], bytes.fromhex('82'))
         self.assertEqual(struct.unpack_from('<IIqBII?', enc_lvl, 1), (10, 10, 777, 10, 25, 27, True))
 
-        exp = messages.ChangeExpNot(exp_total=25000, exp_details=(50, 100, 0, 0, 0, 0, 0, 0, 2.0))
+        exp = messages.ChangeExpNot(exp_total=25000, exp_details=(50, 100, 0, 0, 0, 0, 0, 0))
         enc_exp = exp.encode()
         self.assertEqual(struct.unpack_from('<i', enc_exp, 0)[0], 25000)
-        self.assertEqual(len(enc_exp), 4 + 36)
-        details = struct.unpack_from('<iiiiiiiif', enc_exp, 4)
-        self.assertEqual(details[:2], (50, 100))
-        self.assertAlmostEqual(details[8], 2.0)
+        # 8 x i32 then an empty J-wstring (0x00A49E20 ends with 0x00B35AB0).
+        self.assertEqual(len(enc_exp), 4 + 32 + 1)
+        self.assertEqual(struct.unpack_from('<8i', enc_exp, 4)[:2], (50, 100))
+        self.assertEqual(enc_exp[-1:], b'\x80')
 
     def test_dungeon_messages(self):
         layer_id = (hashing.jhash('Act1_G1_A10') << 32) | 4
