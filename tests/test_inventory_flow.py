@@ -335,3 +335,30 @@ class SkillCostTest(ServerTestCase):
             self.assertIn(b'\x82' + struct.pack('<II', 0, 0), ack2007)
 
         self.run_async(self.with_server(scenario))
+
+    def test_use_dyeing_item_replies_and_consumes_the_dye(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('DyeHero', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['items'].append(dict(code='IdyeS1Cash4', uid=40, container=3, slot=17))
+            session.GameSession.store().save()
+
+            # Live 2210 body for a skin dye (target -1, color 0xFF945A4C).
+            client.send_event(2210, bytes.fromhex('2800000000000000ffffffffffffffff0000ffffffff4c5a94ff00'))
+            _, ack2211 = await client.expect_event(2211)
+            self.assertEqual(struct.unpack_from('<iHiI', ack2211), (0, 0, -1, 0xFF945A4C))
+            self.assertEqual(ack2211[14:16], b'\x10\x81')  # one item update: the emptied dye slot
+            self.assertFalse(any(i['uid'] == 40 for i in char['items']))
+            self.assertEqual(char['dyes']['-1']['color'], 0xFF945A4C)
+
+            # Unknown dye item -> JERI_INVEN_01 (63).
+            client.send_event(2210, bytes.fromhex('2800000000000000ffffffffffffffff0000ffffffff4c5a94ff00'))
+            _, ack2211 = await client.expect_event(2211)
+            self.assertEqual(struct.unpack_from('<i', ack2211)[0], 63)
+
+        self.run_async(self.with_server(scenario))

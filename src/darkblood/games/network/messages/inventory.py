@@ -167,6 +167,60 @@ class UseItemAck:
                 + struct.pack('<Ii', self.item_id, self.use_count))
 
 @dataclass
+class DyeInfo:
+    """10-byte dye block shared by 2210 and 2211 (reader 0x00A49BB0):
+    u16, i32, i32. Live skin dye: part 0, option -1, color 0xFF945A4C (ARGB).
+    The meanings of the first two fields are inferred from the dye page
+    (part / option steps) and not confirmed."""
+    part: int = 0
+    option: int = -1
+    color: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<HiI', self.part & 0xFFFF, self.option, self.color & 0xFFFFFFFF)
+
+
+@dataclass
+class UseDyeingItemReq:
+    """Opcode 2210: eEGS_USE_DYEING_ITEM_REQ, sent by 0x00505E30 from
+    JAppPageColoring::DecideColor (0x00516590).
+
+    Wire format: i64 nDyeingItemUID, i64 nTargetItemUID (-1 for skin), then
+    the DyeInfo block, then a bool (meaning not recovered). Live body:
+    2800000000000000 ffffffffffffffff 0000 ffffffff 4c5a94ff 00.
+    """
+    dye_uid: int = 0
+    target_uid: int = -1
+    dye: DyeInfo = field(default_factory=DyeInfo)
+    flag: bool = False
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'UseDyeingItemReq':
+        offset = 4 if len(data) >= 31 and data[:4] == PREFIX else 0
+        dye_uid, target_uid, part, option, color = struct.unpack_from('<qqHiI', data, offset)
+        flag = len(data) > offset + 26 and data[offset + 26] != 0
+        return cls(dye_uid, target_uid, DyeInfo(part, option, color), flag)
+
+
+@dataclass
+class UseDyeingItemAck:
+    """Opcode 2211: eEGS_USE_DYEING_ITEM_ACK, handled by the coloring page
+    (dispatch 0x00511E50 -> 0x00511B70).
+
+    Wire format: i32 result, DyeInfo (implicit struct, no 0x1E byte), tag
+    0x10 vector of Item updates (0x004B94C0). Without this reply the client
+    waits on 2211 and then drops the connection.
+    """
+    result: int = 0
+    dye: DyeInfo = field(default_factory=DyeInfo)
+    items: list = field(default_factory=list)
+
+    def encode(self) -> bytes:
+        return (struct.pack('<i', self.result) + self.dye.encode()
+                + b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items))
+
+
+@dataclass
 class AssignQuickslotReq:
     """Opcode 2044: eEGS_ASSIGN_QUICKSLOT_REQ (writer 0x0078C2E0..: u8, u8, u32, u64).
 

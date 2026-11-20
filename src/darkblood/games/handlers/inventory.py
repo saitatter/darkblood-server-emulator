@@ -62,6 +62,8 @@ from darkblood.games.network.messages import (
     UseArenaSpItemReq,
     UseItemAck,
     UseItemReq,
+    UseDyeingItemAck,
+    UseDyeingItemReq,
     OpenBagAck,
     OpenBagReq,
 )
@@ -213,6 +215,39 @@ class InventoryHandlers(BaseDomainService):
             await self.transport.send_event(event(2037, DragItemAck(result=0, items=items).encode()),
                                             note='cash box opened (%s -> %s)' % (
                                                 used_item.get('code'), ', '.join(i['code'] for i in stored)))
+
+    async def on_2210(self, correlation, body):
+        # eEGS_USE_DYEING_ITEM_REQ (0x00505E30) -> 2211 (coloring page 0x00511B70).
+        try:
+            req = UseDyeingItemReq.decode(body)
+        except struct.error:
+            await self.transport.send_event(event(2211, UseDyeingItemAck(result=results.INVALID_STATE).encode(), correlation),
+                                            note='use dyeing item fail (bad request)')
+            return
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        dye_item = next((i for i in items if i.get('uid') == req.dye_uid), None)
+        if dye_item is None:
+            await self.transport.send_event(
+                event(2211, UseDyeingItemAck(result=results.INVEN_ITEM_NOT_FOUND, dye=req.dye).encode(), correlation),
+                note='use dyeing item fail (uid %d not found)' % req.dye_uid)
+            return
+        count = dye_item.get('count', 1) - 1
+        if count <= 0:
+            items.remove(dye_item)
+            update = Item(owner=UPDATE_OWNER, uid=0, code='', container=dye_item['container'],
+                          slot=dye_item['slot'], count=0)
+        else:
+            dye_item['count'] = count
+            update = Item(owner=UPDATE_OWNER, **dye_item)
+        # Kept for a later login-time appearance field; not resent yet.
+        char.setdefault('dyes', {})[str(req.target_uid)] = {
+            'part': req.dye.part, 'option': req.dye.option, 'color': req.dye.color}
+        self.store().save()
+        ack = UseDyeingItemAck(result=0, dye=req.dye, items=[update]).encode()
+        await self.transport.send_event(event(2211, ack, correlation),
+                                        note='use dyeing item ack (%s target=%d color=%08x)' % (
+                                            dye_item.get('code'), req.target_uid, req.dye.color))
 
     def _cash_box_contents(self, code):
         from darkblood.games.game_data import client_dict
