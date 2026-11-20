@@ -1026,6 +1026,50 @@ def dungeon_maps():
     return out
 
 
+# Fields that only mark a quest variant; a variant equal in everything else is a
+# copy of its dungeon's regular map at that difficulty (34 of 86 in maplist.lua).
+_QUEST_COPY_IGNORED = {'MapID', 'PlayOrder', 'QuestLink', 'Money'}
+
+
+@lru_cache(maxsize=None)
+def dungeon_map_copies():
+    """Quest MapID -> regular MapID it duplicates (same DungeonID and Difficult,
+    same file, monsters and stats; only MapID, PlayOrder, QuestLink and Money
+    differ). Quest maps with their own content are not listed."""
+    override = _env_override('maplist.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'dungeon_maps.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('	')
+                if len(parts) >= 5 and parts[4]:
+                    out[parts[0]] = parts[4]
+            return out
+    path = override or (data_root() / 'maplist.lua')
+    if not path.exists():
+        return {}
+    section = _section(path.read_text(encoding='utf-8', errors='replace'), 'DictMap:LoadMap')
+    entries = {}
+    for entry in _top_entries(section):
+        fields = dict(re.findall(r'^    (\w+) = (.*?),?$', entry, re.M))
+        map_id = fields.get('MapID', '').strip('"')
+        if map_id:
+            entries[map_id] = fields
+    out = {}
+    for map_id, fields in entries.items():
+        if not fields.get('QuestLink', '').strip('"'):
+            continue
+        for other_id, other in entries.items():
+            if other.get('QuestLink', '').strip('"') or other.get('DungeonID') != fields.get('DungeonID')                     or other.get('Difficult') != fields.get('Difficult'):
+                continue
+            keys = (set(fields) | set(other)) - _QUEST_COPY_IGNORED
+            if all(fields.get(k) == other.get(k) for k in keys):
+                out[map_id] = other_id
+            break
+    return out
+
+
 @lru_cache(maxsize=None)
 def gate_dungeons():
     """Mapping: gate_id ("Act1_G1") -> list of dungeon_ids (["Act1_G1_A1", ...])."""

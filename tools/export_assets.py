@@ -142,10 +142,12 @@ def export_map_gates():
 
 
 def export_dungeon_maps():
-    """MapID -> DungeonID, Difficult, QuestLink (dungeon gate history, 5044)."""
-    lines = ['map_id\tdungeon_id\tdifficult\tquest_link']
+    """MapID -> DungeonID, Difficult, QuestLink and, for a quest map that only
+    duplicates the regular map of its difficulty, that map (dungeon gate, 5044)."""
+    copies = client_dict.dungeon_map_copies()
+    lines = ['map_id\tdungeon_id\tdifficult\tquest_link\tsame_as']
     for map_id, (dungeon, diff, link) in sorted(client_dict.dungeon_maps().items()):
-        lines.append(f"{map_id}\t{dungeon}\t{diff}\t{link}")
+        lines.append(f"{map_id}\t{dungeon}\t{diff}\t{link}\t{copies.get(map_id, '')}")
     out = ASSETS_DIR / 'dungeon_maps.tsv'
     out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     print(f"Exported {len(lines)-1} dungeon maps to {out.name}")

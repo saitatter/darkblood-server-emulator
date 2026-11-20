@@ -667,9 +667,14 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   path (5004 + 5035) instead of the invented PartyManager reply (5055/5056 have no client handler).
   The 5051 handler only runs in `eAS_Square`. Live 2026-11-21: after the 5051, no 5054 reached the server;
   the client-side reason is not established yet.
-- **Quest dungeons**: a QuestLink map is its dungeon at a fixed Difficult (Act1_G1_A16 = A1/0, A15 = A1/2).
-  `_record_dungeon_clear` used to skip them; a clear now counts for that difficulty and is stored under
-  the regular map of that difficulty. Room map hashes (5001/5011) are DungeonID hashes (Act1_G1_A1 =
+- **Quest dungeons**: 86 maps have a QuestLink. 34 are copies of the regular map at their Difficult (same
+  file, monsters and stats; only MapID, PlayOrder, QuestLink and Money differ, e.g. Act1_G1_A16 = A10);
+  `assets/dungeon_maps.tsv` column `same_as` names that map. Their clear counts as the regular map in the
+  5044 history. The other 52 have their own content (own `.map`, HP/stats, PartyMember, level: Act1_G1_A15 is
+  level 35-37 though Difficult 2) and do not advance difficulty. The gate (0x006D1120) keeps slots 0-3 for the
+  difficulties (+0xA0) and 4-29 for quest maps (+0xB0) and auto-selects a quest slot whose QuestLink hash is
+  in the 5044 quest set, so the client shows quest maps as their own choice. The copy quests' missions are
+  kills (type 0), quest items (type 1, Iquea*), type 3 = clear that exact quest MapID, type 2/5. Room map hashes (5001/5011) are DungeonID hashes (Act1_G1_A1 =
   0xCD450996), not MapIDs.
 - **Live trace 2026-11-21 (bp.txt)**: (1) Capacity works: an earlier run stored `max 2`; this run the combo
   (0x00AF54C8) was on index 2 = "4", preselected as `max - 2`. (2) Loot: 5089 starts with

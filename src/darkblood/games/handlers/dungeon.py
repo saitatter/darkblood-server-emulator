@@ -335,20 +335,20 @@ class DungeonHandlers(BaseDomainService):
     def _record_dungeon_clear(self, char, map_code):
         """Remember the highest cleared difficulty per dungeon (5044 history).
 
-        A quest variant (map with a QuestLink, e.g. Act1_G1_A16) belongs to its
-        dungeon at a fixed Difficult (Act1_G1_A1, 0), so it counts as a clear of
-        that difficulty. The history keeps the regular map of that difficulty:
-        the gate auto-selects the history map (0x006D1120), and the quest map
-        would stay selected after the quest is done.
+        34 quest maps (QuestLink) are copies of their dungeon's regular map at that
+        Difficult (e.g. Act1_G1_A16 = Act1_G1_A10: same file, monsters and stats;
+        only gold, PlayOrder and QuestLink differ). Such a clear counts as the
+        regular map, which the history keeps: the gate auto-selects the history
+        map (0x006D1120). The other quest maps have their own content (own file,
+        or e.g. Act1_G1_A15 at level 35-37 although Difficult is 2) and do not
+        advance the dungeon's difficulty.
         """
-        from darkblood.games.game_data.client_dict import dungeon_maps
-        maps = dungeon_maps()
-        info = maps.get(map_code)
-        if info is None:
+        from darkblood.games.game_data.client_dict import dungeon_map_copies, dungeon_maps
+        map_code = dungeon_map_copies().get(map_code, map_code)
+        info = dungeon_maps().get(map_code)
+        if info is None or info[2]:
             return
-        dungeon, diff, quest = info
-        if quest:
-            map_code = next((m for m, (d, f, q) in maps.items() if d == dungeon and f == diff and not q), map_code)
+        dungeon, diff, _ = info
         history = char.setdefault('dungeon_history', {})
         record = history.get(dungeon)
         if record is None or diff >= record['diff']:

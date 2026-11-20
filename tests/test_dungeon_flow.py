@@ -192,17 +192,24 @@ class DungeonFlowTest(ServerTestCase):
                 await client.expect_event(5018)
             self.assertEqual(char['dungeon_history']['Act1_G1_A1']['diff'], 1)
 
-            # A quest variant is its dungeon at a fixed difficulty: clearing A15
-            # (A1, Difficult 2) clears Master, recorded under the regular map A12.
+            # A15 has its own content (Act1_G1_A1_Q2.map, level 35-37) although it is
+            # marked Difficult 2: it does not clear Master.
             client.send_event(5013, prefix + wide('Act1_G1_A15'))
             await client.expect_event(5014)
             client.send_event(5017, b'\x01')
             await client.expect_event(5018)
-            self.assertEqual(char['dungeon_history']['Act1_G1_A1'], {'map': 'Act1_G1_A12', 'diff': 2})
+            self.assertEqual(char['dungeon_history']['Act1_G1_A1'], {'map': 'Act1_G1_A11', 'diff': 1})
+
+            # Act2_G1_A14 is a copy of Act2_G1_A11 (Hard): its clear counts as A11.
+            client.send_event(5013, prefix + wide('Act2_G1_A14'))
+            await client.expect_event(5014)
+            client.send_event(5017, b'\x01')
+            await client.expect_event(5018)
+            self.assertEqual(char['dungeon_history']['Act2_G1_A1'], {'map': 'Act2_G1_A11', 'diff': 1})
 
             client.send_event(5043, prefix + wide('Act1_G1'))
             _, ack5044 = await client.expect_event(5044)
-            self.assertIn(b'\x17\x81\x0f' + wide('Act1_G1_A1') + wide('Act1_G1_A12') + b'\x02\x01', ack5044)
+            self.assertIn(b'\x17\x81\x0f' + wide('Act1_G1_A1') + wide('Act1_G1_A11') + b'\x01\x01', ack5044)
 
         self.run_async(self.with_server(scenario))
 
