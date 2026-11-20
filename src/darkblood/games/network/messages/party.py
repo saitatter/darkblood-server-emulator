@@ -53,16 +53,17 @@ class UserJoinSquareNot:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'UserJoinSquareNot':
-        char_id = r.read_i64()
-        square_id = r.read_i32()
-        x = r.read_f32()
-        y = r.read_f32()
-        z = r.read_f32()
-        angle = r.read_f32()
-        char_class = r.read_u8()
-        level = r.read_u8()
-        char_name = r.read_wstring()
-        return cls(char_id=char_id, square_id=square_id, x=x, y=y, z=z, angle=angle, char_class=char_class, level=level, char_name=char_name)
+        kw = {}
+        kw['char_id'] = r.read_i64()
+        kw['square_id'] = r.read_i32()
+        kw['x'] = r.read_f32()
+        kw['y'] = r.read_f32()
+        kw['z'] = r.read_f32()
+        kw['angle'] = r.read_f32()
+        kw['char_class'] = r.read_u8()
+        kw['level'] = r.read_u8()
+        kw['char_name'] = r.read_wstring()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'UserJoinSquareNot':
@@ -84,9 +85,10 @@ class UserLeaveSquareNot:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'UserLeaveSquareNot':
-        char_id = r.read_i64()
-        reason = r.read_i32()
-        return cls(char_id=char_id, reason=reason)
+        kw = {}
+        kw['char_id'] = r.read_i64()
+        kw['reason'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'UserLeaveSquareNot':
@@ -113,9 +115,10 @@ class InviteUseNickReq:
     @classmethod
     def decode(cls, data: bytes) -> 'InviteUseNickReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        name = r.read_wstring()
-        return cls(header=header, name=name)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -136,11 +139,12 @@ class PartyInviteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PartyInviteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        target_uid = r.read_i64()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['target_uid'] = r.read_i64()
         r.read_bool()
         r.read_i64()
-        return cls(target_uid=target_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -160,8 +164,9 @@ class PartyInviteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PartyInviteAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -191,11 +196,12 @@ class PartyInviteNot:
     @classmethod
     def decode(cls, data: bytes) -> 'PartyInviteNot':
         r = JSerBufferReader(data)
+        kw = {}
         r.read_bool()
-        inviter_square_uid = r.read_i64()
-        inviter_uid = r.read_i64()
+        kw['inviter_square_uid'] = r.read_i64()
+        kw['inviter_uid'] = r.read_i64()
         r.read_u32()
-        inviter_name = r.read_wstring()
+        kw['inviter_name'] = r.read_wstring()
         r.read_u8()
         r.read_u16()
         r.read_u8()
@@ -208,7 +214,7 @@ class PartyInviteNot:
         r.read_u32()
         r.read_u32()
         r.read_u16()
-        return cls(inviter_square_uid=inviter_square_uid, inviter_uid=inviter_uid, inviter_name=inviter_name)
+        return cls(**kw)
 
 
 @dataclass
@@ -223,8 +229,9 @@ class LegacyPartyInviteReq:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'LegacyPartyInviteReq':
-        target_uid = r.read_i64()
-        return cls(target_uid=target_uid)
+        kw = {}
+        kw['target_uid'] = r.read_i64()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'LegacyPartyInviteReq':
@@ -244,9 +251,10 @@ class PartyJoinReq:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyJoinReq':
-        party_id = r.read_i32()
-        host_uid = r.read_i32()
-        return cls(party_id=party_id, host_uid=host_uid)
+        kw = {}
+        kw['party_id'] = r.read_i32()
+        kw['host_uid'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyJoinReq':
@@ -266,9 +274,10 @@ class PartyJoinAck:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyJoinAck':
-        result = r.read_i32()
-        party_id = r.read_i32()
-        return cls(result=result, party_id=party_id)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['party_id'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyJoinAck':
@@ -287,8 +296,9 @@ class PartyLeaveReq:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyLeaveReq':
-        party_id = r.read_i32()
-        return cls(party_id=party_id)
+        kw = {}
+        kw['party_id'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyLeaveReq':
@@ -307,8 +317,9 @@ class PartyLeaveAck:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyLeaveAck':
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyLeaveAck':
@@ -328,9 +339,10 @@ class PartyKickReq:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyKickReq':
-        target_uid = r.read_i64()
-        party_id = r.read_i32()
-        return cls(target_uid=target_uid, party_id=party_id)
+        kw = {}
+        kw['target_uid'] = r.read_i64()
+        kw['party_id'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyKickReq':
@@ -350,9 +362,10 @@ class PartyKickAck:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyKickAck':
-        result = r.read_i32()
-        target_uid = r.read_i64()
-        return cls(result=result, target_uid=target_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['target_uid'] = r.read_i64()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyKickAck':
@@ -378,10 +391,11 @@ class PartyAcceptInviteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PartyAcceptInviteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        host_square_uid = r.read_i64()
-        host_uid = r.read_i64()
-        return cls(host_square_uid=host_square_uid, host_uid=host_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['host_square_uid'] = r.read_i64()
+        kw['host_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -401,8 +415,9 @@ class PartyAcceptInviteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PartyAcceptInviteAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -426,11 +441,12 @@ class PartyAcceptInviteNot:
     @classmethod
     def decode(cls, data: bytes) -> 'PartyAcceptInviteNot':
         r = JSerBufferReader(data)
-        party_id = r.read_i32()
-        member_uid = r.read_i64()
-        is_leader = r.read_bool()
-        member_name = r.read_wstring()
-        return cls(party_id=party_id, member_uid=member_uid, is_leader=is_leader, member_name=member_name)
+        kw = {}
+        kw['party_id'] = r.read_i32()
+        kw['member_uid'] = r.read_i64()
+        kw['is_leader'] = r.read_bool()
+        kw['member_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -452,15 +468,16 @@ class PartyMemberInfo:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyMemberInfo':
-        char_id = r.read_i64()
-        char_class = r.read_u8()
-        level = r.read_u8()
+        kw = {}
+        kw['char_id'] = r.read_i64()
+        kw['char_class'] = r.read_u8()
+        kw['level'] = r.read_u8()
         r.read_i32()
-        hp = r.read_u32()
-        max_hp = r.read_u32()
-        is_leader = r.read_bool()
-        char_name = r.read_wstring()
-        return cls(char_id=char_id, char_class=char_class, level=level, hp=hp, max_hp=max_hp, is_leader=is_leader, char_name=char_name)
+        kw['hp'] = r.read_u32()
+        kw['max_hp'] = r.read_u32()
+        kw['is_leader'] = r.read_bool()
+        kw['char_name'] = r.read_wstring()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyMemberInfo':
@@ -482,10 +499,11 @@ class PartyInfoNot:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PartyInfoNot':
-        party_id = r.read_i32()
-        leader_uid = r.read_i64()
-        members = r.read_tagged_vector(lambda r1: PartyMemberInfo.read(r1))
-        return cls(party_id=party_id, leader_uid=leader_uid, members=members)
+        kw = {}
+        kw['party_id'] = r.read_i32()
+        kw['leader_uid'] = r.read_i64()
+        kw['members'] = r.read_tagged_vector(lambda r1: PartyMemberInfo.read(r1))
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PartyInfoNot':

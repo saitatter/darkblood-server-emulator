@@ -98,8 +98,8 @@ class WireMessagesTest(unittest.TestCase):
     def test_dungeon_messages(self):
         layer_id = (hashing.jhash('Act1_G1_A10') << 32) | 4
         msg_5095 = messages.ChangeDungeonLayerNot.decode(struct.pack('<iq', 0x7fffffff, layer_id))
-        self.assertEqual(msg_5095.layer_id, 4)
-        self.assertEqual(msg_5095.map_hash, hashing.jhash('Act1_G1_A10'))
+        self.assertEqual(msg_5095.layer_net_id & 0xFFFFFFFF, 4)
+        self.assertEqual(msg_5095.layer_net_id >> 32, hashing.jhash('Act1_G1_A10'))
 
         msg_2422 = messages.ActiveWarFlagReq.decode(struct.pack('<iI', 0x7fffffff, 31))
         self.assertEqual(msg_2422.war_flag_id, 31)
@@ -125,8 +125,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertTrue(req_5017.is_clear)
 
         reward = messages.SingleReward(total=300, exp=300)
-        ack_5018 = messages.FinishGameAck(result=0, is_clear=True, map_code='Act1_G1_A10', char_uid=123,
-                                          reward=reward).encode()
+        ack_5018 = messages.FinishGameAck(result=0, is_clear=True, map_code='Act1_G1_A10',
+                                          rewards={123: reward}).encode()
         self.assertEqual(struct.unpack_from('<I?', ack_5018[:5]), (0, True))
         self.assertTrue(ack_5018.endswith(b'\x10\x80'))
         # mapSingleReward: one 0x0F entry, i64 uid, then the untagged 40-byte block.
@@ -138,7 +138,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(len(reward.encode()), 40)
 
         # SelectDungeonAck (5044): history (map id, ucDiff, cleared) and active quest ids
-        dun_hist = {'Act1_G1_A1': ('Act1_G1_A10', 0, 1)}
+        dun_hist = {'Act1_G1_A1': messages.DungeonHistory('Act1_G1_A10', 0, 1)}
         quest = hashing.jhash('Q0002S01')
         ack_5044 = messages.SelectDungeonAck(gate_id='Act1_G1', dun_history=dun_hist,
                                              quest_ids=[quest]).encode()

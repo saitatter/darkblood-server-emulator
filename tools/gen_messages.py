@@ -76,6 +76,7 @@ class Field:
     default: Optional[str] = None
     comment: str = ''
     literal: bytes = b''  # kind == 'lit'
+    cond: str = ''        # 'name' or '!name': present only when that earlier field is true/false
 
     @property
     def anonymous(self):
@@ -147,6 +148,7 @@ class Parser:
         self.schema = Schema(path)
         self.names = names
         self.where = ''
+        self.cond = ''
 
     def fail(self, message):
         raise SchemaError('%s: %s' % (self.where, message))
@@ -208,7 +210,7 @@ class Parser:
         m = re.match(r'lit\s+([0-9A-Fa-f ]+)$', code)
         if m:
             raw = bytes.fromhex(m.group(1).replace(' ', ''))
-            owner.fields.append(Field(Type('lit'), ANON, comment=comment, literal=raw))
+            owner.fields.append(Field(Type('lit'), ANON, comment=comment, literal=raw, cond=self.cond))
             return
         m = re.match(r'(\S+)\s+([A-Za-z_]\w*)\s*(?:=\s*(.+?))?$', code)
         if not m:
@@ -230,7 +232,7 @@ class Parser:
             self.fail('%s must be anonymous (_)' % ftype)
         if ftype.kind in ('rest', 'wrest') and not owner.is_message:
             self.fail('rest is only allowed in messages')
-        owner.fields.append(Field(ftype, name, default, comment))
+        owner.fields.append(Field(ftype, name, default, comment, cond=self.cond))
 
     def parse(self):
         current = None
@@ -241,11 +243,25 @@ class Parser:
             if not line or (line.startswith('#') and not line.startswith('##')):
                 continue
             if current is not None:
+                m = re.match(r'if\s+(not\s+)?(\w+)$', line)
                 if line == 'ok_only':
-                    if current.ok_index is not None or not current.fields:
-                        self.fail('ok_only marker needs preceding fields and appears once')
+                    if current.ok_index is not None or not current.fields or self.cond:
+                        self.fail('ok_only marker needs preceding fields, appears once, outside if blocks')
                     current.ok_index = len(current.fields)
+                elif m:
+                    if self.cond:
+                        self.fail('if blocks do not nest')
+                    target = next((f for f in current.fields if f.name == m.group(2)), None)
+                    if target is None or target.type.kind != 'scalar':
+                        self.fail('if needs an earlier scalar field, got %r' % m.group(2))
+                    self.cond = ('!' if m.group(1) else '') + m.group(2)
+                elif line == 'endif':
+                    if not self.cond:
+                        self.fail('endif without if')
+                    self.cond = ''
                 elif line == 'end':
+                    if self.cond:
+                        self.fail('missing endif')
                     self.finish(current)
                     current = None
                 elif line.startswith('##'):
@@ -476,23 +492,33 @@ class PythonBackend:
     def encode_lines(self, fields, ok_index):
         """Statements appending each field to bytearray `b`; consecutive scalars share one pack."""
         lines, run = [], []
+        active = ['']
+
+        def ind():
+            return '    ' if active[0] else ''
 
         def flush():
             if run:
                 fmt = ''.join(SCALARS[f.type.name][0] for f in run)
                 args = ', '.join(self.value(f) + (' & 0xFFFFFFFF' if f.type.name == 'h32' else '') for f in run)
-                lines.append("b += struct.pack('<%s', %s)" % (fmt, args))
+                lines.append(ind() + "b += struct.pack('<%s', %s)" % (fmt, args))
                 run.clear()
 
         for index, f in enumerate(fields):
+            if f.cond != active[0]:
+                flush()
+                active[0] = f.cond
+                if f.cond:
+                    neg = f.cond.startswith('!')
+                    lines.append('if %sself.%s:' % ('not ' if neg else '', f.cond.lstrip('!')))
             if f.type.kind == 'scalar':
                 run.append(f)
             elif f.type.kind == 'lit':
                 flush()
-                lines.append('b += %r' % f.literal)
+                lines.append(ind() + 'b += %r' % f.literal)
             else:
                 flush()
-                lines.append('b += %s' % self.enc(f.type, self.value(f)))
+                lines.append(ind() + 'b += %s' % self.enc(f.type, self.value(f)))
             if ok_index is not None and index == ok_index - 1:
                 flush()
                 lines.append('if self.result != 0:')
@@ -539,21 +565,28 @@ class PythonBackend:
                 out.append('        r = JSerBufferReader(data)')
         else:
             out += ['    @classmethod', "    def read(cls, r: JSerBufferReader) -> '%s':" % s.name]
-        named = []
+        if any(not f.anonymous for f in fields):
+            out.append('        kw = {}')
+        active = ''
         for index, f in enumerate(fields):
+            if f.cond != active:
+                active = f.cond
+                if f.cond:
+                    neg = f.cond.startswith('!')
+                    out.append("        if %skw['%s']:" % ('not ' if neg else '', f.cond.lstrip('!')))
+            pad = '            ' if active else '        '
             if f.name == 'header' and s.header == 'header?':
-                out.append('        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER')
+                out.append(pad + "kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER")
             elif f.type.kind == 'lit':
-                out.append('        r.expect_bytes(%r)' % f.literal)
+                out.append(pad + 'r.expect_bytes(%r)' % f.literal)
             elif f.anonymous:
-                out.append('        %s' % self.dec(f.type))
+                out.append(pad + self.dec(f.type))
             else:
-                out.append('        %s = %s' % (f.name, self.dec(f.type)))
-                named.append(f.name)
+                out.append(pad + "kw['%s'] = %s" % (f.name, self.dec(f.type)))
             if s.ok_index is not None and index == s.ok_index - 1:
-                out.append('        if result != 0:')
-                out.append('            return cls(%s)' % ', '.join('%s=%s' % (n, n) for n in named))
-        out.append('        return cls(%s)' % ', '.join('%s=%s' % (n, n) for n in named))
+                out.append("        if kw['result'] != 0:")
+                out.append('            return cls(**kw)')
+        out.append('        return cls(**kw)' if any(not f.anonymous for f in fields) else '        return cls()')
         if not s.is_message:
             out += ['', '    @classmethod', "    def decode(cls, data: bytes) -> '%s':" % s.name,
                     '        return cls.read(JSerBufferReader(data))']

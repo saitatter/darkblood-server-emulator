@@ -66,10 +66,11 @@ class StallOffer:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'StallOffer':
-        item_uid = r.read_i64()
-        count = r.read_i32()
-        price = r.read_i64()
-        return cls(item_uid=item_uid, count=count, price=price)
+        kw = {}
+        kw['item_uid'] = r.read_i64()
+        kw['count'] = r.read_i32()
+        kw['price'] = r.read_i64()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'StallOffer':
@@ -97,10 +98,11 @@ class PersonalShopOpenReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopOpenReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        title = r.read_wstring()
-        items = r.read_tagged_vector(lambda r1: StallOffer.read(r1))
-        return cls(title=title, items=items)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['title'] = r.read_wstring()
+        kw['items'] = r.read_tagged_vector(lambda r1: StallOffer.read(r1))
+        return cls(**kw)
 
 
 @dataclass
@@ -144,9 +146,10 @@ class PersonalShopCloseReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopCloseReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        owner_uid = r.read_i64()
-        return cls(owner_uid=owner_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['owner_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -164,9 +167,10 @@ class PersonalShopCloseAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopCloseAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        owner_uid = r.read_i64()
-        return cls(result=result, owner_uid=owner_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['owner_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -186,11 +190,12 @@ class PersonalShopBuyReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopBuyReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        seller_uid = r.read_i64()
-        item_uid = r.read_i64()
-        count = r.read_i32()
-        return cls(seller_uid=seller_uid, item_uid=item_uid, count=count)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['seller_uid'] = r.read_i64()
+        kw['item_uid'] = r.read_i64()
+        kw['count'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -235,9 +240,10 @@ class PersonalShopGetProductsReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopGetProductsReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        seller_uid = r.read_i64()
-        return cls(seller_uid=seller_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['seller_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -280,10 +286,11 @@ class PersonalShopChangeNot:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopChangeNot':
         r = JSerBufferReader(data)
-        seller_uid = r.read_i64()
-        title = r.read_wstring()
-        item_count = r.read_i32()
-        return cls(seller_uid=seller_uid, title=title, item_count=item_count)
+        kw = {}
+        kw['seller_uid'] = r.read_i64()
+        kw['title'] = r.read_wstring()
+        kw['item_count'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -302,9 +309,10 @@ class PersonalShopStartNot:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopStartNot':
         r = JSerBufferReader(data)
-        seller_uid = r.read_i64()
-        title = r.read_wstring()
-        return cls(seller_uid=seller_uid, title=title)
+        kw = {}
+        kw['seller_uid'] = r.read_i64()
+        kw['title'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -321,8 +329,9 @@ class PersonalShopCloseNot:
     @classmethod
     def decode(cls, data: bytes) -> 'PersonalShopCloseNot':
         r = JSerBufferReader(data)
-        seller_uid = r.read_i64()
-        return cls(seller_uid=seller_uid)
+        kw = {}
+        kw['seller_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -362,11 +371,12 @@ class BrokerListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerListReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        page = r.read_i32()
-        category = r.read_i32()
-        filter_name = r.read_wstring()
-        return cls(page=page, category=category, filter_name=filter_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['page'] = r.read_i32()
+        kw['category'] = r.read_i32()
+        kw['filter_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -405,8 +415,9 @@ class BrokerMyListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerMyListReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -446,12 +457,13 @@ class BrokerRegistItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerRegistItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        count = r.read_i32()
-        price = r.read_i64()
-        period_hours = r.read_i32()
-        return cls(item_uid=item_uid, count=count, price=price, period_hours=period_hours)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        kw['count'] = r.read_i32()
+        kw['price'] = r.read_i64()
+        kw['period_hours'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -468,8 +480,9 @@ class BrokerRegistItemAck:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerRegistItemAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -488,10 +501,11 @@ class BrokerBuyItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerBuyItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        listing_id = r.read_i64()
-        count = r.read_i32()
-        return cls(listing_id=listing_id, count=count)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['listing_id'] = r.read_i64()
+        kw['count'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -509,9 +523,10 @@ class BrokerBuyItemAck:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerBuyItemAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        gold = r.read_i64()
-        return cls(result=result, gold=gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -529,9 +544,10 @@ class BrokerCancelReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerCancelReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        listing_id = r.read_i64()
-        return cls(listing_id=listing_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['listing_id'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -551,8 +567,9 @@ class BrokerCancelAck:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerCancelAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -570,9 +587,10 @@ class BrokerPriceReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerPriceReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_id = r.read_i32()
-        return cls(item_id=item_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -591,7 +609,8 @@ class BrokerPriceAck:
     @classmethod
     def decode(cls, data: bytes) -> 'BrokerPriceAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        avg_price = r.read_i64()
-        min_price = r.read_i64()
-        return cls(result=result, avg_price=avg_price, min_price=min_price)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['avg_price'] = r.read_i64()
+        kw['min_price'] = r.read_i64()
+        return cls(**kw)

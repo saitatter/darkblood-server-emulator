@@ -56,15 +56,16 @@ class FriendEntry:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'FriendEntry':
-        uid = r.read_i64()
-        name = r.read_wstring()
-        char_class = r.read_u8()
-        level = r.read_u8()
-        location = r.read_i64()
+        kw = {}
+        kw['uid'] = r.read_i64()
+        kw['name'] = r.read_wstring()
+        kw['char_class'] = r.read_u8()
+        kw['level'] = r.read_u8()
+        kw['location'] = r.read_i64()
         r.read_wstring()
         r.read_i64()
         r.read_bool()
-        return cls(uid=uid, name=name, char_class=char_class, level=level, location=location)
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'FriendEntry':
@@ -90,9 +91,10 @@ class FriendListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        friends = r.read_tagged_map(lambda r1: r1.read_i64(), lambda r1: FriendEntry.read(r1))
-        return cls(result=result, friends=friends)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['friends'] = r.read_tagged_map(lambda r1: r1.read_i64(), lambda r1: FriendEntry.read(r1))
+        return cls(**kw)
 
 
 @dataclass
@@ -114,9 +116,10 @@ class FriendListAddReq:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListAddReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        char_name = r.read_wstring()
-        return cls(header=header, char_name=char_name)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['char_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -141,11 +144,12 @@ class FriendListAddAck:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListAddAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        friend = FriendEntry.read(r)
-        return cls(result=result, friend=friend)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['friend'] = FriendEntry.read(r)
+        return cls(**kw)
 
 
 @dataclass
@@ -166,9 +170,10 @@ class FriendListDeleteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListDeleteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        char_uid = r.read_i64()
-        return cls(char_uid=char_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['char_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -189,9 +194,10 @@ class FriendListDeleteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListDeleteAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        char_uid = r.read_i64()
-        return cls(result=result, char_uid=char_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -214,10 +220,11 @@ class FriendListUpdateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListUpdateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        char_uid = r.read_i64()
-        comment = r.read_wstring()
-        return cls(char_uid=char_uid, comment=comment)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['char_uid'] = r.read_i64()
+        kw['comment'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -240,10 +247,11 @@ class FriendListUpdateAck:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendListUpdateAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        char_uid = r.read_i64()
-        comment = r.read_wstring_z()
-        return cls(result=result, char_uid=char_uid, comment=comment)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        kw['comment'] = r.read_wstring_z()
+        return cls(**kw)
 
 
 @dataclass
@@ -266,11 +274,12 @@ class FriendMyConnectionNot:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendMyConnectionNot':
         r = JSerBufferReader(data)
-        char_uid = r.read_i64()
-        is_online = r.read_bool()
-        param1 = r.read_i64()
-        param2 = r.read_i64()
-        return cls(char_uid=char_uid, is_online=is_online, param1=param1, param2=param2)
+        kw = {}
+        kw['char_uid'] = r.read_i64()
+        kw['is_online'] = r.read_bool()
+        kw['param1'] = r.read_i64()
+        kw['param2'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -291,9 +300,10 @@ class FriendMyDisconnectionNot:
     @classmethod
     def decode(cls, data: bytes) -> 'FriendMyDisconnectionNot':
         r = JSerBufferReader(data)
-        char_uid = r.read_i64()
-        notify = r.read_bool()
-        return cls(char_uid=char_uid, notify=notify)
+        kw = {}
+        kw['char_uid'] = r.read_i64()
+        kw['notify'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -311,9 +321,10 @@ class ChangeTeamReq:
     @classmethod
     def decode(cls, data: bytes) -> 'ChangeTeamReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        team_id = r.read_i32()
-        return cls(team_id=team_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['team_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -331,9 +342,10 @@ class ChangeTeamAck:
     @classmethod
     def decode(cls, data: bytes) -> 'ChangeTeamAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        team_id = r.read_i32()
-        return cls(result=result, team_id=team_id)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['team_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -362,12 +374,13 @@ class ChatReq:
     @classmethod
     def decode(cls, data: bytes) -> 'ChatReq':
         r = JSerBufferReader(data)
-        channel = r.read_u8()
-        sender = r.read_wstring()
-        target = r.read_wstring()
-        message = r.read_wstring()
-        tail = r.read_rest()
-        return cls(channel=channel, sender=sender, target=target, message=message, tail=tail)
+        kw = {}
+        kw['channel'] = r.read_u8()
+        kw['sender'] = r.read_wstring()
+        kw['target'] = r.read_wstring()
+        kw['message'] = r.read_wstring()
+        kw['tail'] = r.read_rest()
+        return cls(**kw)
 
 
 @dataclass
@@ -401,13 +414,14 @@ class ChatAck:
     @classmethod
     def decode(cls, data: bytes) -> 'ChatAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        channel = r.read_u8()
-        sender = r.read_wstring()
-        target = r.read_wstring()
-        message = r.read_wstring()
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['channel'] = r.read_u8()
+        kw['sender'] = r.read_wstring()
+        kw['target'] = r.read_wstring()
+        kw['message'] = r.read_wstring()
         r.read_u8()
         r.read_u8()
         r.read_empty_container(0x10)
@@ -417,7 +431,7 @@ class ChatAck:
         r.read_i64()
         r.read_i64()
         r.read_i32()
-        return cls(result=result, channel=channel, sender=sender, target=target, message=message)
+        return cls(**kw)
 
 
 @dataclass
@@ -442,11 +456,12 @@ class UseSpeakerItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'UseSpeakerItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        speaker_uid = r.read_i64()
-        message = r.read_wstring()
-        target_uid = r.read_i64()
-        return cls(speaker_uid=speaker_uid, message=message, target_uid=target_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['speaker_uid'] = r.read_i64()
+        kw['message'] = r.read_wstring()
+        kw['target_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -471,12 +486,13 @@ class UseSpeakerItemAck:
     @classmethod
     def decode(cls, data: bytes) -> 'UseSpeakerItemAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        speaker_uid = r.read_i64()
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['speaker_uid'] = r.read_i64()
         r.read_empty_container(0x10)
-        return cls(result=result, speaker_uid=speaker_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -494,9 +510,10 @@ class ContractUpdateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'ContractUpdateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        contract_id = r.read_i32()
-        return cls(contract_id=contract_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['contract_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -517,9 +534,10 @@ class ContractUpdateAck:
     @classmethod
     def decode(cls, data: bytes) -> 'ContractUpdateAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        contract_id = r.read_i32()
-        return cls(result=result, contract_id=contract_id)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['contract_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -541,11 +559,12 @@ class RequestCharInfoReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestCharInfoReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         r.read_bool()
-        char_uid = r.read_i64()
+        kw['char_uid'] = r.read_i64()
         r.read_i64()
-        return cls(char_uid=char_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -571,15 +590,16 @@ class RequestCharInfoAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestCharInfoAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_u8()
         r.read_u8()
         r.read_bytes(32)
         r.read_empty_container(0x10)
         r.read_empty_container(0x10)
-        return cls(result=result)
+        return cls(**kw)
 
 
 @dataclass
@@ -601,11 +621,12 @@ class RequestItemInfoReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestItemInfoReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         r.read_i32()
-        item_uid = r.read_i64()
+        kw['item_uid'] = r.read_i64()
         r.read_i64()
-        return cls(item_uid=item_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -629,12 +650,13 @@ class RequestItemInfoAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestItemInfoAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        item_uid = r.read_i64()
-        if result != 0:
-            return cls(result=result, item_uid=item_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['item_uid'] = r.read_i64()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_bytes(16)
-        return cls(result=result, item_uid=item_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -654,8 +676,9 @@ class GetInviteListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GetInviteListReq':
         r = JSerBufferReader(data)
-        raw = r.read_rest()
-        return cls(raw=raw)
+        kw = {}
+        kw['raw'] = r.read_rest()
+        return cls(**kw)
 
 
 @dataclass
@@ -676,6 +699,7 @@ class GetInviteListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GetInviteListAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
+        kw = {}
+        kw['result'] = r.read_i32()
         r.read_empty_container(0x10)
-        return cls(result=result)
+        return cls(**kw)

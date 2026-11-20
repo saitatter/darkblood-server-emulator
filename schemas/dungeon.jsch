@@ -1,0 +1,283 @@
+# Rooms, dungeon gate, game start/finish, layers, deaths, rewards. Format: schemas/README.md.
+# Several of these flows are verified live (5013/5014, 5043/5044, 5017/5018, 5094).
+
+domain dungeon Dark Blood protocol wire messages - Dungeon domain.
+
+extern Character from darkblood.games.entities.character encode=encode_world_details
+extern Item from darkblood.games.entities.items
+
+message 2011 RoomInfoListAck
+  ## JUserClient handler 0x0077A1F0; names from the read-failure messages:
+  ## nOK, m_bShowOnlyWaitRoom, m_iViewRoomPage, m_vecRoomList (0x46-byte
+  ## elements, reader 0x00778F50), m_iN* (probably the page count). Offline: no rooms.
+  u32 result
+  bool show_only_wait
+  i32 page
+  vector<?> _                # m_vecRoomList
+  i32 pages
+end
+
+struct RoomInfo
+  ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002 and 5004.
+  i64 room_id
+  wstr name
+  i16 req_c = -1
+  i16 req_d = 1
+  i32 req_a = -1
+  i64 host_uid
+  i64 _
+  i32 req_b = -1
+  i32 _ = -1
+  i16 req_d_end = 1          # sent equal to req_d so far
+end
+
+message 5002 CreateRoomAck ok_only
+  ## Handler 0x005984D0: result, room info, team ID, relay endpoint.
+  u32 result
+  RoomInfo room = RoomInfo()
+  u32 team_id
+  raw[6] relay               # IPv4 bytes + u16 port (frontend.relay.relay_address)
+end
+
+message 5003 JoinRoomReq header?
+  ## Sender 0x0058B430.
+  i64 room_id
+end
+
+struct RoomMember
+  ## jNetChar (0x00A533A0). Unmapped fields use constructor 0x00486190 defaults.
+  Character character = Character()
+  i64 _ = -1
+  lit ffffffffffffffff000000000000000000000000
+  i64 _ = -1
+  i64 _ = -1
+  u32 _
+  u16 _ = 2010
+  u16 _ = 1
+  u16 _ = 1
+  u16 _
+  u16 _
+  u16 _
+  u16 _ = 2010
+  u16 _ = 1
+  u16 _ = 1
+  u16 _
+  u16 _
+  u16 _
+  u32 _
+end
+
+message 5004 JoinRoomAck ok_only
+  ## Handler 0x00597C30: result, room info, host UID, roster, relay, two bools.
+  u32 result
+  RoomInfo room = RoomInfo()
+  i64 host_uid
+  vector<RoomMember> members
+  raw[6] relay
+  bool _
+  bool _
+end
+
+message 5035 RoomMemberJoinedNot
+  ## Handler 0x00598D90: jNetChar and bIsAllCharSameRate.
+  RoomMember member = RoomMember()
+  bool _                     # bIsAllCharSameRate
+end
+
+message 5036 RoomMemberLeftNot
+  ## Handler 0x005991B0: result and departing character UID.
+  u32 _
+  i64 char_uid
+end
+
+struct DungeonHistory
+  ## Value of the 5044 history map (0x00A492C0).
+  wstr map_id
+  u8 max_diff                # m_ucDiff: highest cleared difficulty
+  u8 cleared                 # with max_diff, see SelectDungeonAck
+end
+
+message 5044 SelectDungeonAck
+  ## JUserClient handler 0x007702E0. Result 0x94 is a special failure stored on
+  ## app page 9. On success the gate id goes to JAppStateDungeonGate 0x006B2C00
+  ## ("Invalidation in m_pjGateProp" if unknown), so it echoes the 5043 request.
+  ## History map (0x0076AD10): 0x006BCD20 (SetDunHist) copies each entry to the
+  ## dungeon's gate slot; dungeons without one keep 0/0 (0x00A48970).
+  ## 0x00A4BC00 allows difficulty d when d-1 < m_ucDiff, or d-1 == m_ucDiff with
+  ## the flag set, and 0x006D1120 auto-selects the map with Difficult == m_ucDiff,
+  ## one step higher when the flag is set: the entry is the highest cleared
+  ## difficulty. The trailing set (gate +0x218) holds active quest ids; quest
+  ## variant map slots (index 4+) are offered only when the JHashString of the
+  ## map's QuestLink (+0x44) is in it (0x006B5930, 0x006C77E0, 0x006D1120).
+  u32 result
+  map<wstr,DungeonHistory> dun_history  # dungeon id -> history
+  set<?> _                   # 0x00765450 (gate +0x268), element meaning not recovered
+  wstr gate_id
+  set<h32> quest_ids         # 0x005EAB90; pass sorted unique u32 ids
+end
+
+message 5010 ChangeMapCodeAck
+  ## JAppStateDungeonGate vf20 -> 0x006D4A00. The map code is looked up as a map
+  ## property ("Invalidation in pjProp") and joined to "Data/Map/MyWork/". The
+  ## bool's meaning is not recovered; it echoes the trailing byte of 5009.
+  u32 result
+  wstr map_code
+  bool flag
+end
+
+message 5013 StartGameReq header
+  ## Sender 0x007AD030; captures always carry the header.
+  wstr map_code
+end
+
+message 5014 StartGameAck ok_only
+  ## Reader 0x007880A0. Errors contain only the result. The scalar defaults and
+  ## empty maps preserve the verified single-player reply.
+  u32 result
+  u16 _
+  u32 _
+  wstr map_code
+  map<?> _                   # 0x004B8B80
+  map<?> _                   # 0x0064E7D0
+  map<?> _                   # 0x004B7550
+  vector<Item> item_updates  # 0x004B94C0
+end
+
+message 5095 ChangeDungeonLayerNot header
+  ## JAppStateGamePlay::Initialize -> sender 0x007900B0; captures always carry the
+  ## header. layer_net_id is (jhash(map_code) << 32) | layer_id.
+  i64 layer_net_id
+end
+
+message 5063 MonsterDeadReq header
+  ## JUserClient::MonsterDeadREQ 0x0078A690; captures always carry the header.
+  u32 monster_id
+  u32 param
+end
+
+message 2422 ActiveWarFlagReq header
+  ## 0x0087D170 -> sender 0x0079C300; captures always carry the header.
+  u32 war_flag_id
+end
+
+message 5093 GameplayDieCharReq header?
+  ## Sender 0x0078EDF0; captures have both forms (21 or 25 bytes).
+  i64 char_uid
+  bool bDie = true
+  i32 damage
+  i32 cur_hp
+  i32 max_hp
+end
+
+message 5094 GameplayDieCharAck
+  ## Handler 0x0078F090 (assembly-checked). char_uid is compared with the own UID
+  ## (0x00946570); with bDie set and the own UID the handler opens page 0x6B
+  ## through 0x008FC100(1). The rebirth coins are read only when bDie is 0 and
+  ## char_uid is the own UID (the revive case).
+  u32 result
+  i64 char_uid
+  i64 other_uid              # meaning not recovered
+  bool bDie = true
+  h32 damage                 # meanings of the three u32 not recovered; echoed
+  h32 cur_hp
+  h32 max_hp
+  u16 die_count              # meaning not recovered
+  if not bDie
+  u16 rebirth_coin
+  endif
+end
+
+message 2448 DailyRebirthCoinUseReq header
+  ## Sender 0x0079D8F0. A claim of free daily rebirth coins, not a revive. 0 is
+  ## the daily claim: the sender refuses locally when player +0x7E (received) >= 3
+  ## (UI_2659) or +0x7C (owned) >= 3 (UI_2646). 1 is a PC-bang variant.
+  ## Observed live: ffffff7f 00.
+  u8 coin_type
+end
+
+message 2449 DailyRebirthCoinUseAck
+  ## On_eEGS_DAILY_REBIRTH_COIN_USE_ACK 0x0079DC70. The ack does not change the
+  ## owned coin count; 2286 does.
+  i32 result
+  u16 daily_recv_cnt = 1     # -> player +0x7E
+  u32 pcbang_coin_remain = 5 # passed to page 0x12 0x0054A1E0
+end
+
+message 5090 ChoiceRewardPartyRankReq header
+  ## Sender 0x0078D5C0; captures always carry the header.
+  i32 card_index
+end
+
+message 5091 ChoiceRewardPartyRankAck
+  ## On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0) is shown by the
+  ## chest display 0x00713AB0: +0 looked up as an item (0x009E53D0), +6 shown as
+  ## "xN" when >= 2. A UID at +0 showed "unknown item".
+  i32 result
+  i64 char_uid               # nChoiceCharUID
+  h32 item_id                # +0 item code
+  u16 _                      # +4 not recovered
+  u16 count = 1              # +6
+  u32 _                      # +8 not recovered
+  i32 box_type               # nBoxType
+  i32 box_cost               # nBoxCost
+  vector<Item> items         # read when char_uid is the local player (0x004B94C0)
+  i64 gold                   # new player gold (+0x70)
+end
+
+message 2085 ChangeDungeonPenaltyNot
+  ## Handler 0x0078FA70.
+  bool in_dungeon
+  bool is_penalty
+  i16 penalty_level
+  i32 penalty_id
+  i32 duration
+end
+
+message 5005 LeaveRoomReq bare
+  ## Sender 0x0058B240; captured bodies are empty.
+end
+
+message 5006 LeaveRoomAck
+  ## Handler 0x00598A00.
+  i32 result
+end
+
+message 5017 FinishGameReq
+  ## Sender 0x007AD2F0: bool, two 0x17 maps, 4 bytes, a 0x10 vector, 4 bytes.
+  ## Captures carry no header. Only the first field is decoded.
+  bool is_clear = true
+  rest tail
+end
+
+struct SingleReward
+  ## mapSingleReward value in 5018: raw 40-byte block (0x00A1E7A0 reads 0x28
+  ## bytes). 0x0071F9F0 copies it to JResultDirect +0x74 (result page 0x1B, +0xD4).
+  ## The stylish/demolition/damage gauges come from party member data.
+  i32 _                      # +0x00 unknown
+  i32 total                  # +0x04 "num_total" (0x00720164)
+  i32 rate_a = 100           # +0x08 explist row 1, shown as value / 100.0 after "X"
+  i32 rate_b = 100           # +0x0C explist row 2
+  i32 exp                    # +0x10 explist row 0 text
+  i32 _                      # +0x14 unknown
+  i32 _                      # +0x18 unknown
+  i32 _                      # +0x1C unknown
+  i32 extra_box_count        # +0x20: 0x0071FF0F adds this many "extra_box" entries; keep small
+  i32 extra_box_price        # +0x24 "num_price" (0x0071FE83)
+end
+
+message 5018 FinishGameAck
+  ## Handler 0x007ADB60.
+  u32 result
+  bool is_clear = true       # dungeon clear / victory
+  wstr map_code
+  bool flag                  # bSamePerson
+  map<?> _                   # mapGuildPersonCnt
+  if is_clear
+  map<i64,SingleReward> rewards  # mapSingleReward: char uid -> block
+  i32 rank_first = 1         # nPartyRankFirst
+  i32 rank_final = 1         # nPartyRankFinal
+  i32 box_grade = 1          # nBoxGrade
+  i32 extra_box_cost         # nExtraBoxCost
+  vector<?> _                # vecBonusMonster
+  endif
+end

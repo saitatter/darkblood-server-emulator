@@ -48,9 +48,10 @@ class RouletteManagerInfoAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RouletteManagerInfoAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        payload = r.read_bytes(21)
-        return cls(result=result, payload=payload)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['payload'] = r.read_bytes(21)
+        return cls(**kw)
 
 
 @dataclass
@@ -71,9 +72,10 @@ class NpcFirstMeetAck:
     @classmethod
     def decode(cls, data: bytes) -> 'NpcFirstMeetAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        npc_id = r.read_u32()
-        return cls(result=result, npc_id=npc_id)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['npc_id'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -90,8 +92,9 @@ class RequestTeachingReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestTeachingReq':
         r = JSerBufferReader(data)
-        target_uid = r.read_i64()
-        return cls(target_uid=target_uid)
+        kw = {}
+        kw['target_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -115,13 +118,14 @@ class RequestTeachingAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestTeachingAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        target_uid = r.read_i64()
-        target_name = r.read_wstring()
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['target_uid'] = r.read_i64()
+        kw['target_name'] = r.read_wstring()
         r.read_u8()
         r.read_u8()
         r.read_u8()
-        return cls(result=result, target_uid=target_uid, target_name=target_name)
+        return cls(**kw)
 
 
 @dataclass
@@ -138,8 +142,9 @@ class AcceptRequestTeachingReq:
     @classmethod
     def decode(cls, data: bytes) -> 'AcceptRequestTeachingReq':
         r = JSerBufferReader(data)
-        mentor_uid = r.read_i64()
-        return cls(mentor_uid=mentor_uid)
+        kw = {}
+        kw['mentor_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -163,11 +168,12 @@ class AcceptRequestTeachingAck:
     @classmethod
     def decode(cls, data: bytes) -> 'AcceptRequestTeachingAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        accepted = r.read_bool()
-        mentor_uid = r.read_i64()
-        mentor_name = r.read_wstring()
-        return cls(result=result, accepted=accepted, mentor_uid=mentor_uid, mentor_name=mentor_name)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['accepted'] = r.read_bool()
+        kw['mentor_uid'] = r.read_i64()
+        kw['mentor_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -187,8 +193,9 @@ class TeachingGetInfoNot:
     @classmethod
     def decode(cls, data: bytes) -> 'TeachingGetInfoNot':
         r = JSerBufferReader(data)
-        info_payload = r.read_bytes(32)
-        return cls(info_payload=info_payload)
+        kw = {}
+        kw['info_payload'] = r.read_bytes(32)
+        return cls(**kw)
 
 
 @dataclass
@@ -208,8 +215,9 @@ class TreasureStartNot:
     @classmethod
     def decode(cls, data: bytes) -> 'TreasureStartNot':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -229,8 +237,9 @@ class TreasureEndNot:
     @classmethod
     def decode(cls, data: bytes) -> 'TreasureEndNot':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -269,9 +278,10 @@ class GoldGoblinAppearNot:
     @classmethod
     def decode(cls, data: bytes) -> 'GoldGoblinAppearNot':
         r = JSerBufferReader(data)
-        goblin_id = r.read_i32()
+        kw = {}
+        kw['goblin_id'] = r.read_i32()
         r.read_empty_container(0x10)
-        return cls(goblin_id=goblin_id)
+        return cls(**kw)
 
 
 @dataclass
@@ -289,9 +299,10 @@ class GoldGoblinAttackReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GoldGoblinAttackReq':
         r = JSerBufferReader(data)
-        goblin_id = r.read_i32()
-        damage = r.read_i32()
-        return cls(goblin_id=goblin_id, damage=damage)
+        kw = {}
+        kw['goblin_id'] = r.read_i32()
+        kw['damage'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -311,8 +322,9 @@ class GoldGoblinAttackAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GoldGoblinAttackAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -329,8 +341,9 @@ class GoldGoblinDeadReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GoldGoblinDeadReq':
         r = JSerBufferReader(data)
-        goblin_id = r.read_i32()
-        return cls(goblin_id=goblin_id)
+        kw = {}
+        kw['goblin_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -365,5 +378,6 @@ class GoldGoblinDisappearNot:
     @classmethod
     def decode(cls, data: bytes) -> 'GoldGoblinDisappearNot':
         r = JSerBufferReader(data)
-        goblin_id = r.read_i32()
-        return cls(goblin_id=goblin_id)
+        kw = {}
+        kw['goblin_id'] = r.read_i32()
+        return cls(**kw)

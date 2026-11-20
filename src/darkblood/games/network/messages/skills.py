@@ -48,12 +48,13 @@ class LearnedSkill:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'LearnedSkill':
-        skill_index = r.read_u16()
-        level = r.read_u8()
-        speech = r.read_wstring()
-        locked = r.read_bool()
+        kw = {}
+        kw['skill_index'] = r.read_u16()
+        kw['level'] = r.read_u8()
+        kw['speech'] = r.read_wstring()
+        kw['locked'] = r.read_bool()
         r.read_bool()
-        return cls(skill_index=skill_index, level=level, speech=speech, locked=locked)
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'LearnedSkill':
@@ -74,10 +75,11 @@ class SkillLevel:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'SkillLevel':
+        kw = {}
         r.expect_bytes(b'\x0f')
-        skill_index = r.read_u16()
-        level = r.read_u8()
-        return cls(skill_index=skill_index, level=level)
+        kw['skill_index'] = r.read_u16()
+        kw['level'] = r.read_u8()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'SkillLevel':
@@ -103,10 +105,11 @@ class LearnSkillReq:
     @classmethod
     def decode(cls, data: bytes) -> 'LearnSkillReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        skill_index = r.read_u16()
-        level = r.read_u8()
-        return cls(skill_index=skill_index, level=level)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['skill_index'] = r.read_u16()
+        kw['level'] = r.read_u8()
+        return cls(**kw)
 
 
 @dataclass
@@ -130,12 +133,13 @@ class LearnSkillAck:
     @classmethod
     def decode(cls, data: bytes) -> 'LearnSkillAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        skill_index = r.read_u16()
-        level = r.read_u8()
-        remain_sp = r.read_i32()
-        remain_gold = r.read_i64()
-        return cls(result=result, skill_index=skill_index, level=level, remain_sp=remain_sp, remain_gold=remain_gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['skill_index'] = r.read_u16()
+        kw['level'] = r.read_u8()
+        kw['remain_sp'] = r.read_i32()
+        kw['remain_gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -157,10 +161,11 @@ class UpdateSkillLockedReq:
     @classmethod
     def decode(cls, data: bytes) -> 'UpdateSkillLockedReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        skill_index = r.read_i16()
-        locked = r.read_bool()
-        return cls(skill_index=skill_index, locked=locked)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['skill_index'] = r.read_i16()
+        kw['locked'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -182,10 +187,11 @@ class UpdateSkillLockedAck:
     @classmethod
     def decode(cls, data: bytes) -> 'UpdateSkillLockedAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        skill_index = r.read_i16()
-        locked = r.read_bool()
-        return cls(result=result, skill_index=skill_index, locked=locked)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['skill_index'] = r.read_i16()
+        kw['locked'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -208,10 +214,11 @@ class ModifySkillSpeechReq:
     @classmethod
     def decode(cls, data: bytes) -> 'ModifySkillSpeechReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        skill_index = r.read_u16()
-        speech = r.read_wstring()
-        return cls(skill_index=skill_index, speech=speech)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['skill_index'] = r.read_u16()
+        kw['speech'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -234,10 +241,11 @@ class ModifySkillSpeechAck:
     @classmethod
     def decode(cls, data: bytes) -> 'ModifySkillSpeechAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        skill_index = r.read_u16()
-        speech = r.read_wstring()
-        return cls(result=result, skill_index=skill_index, speech=speech)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['skill_index'] = r.read_u16()
+        kw['speech'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -258,9 +266,10 @@ class DeleteSkillSpeechReq:
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteSkillSpeechReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        skill_index = r.read_u16()
-        return cls(skill_index=skill_index)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['skill_index'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -281,9 +290,10 @@ class DeleteSkillSpeechAck:
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteSkillSpeechAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        skill_index = r.read_u16()
-        return cls(result=result, skill_index=skill_index)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['skill_index'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -308,12 +318,13 @@ class InitSkillNot:
     @classmethod
     def decode(cls, data: bytes) -> 'InitSkillNot':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        sp = r.read_i32()
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['sp'] = r.read_i32()
         r.read_empty_container(0x17)
-        return cls(result=result, sp=sp)
+        return cls(**kw)
 
 
 @dataclass
@@ -335,10 +346,11 @@ class UseLearnSkillItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'UseLearnSkillItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        skill_id = r.read_i32()
-        return cls(item_uid=item_uid, skill_id=skill_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        kw['skill_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -385,9 +397,10 @@ class InsertApNot:
     @classmethod
     def decode(cls, data: bytes) -> 'InsertApNot':
         r = JSerBufferReader(data)
-        current_ap = r.read_i32()
-        total_ap = r.read_i32()
-        return cls(current_ap=current_ap, total_ap=total_ap)
+        kw = {}
+        kw['current_ap'] = r.read_i32()
+        kw['total_ap'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -409,9 +422,10 @@ class LearnSkillListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'LearnSkillListReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        skills = r.read_tagged_vector(lambda r1: SkillLevel.read(r1))
-        return cls(header=header, skills=skills)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['skills'] = r.read_tagged_vector(lambda r1: SkillLevel.read(r1))
+        return cls(**kw)
 
 
 @dataclass
@@ -436,8 +450,9 @@ class LearnSkillListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'LearnSkillListAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        skills = r.read_tagged_map(lambda r1: r1.read_u16(), lambda r1: LearnedSkill.read(r1))
-        remain_sp = r.read_i32()
-        remain_gold = r.read_i64()
-        return cls(result=result, skills=skills, remain_sp=remain_sp, remain_gold=remain_gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['skills'] = r.read_tagged_map(lambda r1: r1.read_u16(), lambda r1: LearnedSkill.read(r1))
+        kw['remain_sp'] = r.read_i32()
+        kw['remain_gold'] = r.read_i64()
+        return cls(**kw)

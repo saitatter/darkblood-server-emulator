@@ -60,10 +60,11 @@ class TameingMonsterInsertReq:
     @classmethod
     def decode(cls, data: bytes) -> 'TameingMonsterInsertReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        monster_id = r.read_i32()
-        slot = r.read_i32()
-        return cls(monster_id=monster_id, slot=slot)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['monster_id'] = r.read_i32()
+        kw['slot'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -84,9 +85,10 @@ class TamingMonsterInsertAck:
     @classmethod
     def decode(cls, data: bytes) -> 'TamingMonsterInsertAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
         r.read_empty_container(0x10)
-        return cls(result=result)
+        return cls(**kw)
 
 
 @dataclass
@@ -108,10 +110,11 @@ class TameingMonsterDeleteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'TameingMonsterDeleteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        monster_id = r.read_i32()
-        slot = r.read_i32()
-        return cls(monster_id=monster_id, slot=slot)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['monster_id'] = r.read_i32()
+        kw['slot'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -134,10 +137,11 @@ class TamingMonsterDeleteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'TamingMonsterDeleteAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
         r.read_empty_container(0x10)
-        deleted_slot = r.read_i32()
-        return cls(result=result, deleted_slot=deleted_slot)
+        kw['deleted_slot'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -157,8 +161,9 @@ class RidingGetListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RidingGetListReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -181,11 +186,12 @@ class RidingGetListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RidingGetListAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_empty_container(0x17)
-        return cls(result=result)
+        return cls(**kw)
 
 
 @dataclass
@@ -206,9 +212,10 @@ class RidingRideObjectReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RidingRideObjectReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        ride_object_id = r.read_u32()
-        return cls(ride_object_id=ride_object_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['ride_object_id'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -232,11 +239,12 @@ class RidingRideObjectAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RidingRideObjectAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        ride_object_id = r.read_u32()
-        return cls(result=result, ride_object_id=ride_object_id)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['ride_object_id'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -257,9 +265,10 @@ class PetCreateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetCreateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        pet_uid = r.read_i64()
-        return cls(pet_uid=pet_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -287,13 +296,14 @@ class PetCreateAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetCreateAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_empty_container(0x10)
-        slot = r.read_i32()
-        pet_item = r.read_bytes(52)
-        return cls(result=result, slot=slot, pet_item=pet_item)
+        kw['slot'] = r.read_i32()
+        kw['pet_item'] = r.read_bytes(52)
+        return cls(**kw)
 
 
 @dataclass
@@ -314,9 +324,10 @@ class PetDeleteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetDeleteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        pet_uid = r.read_i64()
-        return cls(pet_uid=pet_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -340,11 +351,12 @@ class PetDeleteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetDeleteAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        pet_uid = r.read_i64()
-        return cls(result=result, pet_uid=pet_uid)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -384,11 +396,12 @@ class PetSummonAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetSummonAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        pet_slot = r.read_u16()
-        return cls(result=result, pet_slot=pet_slot)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['pet_slot'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -424,8 +437,9 @@ class PetReleaseSummonAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetReleaseSummonAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -446,9 +460,10 @@ class PetSaveReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetSaveReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        value = r.read_u16()
-        return cls(value=value)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['value'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -472,11 +487,12 @@ class PetSaveAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetSaveAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        value = r.read_u16()
-        return cls(result=result, value=value)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['value'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -497,9 +513,10 @@ class PetLoadReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetLoadReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        pet_uid = r.read_i64()
-        return cls(pet_uid=pet_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -523,11 +540,12 @@ class PetLoadAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetLoadAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        pet_uid = r.read_i64()
-        return cls(result=result, pet_uid=pet_uid)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -548,9 +566,10 @@ class PetReplaceReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetReplaceReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        pet_uid = r.read_i64()
-        return cls(pet_uid=pet_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -574,11 +593,12 @@ class PetReplaceAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetReplaceAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        pet_uid = r.read_i64()
-        return cls(result=result, pet_uid=pet_uid)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -599,9 +619,10 @@ class PetEatNormalReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetEatNormalReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        return cls(item_uid=item_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -627,13 +648,14 @@ class PetEatNormalAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetEatNormalAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_empty_container(0x10)
-        satiety = r.read_u16()
-        status = r.read_u8()
-        return cls(result=result, satiety=satiety, status=status)
+        kw['satiety'] = r.read_u16()
+        kw['status'] = r.read_u8()
+        return cls(**kw)
 
 
 @dataclass
@@ -677,14 +699,15 @@ class PetEvolutionAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetEvolutionAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
-        old_pet_uid = r.read_i64()
-        new_pet_id = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['old_pet_uid'] = r.read_i64()
+        kw['new_pet_id'] = r.read_u32()
         r.read_empty_container(0x10)
-        new_pet_uid = r.read_i64()
-        return cls(result=result, old_pet_uid=old_pet_uid, new_pet_id=new_pet_id, new_pet_uid=new_pet_uid)
+        kw['new_pet_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -707,10 +730,11 @@ class PetNickChangeReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PetNickChangeReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        pet_uid = r.read_i64()
-        new_name = r.read_wstring()
-        return cls(pet_uid=pet_uid, new_name=new_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['pet_uid'] = r.read_i64()
+        kw['new_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -737,10 +761,11 @@ class PetNickChangeAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PetNickChangeAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_empty_container(0x10)
-        pet_uid = r.read_i64()
-        new_name = r.read_wstring()
-        return cls(result=result, pet_uid=pet_uid, new_name=new_name)
+        kw['pet_uid'] = r.read_i64()
+        kw['new_name'] = r.read_wstring()
+        return cls(**kw)

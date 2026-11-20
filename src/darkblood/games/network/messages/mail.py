@@ -74,9 +74,10 @@ class PostListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostListReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        flag = r.read_bool()
-        return cls(header=header, flag=flag)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['flag'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -130,14 +131,15 @@ class PostSendReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostSendReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        recipient = r.read_wstring()
-        title = r.read_wstring()
-        items = r.read_tagged_vector(lambda r1: r1.read_i64())
-        gold = r.read_i64()
-        extra = r.read_i64()
-        is_cod = r.read_bool()
-        return cls(recipient=recipient, title=title, items=items, gold=gold, extra=extra, is_cod=is_cod)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['recipient'] = r.read_wstring()
+        kw['title'] = r.read_wstring()
+        kw['items'] = r.read_tagged_vector(lambda r1: r1.read_i64())
+        kw['gold'] = r.read_i64()
+        kw['extra'] = r.read_i64()
+        kw['is_cod'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -181,9 +183,10 @@ class PostReadReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostReadReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        mail_uid = r.read_i64()
-        return cls(mail_uid=mail_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['mail_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -204,9 +207,10 @@ class PostReadAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PostReadAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        mail_uid = r.read_i64()
-        return cls(result=result, mail_uid=mail_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['mail_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -229,10 +233,11 @@ class PostGetAppendItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostGetAppendItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        mail_uid = r.read_i64()
-        item_record = r.read_rest()
-        return cls(mail_uid=mail_uid, item_record=item_record)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['mail_uid'] = r.read_i64()
+        kw['item_record'] = r.read_rest()
+        return cls(**kw)
 
 
 @dataclass
@@ -292,9 +297,10 @@ class PostReturnReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostReturnReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        mail_id = r.read_i64()
-        return cls(mail_id=mail_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['mail_id'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -318,11 +324,12 @@ class PostReturnAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PostReturnAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        mail_uids = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(result=result, mail_uids=mail_uids)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['mail_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
+        return cls(**kw)
 
 
 @dataclass
@@ -344,9 +351,10 @@ class PostDeleteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PostDeleteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        mail_uids = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(mail_uids=mail_uids)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['mail_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
+        return cls(**kw)
 
 
 @dataclass
@@ -370,8 +378,9 @@ class PostDeleteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'PostDeleteAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        mail_uids = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(result=result, mail_uids=mail_uids)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['mail_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
+        return cls(**kw)

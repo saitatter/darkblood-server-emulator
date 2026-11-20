@@ -39,10 +39,11 @@ class QuestObjective:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'QuestObjective':
-        quest_id = r.read_u32()
-        objective_index = r.read_i32()
-        count = r.read_i32()
-        return cls(quest_id=quest_id, objective_index=objective_index, count=count)
+        kw = {}
+        kw['quest_id'] = r.read_u32()
+        kw['objective_index'] = r.read_i32()
+        kw['count'] = r.read_i32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'QuestObjective':
@@ -71,16 +72,17 @@ class QuestStartAck:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestStartAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        quest_id = r.read_u32()
-        quest_uid = r.read_i64()
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['quest_id'] = r.read_u32()
+        kw['quest_uid'] = r.read_i64()
         r.read_i32()
         r.read_u16()
         r.read_i32()
         r.read_i32()
         r.read_i32()
         r.read_empty_container(0x10)
-        return cls(result=result, quest_id=quest_id, quest_uid=quest_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -100,8 +102,9 @@ class QuestUpdateNot:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestUpdateNot':
         r = JSerBufferReader(data)
-        updates = r.read_tagged_vector(lambda r1: QuestObjective.read(r1))
-        return cls(updates=updates)
+        kw = {}
+        kw['updates'] = r.read_tagged_vector(lambda r1: QuestObjective.read(r1))
+        return cls(**kw)
 
 
 @dataclass
@@ -123,9 +126,10 @@ class QuestHistoryNot:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestHistoryNot':
         r = JSerBufferReader(data)
-        quest_ids = r.read_tagged_set(lambda r1: r1.read_u32())
-        weekly = r.read_bool()
-        return cls(quest_ids=quest_ids, weekly=weekly)
+        kw = {}
+        kw['quest_ids'] = r.read_tagged_set(lambda r1: r1.read_u32())
+        kw['weekly'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -170,8 +174,9 @@ class TutorialQuestStartAck:
     @classmethod
     def decode(cls, data: bytes) -> 'TutorialQuestStartAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -193,9 +198,10 @@ class QuestGiveupReq:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestGiveupReq':
         r = JSerBufferReader(data)
-        timestamp = r.read_wstring()
-        quest_id = r.read_u32()
-        return cls(timestamp=timestamp, quest_id=quest_id)
+        kw = {}
+        kw['timestamp'] = r.read_wstring()
+        kw['quest_id'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -222,14 +228,15 @@ class QuestGiveupAck:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestGiveupAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        quest_ids = r.read_tagged_vector(lambda r1: r1.read_u32())
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['quest_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
         r.read_bytes(18)
         r.read_empty_container(0x10)
         r.read_empty_container(0x10)
-        return cls(result=result, quest_ids=quest_ids)
+        return cls(**kw)
 
 
 @dataclass
@@ -251,9 +258,10 @@ class QuestFailReq:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestFailReq':
         r = JSerBufferReader(data)
-        timestamp = r.read_wstring()
-        quest_id = r.read_u32()
-        return cls(timestamp=timestamp, quest_id=quest_id)
+        kw = {}
+        kw['timestamp'] = r.read_wstring()
+        kw['quest_id'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -280,14 +288,15 @@ class QuestFailAck:
     @classmethod
     def decode(cls, data: bytes) -> 'QuestFailAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        quest_ids = r.read_tagged_vector(lambda r1: r1.read_u32())
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['quest_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
         r.read_bytes(18)
         r.read_empty_container(0x10)
         r.read_empty_container(0x10)
-        return cls(result=result, quest_ids=quest_ids)
+        return cls(**kw)
 
 
 @dataclass
@@ -326,6 +335,7 @@ class GuideBeginnerUpdateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuideBeginnerUpdateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        guide_ids = r.read_tagged_vector(lambda r1: r1.read_u32())
-        return cls(header=header, guide_ids=guide_ids)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['guide_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
+        return cls(**kw)

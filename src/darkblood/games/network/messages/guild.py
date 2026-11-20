@@ -61,9 +61,10 @@ class GuildOrAttendanceAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildOrAttendanceAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
         r.read_empty_container(0x17)
-        return cls(result=result)
+        return cls(**kw)
 
 
 @dataclass
@@ -85,9 +86,10 @@ class GuildCreateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildCreateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        guild_name = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
-        return cls(guild_name=guild_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['guild_name'] = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
+        return cls(**kw)
 
 
 @dataclass
@@ -109,9 +111,10 @@ class GuildCreateProposalReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildCreateProposalReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        guild_name = r.read_wstring()
-        return cls(guild_name=guild_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['guild_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -139,13 +142,14 @@ class GuildCreateAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildCreateAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        guild_uid = r.read_i64()
-        guild_name = r.read_wstring_z()
-        remain_gold = r.read_i64()
-        return cls(result=result, guild_uid=guild_uid, guild_name=guild_name, remain_gold=remain_gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['guild_uid'] = r.read_i64()
+        kw['guild_name'] = r.read_wstring_z()
+        kw['remain_gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -165,8 +169,9 @@ class GuildCreateProposalAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildCreateProposalAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -187,9 +192,10 @@ class GuildPersonJoinReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildPersonJoinReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        guild_uid = r.read_i64()
-        return cls(guild_uid=guild_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['guild_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -209,8 +215,9 @@ class GuildPersonJoinAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildPersonJoinAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -232,9 +239,10 @@ class GuildInviteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildInviteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        char_name = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
-        return cls(char_name=char_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['char_name'] = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
+        return cls(**kw)
 
 
 @dataclass
@@ -254,8 +262,9 @@ class GuildInviteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildInviteAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -275,8 +284,9 @@ class GuildPersonLeaveReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildPersonLeaveReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -296,8 +306,9 @@ class GuildPersonLeaveAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildPersonLeaveAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -318,9 +329,10 @@ class GuildMoneyInReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildMoneyInReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        amount = r.read_i64()
-        return cls(amount=amount)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['amount'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -344,11 +356,12 @@ class GuildMoneyInAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildMoneyInAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        remain_gold = r.read_i64()
-        return cls(result=result, remain_gold=remain_gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['remain_gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -369,9 +382,10 @@ class GuildMoneyOutReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildMoneyOutReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        amount = r.read_i64()
-        return cls(amount=amount)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['amount'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -395,11 +409,12 @@ class GuildMoneyOutAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildMoneyOutAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        remain_gold = r.read_i64()
-        return cls(result=result, remain_gold=remain_gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['remain_gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -419,8 +434,9 @@ class GuildLevelUpReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildLevelUpReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -444,11 +460,12 @@ class GuildLevelUpAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildLevelUpAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        new_level = r.read_i16()
-        return cls(result=result, new_level=new_level)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['new_level'] = r.read_i16()
+        return cls(**kw)
 
 
 @dataclass
@@ -470,9 +487,10 @@ class GuildNoticeModifyReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildNoticeModifyReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        notice = r.read_wstring()
-        return cls(notice=notice)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['notice'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -492,8 +510,9 @@ class GuildNoticeModifyAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildNoticeModifyAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -513,8 +532,9 @@ class GuildNoticeDeleteReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildNoticeDeleteReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -534,8 +554,9 @@ class GuildNoticeDeleteAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildNoticeDeleteAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -555,8 +576,9 @@ class GuildAllSkillInitReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildAllSkillInitReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -580,11 +602,12 @@ class GuildAllSkillInitAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildAllSkillInitAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        param = r.read_i32()
-        return cls(result=result, param=param)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['param'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -608,10 +631,11 @@ class GuildNameChangeReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildNameChangeReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        new_name = r.read_wstring()
-        return cls(item_uid=item_uid, new_name=new_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        kw['new_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -694,10 +718,11 @@ class GuildPersonGradeModifyReq:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildPersonGradeModifyReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        member_uids = r.read_tagged_vector(lambda r1: r1.read_i64())
-        new_grade = r.read_i16()
-        return cls(member_uids=member_uids, new_grade=new_grade)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['member_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
+        kw['new_grade'] = r.read_i16()
+        return cls(**kw)
 
 
 @dataclass
@@ -722,12 +747,13 @@ class GuildPersonGradeModifyAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildPersonGradeModifyAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        member_uid = r.read_i64()
-        new_grade = r.read_i16()
-        return cls(result=result, member_uid=member_uid, new_grade=new_grade)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['member_uid'] = r.read_i64()
+        kw['new_grade'] = r.read_i16()
+        return cls(**kw)
 
 
 @dataclass
@@ -748,6 +774,7 @@ class GuildSkillNot:
     @classmethod
     def decode(cls, data: bytes) -> 'GuildSkillNot':
         r = JSerBufferReader(data)
-        flag = r.read_bool()
+        kw = {}
+        kw['flag'] = r.read_bool()
         r.read_empty_container(0x10)
-        return cls(flag=flag)
+        return cls(**kw)

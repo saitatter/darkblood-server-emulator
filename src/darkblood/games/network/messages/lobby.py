@@ -49,13 +49,14 @@ class GameServer:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'GameServer':
-        name = r.read_wstring()
-        u16 = r.read_u16()
-        u64 = r.read_u64()
-        flag_a = r.read_bool()
-        flag_b = r.read_bool()
-        flag_c = r.read_bool()
-        return cls(name=name, u16=u16, u64=u64, flag_a=flag_a, flag_b=flag_b, flag_c=flag_c)
+        kw = {}
+        kw['name'] = r.read_wstring()
+        kw['u16'] = r.read_u16()
+        kw['u64'] = r.read_u64()
+        kw['flag_a'] = r.read_bool()
+        kw['flag_b'] = r.read_bool()
+        kw['flag_c'] = r.read_bool()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'GameServer':
@@ -80,12 +81,13 @@ class ChannelSquare:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'ChannelSquare':
-        square_id = r.read_u64()
-        name = r.read_wstring()
-        a = r.read_u32()
-        load = r.read_u32()
-        c = r.read_u32()
-        return cls(square_id=square_id, name=name, a=a, load=load, c=c)
+        kw = {}
+        kw['square_id'] = r.read_u64()
+        kw['name'] = r.read_wstring()
+        kw['a'] = r.read_u32()
+        kw['load'] = r.read_u32()
+        kw['c'] = r.read_u32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'ChannelSquare':
@@ -109,14 +111,15 @@ class QuickSlot:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'QuickSlot':
-        type = r.read_u8()
-        slot = r.read_u8()
-        ref_id = r.read_i32()
-        ref_uid = r.read_i64()
+        kw = {}
+        kw['type'] = r.read_u8()
+        kw['slot'] = r.read_u8()
+        kw['ref_id'] = r.read_i32()
+        kw['ref_uid'] = r.read_i64()
         r.read_bool()
         r.read_i64()
         r.read_u16()
-        return cls(type=type, slot=slot, ref_id=ref_id, ref_uid=ref_uid)
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'QuickSlot':
@@ -211,9 +214,10 @@ class JoinSquareAck:
     @classmethod
     def decode(cls, data: bytes) -> 'JoinSquareAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        square_id = r.read_u64()
-        return cls(result=result, square_id=square_id)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['square_id'] = r.read_u64()
+        return cls(**kw)
 
 
 @dataclass
@@ -236,9 +240,10 @@ class RelayAddressNot:
     @classmethod
     def decode(cls, data: bytes) -> 'RelayAddressNot':
         r = JSerBufferReader(data)
-        ip = '.'.join(str(o) for o in r.read_bytes(4))
-        port = r.read_u16()
-        return cls(ip=ip, port=port)
+        kw = {}
+        kw['ip'] = '.'.join(str(o) for o in r.read_bytes(4))
+        kw['port'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -267,13 +272,14 @@ class BackToSquareAck:
     @classmethod
     def decode(cls, data: bytes) -> 'BackToSquareAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        square_uid = r.read_u64()
-        layer_net_id = r.read_u64()
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['square_uid'] = r.read_u64()
+        kw['layer_net_id'] = r.read_u64()
         r.read_empty_container(0x10)
-        use_waypoint = r.read_bool()
-        cur_ar = r.read_i64()
-        return cls(result=result, square_uid=square_uid, layer_net_id=layer_net_id, use_waypoint=use_waypoint, cur_ar=cur_ar)
+        kw['use_waypoint'] = r.read_bool()
+        kw['cur_ar'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -289,10 +295,11 @@ class RelayJoinGroupAck:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'RelayJoinGroupAck':
+        kw = {}
         r.expect_bytes(b'\x00\x03')
         r.read_u16()
-        group_host_id = r.read_u32()
-        return cls(group_host_id=group_host_id)
+        kw['group_host_id'] = r.read_u32()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'RelayJoinGroupAck':
@@ -324,17 +331,18 @@ class PageCharTemp:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'PageCharTemp':
-        char_id = r.read_i64()
-        x = r.read_f32()
-        y = r.read_f32()
-        z = r.read_f32()
-        name = r.read_wstring()
-        char_class = r.read_u8()
-        level = r.read_i64()
-        guild_uid = r.read_i64()
-        guild_name = r.read_wstring()
-        server_bits = r.read_u64()
-        return cls(char_id=char_id, x=x, y=y, z=z, name=name, char_class=char_class, level=level, guild_uid=guild_uid, guild_name=guild_name, server_bits=server_bits)
+        kw = {}
+        kw['char_id'] = r.read_i64()
+        kw['x'] = r.read_f32()
+        kw['y'] = r.read_f32()
+        kw['z'] = r.read_f32()
+        kw['name'] = r.read_wstring()
+        kw['char_class'] = r.read_u8()
+        kw['level'] = r.read_i64()
+        kw['guild_uid'] = r.read_i64()
+        kw['guild_name'] = r.read_wstring()
+        kw['server_bits'] = r.read_u64()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'PageCharTemp':
@@ -359,9 +367,10 @@ class JoinLayerNot:
     @classmethod
     def decode(cls, data: bytes) -> 'JoinLayerNot':
         r = JSerBufferReader(data)
-        players = r.read_tagged_vector(lambda r1: PageCharTemp.read(r1))
+        kw = {}
+        kw['players'] = r.read_tagged_vector(lambda r1: PageCharTemp.read(r1))
         r.read_empty_container(0x10)
-        return cls(players=players)
+        return cls(**kw)
 
 
 @dataclass
@@ -382,9 +391,10 @@ class DeleteCharacterReq:
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteCharacterReq':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        char_uid = r.read_i64()
-        return cls(header=header, char_uid=char_uid)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -406,10 +416,11 @@ class DeleteCharacterAck:
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteCharacterAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        char_uid = r.read_i64()
-        complete_time = r.read_i32()
-        return cls(result=result, char_uid=char_uid, complete_time=complete_time)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        kw['complete_time'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -431,9 +442,10 @@ class UndeleteCharacterAck:
     @classmethod
     def decode(cls, data: bytes) -> 'UndeleteCharacterAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        char_uid = r.read_i64()
-        return cls(result=result, char_uid=char_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -466,5 +478,6 @@ class ArenaBackToSquareAck:
     @classmethod
     def decode(cls, data: bytes) -> 'ArenaBackToSquareAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)

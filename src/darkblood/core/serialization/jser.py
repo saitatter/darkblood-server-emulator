@@ -171,6 +171,8 @@ class JSerBufferReader:
 
     def read_wstring(self) -> str:
         byte_len = self.read_varuint()
+        if byte_len % 2:
+            raise WireError(f'Odd J-wstring byte length {byte_len}')
         raw = self.read_bytes(byte_len)
         return raw.decode('utf-16le', errors='replace').rstrip('\x00')
 

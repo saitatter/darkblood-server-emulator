@@ -69,15 +69,16 @@ class StoreRecord:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'StoreRecord':
-        item_hash = r.read_u32()
-        price = r.read_u32()
+        kw = {}
+        kw['item_hash'] = r.read_u32()
+        kw['price'] = r.read_u32()
         r.read_u32()
         r.read_i32()
         r.read_bytes(8)
-        stock = r.read_i16()
+        kw['stock'] = r.read_i16()
         r.read_i16()
         r.read_bytes(4)
-        return cls(item_hash=item_hash, price=price, stock=stock)
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'StoreRecord':
@@ -105,11 +106,12 @@ class StoreInfoAck:
     @classmethod
     def decode(cls, data: bytes) -> 'StoreInfoAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        npc_id = r.read_u32()
-        records = r.read_tagged_vector(lambda r1: StoreRecord.read(r1))
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['npc_id'] = r.read_u32()
+        kw['records'] = r.read_tagged_vector(lambda r1: StoreRecord.read(r1))
         r.read_empty_container(0x10)
-        return cls(result=result, npc_id=npc_id, records=records)
+        return cls(**kw)
 
 
 @dataclass
@@ -132,10 +134,11 @@ class CurrentCashAck:
     @classmethod
     def decode(cls, data: bytes) -> 'CurrentCashAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        cash = r.read_i64()
-        mileage = r.read_u32()
-        return cls(result=result, cash=cash, mileage=mileage)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['cash'] = r.read_i64()
+        kw['mileage'] = r.read_u32()
+        return cls(**kw)
 
 
 @dataclass
@@ -158,11 +161,12 @@ class BuyItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BuyItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        store_id = r.read_i32()
-        item_id = r.read_i32()
-        count = r.read_u16()
-        return cls(store_id=store_id, item_id=item_id, count=count)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['store_id'] = r.read_i32()
+        kw['item_id'] = r.read_i32()
+        kw['count'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -214,11 +218,12 @@ class SellItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'SellItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        npc_id = r.read_i32()
-        item_uid = r.read_i64()
-        count = r.read_u16()
-        return cls(npc_id=npc_id, item_uid=item_uid, count=count)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['npc_id'] = r.read_i32()
+        kw['item_uid'] = r.read_i64()
+        kw['count'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -264,9 +269,10 @@ class RepurchaseItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RepurchaseItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        return cls(item_uid=item_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -308,9 +314,10 @@ class BuyLifeWaterReq:
     @classmethod
     def decode(cls, data: bytes) -> 'BuyLifeWaterReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        flag = r.read_bool()
-        return cls(flag=flag)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['flag'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -332,10 +339,11 @@ class BuyLifeWaterAck:
     @classmethod
     def decode(cls, data: bytes) -> 'BuyLifeWaterAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        flag = r.read_bool()
-        remain_currency = r.read_i64()
-        return cls(result=result, flag=flag, remain_currency=remain_currency)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['flag'] = r.read_bool()
+        kw['remain_currency'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -356,9 +364,10 @@ class RequestTradeReq:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestTradeReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        target_uid = r.read_i64()
-        return cls(target_uid=target_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['target_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -382,12 +391,13 @@ class RequestTradeAck:
     @classmethod
     def decode(cls, data: bytes) -> 'RequestTradeAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        target_uid = r.read_i64()
-        target_name = r.read_wstring()
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['target_uid'] = r.read_i64()
+        kw['target_name'] = r.read_wstring()
         r.read_u8()
         r.read_u8()
-        return cls(result=result, target_uid=target_uid, target_name=target_name)
+        return cls(**kw)
 
 
 @dataclass
@@ -408,9 +418,10 @@ class AcceptRequestTradeReq:
     @classmethod
     def decode(cls, data: bytes) -> 'AcceptRequestTradeReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        source_uid = r.read_i64()
-        return cls(source_uid=source_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['source_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -432,10 +443,11 @@ class AcceptRequestTradeAck:
     @classmethod
     def decode(cls, data: bytes) -> 'AcceptRequestTradeAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        source_uid = r.read_i64()
-        target_uid = r.read_i64()
-        return cls(result=result, source_uid=source_uid, target_uid=target_uid)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['source_uid'] = r.read_i64()
+        kw['target_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -490,10 +502,11 @@ class InsertTradeItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'InsertTradeItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        slot = r.read_u16()
-        return cls(item_uid=item_uid, slot=slot)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        kw['slot'] = r.read_u16()
+        return cls(**kw)
 
 
 @dataclass
@@ -531,10 +544,11 @@ class DeleteTradeItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'DeleteTradeItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
         r.read_i64()
-        return cls(item_uid=item_uid)
+        return cls(**kw)
 
 
 @dataclass
@@ -572,9 +586,10 @@ class UpdateTradeArReq:
     @classmethod
     def decode(cls, data: bytes) -> 'UpdateTradeArReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        gold = r.read_i64()
-        return cls(gold=gold)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -596,10 +611,11 @@ class UpdateTradeArAck:
     @classmethod
     def decode(cls, data: bytes) -> 'UpdateTradeArAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        char_uid = r.read_i64()
-        gold = r.read_i64()
-        return cls(result=result, char_uid=char_uid, gold=gold)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        kw['gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -637,10 +653,11 @@ class AcceptTradeAck:
     @classmethod
     def decode(cls, data: bytes) -> 'AcceptTradeAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        char_uid = r.read_i64()
-        accepted = r.read_bool()
-        return cls(result=result, char_uid=char_uid, accepted=accepted)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['char_uid'] = r.read_i64()
+        kw['accepted'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -673,8 +690,9 @@ class FinallyAcceptTradeAck:
     @classmethod
     def decode(cls, data: bytes) -> 'FinallyAcceptTradeAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -695,10 +713,11 @@ class DepotSaveArReq:
     @classmethod
     def decode(cls, data: bytes) -> 'DepotSaveArReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        gold = r.read_i64()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['gold'] = r.read_i64()
         r.read_i64()
-        return cls(gold=gold)
+        return cls(**kw)
 
 
 @dataclass
@@ -723,12 +742,13 @@ class DepotSaveArAck:
     @classmethod
     def decode(cls, data: bytes) -> 'DepotSaveArAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_empty_container(0x17)
-        new_gold = r.read_i64()
-        return cls(result=result, new_gold=new_gold)
+        kw['new_gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -749,10 +769,11 @@ class DepotLoadArReq:
     @classmethod
     def decode(cls, data: bytes) -> 'DepotLoadArReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        gold = r.read_i64()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['gold'] = r.read_i64()
         r.read_i64()
-        return cls(gold=gold)
+        return cls(**kw)
 
 
 @dataclass
@@ -777,12 +798,13 @@ class DepotLoadArAck:
     @classmethod
     def decode(cls, data: bytes) -> 'DepotLoadArAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
         r.read_empty_container(0x17)
-        new_gold = r.read_i64()
-        return cls(result=result, new_gold=new_gold)
+        kw['new_gold'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -807,10 +829,11 @@ class SteamInitBuyItemNot:
     @classmethod
     def decode(cls, data: bytes) -> 'SteamInitBuyItemNot':
         r = JSerBufferReader(data)
-        header = r.read_i32()
-        steam_id = r.read_u64()
-        product_ids = r.read_tagged_vector(lambda r1: r1.read_u32())
-        return cls(header=header, steam_id=steam_id, product_ids=product_ids)
+        kw = {}
+        kw['header'] = r.read_i32()
+        kw['steam_id'] = r.read_u64()
+        kw['product_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
+        return cls(**kw)
 
 
 @dataclass
@@ -835,11 +858,12 @@ class SteamFinalizeBuyItemAck:
     @classmethod
     def decode(cls, data: bytes) -> 'SteamFinalizeBuyItemAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        values = r.read_tagged_vector(lambda r1: r1.read_u32())
-        flag = r.read_bool()
-        applied = r.read_bool()
-        return cls(result=result, values=values, flag=flag, applied=applied)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['values'] = r.read_tagged_vector(lambda r1: r1.read_u32())
+        kw['flag'] = r.read_bool()
+        kw['applied'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -862,10 +886,11 @@ class MonsterCardListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'MonsterCardListAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
         r.read_empty_container(0x10)
         r.read_empty_container(0x17)
-        return cls(result=result)
+        return cls(**kw)
 
 
 @dataclass
@@ -886,9 +911,10 @@ class MonsterCardDeckAck:
     @classmethod
     def decode(cls, data: bytes) -> 'MonsterCardDeckAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
         r.read_empty_container(0x10)
-        return cls(result=result)
+        return cls(**kw)
 
 
 @dataclass
@@ -909,6 +935,7 @@ class MonsterCardAlbumAck:
     @classmethod
     def decode(cls, data: bytes) -> 'MonsterCardAlbumAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
+        kw = {}
+        kw['result'] = r.read_u32()
         r.read_empty_container(0x10)
-        return cls(result=result)
+        return cls(**kw)

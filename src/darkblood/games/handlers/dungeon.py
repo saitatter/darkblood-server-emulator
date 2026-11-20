@@ -35,6 +35,7 @@ from darkblood.games.network.messages import (
     RoomMember,
     RoomMemberJoinedNot,
     RoomMemberLeftNot,
+    DungeonHistory,
     SelectDungeonAck,
     StartGameAck,
     StartGameReq,
@@ -83,7 +84,7 @@ class DungeonHandlers(BaseDomainService):
             return
         await self.leave_room()
         server = self.transport.server
-        info = RoomInfo(room_id=next(server.room_ids), name=name, req_a=a, req_b=b, req_c=c, req_d=d,
+        info = RoomInfo(room_id=next(server.room_ids), name=name, req_a=a, req_b=b, req_c=c, req_d=d, req_d_end=d,
                         host_uid=char['id'])
         self.room = DungeonRoom(info, self.session, {self.session: char})
         server.dungeon_rooms[info.room_id] = self.room
@@ -121,7 +122,7 @@ class DungeonHandlers(BaseDomainService):
         room.members[self.session] = char
         self.room = room
         roster = [RoomMember(Character.from_dict(record)) for record in room.members.values()]
-        ack = JoinRoomAck(room=room.info, members=roster, relay=relay_address())
+        ack = JoinRoomAck(room=room.info, host_uid=room.info.host_uid, members=roster, relay=relay_address())
         await self.transport.send_event(event(5004, ack.encode(), correlation), note='join room ack')
         if is_new and self.room is room:
             joined = RoomMemberJoinedNot(RoomMember(Character.from_dict(char)))
@@ -165,7 +166,7 @@ class DungeonHandlers(BaseDomainService):
         dungeons = set(gate_dungeons().get(gate, []))
         char = self.current_char() or {}
         # Only cleared dungeons get an entry; the others default to Normal.
-        dun_history = {dungeon: (rec['map'], rec['diff'], 1)
+        dun_history = {dungeon: DungeonHistory(rec['map'], rec['diff'], 1)
                        for dungeon, rec in char.get('dungeon_history', {}).items() if dungeon in dungeons}
         quest_ids = []
         for quest_id in char.get('quests_active', {}):
@@ -173,7 +174,8 @@ class DungeonHandlers(BaseDomainService):
                 quest_ids.append(int(quest_id))
             except ValueError:
                 continue
-        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history, quest_ids=quest_ids).encode()
+        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history,
+                               quest_ids=sorted({q & 0xFFFFFFFF for q in quest_ids})).encode()
         await self.transport.send_event(event(5044, ack, correlation),
                                         note=f'select dungeon ack ({gate}, history {dun_history}, '
                                              f'{len(quest_ids)} active quests)')
@@ -212,6 +214,8 @@ class DungeonHandlers(BaseDomainService):
     async def on_5013(self, correlation, body):
         try:
             request = StartGameReq.decode(body)
+            if not request.map_code or '\x00' in request.map_code:
+                raise WireError('Missing or invalid dungeon map code')
         except (WireError, UnicodeDecodeError):
             # The success path assumes the map code resolves to a client property.
             ack = StartGameAck(result=1)
@@ -233,9 +237,11 @@ class DungeonHandlers(BaseDomainService):
         # eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x7900B0): ffffff7f + i64 layer_net_id.
         try:
             msg = ChangeDungeonLayerNot.decode(body)
-            self.current_dungeon_layer = msg.layer_id
-            self.current_dungeon_map_hash = msg.map_hash
-            self.transport.record('dungeon-layer', body, layer_id=msg.layer_id, map_hash='0x%08x' % msg.map_hash)
+            # layer_net_id = (jhash(map_code) << 32) | layer_id
+            layer_id, map_hash = msg.layer_net_id & 0xFFFFFFFF, (msg.layer_net_id >> 32) & 0xFFFFFFFF
+            self.current_dungeon_layer = layer_id
+            self.current_dungeon_map_hash = map_hash
+            self.transport.record('dungeon-layer', body, layer_id=layer_id, map_hash='0x%08x' % map_hash)
         except (struct.error, ValueError):
             pass
 
@@ -352,12 +358,11 @@ class DungeonHandlers(BaseDomainService):
             result=0,
             is_clear=req.is_clear,
             map_code=map_code,
-            char_uid=char_uid,
+            rewards={char_uid: reward} if char_uid else {},
             rank_first=rank,
             rank_final=rank,
             box_grade=box_grade,
             extra_box_cost=0,
-            reward=reward,
         ).encode()
         await self.transport.send_event(event(5018, ack, correlation),
                                         note=f'finish game ack ({map_code} clear={req.is_clear} rank={rank})')

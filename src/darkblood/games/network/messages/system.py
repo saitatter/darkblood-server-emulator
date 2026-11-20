@@ -82,9 +82,10 @@ class HttpNoticeCheckAck:
     @classmethod
     def decode(cls, data: bytes) -> 'HttpNoticeCheckAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        watch = r.read_bool()
-        return cls(result=result, watch=watch)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['watch'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -107,9 +108,10 @@ class PlayOptionUpdateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'PlayOptionUpdateReq':
         r = JSerBufferReader(data)
-        char_uid = r.read_i64()
-        raw = r.read_rest()
-        return cls(char_uid=char_uid, raw=raw)
+        kw = {}
+        kw['char_uid'] = r.read_i64()
+        kw['raw'] = r.read_rest()
+        return cls(**kw)
 
 
 @dataclass
@@ -131,9 +133,10 @@ class CharVerifyStatReq:
     @classmethod
     def decode(cls, data: bytes) -> 'CharVerifyStatReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        raw_payload = r.read_rest()
-        return cls(raw_payload=raw_payload)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['raw_payload'] = r.read_rest()
+        return cls(**kw)
 
 
 @dataclass
@@ -153,8 +156,9 @@ class CharVerifyStatAck:
     @classmethod
     def decode(cls, data: bytes) -> 'CharVerifyStatAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -183,13 +187,14 @@ class LevelUpNot:
     @classmethod
     def decode(cls, data: bytes) -> 'LevelUpNot':
         r = JSerBufferReader(data)
-        ap_slots = r.read_vector(lambda r1: r1.read_u32())
-        char_uid = r.read_i64()
-        new_level = r.read_u8()
-        exp = r.read_u32()
-        total_ap = r.read_u32()
-        flag = r.read_bool()
-        return cls(ap_slots=ap_slots, char_uid=char_uid, new_level=new_level, exp=exp, total_ap=total_ap, flag=flag)
+        kw = {}
+        kw['ap_slots'] = r.read_vector(lambda r1: r1.read_u32())
+        kw['char_uid'] = r.read_i64()
+        kw['new_level'] = r.read_u8()
+        kw['exp'] = r.read_u32()
+        kw['total_ap'] = r.read_u32()
+        kw['flag'] = r.read_bool()
+        return cls(**kw)
 
 
 @dataclass
@@ -220,17 +225,18 @@ class ChangeExpNot:
     @classmethod
     def decode(cls, data: bytes) -> 'ChangeExpNot':
         r = JSerBufferReader(data)
-        exp_total = r.read_i32()
-        gain_0 = r.read_i32()
-        gain_1 = r.read_i32()
-        gain_2 = r.read_i32()
-        gain_3 = r.read_i32()
-        gain_4 = r.read_i32()
-        gain_5 = r.read_i32()
-        gain_6 = r.read_i32()
-        gain_7 = r.read_i32()
-        text = r.read_wstring()
-        return cls(exp_total=exp_total, gain_0=gain_0, gain_1=gain_1, gain_2=gain_2, gain_3=gain_3, gain_4=gain_4, gain_5=gain_5, gain_6=gain_6, gain_7=gain_7, text=text)
+        kw = {}
+        kw['exp_total'] = r.read_i32()
+        kw['gain_0'] = r.read_i32()
+        kw['gain_1'] = r.read_i32()
+        kw['gain_2'] = r.read_i32()
+        kw['gain_3'] = r.read_i32()
+        kw['gain_4'] = r.read_i32()
+        kw['gain_5'] = r.read_i32()
+        kw['gain_6'] = r.read_i32()
+        kw['gain_7'] = r.read_i32()
+        kw['text'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -254,10 +260,11 @@ class CharNickChangeReq:
     @classmethod
     def decode(cls, data: bytes) -> 'CharNickChangeReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        new_name = r.read_wstring()
-        return cls(item_uid=item_uid, new_name=new_name)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        kw['new_name'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -296,8 +303,9 @@ class KeyboardSetCustomKeyReq:
     @classmethod
     def decode(cls, data: bytes) -> 'KeyboardSetCustomKeyReq':
         r = JSerBufferReader(data)
-        keys_blob = r.read_rest()
-        return cls(keys_blob=keys_blob)
+        kw = {}
+        kw['keys_blob'] = r.read_rest()
+        return cls(**kw)
 
 
 @dataclass
@@ -319,9 +327,10 @@ class KeyboardSetCustomKeyAck:
     @classmethod
     def decode(cls, data: bytes) -> 'KeyboardSetCustomKeyAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        keys = r.read_wstring()
-        return cls(result=result, keys=keys)
+        kw = {}
+        kw['result'] = r.read_i32()
+        kw['keys'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -342,9 +351,10 @@ class TitleChangeReq:
     @classmethod
     def decode(cls, data: bytes) -> 'TitleChangeReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        title_id = r.read_i32()
-        return cls(title_id=title_id)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['title_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -368,11 +378,12 @@ class TitleChangeAck:
     @classmethod
     def decode(cls, data: bytes) -> 'TitleChangeAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        title_id = r.read_i32()
-        return cls(result=result, title_id=title_id)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['title_id'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -389,8 +400,9 @@ class AchieveGetListReq:
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveGetListReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls()
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        return cls(**kw)
 
 
 @dataclass
@@ -409,11 +421,12 @@ class AchieveEntry:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'AchieveEntry':
-        achieve_hash = r.read_u32()
+        kw = {}
+        kw['achieve_hash'] = r.read_u32()
         r.read_bool()
         r.read_i32()
-        completed_at = r.read_i64()
-        return cls(achieve_hash=achieve_hash, completed_at=completed_at)
+        kw['completed_at'] = r.read_i64()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveEntry':
@@ -435,9 +448,10 @@ class AchieveCompletion:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'AchieveCompletion':
-        achieve_hash = r.read_u32()
+        kw = {}
+        kw['achieve_hash'] = r.read_u32()
         r.read_bytes(9)
-        return cls(achieve_hash=achieve_hash)
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveCompletion':
@@ -471,14 +485,15 @@ class AchieveGetListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveGetListAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        divisions = r.read_tagged_map(lambda r1: r1.read_u32(), lambda r1: r1.read_i64())
-        completed = r.read_tagged_map(lambda r1: r1.read_u32(), lambda r1: AchieveEntry.read(r1))
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['divisions'] = r.read_tagged_map(lambda r1: r1.read_u32(), lambda r1: r1.read_i64())
+        kw['completed'] = r.read_tagged_map(lambda r1: r1.read_u32(), lambda r1: AchieveEntry.read(r1))
         r.read_bool()
-        completions = r.read_tagged_vector(lambda r1: AchieveCompletion.read(r1))
-        return cls(result=result, divisions=divisions, completed=completed, completions=completions)
+        kw['completions'] = r.read_tagged_vector(lambda r1: AchieveCompletion.read(r1))
+        return cls(**kw)
 
 
 @dataclass
@@ -501,9 +516,10 @@ class AchieveUpdateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveUpdateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        hashes = r.read_tagged_vector(lambda r1: r1.read_u32())
-        return cls(hashes=hashes)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['hashes'] = r.read_tagged_vector(lambda r1: r1.read_u32())
+        return cls(**kw)
 
 
 @dataclass
@@ -524,8 +540,9 @@ class AchieveDivUpdateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveDivUpdateReq':
         r = JSerBufferReader(data)
-        amounts = r.read_tagged_map(lambda r1: r1.read_u32(), lambda r1: r1.read_i64())
-        return cls(amounts=amounts)
+        kw = {}
+        kw['amounts'] = r.read_tagged_map(lambda r1: r1.read_u32(), lambda r1: r1.read_i64())
+        return cls(**kw)
 
 
 @dataclass
@@ -573,9 +590,10 @@ class AchieveCompleteNot:
     @classmethod
     def decode(cls, data: bytes) -> 'AchieveCompleteNot':
         r = JSerBufferReader(data)
-        entries = r.read_tagged_vector(lambda r1: AchieveEntry.read(r1))
-        completions = r.read_tagged_vector(lambda r1: AchieveCompletion.read(r1))
-        return cls(entries=entries, completions=completions)
+        kw = {}
+        kw['entries'] = r.read_tagged_vector(lambda r1: AchieveEntry.read(r1))
+        kw['completions'] = r.read_tagged_vector(lambda r1: AchieveCompletion.read(r1))
+        return cls(**kw)
 
 
 @dataclass
@@ -601,13 +619,14 @@ class PromotionNot:
     @classmethod
     def decode(cls, data: bytes) -> 'PromotionNot':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        new_class = r.read_u8()
-        sp = r.read_i32()
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['new_class'] = r.read_u8()
+        kw['sp'] = r.read_i32()
         r.read_empty_container(0x17)
-        return cls(result=result, new_class=new_class, sp=sp)
+        return cls(**kw)
 
 
 @dataclass
@@ -632,11 +651,12 @@ class RebirthCoinChangeNot:
     @classmethod
     def decode(cls, data: bytes) -> 'RebirthCoinChangeNot':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        if result != 0:
-            return cls(result=result)
-        coins = r.read_i16()
-        return cls(result=result, coins=coins)
+        kw = {}
+        kw['result'] = r.read_i32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['coins'] = r.read_i16()
+        return cls(**kw)
 
 
 @dataclass
@@ -654,9 +674,10 @@ class UseArenaSpItemReq:
     @classmethod
     def decode(cls, data: bytes) -> 'UseArenaSpItemReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        item_uid = r.read_i64()
-        return cls(item_uid=item_uid)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['item_uid'] = r.read_i64()
+        return cls(**kw)
 
 
 @dataclass
@@ -699,9 +720,10 @@ class SecondPassCreateReq:
     @classmethod
     def decode(cls, data: bytes) -> 'SecondPassCreateReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        password = r.read_wstring()
-        return cls(password=password)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['password'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -721,8 +743,9 @@ class SecondPassCreateAck:
     @classmethod
     def decode(cls, data: bytes) -> 'SecondPassCreateAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -746,10 +769,11 @@ class SecondPassModifyReq:
     @classmethod
     def decode(cls, data: bytes) -> 'SecondPassModifyReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        old_password = r.read_wstring()
-        new_password = r.read_wstring()
-        return cls(old_password=old_password, new_password=new_password)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['old_password'] = r.read_wstring()
+        kw['new_password'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -769,8 +793,9 @@ class SecondPassModifyAck:
     @classmethod
     def decode(cls, data: bytes) -> 'SecondPassModifyAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -792,9 +817,10 @@ class SecondPassAuthReq:
     @classmethod
     def decode(cls, data: bytes) -> 'SecondPassAuthReq':
         r = JSerBufferReader(data)
-        header = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        password = r.read_wstring()
-        return cls(password=password)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['password'] = r.read_wstring()
+        return cls(**kw)
 
 
 @dataclass
@@ -814,8 +840,9 @@ class SecondPassAuthAck:
     @classmethod
     def decode(cls, data: bytes) -> 'SecondPassAuthAck':
         r = JSerBufferReader(data)
-        result = r.read_i32()
-        return cls(result=result)
+        kw = {}
+        kw['result'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass
@@ -832,10 +859,11 @@ class TargetState:
 
     @classmethod
     def read(cls, r: JSerBufferReader) -> 'TargetState':
-        value = r.read_i32()
-        flag_a = r.read_bool()
-        flag_b = r.read_bool()
-        return cls(value=value, flag_a=flag_a, flag_b=flag_b)
+        kw = {}
+        kw['value'] = r.read_i32()
+        kw['flag_a'] = r.read_bool()
+        kw['flag_b'] = r.read_bool()
+        return cls(**kw)
 
     @classmethod
     def decode(cls, data: bytes) -> 'TargetState':
@@ -861,9 +889,10 @@ class GTargetListAck:
     @classmethod
     def decode(cls, data: bytes) -> 'GTargetListAck':
         r = JSerBufferReader(data)
-        result = r.read_u32()
-        targets = r.read_tagged_vector(lambda r1: TargetState.read(r1))
-        return cls(result=result, targets=targets)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['targets'] = r.read_tagged_vector(lambda r1: TargetState.read(r1))
+        return cls(**kw)
 
 
 @dataclass
