@@ -167,6 +167,9 @@ class SquareHandlers(BaseDomainService):
         """
         await self.transport.send_event(event(5125, GTargetListAck().encode(), correlation),
                                         note='gtarget list ack')
+        # Sent once the town has loaded: show the players already there.
+        from darkblood.games.world import GameWorldManager
+        await GameWorldManager.get().player_ready(self.session)
 
     async def handle_join_layer(self, correlation: int, body: bytes):
         """Opcode 5030 changes the town layer; positions travel via the relay."""

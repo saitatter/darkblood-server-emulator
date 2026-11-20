@@ -222,6 +222,7 @@ class FrontendHandlers(BaseDomainService):
         # Register in GameWorldManager and broadcast mutual character spawns
         try:
             player = world.register_player(self.session, char_id, char, square_id=self.session.square_id)
+            player.loading = True  # town load starts now; peers follow its 5124
             await world.broadcast_player_spawn(player)
             await world.broadcast_user_join(player)
         except Exception:

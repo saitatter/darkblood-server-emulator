@@ -118,6 +118,9 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
             client1.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id1))
             await client1.expect_event(2007)
             await client1.expect_event(2410)
+            # The town has loaded (5124): peers already there are sent now.
+            client1.send_event(5124, struct.pack('<i', 0x7fffffff))
+            await client1.expect_event(5125)
 
             # Client 2 joins square as "Watcher2"
             client2 = HeadlessClient(port=client1.port)
@@ -129,6 +132,9 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 client2.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id2))
                 await client2.expect_event(2007)
                 await client2.expect_event(2410)
+                # The town has loaded (5124): peers already there are sent now.
+                client2.send_event(5124, struct.pack('<i', 0x7fffffff))
+                await client2.expect_event(5125)
 
                 # Client 1 should receive layer spawn (5027, 5096) and join notification (5021) for Watcher2
                 await client1.expect_event(5027)
@@ -169,6 +175,9 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
             client1.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id1))
             await client1.expect_event(2007)
             await client1.expect_event(2410)
+            # The town has loaded (5124): peers already there are sent now.
+            client1.send_event(5124, struct.pack('<i', 0x7fffffff))
+            await client1.expect_event(5125)
 
             # Client 2: Member "Hero2"
             client2 = HeadlessClient(port=client1.port)
@@ -183,6 +192,9 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 client2.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id2))
                 await client2.expect_event(2007)
                 await client2.expect_event(2410)
+                # The town has loaded (5124): peers already there are sent now.
+                client2.send_event(5124, struct.pack('<i', 0x7fffffff))
+                await client2.expect_event(5125)
 
                 await lobby_flow(client3)
                 client3.send_event(2012, create_request('Hero3', char_class=3))
@@ -191,6 +203,9 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 client3.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id3))
                 await client3.expect_event(2007)
                 await client3.expect_event(2410)
+                # The town has loaded (5124): peers already there are sent now.
+                client3.send_event(5124, struct.pack('<i', 0x7fffffff))
+                await client3.expect_event(5125)
 
                 # Acceptance by host UID cannot create a party on its own.
                 client3.send_event(5054, PartyAcceptInviteReq(host_uid=char_id1).encode())
