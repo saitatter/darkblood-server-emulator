@@ -48,17 +48,24 @@ class SquareHandlers(BaseDomainService):
         char_id = self.char_id
         char = self.store().get(self.account, char_id)
         items = []
+        granted = 0
         if char:
             if not char.get('tutorial_cleared'):
                 from darkblood.games.game_data.client_dict import tutorial_rewards
                 from darkblood.player_management.characters import add_reward_items
                 rewards = tutorial_rewards()['complete' if completed else 'skip']
-                items = [Item(owner=UPDATE_OWNER, **i) for i in add_reward_items(char, rewards)]
+                granted = len(add_reward_items(char, rewards))
             char['tutorial_cleared'] = True
             self.store().save()
+            # 0x0077EEB0 applies this vector with 0x007FEC40 and switches
+            # straight to town without a new 2007. Live: a knight that skipped
+            # the tutorial showed no armour until relogging, so the whole
+            # inventory (worn gear included) is resent, not only the rewards.
+            items = [Item(owner=UPDATE_OWNER, **i) for i in char.get('items', [])]
         ack = ClearTutorialAck(elements=items).encode()
         await self.transport.send_event(event(2083, ack, correlation),
-                                        note='clear tutorial ack (completed=%d, %d items)' % (completed, len(items)))
+                                        note='clear tutorial ack (completed=%d, %d rewards, %d items)'
+                                             % (completed, granted, len(items)))
 
     async def handle_clear_opening(self, correlation: int, body: bytes):
         """Opcode 2084 (eEGS_CLEAR_OPENING_NOT): Cinematic intro complete."""

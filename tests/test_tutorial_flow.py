@@ -91,13 +91,20 @@ class TutorialFlowTest(ServerTestCase):
             _, ack2083 = await client.expect_event(2083)
             self.assertEqual(struct.unpack_from('<I', ack2083)[0], 0)
             self.assertEqual(ack2083[4], 0x10)
-            expected = len(tutorial_rewards()['complete'])
-            self.assertEqual(ack2083[5], 0x80 | expected)
+            # The whole inventory is resent (worn gear included): the client
+            # enters town from this ack without a new 2007.
+            rewards = {code for code, _ in tutorial_rewards()['complete']}
+            self.assertTrue(rewards <= {i['code'] for i in char['items']})
+            self.assertEqual(ack2083[5], 0x80 | len(char['items']))
+            self.assertTrue(any(i['container'] == 1 for i in char['items']))
             self.assertTrue(char['tutorial_cleared'])
 
+            # Rewards are granted once; a repeat only resends the inventory.
+            count = len(char['items'])
             client.send_event(2082, bytes.fromhex('ffffff7f01'))
             _, again = await client.expect_event(2083)
-            self.assertEqual(again[4:6], b'\x10\x80')
+            self.assertEqual(len(char['items']), count)
+            self.assertEqual(again[4:6], bytes([0x10, 0x80 | count]))
 
         self.run_async(self.with_server(scenario))
 
