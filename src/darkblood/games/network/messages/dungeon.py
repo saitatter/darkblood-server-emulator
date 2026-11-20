@@ -383,7 +383,10 @@ class ChoiceRewardPartyRankAck:
     Wire format:
       i32 result (0 = success)
       i64 nChoiceCharUID
-      12-byte reward struct (u32 uid, u32 item_id, u16 count, u16 drop_type)
+      12 raw bytes (0x00AC82A0): u32 item code (+0), u16 (+4), u16 count (+6),
+        u32 (+8). The chest display 0x00713AB0 looks +0 up as an item
+        (0x009E53D0) and shows +6 as "xN" when >= 2. +4 and +8 are not
+        recovered and are sent as 0; a UID at +0 showed "unknown item".
       i32 nBoxType
       i32 nBoxCost
       If char_uid == local_player_uid:
@@ -392,10 +395,8 @@ class ChoiceRewardPartyRankAck:
     """
     result: int = 0
     char_uid: int = 0
-    reward_uid: int = 1
     item_id: int = 0
     count: int = 1
-    drop_type: int = 0
     box_type: int = 0
     box_cost: int = 0
     items: list = field(default_factory=list)  # [Item]
@@ -403,7 +404,7 @@ class ChoiceRewardPartyRankAck:
 
     def encode(self) -> bytes:
         data = struct.pack('<iq', self.result, self.char_uid)
-        data += struct.pack('<IIHH', self.reward_uid, self.item_id, self.count, self.drop_type)
+        data += struct.pack('<IHHI', self.item_id & 0xFFFFFFFF, 0, self.count, 0)
         data += struct.pack('<ii', self.box_type, self.box_cost)
         data += b'\x10' + varuint(len(self.items)) + b''.join(i.encode() for i in self.items)
         data += struct.pack('<q', self.gold)

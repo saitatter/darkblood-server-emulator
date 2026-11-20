@@ -485,10 +485,8 @@ class DungeonHandlers(BaseDomainService):
         ack = ChoiceRewardPartyRankAck(
             result=0,
             char_uid=char_id,
-            reward_uid=1,
             item_id=item_id,
             count=1,
-            drop_type=0,
             box_type=0,
             box_cost=0,
             items=reward_item,

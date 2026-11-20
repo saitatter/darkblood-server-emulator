@@ -150,12 +150,13 @@ class WireMessagesTest(unittest.TestCase):
 
         # ChoiceRewardPartyRankAck (5091)
         reward_item = Item(code='Ihppa0001', uid=1, owner=1, container=1, slot=0, count=1)
-        ack_5091 = messages.ChoiceRewardPartyRankAck(result=0, char_uid=999, reward_uid=1,
+        ack_5091 = messages.ChoiceRewardPartyRankAck(result=0, char_uid=999,
                                                     item_id=hashing.jhash('Ihppa0001'), count=1,
-                                                    drop_type=0, box_type=0, box_cost=0,
+                                                    box_type=0, box_cost=0,
                                                     items=[reward_item], gold=12345).encode()
         self.assertEqual(struct.unpack_from('<iq', ack_5091[:12]), (0, 999))
-        self.assertEqual(struct.unpack_from('<IIHH', ack_5091, 12), (1, hashing.jhash('Ihppa0001') & 0xFFFFFFFF, 1, 0))
+        # 0x00713AB0 reads the item code at +0 and the count at +6.
+        self.assertEqual(struct.unpack_from('<IHHI', ack_5091, 12), (hashing.jhash('Ihppa0001') & 0xFFFFFFFF, 0, 1, 0))
         self.assertEqual(struct.unpack_from('<ii', ack_5091, 24), (0, 0))
         self.assertEqual(ack_5091[32:34], b'\x10\x81')  # tag 0x10 + 1 item
         self.assertEqual(struct.unpack_from('<q', ack_5091, len(ack_5091) - 8)[0], 12345)
