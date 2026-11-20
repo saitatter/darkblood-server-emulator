@@ -160,7 +160,7 @@ class GameWorldManager:
             z=new_player.z,
             guild_uid=getattr(new_char, 'guild_uid', 0),
             guild_name=getattr(new_char, 'guild_name', '') or '',
-            server_bits=PEER_SERVER_BITS,
+            server_bits=square_uid(new_player.square_id),
         )
 
         if new_player.loading:
@@ -219,7 +219,7 @@ class GameWorldManager:
                     z=ep.z,
                     guild_uid=getattr(ec, 'guild_uid', 0),
                     guild_name=getattr(ec, 'guild_name', '') or '',
-                    server_bits=PEER_SERVER_BITS,
+                    server_bits=square_uid(ep.square_id),
                 )
                 for ep, ec in existing_players
             ]
@@ -491,11 +491,22 @@ class PartyManager:
                     logger.debug("Failed party broadcast to char %d: %s", cid, e)
 
 
-# Key in bits 54-58 of the peer's packed ID (0x00A614A0). 0x0087DBB0 omits
-# the "(server)" name suffix only when it equals the own JUser +0x100 key.
-# Live breakpoint at 0x0087DBF8 (2026-11-20): own +0x100 is
-# 0xFFFFFFFFFFFFFFFF, i.e. key 31; the previous key 1 showed "(Offline)".
-PEER_SERVER_BITS = 0x1F << 54
+# Square UIDs carry the server-list key in bits 54-58 (0x00A614A0).
+# 0x0087DBB0 omits the "(server)" name suffix only when the peer's square UID
+# (last field of its 5027 entry, copied to its JUser +0x100 by 0x00944510)
+# and the own JUser +0x100 have the same key. The own +0x100 is all ones
+# before the first layer change (key 31, live breakpoint at 0x0087DBF8) and
+# then the nJoinSquareUID of 5031 (0x00787A70 writes it to +0x100; live it
+# became 1 and peers showed "(Other server)"). So every square UID the
+# server sends uses key 31.
+SQUARE_UID_KEY_BITS = 0x1F << 54
+SQUARE_UID_MASK = (1 << 54) - 1
+PEER_SERVER_BITS = SQUARE_UID_KEY_BITS
+
+
+def square_uid(square_id: int) -> int:
+    """Wire square UID: server key 31 in bits 54-58 plus the local square id."""
+    return SQUARE_UID_KEY_BITS | (int(square_id) & SQUARE_UID_MASK)
 
 
 def _town_character(player: 'WorldPlayer') -> Character:

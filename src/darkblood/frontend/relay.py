@@ -109,6 +109,10 @@ class RelayGroups:
             from darkblood.games.world import GameWorldManager
             player = GameWorldManager.get().get_player(char_id)
             scope_uid = player.square_id if player else 1
+        elif kind == 0:
+            # Square UIDs carry the server key in bits 54-58; group by the square.
+            from darkblood.games.world import SQUARE_UID_MASK
+            scope_uid &= SQUARE_UID_MASK
         return kind, scope_uid, layer_uid
 
     @staticmethod

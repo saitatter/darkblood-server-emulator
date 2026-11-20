@@ -137,7 +137,7 @@ class SquareHandlers(BaseDomainService):
         await self.session.dungeon.leave_room()
         # Return to the layer the player left town from: after GamePlay the
         # client places the unit by that layer's waypoint (0x008EC230).
-        ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=self._town_layer(),
+        ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=self._town_layer(),
                               cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
@@ -179,7 +179,7 @@ class SquareHandlers(BaseDomainService):
         self._remember_layer(layer_id)
         world = GameWorldManager.get()
         player, previous_layer = world.change_layer(self.session, layer_id)
-        ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=layer_id,
+        ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=layer_id,
                               cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
@@ -263,3 +263,8 @@ def _is_town_layer(layer_id: int) -> bool:
     from darkblood.games.entities.character import SQUARE_IDS
     from darkblood.core.hashing import jhash
     return (layer_id >> 32) in {jhash(sq) for sq in SQUARE_IDS}
+
+
+def _wire_square_uid(square_id: int) -> int:
+    from darkblood.games.world import square_uid
+    return square_uid(square_id)

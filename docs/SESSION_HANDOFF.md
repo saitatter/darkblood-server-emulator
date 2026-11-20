@@ -34,12 +34,16 @@ Fixed this session (live-confirmed only where stated):
   UI_625 with +0x2E / +0x2C. The last 2011 field is shown plus one (last page
   index). 5001 skips the 0x7FFFFFFF prefix. **Live-confirmed**: the room
   appeared in the other client's Find party list (before the layout fix).
-- **"(Offline)" name suffix**: `0x007E9896` adds "(server)" unless
-  `0x0087DBB0` finds equal keys (bits 54-58, `0x00A614A0`) in the peer's and
-  the own JUser `+0x100`. Live breakpoint at `0x0087DBF8`: own `+0x100` is
-  `0xFFFFFFFFFFFFFFFF` (key 31), peers had 1. 5027 now sends `0x1F << 54`.
-  The 2007 field at struct `+0x207` is not the own key (that change was
-  reverted). Live check of the suffix pending.
+- **"(Offline)"/"(Other server)" name suffix**: `0x007E9896` adds "(server)"
+  unless `0x0087DBB0` finds equal keys (bits 54-58, `0x00A614A0`) in the
+  peer's and the own JUser `+0x100`. That field is a **square UID**: the peer's
+  comes from the last field of its 5027 entry (`0x00944510`); the own one is
+  all ones until the first layer change (live breakpoint at `0x0087DBF8`, key
+  31) and then the `nJoinSquareUID` of 5031, which `0x00787A70` writes to
+  `+0x100` (live: it became 1, and peers showed "(Other server)"). The server
+  now sends square UIDs as `0x1F << 54 | square` in 5027, 5031 and 5046, and
+  the relay masks bits 54+ when grouping by square. The 2007 struct `+0x207`
+  field is not involved (two attempts there were reverted). Live check pending.
 - **Peer spawn timing**: live, a 5027 sent 1 ms after 2006 was never shown, one
   at +0.9 s (after 2219, before the relay JoinGroup) was shown, and one after
   5124 (+10 s, after JoinGroup) was not shown. A player is now `loading` from

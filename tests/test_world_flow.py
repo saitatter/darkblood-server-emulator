@@ -96,7 +96,7 @@ class WorldFlowTest(ServerTestCase):
                 req = struct.pack('<iQ?', 0x7fffffff, new_layer, False)
                 second.send_event(5030, req)
                 _, ack = await second.expect_event(5031)
-                self.assertEqual(struct.unpack_from('<IQQ', ack), (0, 2, new_layer))
+                self.assertEqual(struct.unpack_from('<IQQ', ack), (0, (0x1F << 54) | 2, new_layer))  # keyed square UID
                 _, leave = await first.expect_event(5039)
                 self.assertEqual(leave, struct.pack('<Iq', 0, b))
 
