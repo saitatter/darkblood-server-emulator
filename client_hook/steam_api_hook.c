@@ -366,6 +366,21 @@ LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
         return EXCEPTION_CONTINUE_EXECUTION;
     }
 
+    /* Peer model after a reconnect: 0x0076F900 (called by the Lobby loop
+     * 0x007850F0, directly for category 4 and through 0x0076FA90 for
+     * categories 2/8/0x10) creates the character object of a stale JUser and
+     * looks it up again; the lookup returns NULL and `mov eax,[edi]` faults
+     * (live 2026-11-21, also after ForgetRemoteUsers emptied category 4).
+     * 0x0076FA74 is the same frame's "already present" exit (xor al,al; the
+     * jne at 0x0076F954 jumps there at the same stack depth), so the loop just
+     * moves on. Only this verified site, only with a NULL lookup result. */
+    if (code == EXCEPTION_ACCESS_VIOLATION && !g_inSafeRead && addr == (BYTE*)0x0076F98D &&
+        pExceptionInfo->ContextRecord->Edi == 0 && addr[0] == 0x8B && addr[1] == 0x07) {
+        pExceptionInfo->ContextRecord->Eip = 0x0076FA74;
+        RawLog("[RECOVER] stale peer model lookup at 0076F98D skipped");
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
     if((code==EXCEPTION_ACCESS_VIOLATION || code==EXCEPTION_ILLEGAL_INSTRUCTION) && !g_inSafeRead) {
         CONTEXT* c=pExceptionInfo->ContextRecord;
         RawLogFmt("[EXCEPTION] code=%X eip=%p eax=%p ecx=%p edx=%p esp=%p ebp=%p",code,c->Eip,c->Eax,c->Ecx,c->Edx,c->Esp,c->Ebp);
