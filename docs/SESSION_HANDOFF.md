@@ -1,28 +1,41 @@
 # Session handoff — 2026-11-20 (compressed)
 
-## Schema-generated messages — saita machine, 2026-11-20 (night)
+## All message domains schema-generated — saita machine, 2026-11-20 (night)
 
-- **New pipeline**, modelled on MHServerEmu's `proto/` → protogen → `src/Gazillion`.
-  `schemas/<domain>.jsch` is the source of truth. `python tools/gen_messages.py`
-  writes `games/network/messages/<domain>.py` with a `DO NOT EDIT` header,
-  `OPCODE` class constants, and strict `decode`/`read`. Names are validated
-  against `assets/opcodes.tsv`. `tests/test_generated_messages.py` fails when
-  a generated module is stale. Format: `schemas/README.md`. Only **mail** is
-  converted. Next: convert other domains one at a time, then a C# backend.
-- **Request header word (static analysis plus captures)**: every client request
-  body starts with a 4-byte word (`ffffff7f`) written by `0x00A1E620`. Mail
-  senders `0x00796270`, `0x00795D40`, `0x00796390`, `0x007965F0` and
-  `0x00796470` were decompiled. The old mail decoders ignored it, so 2223/2225/2234
-  read the uid shifted by 4 bytes. 2236 is a `0x10` vector after the header; the
-  old raw-i64 fallback was a test artifact and is gone. Tests now send the real
-  form.
-- **2220 struct tag removed**: `PostEntry` emitted `0x1E`, which `0x00B35010`
-  does not consume (2026-11-16 correction). Non-empty inboxes would have
-  shifted every field. Inbox/outbox are now `dict[uid, PostEntry]`.
-- **Not yet confirmed live**: mail with a non-empty inbox, and the 2219 `flag`
-  byte (meaning unknown). The 2225 trailing item record (`0x00A4FAA0`) is kept
-  raw in `item_record`.
-- 179 headless tests pass.
+- **Pipeline**: every module in `games/network/messages/` (15 domains, ~365
+  classes) is generated from `schemas/*.jsch` by `tools/gen_messages.py`, as
+  MHServerEmu does with `proto/` -> protogen. The format (anonymous `_` fields,
+  `h32`, `raw[N]`, `if`/`endif`, `ok_only`, `header`/`header?`, containers) is in
+  `schemas/README.md`. `tests/test_generated_messages.py` fails on stale output.
+- **Verification**: before/after snapshots of every class (defaults, synthesized
+  values, and decoding every captured body in `logs/wire.jsonl`). Live-flow
+  replies are byte-identical (explicit checks for 5002/5004/5014/5018/5035/
+  5036/5044/5091/5094 and SelectCharacterAck). Captured requests decode to
+  the same values. Intended byte changes are listed below. 179 headless tests
+  pass; headless tests now fail when the dispatcher logs a rejected request.
+  **Not run against the real client this session.**
+- **Header word corrected**: `0x00A1E620` does not write `ffffff7f`. That claim
+  from the mail commit is fixed in PROTOCOL.md. The word is runtime-dependent,
+  and the same sender produced both forms (2143, 2406, 5001, 5093). Schema policy:
+  `header` when every capture (>= 2) has it, `header?` when mixed or uncaptured,
+  none when never captured with it.
+- **Bugs found and fixed**: struct tag `0x1E` emitted in 2220, 2465 and all stall,
+  broker and arena structs. Lists sent as a bare length without elements in 2349,
+  2351, 2435, 2465, 2481, 5146 and 2309. Unterminated varuint `17 00` in the arena
+  team record. Requests that disagreed with their senders: 2053 wstr, 2111
+  4-byte id, 2128/2133/2185/5121/5256-5260 J-wstrings, 2164 vector, 2254
+  two i64, 2256/2364 extra i32, 2310/2314 i64 first, 5049 i64+bool+i64, 5054
+  square+host, 5075 u16 slot, 5077/2228/2230 second i64, 6011/6028 extra fields,
+  and empty 2468/2470/2484/5073/5081/5083.
+- **Invented opcodes (needs a decision)**: the server's party/presence messages
+  use 2100-2107 (client: eEGS_CHEAT_*) and 5021/5022 (client:
+  eERC_CHANGE_ROOMHOST_REQ/ACK). The client has no handler for them (nor for
+  5055/5056). They are kept as plain structs in `party.jsch` so the handlers and
+  tests still work. The real client party flow is 5049-5051, 5054 and 5092.
+- **Dispatcher**: a `WireError` from a handler is recorded as `bad-request` and
+  no longer closes the connection.
+- Next: a live run of login -> town -> dungeon -> mail/stall to confirm the
+  generated requests against the real client; then the C# backend.
 
 ## Gate, result screen, dyeing, tutorial exit, hotbar — saita machine, 2026-11-20 (late)
 

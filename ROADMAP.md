@@ -226,7 +226,9 @@ Final objective: launch without the original services, establish a local session
   - Re-exported all dataclasses in `messages/__init__.py` with 100% backward compatibility.
 - [ ] **Schema-generated messages** (`schemas/*.jsch` → `tools/gen_messages.py`, see `schemas/README.md`):
   - [x] Generator with a Python backend, opcode validation against `assets/opcodes.tsv`, a `--check` unit test, and the `mail` domain converted (2026-11-20).
-  - [ ] Convert the remaining domains one at a time, checking the request header and struct tags against the client senders and readers.
+  - [x] All 15 domains converted (2026-11-20). Replies of live flows are byte-identical; requests are checked against captures and decompiled senders.
+  - [ ] Decide what to do with the invented party/presence opcodes (2100-2107, 5021/5022), which the client names as cheat and room-host messages and does not handle.
+  - [ ] Recover the source of the `ffffff7f` request header word (runtime-dependent; see PROTOCOL.md).
   - [ ] Add a C# backend for P10 that emits the same schemas as C# message classes.
 - [x] **Standalone GM & Server Web Dashboard**:
   - Built `tools/dashboard.py` (port 9494) providing live telemetry for port 9400 & 9401.

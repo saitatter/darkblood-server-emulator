@@ -97,14 +97,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2092 | `eEGS_INVENTORY_UPDATED_NOT` | 0x0077F070 | — | `InventoryUpdatedNot` |  |
 | 2094 | `eEGS_NPC_FIRST_MEET_REQ` | — | square.py | — | Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK). |
 | 2095 | `eEGS_NPC_FIRST_MEET_ACK` | 0x00752B60 | — | `NpcFirstMeetAck` |  |
-| 2100 | `eEGS_CHEAT_QUEST_START_ACK` | — | social.py | `PartyInviteReq` | Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK). |
-| 2101 | `eEGS_CHEAT_INSERT_COIN_REQ` | — | — | `PartyInviteAck` |  |
-| 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | social.py | `PartyJoinReq` | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
-| 2103 | `eEGS_CHEAT_INSERT_AR_REQ` | — | — | `PartyJoinAck` |  |
-| 2104 | `eEGS_CHEAT_INSERT_AR_ACK` | — | social.py | `PartyLeaveReq` | Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK). |
-| 2105 | `eEGS_CHEAT_INSERT_AP_REQ` | — | — | `PartyLeaveAck` |  |
-| 2106 | `eEGS_CHEAT_INSERT_AP_ACK` | — | social.py | `PartyKickReq` | Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK). |
-| 2107 | `eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_REQ` | — | — | `PartyKickAck` |  |
+| 2100 | `eEGS_CHEAT_QUEST_START_ACK` | — | social.py | — | Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK). |
+| 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | social.py | — | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
+| 2104 | `eEGS_CHEAT_INSERT_AR_ACK` | — | social.py | — | Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK). |
+| 2106 | `eEGS_CHEAT_INSERT_AP_ACK` | — | social.py | — | Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK). |
 | 2109 | `eEGS_INSERT_AP_NOT` | 0x00790480 | — | `InsertApNot` |  |
 | 2110 | `eEGS_INCREASING_STATUS_NOT` | 0x007743A0 | — | — |  |
 | 2111 | `eEGS_USE_LEARN_SKILL_ITEM_REQ` | — | skills.py | `UseLearnSkillItemReq` | eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0). |
@@ -385,9 +381,11 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2598 | `eEGS_AVATAR_ZAM_SEPARATE_ACK` | 0x00783190 | — | — |  |
 | 2600 | `eEGS_CITADEL_ROUND_CLEAR_ACK` | 0x0075BF20 | — | — |  |
 | 2601 | `eEGS_MONSTERCARD_GET_LIST_REQ` | — | commerce.py | — | eEGS_MONSTERCARD_GET_LIST_REQ -> 2602. |
-| 2602 | `eEGS_MONSTERCARD_GET_LIST_ACK` | — | — | `MonsterCardEmptyAck` |  |
+| 2602 | `eEGS_MONSTERCARD_GET_LIST_ACK` | — | — | `MonsterCardListAck` |  |
 | 2608 | `eEGS_MONSTERCARD_GET_CHAR_DECK_REQ` | — | commerce.py | — | eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609. |
+| 2609 | `eEGS_MONSTERCARD_GET_CHAR_DECK_ACK` | — | — | `MonsterCardDeckAck` |  |
 | 2617 | `eEGS_MONSTERCARD_GET_ALBUM_REQ` | — | commerce.py | — | eEGS_MONSTERCARD_GET_ALBUM_REQ -> 2618. |
+| 2618 | `eEGS_MONSTERCARD_GET_ALBUM_ACK` | — | — | `MonsterCardAlbumAck` |  |
 | 2620 | `eEGS_MARK_ITEM_ACTIVE_NOT` | 0x00776600 | — | — |  |
 | 2621 | `eEGS_MARK_TAB_ACTIVE_NOT` | 0x007767E0 | — | — |  |
 | 2626 | `eEGS_INDULGENCE_NOT` | 0x0075C090 | — | — |  |
@@ -435,7 +433,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | Opcode | Enum name | Client handler | Server handler | Messages | Notes |
 | ---: | :--- | :--- | :--- | :--- | :--- |
 | 5001 | `eERC_CREATE_ROOM_REQ` | — | dungeon.py | — | eERC_CREATE_ROOM_REQ (writer 0x58B060): wstring name, i32, i32, i16, |
-| 5003 | `eERC_JOIN_ROOM_REQ` | — | dungeon.py | — |  |
+| 5002 | `eERC_CREATE_ROOM_ACK` | — | — | `CreateRoomAck` |  |
+| 5003 | `eERC_JOIN_ROOM_REQ` | — | dungeon.py | `JoinRoomReq` |  |
+| 5004 | `eERC_JOIN_ROOM_ACK` | — | — | `JoinRoomAck` |  |
 | 5005 | `eERC_LEAVE_ROOM_REQ` | — | dungeon.py | `LeaveRoomReq` | eERC_LEAVE_ROOM_REQ (0x0058B240) -> 5006 eERC_LEAVE_ROOM_ACK (0x00598A00). |
 | 5006 | `eERC_LEAVE_ROOM_ACK` | — | — | `LeaveRoomAck` |  |
 | 5009 | `eERC_CHANGE_MAPCODE_REQ` | — | dungeon.py | — | eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f |
@@ -446,15 +446,15 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5016 | `eERC_CHANGE_TEAM_ACK` | — | — | `ChangeTeamAck` |  |
 | 5017 | `eERC_FINISH_GAME_REQ` | — | dungeon.py | `FinishGameReq` | eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60). |
 | 5018 | `eERC_FINISH_GAME_ACK` | 0x007ADB60 | — | `FinishGameAck` |  |
-| 5021 | `eERC_CHANGE_ROOMHOST_REQ` | — | — | `UserJoinSquareNot` |  |
-| 5022 | `eERC_CHANGE_ROOMHOST_ACK` | — | — | `UserLeaveSquareNot` |  |
-| 5027 | `eERC_JOIN_LAYER_NOT` | 0x00787790 | — | `PageCharTemp` |  |
+| 5027 | `eERC_JOIN_LAYER_NOT` | 0x00787790 | — | `JoinLayerNot` |  |
 | 5028 | `eERC_JOIN_SQUARE_REQ` | — | frontend.py | — | Opcode 5028 (eERC_JOIN_SQUARE_REQ) -> 5029 (eERC_JOIN_SQUARE_ACK). |
 | 5029 | `eERC_JOIN_SQUARE_ACK` | 0x00757AD0 | — | `JoinSquareAck` |  |
 | 5030 | `eERC_JOIN_LAYER_REQ` | — | square.py | — | Opcode 5030 changes the town layer; positions travel via the relay. |
 | 5031 | `eERC_JOIN_LAYER_ACK` | 0x00787A70 | — | — |  |
 | 5032 | `eERC_LEAVE_SQUARE_REQ` | — | square.py | — | Opcode 5032 (eERC_LEAVE_SQUARE_REQ) -> 5033 (eERC_LEAVE_SQUARE_ACK). |
 | 5033 | `eERC_LEAVE_SQUARE_ACK` | 0x00757960 | — | — |  |
+| 5035 | `eERC_JOIN_ROOM_NOT` | — | — | `RoomMemberJoinedNot` |  |
+| 5036 | `eERC_LEAVE_ROOM_NOT` | — | — | `RoomMemberLeftNot` |  |
 | 5037 | `eERC_LEAVE_LAYER_REQ` | — | square.py | — | Opcode 5037 (eERC_LEAVE_LAYER_REQ) -> 5038 (eERC_LEAVE_LAYER_ACK). |
 | 5038 | `eERC_LEAVE_LAYER_ACK` | 0x007895C0 | — | — |  |
 | 5039 | `eERC_LEAVE_LAYER_NOT` | 0x00789450 | — | — |  |
@@ -464,8 +464,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5044 | `eERC_SELECT_DUNGEON_ACK` | 0x007702E0 | — | `SelectDungeonAck` |  |
 | 5045 | `eERC_BACK_TO_SQUARE_REQ` | — | square.py | — | Opcode 5045 (eERC_BACK_TO_SQUARE_REQ) -> 5046 (eERC_BACK_TO_SQUARE_ACK). |
 | 5046 | `eERC_BACK_TO_SQUARE_ACK` | 0x007897F0 | — | `BackToSquareAck` |  |
-| 5049 | `eERC_INVITE_REQ` | — | social.py | — | Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK). |
-| 5050 | `eERC_INVITE_ACK` | 0x00758700 | — | — |  |
+| 5049 | `eERC_INVITE_REQ` | — | social.py | `PartyInviteReq` | Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK). |
+| 5050 | `eERC_INVITE_ACK` | 0x00758700 | — | `PartyInviteAck` |  |
 | 5051 | `eERC_INVITE_NOT` | 0x007706E0 | — | `PartyInviteNot` |  |
 | 5053 | `eERC_AGAIN_SELECT_DUNGEON_ACK` | 0x00770A80 | — | — |  |
 | 5054 | `eERC_ACCEPT_INVITE_REQ` | — | social.py | `PartyAcceptInviteReq` | Opcode 5054 (eERC_ACCEPT_INVITE_REQ) -> 5055 (eERC_ACCEPT_INVITE_ACK). |
@@ -517,7 +517,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5117 | `eERC_CHEAT_VIEW_ITEM_DROP_LOG_NOT` | 0x00758E20 | — | — |  |
 | 5118 | `eERC_FRIEND_MY_CONNECTION_NOT` | 0x0077A8A0 | — | `FriendMyConnectionNot` |  |
 | 5119 | `eERC_FRIEND_MY_DISCONNECTION_NOT` | 0x00758FA0 | — | `FriendMyDisconnectionNot` |  |
-| 5121 | `eERC_GUILD_CREATE_PROPOSAL_REQ` | — | social.py | — | eERC_GUILD_CREATE_PROPOSAL_REQ (0x00790000.c:2514) -> 5122 eERC_GUILD_CREATE_PROPOSAL_ACK (0x00759750). |
+| 5121 | `eERC_GUILD_CREATE_PROPOSAL_REQ` | — | social.py | `GuildCreateProposalReq` | eERC_GUILD_CREATE_PROPOSAL_REQ (0x00790000.c:2514) -> 5122 eERC_GUILD_CREATE_PROPOSAL_ACK (0x00759750). |
 | 5122 | `eERC_GUILD_CREATE_PROPOSAL_ACK` | 0x00759750 | — | `GuildCreateProposalAck` |  |
 | 5123 | `eERC_GUILD_CREATE_COMPLETE_NOT` | 0x00759E10 | — | — |  |
 | 5124 | `eERC_GTARGET_LIST_REQ` | — | square.py | — | Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK). |

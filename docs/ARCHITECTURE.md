@@ -37,7 +37,7 @@ src/darkblood/
     loot.py, stalls.py           drop rolls, personal shops
     handlers/                    one domain service per file:
       frontend social square commerce inventory skills quests dungeon arena pets mail
-    network/messages/            one dataclass per message, by domain (encode/decode)
+    network/messages/            generated from schemas/*.jsch, one class per message (encode/decode)
     network/results.py           client result codes
     entities/character.py        Character + lobby/world-detail encodings
     entities/items.py            Item (0x00A53F50), Bag (0x00A1EC30)
@@ -54,11 +54,13 @@ tools/                           gamectl, MCP server, headless client, asset exp
 - Dependencies point downward: `core` imports nothing from the package;
   `games` may use `core`; `frontend` hosts `games.session`; handlers never
   import `session` (shared helpers live next to the handlers that own them).
-- New opcode: describe the message in `schemas/<domain>.jsch` and run
-  `python tools/gen_messages.py` (see `schemas/README.md`). Domains that are
-  not converted yet still use hand-written dataclasses in
-  `games/network/messages/<domain>.py`. Their docstring starts with
-  `Opcode N:` and names the client reader addresses. Then add an `on_<opcode>` method in the
+- New opcode: describe the message in `schemas/<domain>.jsch` (client reader
+  and sender addresses in `##` lines) and run `python tools/gen_messages.py`
+  (see `schemas/README.md`). Every module in `games/network/messages/` except
+  `__init__.py` is generated; never edit them by hand. Logic that builds
+  message values from game state (store records, learned-skill maps, level-up
+  notices) lives next to the handler or domain module that owns it. Then add an
+  `on_<opcode>` method in the
   matching `games/handlers/*.py` service, then a headless test. Regenerate
   `docs/OPCODE_REGISTRY.md` with `python tools/gen_opcode_registry.py`.
 - Domain rules that are not wire handling (progression, achievements, loot)
