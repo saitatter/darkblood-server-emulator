@@ -58,7 +58,7 @@ class DungeonRoom:
     host: object
     members: dict = field(default_factory=dict)
     started: bool = False
-    loot_mode: bool = False  # 5088 looting button value (meaning of true/false unverified)
+    loot_mode: bool = False  # 5088 looting checkbox state (which mode 'checked' means is unverified)
 
 
 class DungeonHandlers(BaseDomainService):
@@ -125,10 +125,10 @@ class DungeonHandlers(BaseDomainService):
             level=min(int(record.get('level', 1)), 0xFF))
 
     async def on_5011(self, correlation, body):
-        # eERC_CHANGE_ROOMINFO_REQ (party name edit) -> 5012. The client locks input
-        # until the ack arrives; without it the window froze (live 2026-11-21).
+        # eERC_CHANGE_ROOMINFO_REQ (Party info OK) -> 5012. The request is a whole
+        # jRoomInfo; the client locks input until the ack arrives (froze without it).
         try:
-            req = ChangeRoomInfoReq.decode(body)
+            req = ChangeRoomInfoReq.decode(body).room
         except (WireError, struct.error):
             await self.transport.send_event(event(5012, ChangeRoomInfoAck(result=results.INVALID_STATE).encode(),
                                                   correlation), note='change room info refused (bad request)')
@@ -138,31 +138,38 @@ class DungeonHandlers(BaseDomainService):
             await self.transport.send_event(event(5012, ChangeRoomInfoAck(result=results.INVALID_STATE).encode(),
                                                   correlation), note='change room info refused (not host)')
             return
-        room.info.name = req.name
-        ack = ChangeRoomInfoAck(result=0, room=self._room_info(room))
-        await self.transport.send_event(event(5012, ack.encode(), correlation),
-                                        note='change room info ack (%s)' % req.name)
+        info = room.info
+        info.name = req.name
+        if len(room.members) <= req.max_users <= 4:
+            info.max_users = req.max_users
+        # The host's client applies gate/map/diff itself before sending (0x0063BAC3);
+        # keep them for the room list (2011) and later joiners (5004).
+        info.gate_id, info.map_id, info.diff = req.gate_id, req.map_id, req.diff
+        ack = ChangeRoomInfoAck(result=0, room=self._room_info(room)).encode()
+        await self.transport.send_event(event(5012, ack, correlation),
+                                        note='change room info ack (%s, max %d)' % (info.name, info.max_users))
+        # 5012 on a member updates only the title and max users (0x0058432D);
+        # no recovered message pushes gate/map/diff to members already in the room.
+        await self._notify_room(room, [m for m in room.members if m is not self.session],
+                                event(5012, ack), 'change room info (member sync)')
 
     async def on_5088(self, correlation, body):
-        # eERC_CHANGE_ITEM_OBTAIN_REQ (random / free looting buttons) -> 5089 (one bool).
+        # eERC_CHANGE_ITEM_OBTAIN_REQ (looting checkbox) -> 5089. The client checks
+        # the box when the ack value != 1, so the ack carries the inverse.
         try:
-            mode = ChangeItemObtainReq.decode(body).mode
+            checked = ChangeItemObtainReq.decode(body).checked
         except (WireError, struct.error):
             return
         room = self.room
         if room is not None:
-            room.loot_mode = mode
-        ack = event(5089, ChangeItemObtainAck(mode=mode).encode(), correlation)
-        await self.transport.send_event(ack, note='change item obtain ack (%s)' % mode)
+            if room.host is not self.session:
+                return
+            room.loot_mode = checked
+        ack = ChangeItemObtainAck(random_loot=not checked).encode()
+        await self.transport.send_event(event(5089, ack, correlation), note='change item obtain ack (checked=%s)' % checked)
         if room is not None:
-            for member in list(room.members):
-                if member is self.session:
-                    continue
-                try:
-                    await member.transport.send_event(event(5089, ChangeItemObtainAck(mode=mode).encode()),
-                                                      note='change item obtain (member sync)')
-                except (ConnectionError, OSError):
-                    pass
+            await self._notify_room(room, [m for m in room.members if m is not self.session],
+                                    event(5089, ack), 'change item obtain (member sync)')
 
     async def on_5047(self, correlation, body):
         # eERC_REQUEST_JOIN_ROOM_REQ (View party info "Join"). The request goes

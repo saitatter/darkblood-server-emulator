@@ -353,26 +353,32 @@ message 5048 RequestJoinRoomAck ok_only
 end
 
 message 5011 ChangeRoomInfoReq header?
-  ## Party name edit. Sender 0x00597970, writer 0x00A492F0. Live 2026-11-21:
-  ## i64 room UID, J-wstring title, then unset struct fields (uninitialised stack).
-  i64 room_uid
-  wstr name
+  ## Party info OK. Sender 0x00597970 (caller 0x0063BB53) writes a whole jRoomInfo
+  ## (writer 0x00A492F0): room UID, title, max users (control 2), gate, map and
+  ## difficulty; the caller stores gate/map/diff in its own room (+0x3C/+0x40/+0x44)
+  ## first. Live 2026-11-21: cur_users, state and the two i64s are uninitialised.
+  RoomInfo room = RoomInfo()
 end
 
 message 5012 ChangeRoomInfoAck ok_only
-  ## Handler 0x00584160: u32 result (0 = ok), then the room info (0x00A49380).
-  ## The client waits for it with input locked, so a missing reply froze it.
+  ## Handler 0x00584160 (dispatch 0x0059D970): u32 result (0 = ok), then the room
+  ## info (0x00A49380). Copies only max users (+0x2C) and the title (+8) into the
+  ## party page room; gate/map/diff are not applied. The client waits for it with
+  ## input locked, so a missing reply froze it.
   u32 result
   RoomInfo room = RoomInfo()
 end
 
 message 5088 ChangeItemObtainReq header?
-  ## Looting mode button. Sender 0x0058B380 (0x13E0): one bool.
-  bool mode
+  ## Looting mode checkbox. Sender 0x0058B380 (0x13E0), caller 0x0054F86C: one
+  ## bool, 1 when the box was unchecked (the new checked state).
+  bool checked
 end
 
 message 5089 ChangeItemObtainAck
   ## Handler 0x00588B50 (dispatch 0x0059D970 case 0x13E1): one bool; the page
-  ## stores (value != 1) at +0xB4 and refreshes the party panel.
-  bool mode
+  ## stores (value != 1) at +0xB4 and 0x0054F910 checks control 4 when +0xB4 == 1.
+  ## The button (0x0054F86C) sends 1 when the box was unchecked, so echoing the
+  ## request unchecks it again: the ack carries the inverse of the request.
+  bool random_loot
 end

@@ -2,6 +2,8 @@
 
 import struct
 
+from darkblood.games.network.messages import ChangeRoomInfoAck
+
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
@@ -120,20 +122,29 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(rejoined, joined)
                 await host.expect_event(5035)
 
-                # Party name edit (5011 -> 5012) and looting mode button (5088 -> 5089).
-                host.send_event(5011, struct.pack('<q', room_id) + wide('Renamed'), correlation=51)
+                # Party info OK (5011 -> 5012 to everyone) and looting checkbox (5088 -> 5089).
+                def room_info(name, max_users, gate, map_id, diff):
+                    # Live layout: cur_users, state and the i64s are uninitialised garbage.
+                    return (struct.pack('<q', room_id) + wide(name)
+                            + struct.pack('<hhiqqiih', max_users, -13499, 0xB3861A, 0x4696031A00F4E254, -1,
+                                          gate, map_id, diff))
+                host.send_event(5011, room_info('Renamed', 3, 7, 0x1234, 2), correlation=51)
                 correlation, renamed = await host.expect_event(5012)
                 self.assertEqual(correlation, 51)
-                self.assertEqual(struct.unpack_from('<I', renamed)[0], 0)
-                self.assertIn(wide('Renamed'), renamed)
-                guest.send_event(5011, struct.pack('<q', room_id) + wide('Nope'), correlation=52)
+                ack = ChangeRoomInfoAck.decode(renamed)
+                self.assertEqual((ack.result, ack.room.name, ack.room.max_users, ack.room.cur_users),
+                                 (0, 'Renamed', 3, 2))
+                self.assertEqual((ack.room.gate_id, ack.room.map_id, ack.room.diff), (7, 0x1234, 2))
+                _, member_view = await guest.expect_event(5012)
+                self.assertEqual(member_view, renamed)
+                guest.send_event(5011, room_info('Nope', 4, 7, 0x1234, 2), correlation=52)
                 _, refused = await guest.expect_event(5012)
                 self.assertEqual(refused, struct.pack('<I', results.INVALID_STATE))
-                host.send_event(5088, struct.pack('<i', 0x7fffffff) + b'', correlation=53)
+                host.send_event(5088, struct.pack('<i?', 0x7fffffff, True), correlation=53)
                 correlation, looting = await host.expect_event(5089)
-                self.assertEqual((correlation, looting), (53, b''))
+                self.assertEqual((correlation, looting), (53, b'\x00'))
                 _, synced = await guest.expect_event(5089)
-                self.assertEqual(synced, b'')
+                self.assertEqual(synced, b'\x00')
 
                 host.send_event(5005)
                 await host.expect_event(5006)

@@ -635,6 +635,17 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - 5088 looting buttons (one bool) were unhandled. 5089 ack is one bool (handler 0x00588B50) and is
   also sent to the other members. What true/false mean (random vs free) is unverified; the value is
   stored in `DungeonRoom.loot_mode` only, there is no drop-distribution logic yet.
+- **Follow-up (same day, live report)**: Party info OK did not propagate and the looting
+  checkbox snapped back. 5011 is a whole jRoomInfo (caller 0x0063BB53: max users from control 2,
+  gate/map/diff, which the host's client writes into its own room first); live bodies showed the
+  map changing (0xCD450996 -> 0xCD4509D8) and diff 0. The server now stores max users (clamped to
+  members..4), gate, map and diff, and sends 5012 to every member. The 5012 handler copies only
+  max users (+0x2C) and the title into the member's room (0x0058432D), and the room dispatcher
+  0x0059D970 handles only 5002/5004/5006/5008/5012/5022/5035/5036/5048/5089, so no recovered
+  message updates the dungeon for members already in the room (later joiners get it via 5004).
+  Looting: the checkbox handler 0x0054F86C sends 1 when the box was unchecked; 5089 stores
+  (v != 1) at +0xB4 and 0x0054F910 checks control 4 when +0xB4 == 1, so the echo unchecked it.
+  The ack now sends the inverse and only the host may change it. Headless-tested; live pending.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.

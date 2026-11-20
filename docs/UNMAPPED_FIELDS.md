@@ -47,7 +47,7 @@
 | `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:244 | cards (0x004AFD30) |
 | `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:250 | album (0x004D6E60) |
 
-## dungeon (43 of 156 fields)
+## dungeon (43 of 161 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -208,27 +208,26 @@
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:152 | RMI id |
 | `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:173 | vecDuel |
 
-## party (17 of 62 fields)
+## party (16 of 62 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `5049 PartyInviteReq` | `bool` | party.jsch:42 | meaning unknown |
-| `5049 PartyInviteReq` | `i64` | party.jsch:43 | meaning unknown |
-| `5051 PartyInviteNot` | `bool` | party.jsch:55 |  |
-| `5051 PartyInviteNot` | `u32` | party.jsch:58 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:60 |  |
-| `5051 PartyInviteNot` | `u16` | party.jsch:61 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:62 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:63 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:64 |  |
-| `5051 PartyInviteNot` | `raw[74]` | party.jsch:65 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:66 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:67 | room UID |
-| `5051 PartyInviteNot` | `wstr` | party.jsch:68 | room name |
-| `5051 PartyInviteNot` | `u32` | party.jsch:69 | gate |
-| `5051 PartyInviteNot` | `u32` | party.jsch:70 | map |
-| `5051 PartyInviteNot` | `u16` | party.jsch:71 | difficulty |
-| `PartyMemberInfo` | `i32` | party.jsch:137 |  |
+| `5049 PartyInviteReq` | `bool` | party.jsch:45 | meaning unknown |
+| `5051 PartyInviteNot` | `bool` | party.jsch:58 |  |
+| `5051 PartyInviteNot` | `u32` | party.jsch:61 |  |
+| `5051 PartyInviteNot` | `u8` | party.jsch:63 |  |
+| `5051 PartyInviteNot` | `u16` | party.jsch:64 |  |
+| `5051 PartyInviteNot` | `u8` | party.jsch:65 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:66 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:67 |  |
+| `5051 PartyInviteNot` | `raw[74]` | party.jsch:68 |  |
+| `5051 PartyInviteNot` | `u8` | party.jsch:69 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:70 | room UID |
+| `5051 PartyInviteNot` | `wstr` | party.jsch:71 | room name |
+| `5051 PartyInviteNot` | `u32` | party.jsch:72 | gate |
+| `5051 PartyInviteNot` | `u32` | party.jsch:73 | map |
+| `5051 PartyInviteNot` | `u16` | party.jsch:74 | difficulty |
+| `PartyMemberInfo` | `i32` | party.jsch:140 |  |
 
 ## pets (7 of 50 fields)
 
