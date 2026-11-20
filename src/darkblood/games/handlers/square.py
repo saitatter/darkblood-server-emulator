@@ -134,9 +134,13 @@ class SquareHandlers(BaseDomainService):
         Transitions the player entity from a dungeon session back to the default town square.
         """
         await self.session.dungeon.leave_room()
-        ack = BackToSquareAck(square_uid=self.session.square_id).encode()
+        ack = BackToSquareAck(square_uid=self.session.square_id, cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
+
+    def _current_gold(self):
+        char = self.current_char()
+        return int(char.get('gold', 0)) if char else 0
 
     async def handle_get_gtarget_list(self, correlation: int, body: bytes):
         """Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK).
@@ -154,7 +158,8 @@ class SquareHandlers(BaseDomainService):
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         world = GameWorldManager.get()
         player, previous_layer = world.change_layer(self.session, layer_id)
-        ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=layer_id).encode()
+        ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=layer_id,
+                              cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
         if previous_layer is not None:

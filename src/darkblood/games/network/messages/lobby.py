@@ -170,7 +170,8 @@ class BackToSquareAck:
     ("nJoinSquareUID >> nJoinLayerNetID >> vecTargetState >> bUseWaypoint >> iCurAr").
     u32 result, u64 nJoinSquareUID, u64 nJoinLayerNetID, tag 0x10 vector
     vecTargetState (0x00773870, element layout unknown -> empty), bool
-    bUseWaypoint, u64 iCurAr*. Outside SquarePlay the handler validates the
+    bUseWaypoint, i64 iCurAr (the player's current AR; sending 0 showed 0 AR
+    in town after a dungeon until relog). Outside SquarePlay the handler validates the
     layer id like CanEnter, stores it at player+0xF0, runs
     ``g_jAppStateMgr:ChangeState(eAS_SquarePlay)`` and reconnects the relay.
     """
@@ -178,12 +179,12 @@ class BackToSquareAck:
     square_uid: int = 1
     layer_net_id: int = field(default_factory=layer_net_id)
     use_waypoint: bool = False
-    cur_area: int = 0  # meaning not recovered; local default
+    cur_ar: int = 0  # iCurAr: the character's gold
 
     def encode(self) -> bytes:
         return (struct.pack('<IQQ', self.result, self.square_uid, self.layer_net_id)
                 + b'\x10' + varuint(0)
-                + struct.pack('<?Q', self.use_waypoint, self.cur_area))
+                + struct.pack('<?q', self.use_waypoint, self.cur_ar))
 
 @dataclass
 class RelayJoinGroupAck:
