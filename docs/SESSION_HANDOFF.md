@@ -698,6 +698,13 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   handler (`0x007702E0`, global) changes the state itself, so the server now sends 5044 to every
   room member when the host opens the gate, and forwards the host's 5010. Not yet confirmed live;
   start (5013) and leaving the gate (5045) are still per player.
+- **Reconnect from town, two clients (open)**: with the 0x0076F98D and 0x0059C161 recoveries both
+  clients get past the lobby and character select, then stop on a modal error box ("오류") from
+  `JAppStateSquarePlay::LoadMap` (0x006F9920, MessageBox call 0x006F9C00): the local user's square UID
+  (`0x00946540` +0xF0) -> square (`0x00984D20`) -> map (`0x00990030`, name +0x20) -> `0x008EC9E0` returns
+  false. The world-map lookup `0x008BE570` returning NULL earlier points the same way: map state from
+  the lost session is not reset. The 2026-11-17 reconnect (one client, world) did not hit this.
+  Until it is fixed, restart the clients instead of reconnecting after a server restart.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.
