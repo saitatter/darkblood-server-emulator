@@ -826,7 +826,7 @@ class WireMessagesTest(unittest.TestCase):
         ack_sq = messages.ArenaSquareListAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_sq[:4]), (0,))
 
-        req_room = messages.ArenaGetRoomListReq.decode(struct.pack('<i', 0))
+        req_room = messages.ArenaGetRoomListReq.decode(struct.pack('<i?', 0, False))  # sender: 4 bytes + bool
         self.assertEqual(req_room.page, 0)
         ack_room = messages.ArenaGetRoomListAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_room[:4]), (0,))
@@ -869,7 +869,7 @@ class WireMessagesTest(unittest.TestCase):
             password="secret_pass", notice="High level gladiators"
         )
         encoded_room = room.encode()
-        decoded_room, _ = messages.ArenaRoomInfo.decode(encoded_room)
+        decoded_room = messages.ArenaRoomInfo.decode(encoded_room)
         self.assertEqual(decoded_room.room_id, 42)
         self.assertEqual(decoded_room.room_name, "Deathmatch Colosseum")
         self.assertEqual(decoded_room.map_id, 3)
@@ -899,7 +899,7 @@ class WireMessagesTest(unittest.TestCase):
 
         # Leave room req/ack
         leave_req = messages.ArenaLeaveRoomReq()
-        self.assertEqual(leave_req.encode(), b'')
+        self.assertIsInstance(messages.ArenaLeaveRoomReq.decode(b''), messages.ArenaLeaveRoomReq)  # header optional
         leave_ack = messages.ArenaLeaveRoomAck(result=0)
         dec_leave_ack = messages.ArenaLeaveRoomAck.decode(leave_ack.encode())
         self.assertEqual(dec_leave_ack.result, 0)

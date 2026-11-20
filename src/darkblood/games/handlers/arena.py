@@ -20,6 +20,7 @@ from darkblood.games.network.messages import (
     ArenaGetInviteListAck,
     ArenaGetInviteListReq,
     ArenaGetRoomListAck,
+    ArenaSquare,
     ArenaGetRoomListReq,
     ArenaJoinRoomAck,
     ArenaJoinRoomReq,
@@ -59,6 +60,7 @@ class ArenaHandlers(BaseDomainService):
 
     # Server-wide shared state for rooms, teams, and leaderboard rankings
     _arena_rooms: Dict[int, ArenaRoomInfo] = {}
+    _arena_room_members: Dict[int, list] = {}  # room id -> member dicts (server state, not on the wire)
     _arena_teams: Dict[int, ArenaTeamInfo] = {}
     _leaderboard: List[LeagueRankEntry] = []
     _room_id_counter: int = 1
@@ -178,8 +180,8 @@ class ArenaHandlers(BaseDomainService):
         req = ArenaSquareListReq.decode(body)
         self.transport.record('arena-squarelist-req', body, server_key=req.server_key)
         squares = [
-            {'id': 101, 'name': 'Colosseum Channel 1', 'load': 45},
-            {'id': 102, 'name': 'Gladiator Channel 2', 'load': 20},
+            ArenaSquare(square_id=101, name='Colosseum Channel 1', load=45),
+            ArenaSquare(square_id=102, name='Gladiator Channel 2', load=20),
         ]
         ack = ArenaSquareListAck(result=0, squares=squares).encode()
         await self.transport.send_event(event(2305, ack, correlation), note='arena square list ack')
@@ -197,7 +199,7 @@ class ArenaHandlers(BaseDomainService):
         req = ArenaGetRoomListReq.decode(body)
         self.transport.record('arena-get-roomlist-req', body, page=req.page)
         rooms = list(self._arena_rooms.values())
-        ack = ArenaGetRoomListAck(result=0, flag=True, rooms=rooms).encode()
+        ack = ArenaGetRoomListAck(result=0, flag=True, room_count=len(rooms), rooms=rooms).encode()
         await self.transport.send_event(event(2307, ack, correlation), note='arena get room list ack')
 
     async def handle_arena_create_room(self, correlation: int, body: bytes):
@@ -216,7 +218,7 @@ class ArenaHandlers(BaseDomainService):
             room.room_name = f"{char_name}'s Colosseum"
         room.host_uid = char_uid
         room.team_id = getattr(self, '_current_arena_team_id', 0) or 1
-        room.members = [{
+        ArenaHandlers._arena_room_members[room.room_id] = [{
             'uid': char_uid,
             'name': char_name,
             'class': char_class,
@@ -248,12 +250,13 @@ class ArenaHandlers(BaseDomainService):
             ArenaHandlers._arena_rooms[room.room_id] = room
 
         member_entry = {'uid': char_uid, 'name': char_name, 'class': char_class, 'level': char_level}
-        if not any(m.get('uid') == char_uid for m in room.members):
-            room.members.append(member_entry)
+        members = ArenaHandlers._arena_room_members.setdefault(room.room_id, [])
+        if not any(m.get('uid') == char_uid for m in members):
+            members.append(member_entry)
         self._current_arena_room_id = room.room_id
 
         self.transport.record('arena-join-room-req', body, room_id=req.room_id)
-        ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid, members=room.members).encode()
+        ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid).encode()
         await self.transport.send_event(event(5146, ack, correlation),
                                         note=f'arena join room ack (room={room.room_id})')
 
@@ -267,9 +270,12 @@ class ArenaHandlers(BaseDomainService):
         curr_room_id = getattr(self, '_current_arena_room_id', None)
         if curr_room_id and curr_room_id in ArenaHandlers._arena_rooms:
             room = ArenaHandlers._arena_rooms[curr_room_id]
-            room.members = [m for m in room.members if m.get('uid') != char_uid]
-            if not room.members:
+            members = [m for m in ArenaHandlers._arena_room_members.get(curr_room_id, [])
+                       if m.get('uid') != char_uid]
+            ArenaHandlers._arena_room_members[curr_room_id] = members
+            if not members:
                 ArenaHandlers._arena_rooms.pop(curr_room_id, None)
+                ArenaHandlers._arena_room_members.pop(curr_room_id, None)
             self._current_arena_room_id = None
 
         self.transport.record('arena-leave-room-req', body)
