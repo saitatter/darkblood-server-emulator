@@ -23,7 +23,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<iqi', encoded), (0, 123456789, 0))
 
     def test_delete_item_messages(self):
-        raw_req = struct.pack('<qi', 9999, 5)
+        raw_req = struct.pack('<iqi', 0x7fffffff, 9999, 5)  # captures always carry the header
         req = messages.DeleteItemReq.decode(raw_req)
         self.assertEqual((req.item_uid, req.amount), (9999, 5))
 
@@ -39,7 +39,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<iHH', ack.encode()), (0, 0, 1))
 
     def test_switch_quickslot_messages(self):
-        raw_req = struct.pack('<BBB', 0, 2, 3)
+        raw_req = struct.pack('<iBBB', 0x7fffffff, 0, 2, 3)  # live: ffffff7f 01 02 02
         req = messages.SwitchQuickslotReq.decode(raw_req)
         self.assertEqual((req.slot_type, req.from_slot, req.to_slot), (0, 2, 3))
 
@@ -481,12 +481,12 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<I', ack_fl, 6)[0], 0x87654321)
 
     def test_magic_enchant_and_upgrade_messages(self):
-        req_enc = messages.MagicEnchantEnchantReq.decode(struct.pack('<qqq', 1, 2, 3))
-        self.assertEqual((req_enc.item_uid, req_enc.catalyst_uid, req_enc.scroll_uid), (1, 2, 3))
+        req_enc = messages.MagicEnchantEnchantReq.decode(struct.pack('<qq', 1, 2))  # sender writes two i64
+        self.assertEqual((req_enc.item_uid, req_enc.catalyst_uid), (1, 2))
         ack_enc = messages.MagicEnchantEnchantAck(result=0, items=[], gold=1000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_enc)[0], 0)
 
-        req_era = messages.MagicEnchantEraseOptionReq.decode(struct.pack('<q', 1))
+        req_era = messages.MagicEnchantEraseOptionReq.decode(struct.pack('<qi', 1, 0))
         self.assertEqual(req_era.item_uid, 1)
         ack_era = messages.MagicEnchantEraseOptionAck(result=0, items=[], gold=1000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_era)[0], 0)
@@ -630,7 +630,7 @@ class WireMessagesTest(unittest.TestCase):
         ack_ins = messages.AvatarZamInsertAck(result=0, updated_items=[]).encode()
         self.assertEqual(struct.unpack_from('<i', ack_ins[:4])[0], 0)
 
-        req_erase = messages.AvatarZamEraseReq.decode(struct.pack('<q', 10))
+        req_erase = messages.AvatarZamEraseReq.decode(struct.pack('<qi', 10, 0))
         self.assertEqual(req_erase.avatar_item_uid, 10)
         ack_erase = messages.AvatarZamEraseAck(result=0, updated_items=[]).encode()
         self.assertEqual(struct.unpack_from('<i', ack_erase[:4])[0], 0)

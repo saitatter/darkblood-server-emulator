@@ -1,0 +1,412 @@
+# Items, bags, quickslots, dyeing, durability, enchanting, loot and depot slots.
+# Format: schemas/README.md. Sender writer widths: 0x00B35190 2 bytes,
+# 0x00B352B0 4 bytes, 0x00B353D0 8 bytes.
+
+domain inventory Dark Blood protocol wire messages - Inventory domain.
+
+extern Item from darkblood.games.entities.items
+extern Bag from darkblood.games.entities.items
+
+struct ItemDropEntry
+  ## Dropped item (0x1A bytes, ctor 0x00A4FBA0, reader 0x00A509E0). The element
+  ## reader 0x004C7F80 checks tag 0x1E without a byte. The client places the drop
+  ## at the source monster (5064 header id, 0x00859C60), so no position is sent.
+  u32 drop_uid               # +0
+  h32 item_id                # +4 item code (jhash)
+  u16 _                      # +8 (ctor 0)
+  u16 count = 1              # +10 (ctor 0xFFFF; passed to 0x004C8CA0 as the amount)
+  set<?> _                   # +0xE (0x006B9F80), meaning not recovered
+  u16 _ = 0xFFFF             # +0xC (ctor 0xFFFF)
+end
+
+message 5064 DropItemNot
+  ## JUserClient::On_eERC_DROP_ITEM_NOT 0x0078A870.
+  u32 source_id              # 5063 instance id of the monster
+  vector<ItemDropEntry> drops
+end
+
+message 2026 OpenBagReq header
+  ## Sent from 0x0082D34E (sender 0x0082D1C0): uid of the bag item being equipped.
+  i64 item_uid
+end
+
+message 2027 OpenBagAck ok_only
+  ## Handler 0x00557860 (dispatch 0x0055883F): result (nonzero: error popup), then
+  ## the implicit bag struct read by 0x00A1EC30 (as the 2007 bag vector). The client
+  ## inserts it with 0x00836010; 0x0082F060 then finds the cell whose item uid
+  ## equals the bag id, so the bag id is the bag item's uid.
+  u32 result
+  Bag bag = Bag()
+end
+
+message 2028 CloseBagReq header
+  ## Sender 0x005520B0.
+  i64 bag_id
+end
+
+message 2036 DragItemReq
+  ## JUserClient::DragItemREQ (sender 0x00795700). Captures carry no header.
+  i64 item_uid
+  i64 to_container
+  i32 to_slot
+end
+
+message 2037 DragItemAck
+  ## On_eEGS_DRAG_ITEM_ACK 0x0077F570. Also sent unsolicited for inventory changes.
+  i32 result
+  vector<Item> items
+end
+
+message 2038 UseItemReq header
+  ## Senders 0x0078B910 and 0x007A36F0. Live (2026-11-17): ffffff7f, i64 uid, i32 count.
+  i64 item_uid
+  i32 use_count = 1
+end
+
+message 2039 UseItemAck
+  ## On_opcode_2039 0x0077D4C0.
+  i32 result
+  vector<Item> items         # vecItem
+  h32 item_id                # nItemID
+  i32 use_count = 1          # nUseCount
+end
+
+struct DyeInfo
+  ## 10-byte dye block shared by 2210 and 2211 (reader 0x00A49BB0). Live skin dye:
+  ## part 0, option -1, color 0xFF945A4C (ARGB). The first two field meanings are
+  ## inferred from the dye page (part / option steps) and not confirmed.
+  u16 part
+  i32 option = -1
+  h32 color
+end
+
+message 2210 UseDyeingItemReq
+  ## Sent by 0x00505E30 from JAppPageColoring::DecideColor (0x00516590). Captures
+  ## carry no header. Live: 2800000000000000 ffffffffffffffff 0000 ffffffff 4c5a94ff 00.
+  i64 dye_uid                # nDyeingItemUID
+  i64 target_uid = -1        # nTargetItemUID (-1 for skin)
+  DyeInfo dye = DyeInfo()
+  bool flag                  # meaning not recovered
+end
+
+message 2211 UseDyeingItemAck
+  ## Coloring page dispatch 0x00511E50 -> 0x00511B70. Without this reply the client
+  ## waits on 2211 and then drops the connection.
+  i32 result
+  DyeInfo dye = DyeInfo()
+  vector<Item> items         # 0x004B94C0
+end
+
+message 2044 AssignQuickslotReq header
+  ## Sender 0x0078C100. Live: ffffff7f 01 01 9a010000 ffff..ff. Reading from offset 0
+  ## (without the header) stored type/slot 255.
+  u8 slot_type               # ucType
+  u8 slot_num                # ucSlotNum
+  i32 ref_id                 # nRefID
+  i64 ref_uid                # nRefUID
+end
+
+message 2045 AssignQuickslotAck
+  ## On_eEGS_ASSIGN_QUICKSLOT_ACK 0x0078C4A0.
+  i32 result
+  u8 slot_type
+  u8 slot_num
+  i32 ref_id
+  i64 ref_uid
+end
+
+message 2042 EquipItemReq header
+  ## Live (right-click equip, 2026-11-17): ffffff7f, i64 uid, i32 slot (-1 = pick by item).
+  i64 item_uid
+  i32 equip_slot
+end
+
+message 2043 EquipItemAck
+  ## On_eEGS_EQUIP_ITEM_ACK 0x007AE940.
+  i32 result
+  vector<Item> items
+end
+
+message 2040 DeleteItemReq header
+  ## Sender 0x00550D20: 0x00B353D0 uid, 0x00B352B0 amount.
+  i64 item_uid               # nItemUID
+  i32 amount                 # nAmount
+end
+
+message 2041 DeleteItemAck
+  ## Handler 0x00557420.
+  i32 result
+  i64 item_uid               # nDeletedItemUID
+  i32 del_amount             # nDelAmount
+end
+
+message 2030 SwitchBagReq header?
+  ## Sender 0x00550A70: two 0x00B35190 values.
+  u16 from_index             # sIndexFrom
+  u16 to_index               # sIndexTo
+end
+
+message 2031 SwitchBagAck
+  ## Handler 0x00557680.
+  i32 result
+  u16 from_index
+  u16 to_index
+end
+
+message 2046 SwitchQuickslotReq header
+  ## Sender 0x0078C2E0. Live: ffffff7f 01 02 02. Reading from offset 0 decoded
+  ## 255/255/255 and the dragged quickslots vanished.
+  u8 slot_type               # ucType
+  u8 from_slot               # ucSlotNumFrom
+  u8 to_slot                 # ucSlotNumTo
+end
+
+message 2047 SwitchQuickslotAck
+  ## On_eEGS_SWITCH_QUCIKSLOT_ACK 0x0078C790.
+  i32 result
+  u8 slot_type
+  u8 from_slot
+  u8 to_slot
+end
+
+message 2048 ChangeBagPropertyReq header?
+  ## Sender 0x00550C60: 0x00B353D0 uid, 0x00B35100 property.
+  i64 bag_uid                # nBagUID
+  u8 property                # ucProperty
+end
+
+message 2049 ChangeBagPropertyAck
+  ## On_eEGS_CHANGE_BAG_PROPERTY_ACK 0x00774040.
+  i32 result
+  i64 bag_uid
+  u8 property
+end
+
+message 2032 ChangeBagNameReq header?
+  ## No sender recovered; the name keeps the earlier raw UTF-16 form.
+  i64 bag_uid
+  wrest name
+end
+
+message 2033 ChangeBagNameAck
+  ## On_eEGS_CHANGE_BAG_NAME_ACK 0x007528B0.
+  i32 result
+  i64 bag_uid
+  wstrz name                 # null-terminated UTF-16 as sent so far; reader not checked
+end
+
+message 2145 DurabilityRepairReq header?
+  ## Sender 0x00792C80 writes a tag 0x17 map; kept raw.
+  rest raw_payload
+end
+
+message 2146 DurabilityRepairAck ok_only
+  ## On_eEGS_DURABILITY_REPAIR_ACK 0x007930D0.
+  i32 result
+  map<?> _
+  i64 remain_gold
+end
+
+message 2115 ItemUpgradeReq header?
+  ## Sender 0x00790700: three 0x00B353D0 values.
+  i64 target_uid             # nTargetItemUID
+  i64 catalyst_uid           # nCatalystItemUID
+  i64 protect_uid            # nProtectItemUID
+end
+
+message 2116 ItemUpgradeAck
+  ## On_eEGS_ITEM_UPGRADE_ACK 0x007909C0. A nonzero result ends the flow without
+  ## inventory structs.
+  i32 result = 1
+end
+
+message 2143 DurabilityChangeReq header?
+  ## Sender 0x00792AC0 writes a tag 0x17 map; captures have both forms. Kept raw.
+  rest raw_payload
+end
+
+message 2144 DurabilityChangeAck
+  ## On_eEGS_DURABILITY_CHANGE_ACK 0x00774AE0.
+  i32 result
+  vector<?> _                # items
+end
+
+message 2254 MagicEnchantEnchantReq header?
+  ## Sender 0x00796D00 writes two 0x00B353D0 values (the earlier decoder read three).
+  i64 item_uid
+  i64 catalyst_uid
+end
+
+message 2255 MagicEnchantEnchantAck
+  ## Handler 0x00796DC0.
+  i32 result
+  vector<Item> items
+  i64 gold
+end
+
+message 2256 MagicEnchantEraseOptionReq header?
+  ## Sender 0x00797060: 0x00B353D0 uid, 0x00B352B0 (4 bytes, meaning unknown).
+  i64 item_uid
+  i32 _
+end
+
+message 2257 MagicEnchantEraseOptionAck
+  ## Handler 0x00797120.
+  i32 result
+  vector<Item> items
+  i64 gold
+end
+
+message 2258 MagicEnchantExpendSlotReq header?
+  ## Sender 0x007973C0.
+  i64 item_uid
+  i64 stone_uid
+end
+
+message 2259 MagicEnchantExpendSlotAck
+  ## Handler 0x0077FC60.
+  i32 result
+  vector<Item> items
+end
+
+message 2284 RandomItemUpgradeReq header?
+  ## Sender 0x00798630.
+  i64 item_uid
+  i64 stone_uid
+end
+
+message 2285 RandomItemUpgradeAck
+  ## Handler 0x0077FED0.
+  i32 result
+  vector<Item> items
+end
+
+message 2672 FixItemUpgradeReq header?
+  ## Sender 0x007A6710.
+  i64 item_uid
+  i64 stone_uid
+end
+
+message 2673 FixItemUpgradeAck
+  ## Handler 0x00783C40.
+  i32 result
+  vector<Item> items
+end
+
+message 5065 PickUpItemReq header
+  ## JUserClient::PickUpItemREQ (sender 0x0078AB60, push at 0x0078AC3F): drop uid
+  ## via 0x00B352B0. Captures always carry the header.
+  u32 drop_uid
+end
+
+message 5066 PickUpItemAck
+  i32 result
+end
+
+message 5068 PickUpItemResultAck
+  ## Global handler 0x0078AD80: result, picker character UID (0x00866CF0 lookup),
+  ## then the drop struct (reader 0x00A509E0). The handler removes the drop from
+  ## the floor (0x0086AFF0) and prints the pick-up message; inventory changes come
+  ## separately (unsolicited 2037).
+  i32 result
+  i64 picker_uid
+  ItemDropEntry drop = ItemDropEntry(drop_uid=0, item_id=0xFFFFFFFF, count=0)
+end
+
+message 5114 GetDropArNot
+  ## Handler 0x00792700.
+  i32 result
+  i32 gold
+  i32 drop_id
+  i64 picker_uid
+end
+
+message 2338 ItemSpiritChangeReq header?
+  ## Sender 0x007998A0.
+  i64 item_uid
+  i64 spirit_item_uid
+end
+
+message 2339 ItemSpiritChangeAck
+  ## Handler 0x00780860.
+  i32 result
+  i64 spirit_uid
+  vector<Item> items
+end
+
+message 2362 AvatarZamInsertReq header?
+  ## Sender 0x007A46A0.
+  i64 avatar_item_uid
+  i64 zam_item_uid
+end
+
+message 2363 AvatarZamInsertAck ok_only
+  ## Handler 0x00782D00.
+  i32 result
+  vector<Item> updated_items
+end
+
+message 2364 AvatarZamEraseReq header?
+  ## Sender 0x007A47F0: 0x00B353D0 uid, 0x00B352B0 (4 bytes, meaning unknown).
+  i64 avatar_item_uid
+  i32 _
+end
+
+message 2365 AvatarZamEraseAck ok_only
+  ## Handler 0x00782F40.
+  i32 result
+  vector<Item> updated_items
+end
+
+message 2250 DivideItemReq header?
+  ## Sender 0x007959F0: two 0x00B353D0, 0x00B352B0, 0x00B35190.
+  i64 source_item_uid
+  i64 dest_item_uid
+  i32 count = 1
+  i16 slot
+end
+
+message 2251 DivideItemAck ok_only
+  ## Handler 0x0077F570.
+  i32 result
+  vector<Item> items
+end
+
+message 2092 InventoryUpdatedNot
+  ## Handler 0x0077F070.
+  vector<?> _                # deleted items
+  vector<?> _                # added items
+end
+
+message 2321 ItemRemainTimeNot
+  ## Handler 0x0077AED0.
+  i64 item_uid
+  i64 remain_seconds
+end
+
+message 2322 ItemDeleteNot
+  ## Handler 0x00774DD0.
+  i64 item_uid
+end
+
+message 2196 RandomboxResultItemNot ok_only
+  ## Handler 0x0075A2E0.
+  i32 result
+  i32 item_code
+  i16 count = 1
+  bool is_jackpot
+end
+
+message 2461 DepotSlotExtendReq header?
+  ## Sender near 0x00651718 (not in the xref table).
+  i64 item_uid               # nExtendItemUID
+  i16 slot_index             # sSlotIndex
+end
+
+message 2462 DepotSlotExtendAck ok_only
+  ## Handler 0x00651B20.
+  i32 result
+  i16 slot_index             # sSlotIndex
+  i64 expire_time            # tExtendExpireTime
+  vector<Item> items         # 0x004B9210
+end

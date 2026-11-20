@@ -247,7 +247,7 @@ class PetsFlowTest(ServerTestCase):
             ]
             session.GameSession.store().save()
 
-            client.send_event(2038, struct.pack('<qI', 1001, 1))
+            client.send_event(2038, struct.pack('<iqI', 0x7fffffff, 1001, 1))
             _, ack2039_pet = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039_pet, 0)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
@@ -255,7 +255,7 @@ class PetsFlowTest(ServerTestCase):
             self.assertEqual(char['pets'][0]['code'], 'PetCall001')
 
             # 14. Item Use: ridecall whistle item consumption activates mount
-            client.send_event(2038, struct.pack('<qI', 1002, 1))
+            client.send_event(2038, struct.pack('<iqI', 0x7fffffff, 1002, 1))
             _, ack2039_ride = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039_ride, 0)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)

@@ -48,12 +48,12 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(char['items'][0]['container'], 3)
 
             # 3. Use item (2038 -> 2039)
-            client.send_event(2038, struct.pack('<qi', 1, 1))
+            client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 1, 1))
             _, ack2039 = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039)[0], 0)
 
             # 4. Discard item (2040 -> 2041)
-            client.send_event(2040, struct.pack('<qi', 2, 2))
+            client.send_event(2040, struct.pack('<iqi', 0x7fffffff, 2, 2))
             _, ack2041 = await client.expect_event(2041)
             self.assertEqual(struct.unpack_from('<iqi', ack2041), (0, 2, 2))
 
@@ -211,12 +211,12 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack5074)[0], 0)
 
             # 31. Magic enchant (2254 -> 2255)
-            client.send_event(2254, struct.pack('<qqq', 1, 2, 0))
+            client.send_event(2254, struct.pack('<qq', 1, 2))
             _, ack2255 = await client.expect_event(2255)
             self.assertEqual(struct.unpack_from('<i', ack2255)[0], 0)
 
             # 32. Magic enchant erase option (2256 -> 2257)
-            client.send_event(2256, struct.pack('<q', 1))
+            client.send_event(2256, struct.pack('<qi', 1, 0))
             _, ack2257 = await client.expect_event(2257)
             self.assertEqual(struct.unpack_from('<i', ack2257)[0], 0)
 
@@ -246,7 +246,7 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2363[:4])[0], 0)
 
             # 38. Avatar zam erase (2364 -> 2365)
-            client.send_event(2364, struct.pack('<q', 10))
+            client.send_event(2364, struct.pack('<qi', 10, 0))
             _, ack2365 = await client.expect_event(2365)
             self.assertEqual(struct.unpack_from('<i', ack2365[:4])[0], 0)
 
