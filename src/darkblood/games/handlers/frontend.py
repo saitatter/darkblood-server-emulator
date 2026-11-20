@@ -83,9 +83,15 @@ def build_select_char_ack(char):
     if isinstance(char, dict):
         bags = [Bag(**b) for b in char.get('bags', [])]
         items = [Item(owner=char.get('id', -1), **i) for i in char.get('items', [])]
+    from darkblood.games.world import PEER_SERVER_BITS
     return SelectCharacterAck(
         result=0,
         character=c,
+        # Must equal the peers' 5027 key (31). At login the own JUser +0x100 is
+        # all ones (key 31, live breakpoint); after a layer change it showed
+        # "(Other server)" for peers, consistent with this field (then 0)
+        # being copied to +0x100.
+        server_bits=PEER_SERVER_BITS,
         active_quests=sorted(active, key=lambda q: q.uid),
         bags=bags,
         items=items,

@@ -38,8 +38,11 @@ Fixed this session (live-confirmed only where stated):
   `0x0087DBB0` finds equal keys (bits 54-58, `0x00A614A0`) in the peer's and
   the own JUser `+0x100`. Live breakpoint at `0x0087DBF8`: own `+0x100` is
   `0xFFFFFFFFFFFFFFFF` (key 31), peers had 1. 5027 now sends `0x1F << 54`.
-  The 2007 field at struct `+0x207` is not the own key (that change was
-  reverted). Live check of the suffix pending.
+  The 2007 field at struct `+0x207` is not the own key at login, but after a
+  layer change peers showed "(Other server)" (key 31 not in the server list,
+  so the own key had changed). `0x00966690`/`0x0096685B` copy struct `+0x207`
+  to the own `+0x100`, and it was 0, so 2007 now also sends `0x1F << 54`
+  there. Live check pending.
 - **Peer spawn timing**: live, a 5027 sent 1 ms after 2006 was never shown, one
   at +0.9 s (after 2219, before the relay JoinGroup) was shown, and one after
   5124 (+10 s, after JoinGroup) was not shown. A player is now `loading` from
