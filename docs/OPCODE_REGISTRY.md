@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 560  
+**Tracked opcodes**: 561  
 **Client handlers mapped**: 298  
-**Server handlers**: 198  
+**Server handlers**: 199  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -300,6 +300,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2438 | `eEGS_RIDING_RIDE_OBJECT_ACK` | 0x00753A90 | — | `RidingRideObjectAck` |  |
 | 2442 | `eEGS_CHARSLOT_EXTEND_ACK` | 0x00781000 | — | — |  |
 | 2443 | `eEGS_DAILY_DUN_CLEAR_COUNT_UPDATE_NOT` | 0x0079D0A0 | — | — |  |
+| 2444 | `eEGS_ACHIEVE_UPDATE_REQ` | — | social.py | `AchieveUpdateReq` | eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0): vector of u32 achievement |
 | 2445 | `eEGS_ACHIEVE_UPDATE_ACK` | 0x0074B830 | — | — |  |
 | 2446 | `eEGS_ACHIEVE_DIV_UPDATE_REQ` | — | social.py | `AchieveDivUpdateReq` | eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447 |
 | 2447 | `eEGS_ACHIEVE_DIV_UPDATE_ACK` | 0x0074B830 | — | — |  |

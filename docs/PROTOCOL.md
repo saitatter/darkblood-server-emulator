@@ -750,15 +750,21 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2327 eEGS_ACHIEVE_GET_LIST_REQ` -> `2328 eEGS_ACHIEVE_GET_LIST_ACK` (`0x0079D650`):
   `result: i32`, struct `0x00A3E760` {tag `0x17` map `0x005EC140` (0x0F, u32 division, i64 counter),
   tag `0x17` map `0x00A3DC50` (0x0F, u32 JHashString(AchieveID), entry `0x00A1ED90`: i32 id, bool, i32,
-  time64), bool}, tag `0x10` vector of 13-byte blocks (`0x0076B0C0`, not recovered).
+  time64), bool}, tag `0x10` vector of 13-byte completion blocks (`0x0076B0C0` -> `0x00A1E7E0`:
+  u32 achievement hash + 9 unrecovered bytes).
+- `2444 eEGS_ACHIEVE_UPDATE_REQ` (sender `0x007992D0`): tag `0x10` vector of u32 achievement hashes
+  the client completed itself (hidden/group types) -> `2445` (u32 result, `0x0074B830`). Not yet
+  observed live.
 - `2446 eEGS_ACHIEVE_DIV_UPDATE_REQ` -> `2447` (u32 result): tag `0x17` map (0x0F, u32 division,
   i64 per-run amount), sent after a dungeon run. Type 0 achievements (`achieve.lua`) complete when the
   summed (Accumulate 1) or best single (Accumulate 0) amount reaches GoalAmount.
 - `2329 eEGS_ACHIEVE_CHANGE_NOT` (`0x0076C720`):
   3x Tag `0x17` map: real-time achievement progress updates (not sent yet).
 - `2330 eEGS_ACHIEVE_COMPLETE_NOT` (`0x0079D240`):
-  tag `0x10` vector of `0x00A1ED90` entries (printed by name via `0x00AABAB0`), tag `0x10` vector of
-  13-byte blocks (`0x00A1E7E0`, not recovered).
+  tag `0x10` vector of `0x00A1ED90` entries (applied to the achievement page), tag `0x10` vector of
+  13-byte completion blocks: the handler looks each first u32 up (`0x00AABAB0`) and prints the
+  completion message. All 37 `LoadRewardInfo` rewards are titles (RewardType 0); granting them is not
+  implemented (the owned-title list is not recovered; the 2007 vector `0x004B1A60` holds i64 values).
 - `2362 eEGS_AVATAR_ZAM_INSERT_REQ` -> `2363 eEGS_AVATAR_ZAM_INSERT_ACK` (`0x00782D00`):
   `avatar_item_uid: i64, zam_item_uid: i64` -> `result: i32 (0), items: tag 0x10 vector`.
 - `2364 eEGS_AVATAR_ZAM_ERASE_REQ` -> `2365 eEGS_AVATAR_ZAM_ERASE_ACK` (`0x00782F40`):

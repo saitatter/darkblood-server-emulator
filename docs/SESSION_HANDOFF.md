@@ -52,8 +52,16 @@ Read this first; it corrects two claims in the "Dungeon difficulty" section belo
   hand-written opcode tables in ROADMAP.md had wrong names and were replaced by a link.
   These fixes are headless-tested only.
 
+- Achievements follow-up: the completion message comes from 2330's second vector (13-byte blocks,
+  first u32 = hash), now sent; 2444 (client-detected completions, vector of u32) is accepted and
+  validated against all 448 entries in `assets/achievements.tsv`. Rewards are titles only; the
+  owned-title list is not recovered, so titles are not granted. Item dyes (weapon/gear) are not
+  persisted: the 2211 apply (`0x00515920`) only stores hair/skin on the player; items take the
+  ack's item vector, whose two 10-byte dye arrays (`0x00A4B250`) are reached through methods, so the
+  array meaning needs a live weapon-dye capture.
+
 Next targets: confirm the gate, character select, hotbar, town AR, EXP bar, chest names and
-achievement completion live. Then look at
+achievement completion live; then title ownership and item dye arrays. Then look at
 fields still sent as zero: item dyes, mapSingleReward `+0x00`/`+0x14..+0x1C`, the first
 5044 set, and the 2009 trailing map/set.
 
