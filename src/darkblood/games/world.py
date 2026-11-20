@@ -34,6 +34,10 @@ class WorldPlayer:
     y: float = 0.0
     z: float = 0.0
     angle: float = 0.0
+    # Set while the client loads the town after 2006. A JUser created by 5027
+    # during that load never gets a scene actor (0x00866C90 returned 0 live),
+    # so peers are sent to it only after its 5124 (sent once the town is up).
+    loading: bool = False
 
 
 class GameWorldManager:
@@ -127,6 +131,8 @@ class GameWorldManager:
                 continue
             if layer_id is not None and p.layer_id != layer_id:
                 continue
+            if p.loading:
+                continue
             if p and p.session and getattr(p.session, 'transport', None):
                 try:
                     await p.session.transport.send_event(ev, note=note)
@@ -140,7 +146,6 @@ class GameWorldManager:
         5027 instantiates the JUser entity (JNetUserMgr::SetPeerInfo_At via Reader 0x00A494B0).
         5096 updates the 3D model, visual equipment (0x00A52630), and guild name.
         """
-        from darkblood.games.config import OFFLINE_SERVER_ID
         from darkblood.games.handlers.frontend import build_char_details
         new_char = _town_character(new_player)
         new_p_data = dict(
@@ -153,7 +158,7 @@ class GameWorldManager:
             z=new_player.z,
             guild_uid=getattr(new_char, 'guild_uid', 0),
             guild_name=getattr(new_char, 'guild_name', '') or '',
-            server_bits=OFFLINE_SERVER_ID << 54,  # key in bits 54-58 (0x00A614A0)
+            server_bits=PEER_SERVER_BITS,
         )
 
         # 1. Notify others in square of newcomer
@@ -178,9 +183,22 @@ class GameWorldManager:
         )
 
         # 2. Send existing players in square to newcomer
+        await self.send_existing_players(new_player)
+
+    async def player_ready(self, session):
+        """5124 after a town load: the client can now show its peers."""
+        player = self.players.get(getattr(session, 'active_char_id', None))
+        if player is None or player.session is not session or not player.loading:
+            return
+        player.loading = False
+        await self.send_existing_players(player)
+
+    async def send_existing_players(self, new_player: WorldPlayer):
+        if new_player.loading:
+            return
         existing_players = []
         for existing in self.get_players_in_square(new_player.square_id, new_player.layer_id):
-            if existing.char_id == new_player.char_id:
+            if existing.char_id == new_player.char_id or existing.loading:
                 continue
             existing_players.append((existing, _town_character(existing)))
 
@@ -196,7 +214,7 @@ class GameWorldManager:
                     z=ep.z,
                     guild_uid=getattr(ec, 'guild_uid', 0),
                     guild_name=getattr(ec, 'guild_name', '') or '',
-                    server_bits=OFFLINE_SERVER_ID << 54,  # key in bits 54-58 (0x00A614A0)
+                    server_bits=PEER_SERVER_BITS,
                 )
                 for ep, ec in existing_players
             ]
@@ -466,6 +484,13 @@ class PartyManager:
                     await sess.transport.send_event(ev, note=note)
                 except Exception as e:
                     logger.debug("Failed party broadcast to char %d: %s", cid, e)
+
+
+# Key in bits 54-58 of the peer's packed ID (0x00A614A0). 0x0087DBB0 omits
+# the "(server)" name suffix only when it equals the own JUser +0x100 key.
+# Live breakpoint at 0x0087DBF8 (2026-11-20): own +0x100 is
+# 0xFFFFFFFFFFFFFFFF, i.e. key 31; the previous key 1 showed "(Offline)".
+PEER_SERVER_BITS = 0x1F << 54
 
 
 def _town_character(player: 'WorldPlayer') -> Character:

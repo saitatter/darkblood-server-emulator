@@ -46,6 +46,9 @@ class WorldFlowTest(ServerTestCase):
             client.send_event(2006, struct.pack('<iq', 0x7fffffff, uid))
             await client.expect_event(2007)
             await client.expect_event(2410)
+            # The town has loaded (5124): peers already there are sent now.
+            client.send_event(5124, struct.pack('<i', 0x7fffffff))
+            await client.expect_event(5125)
             return uid
 
         async def scenario(first):
@@ -112,6 +115,9 @@ class WorldFlowTest(ServerTestCase):
             client1.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id1))
             await client1.expect_event(2007)
             await client1.expect_event(2410)
+            # The town has loaded (5124): peers already there are sent now.
+            client1.send_event(5124, struct.pack('<i', 0x7fffffff))
+            await client1.expect_event(5125)
 
             # Verify Client 1 is registered in GameWorldManager
             p1 = world.get_player(char_id1)
@@ -129,18 +135,21 @@ class WorldFlowTest(ServerTestCase):
                 client2.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id2))
                 await client2.expect_event(2007)
                 await client2.expect_event(2410)
+                # The town has loaded (5124): peers already there are sent now.
+                client2.send_event(5124, struct.pack('<i', 0x7fffffff))
+                await client2.expect_event(5125)
 
                 # Client 2 should receive Opcode 5027 (JOIN_LAYER_NOT) and 5096 (UPDATE_CHAR_INFO_NOT) for existing Client 1
                 _, layer_not_c2 = await client2.expect_event(5027)
                 self.assertIn('Warrior1'.encode('utf-16le'), layer_not_c2)
-                self.assertEqual(struct.unpack_from('<Q', layer_not_c2, len(layer_not_c2) - 10)[0] >> 54, 1)
+                self.assertEqual(struct.unpack_from('<Q', layer_not_c2, len(layer_not_c2) - 10)[0] >> 54, 0x1F)  # own JUser key is 31 (live)
                 _, spawn_for_c2 = await client2.expect_event(5096)
                 self.assertIn('Warrior1'.encode('utf-16le'), spawn_for_c2)
 
                 # Client 1 should receive Opcode 5027 (JOIN_LAYER_NOT) and 5096 (UPDATE_CHAR_INFO_NOT) for newcomer Client 2
                 _, layer_not_c1 = await client1.expect_event(5027)
                 self.assertIn('Mage2'.encode('utf-16le'), layer_not_c1)
-                self.assertEqual(struct.unpack_from('<Q', layer_not_c1, len(layer_not_c1) - 10)[0] >> 54, 1)
+                self.assertEqual(struct.unpack_from('<Q', layer_not_c1, len(layer_not_c1) - 10)[0] >> 54, 0x1F)
                 _, spawn_for_c1 = await client1.expect_event(5096)
                 self.assertIn('Mage2'.encode('utf-16le'), spawn_for_c1)
 
