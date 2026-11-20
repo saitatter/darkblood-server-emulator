@@ -417,18 +417,18 @@ class DungeonHandlers(BaseDomainService):
         # On revive (bDie = False), other_uid must match the reviving player UID (0x0055C354)
         # to execute the revival routine (0x00548D80).
         reviver_uid = char_uid if not req.bDie else 0
-        max_hp = req.max_hp if req.max_hp > 0 else 1000
-        cur_hp = req.cur_hp if req.bDie else max_hp
-
+        # nLayerID/nX/nY place the revived unit (0x0055BEF0). Echo the position
+        # the client reported; these fields were once sent as HP values, which
+        # revived the player far from where they died.
         ack = GameplayDieCharAck(
             result=0,
             char_uid=char_uid,
             other_uid=reviver_uid,
             bDie=req.bDie,
-            damage=req.damage,
-            cur_hp=cur_hp,
-            max_hp=max_hp,
-            die_count=self.die_count,
+            layer_id=req.layer_id,
+            x=req.x,
+            y=req.y,
+            party_rebirth_limit=self.die_count,  # previous value kept; meaning not recovered
             rebirth_coin=coins,
         ).encode()
         await self.transport.send_event(event(5094, ack, correlation),

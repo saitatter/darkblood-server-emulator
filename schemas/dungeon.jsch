@@ -161,12 +161,14 @@ message 2422 ActiveWarFlagReq header
 end
 
 message 5093 GameplayDieCharReq header?
-  ## Sender 0x0078EDF0; captures have both forms (21 or 25 bytes).
+  ## Sender 0x0078EDF0; captures have both forms (21 or 25 bytes). Client
+  ## assert text: GamePlayDieCharREQ( pjUnit->GetNetID(), false,
+  ## pjMyUserInfo->m_nLayerID, (int)m_vPosition.x, (int)m_vPosition.y ).
   i64 char_uid
   bool bDie = true
-  i32 damage
-  i32 cur_hp
-  i32 max_hp
+  i32 layer_id
+  i32 x                      # current position, truncated to int
+  i32 y
 end
 
 message 5094 GameplayDieCharAck
@@ -174,14 +176,18 @@ message 5094 GameplayDieCharAck
   ## (0x00946570); with bDie set and the own UID the handler opens page 0x6B
   ## through 0x008FC100(1). The rebirth coins are read only when bDie is 0 and
   ## char_uid is the own UID (the revive case).
+  ## Field names from the client's read assert: nFromCharUID >> nToCharUID >>
+  ## bDie >> nLayerID >> nX >> nY >> sCurPartyRebirthLimit (>> sRebirthCoin).
+  ## The handler converts nX/nY to float and passes them to 0x0055BEF0, which
+  ## places the revived unit, so they must carry a real position.
   u32 result
-  i64 char_uid
-  i64 other_uid              # meaning not recovered
+  i64 char_uid               # nFromCharUID
+  i64 other_uid              # nToCharUID
   bool bDie = true
-  h32 damage                 # meanings of the three u32 not recovered; echoed
-  h32 cur_hp
-  h32 max_hp
-  u16 die_count              # meaning not recovered
+  i32 layer_id
+  i32 x
+  i32 y
+  u16 party_rebirth_limit    # sCurPartyRebirthLimit; semantics not recovered
   if not bDie
   u16 rebirth_coin
   endif

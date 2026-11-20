@@ -67,7 +67,7 @@ class DungeonFlowTest(ServerTestCase):
             _, ack2407 = await client.expect_event(2407)
             self.assertEqual(struct.unpack_from('<i', ack2407)[0], 0)
 
-            # 8. Gameplay death (5093 -> 5094): live body is uid 0, die 1, 3 x u32.
+            # 8. Gameplay death (5093 -> 5094): live body is uid 0, die 1, nLayerID, nX, nY.
             client.send_event(5093, bytes.fromhex('000000000000000001000000000000000000000000'))
             _, ack5094 = await client.expect_event(5094)
             res, uid, other, bDie, a, b, c, cnt = struct.unpack_from('<Iqq?IIIH', ack5094)
@@ -75,10 +75,12 @@ class DungeonFlowTest(ServerTestCase):
             self.assertEqual(len(ack5094), 35)  # no coin u16 when bDie is set
 
             # 8b. Revive (bDie = 0) with 0x7FFFFFFF prefix spends one coin; trailing u16 = coins left.
-            client.send_event(5093, struct.pack('<i', 0x7fffffff) + struct.pack('<q?III', 0, False, 0, 0, 0))
+            # Body: uid, bDie, nLayerID, (int)x, (int)y; the ack must echo the position.
+            client.send_event(5093, struct.pack('<i', 0x7fffffff) + struct.pack('<q?iii', 0, False, 3, 1520, -264))
             _, ack5094 = await client.expect_event(5094)
-            res, uid, other, bDie = struct.unpack_from('<Iqq?', ack5094)
+            res, uid, other, bDie, layer, x, y = struct.unpack_from('<Iqq?iii', ack5094)
             self.assertEqual((res, uid, other, bDie), (0, 0, 0, False))
+            self.assertEqual((layer, x, y), (3, 1520, -264))
             self.assertEqual(struct.unpack_from('<?', ack5094, 20)[0], False)
             self.assertEqual(struct.unpack_from('<H', ack5094, 35)[0], 2)
             _, not2286_revive = await client.expect_event(2286)

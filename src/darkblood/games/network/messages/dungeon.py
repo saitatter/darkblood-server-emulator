@@ -481,19 +481,21 @@ class ActiveWarFlagReq:
 class GameplayDieCharReq:
     """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (request).
 
-    Sender 0x0078EDF0; captures have both forms (21 or 25 bytes).
+    Sender 0x0078EDF0; captures have both forms (21 or 25 bytes). Client
+    assert text: GamePlayDieCharREQ( pjUnit->GetNetID(), false,
+    pjMyUserInfo->m_nLayerID, (int)m_vPosition.x, (int)m_vPosition.y ).
     """
     OPCODE: ClassVar[int] = 5093
     header: int = REQUEST_HEADER
     char_uid: int = 0
     bDie: bool = True
-    damage: int = 0
-    cur_hp: int = 0
-    max_hp: int = 0
+    layer_id: int = 0
+    x: int = 0  # current position, truncated to int
+    y: int = 0
 
     def encode(self) -> bytes:
         b = bytearray()
-        b += struct.pack('<iq?iii', self.header, self.char_uid, self.bDie, self.damage, self.cur_hp, self.max_hp)
+        b += struct.pack('<iq?iii', self.header, self.char_uid, self.bDie, self.layer_id, self.x, self.y)
         return bytes(b)
 
     @classmethod
@@ -503,9 +505,9 @@ class GameplayDieCharReq:
         kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
         kw['char_uid'] = r.read_i64()
         kw['bDie'] = r.read_bool()
-        kw['damage'] = r.read_i32()
-        kw['cur_hp'] = r.read_i32()
-        kw['max_hp'] = r.read_i32()
+        kw['layer_id'] = r.read_i32()
+        kw['x'] = r.read_i32()
+        kw['y'] = r.read_i32()
         return cls(**kw)
 
 
@@ -517,21 +519,25 @@ class GameplayDieCharAck:
     (0x00946570); with bDie set and the own UID the handler opens page 0x6B
     through 0x008FC100(1). The rebirth coins are read only when bDie is 0 and
     char_uid is the own UID (the revive case).
+    Field names from the client's read assert: nFromCharUID >> nToCharUID >>
+    bDie >> nLayerID >> nX >> nY >> sCurPartyRebirthLimit (>> sRebirthCoin).
+    The handler converts nX/nY to float and passes them to 0x0055BEF0, which
+    places the revived unit, so they must carry a real position.
     """
     OPCODE: ClassVar[int] = 5094
     result: int = 0
-    char_uid: int = 0
-    other_uid: int = 0  # meaning not recovered
+    char_uid: int = 0  # nFromCharUID
+    other_uid: int = 0  # nToCharUID
     bDie: bool = True
-    damage: int = 0  # meanings of the three u32 not recovered; echoed
-    cur_hp: int = 0
-    max_hp: int = 0
-    die_count: int = 0  # meaning not recovered
+    layer_id: int = 0
+    x: int = 0
+    y: int = 0
+    party_rebirth_limit: int = 0  # sCurPartyRebirthLimit; semantics not recovered
     rebirth_coin: int = 0
 
     def encode(self) -> bytes:
         b = bytearray()
-        b += struct.pack('<Iqq?IIIH', self.result, self.char_uid, self.other_uid, self.bDie, self.damage & 0xFFFFFFFF, self.cur_hp & 0xFFFFFFFF, self.max_hp & 0xFFFFFFFF, self.die_count)
+        b += struct.pack('<Iqq?iiiH', self.result, self.char_uid, self.other_uid, self.bDie, self.layer_id, self.x, self.y, self.party_rebirth_limit)
         if not self.bDie:
             b += struct.pack('<H', self.rebirth_coin)
         return bytes(b)
@@ -544,10 +550,10 @@ class GameplayDieCharAck:
         kw['char_uid'] = r.read_i64()
         kw['other_uid'] = r.read_i64()
         kw['bDie'] = r.read_bool()
-        kw['damage'] = r.read_u32()
-        kw['cur_hp'] = r.read_u32()
-        kw['max_hp'] = r.read_u32()
-        kw['die_count'] = r.read_u16()
+        kw['layer_id'] = r.read_i32()
+        kw['x'] = r.read_i32()
+        kw['y'] = r.read_i32()
+        kw['party_rebirth_limit'] = r.read_u16()
         if not kw['bDie']:
             kw['rebirth_coin'] = r.read_u16()
         return cls(**kw)
