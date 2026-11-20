@@ -380,18 +380,35 @@ class SocialHandlers(BaseDomainService):
 
     async def on_2327(self, correlation, body):
         # eEGS_ACHIEVE_GET_LIST_REQ -> 2328 eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
-        from darkblood.games.network.messages import AchieveGetListAck
-        ack = AchieveGetListAck(result=0).encode()
-        await self.transport.send_event(event(2328, ack, correlation), note='achieve get list ack')
+        from darkblood.games import achievements
+        from darkblood.games.network.messages import AchieveEntry, AchieveGetListAck
+        char = self.current_char() or {}
+        entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char)]
+        ack = AchieveGetListAck(divisions=achievements.division_totals(char), completed=entries).encode()
+        await self.transport.send_event(event(2328, ack, correlation),
+                                        note=f'achieve get list ack ({len(entries)} completed)')
 
     async def on_2446(self, correlation, body):
-        # eEGS_ACHIEVE_DIV_UPDATE_REQ: tag 0x17 map of achievement progress
-        # (live: 17 84 0f 0e000000 05000000 00000000 ...; entry layout not
-        # recovered, recorded only) -> 2447 (0x0074B830 reads only the u32
-        # result).
+        # eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447
+        # (0x0074B830 reads only the u32 result), then 2330 for completions.
+        from darkblood.games import achievements
+        from darkblood.games.network.messages import AchieveCompleteNot, AchieveDivUpdateReq, AchieveEntry
         self.transport.record('achieve-div-update', body)
+        char = self.current_char()
+        completed = []
+        try:
+            report = AchieveDivUpdateReq.decode(body)
+        except (WireError, struct.error, IndexError):
+            report = None
+        if char is not None and report is not None:
+            completed = achievements.apply_division_report(char, report.amounts)
+            self.store().save()
         await self.transport.send_event(event(2447, struct.pack('<I', 0), correlation),
                                         note='achieve div update ack')
+        if completed:
+            entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
+            await self.transport.send_event(event(2330, AchieveCompleteNot(entries).encode()),
+                                            note='achievements completed: %s' % ', '.join(completed))
 
     async def on_5165(self, correlation, body):
         # eERC_ARENA_BACK_TO_SQUARE_REQ -> 5166 eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550).

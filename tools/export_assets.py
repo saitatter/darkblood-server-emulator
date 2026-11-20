@@ -151,6 +151,16 @@ def export_dungeon_maps():
     print(f"Exported {len(lines)-1} dungeon maps to {out.name}")
 
 
+def export_achievements():
+    """Counter achievements: AchieveID, division, goal, accumulate (2328/2330/2446)."""
+    lines = ['achieve_id\tdivision\tgoal\taccumulate']
+    for achieve_id, division, goal, accumulate in client_dict.achievements():
+        lines.append(f"{achieve_id}\t{division}\t{goal}\t{accumulate}")
+    out = ASSETS_DIR / 'achievements.tsv'
+    out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    print(f"Exported {len(lines)-1} achievements to {out.name}")
+
+
 def export_quests(root):
     quest_lines = ['quest_id\texp\tgold\tgp\toffer_group\treward_group\tselect_group']
     mission_lines = ['mission_id\tmission_type\ttarget_id\ttarget_value']
@@ -264,6 +274,7 @@ def main():
     export_map_gates()
     export_quests(root)
     export_dungeon_maps()
+    export_achievements()
     export_tutorial_rewards()
     export_cash_and_random_boxes()
     export_looting()

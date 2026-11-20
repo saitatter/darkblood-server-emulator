@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import struct
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import read_varuint, varuint, wide_string
+from darkblood.core.serialization.jser import WireError, read_varuint, strip_prefix, varuint, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Item
 
@@ -182,16 +182,69 @@ class AchieveGetListReq:
         return cls()
 
 @dataclass
+class AchieveEntry:
+    """Completed achievement, struct 0x00A1ED90: i32 id, bool, i32, time64.
+
+    The id is JHashString(AchieveID). The bool and second i32 are not
+    recovered (sent 0); the time is assumed to be Unix seconds.
+    """
+    achieve_hash: int
+    completed_at: int = 0
+
+    def encode(self) -> bytes:
+        return struct.pack('<I?iq', self.achieve_hash & 0xFFFFFFFF, False, 0, self.completed_at)
+
+
+@dataclass
 class AchieveGetListAck:
-    """Opcode 2328: eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650)."""
+    """Opcode 2328: eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
+
+    u32 result, struct 0x00A3E760 (tag 0x1E, not on the wire):
+      tag 0x17 map 0x005EC140: 0x0F, u32 division, i64 counter
+      tag 0x17 map 0x00A3DC50: 0x0F, u32 achieve hash, AchieveEntry
+      bool (not recovered, sent 0)
+    then tag 0x10 vector 0x0076B0C0 of 13-byte blocks (not recovered, empty).
+    The old stub put a stray 0x0A byte before the bool.
+    """
     result: int = 0
+    divisions: dict = field(default_factory=dict)  # {division: counter}
+    completed: list = field(default_factory=list)  # [AchieveEntry]
 
     def encode(self) -> bytes:
         if self.result != 0:
             return struct.pack('<i', self.result)
-        # result (u32) + Tag 0x1E + Tag 0x17 (map) + Tag 0x17 (map) + Tag 0x0A (bool) + Tag 0x10 (vector)
+        divs = b''.join(b'\x0f' + struct.pack('<Iq', d, v) for d, v in sorted(self.divisions.items()))
+        done = b''.join(b'\x0f' + struct.pack('<I', e.achieve_hash & 0xFFFFFFFF) + e.encode()
+                        for e in self.completed)
         return (struct.pack('<i', self.result)
-                + b'\x17\x80\x17\x80\x0a\x00\x10\x80')
+                + b'\x17' + varuint(len(self.divisions)) + divs
+                + b'\x17' + varuint(len(self.completed)) + done
+                + b'\x00' + b'\x10' + varuint(0))
+
+
+@dataclass
+class AchieveDivUpdateReq:
+    """Opcode 2446: eEGS_ACHIEVE_DIV_UPDATE_REQ, sent after a dungeon run.
+
+    tag 0x17 map: 0x0F, u32 division, i64 amount. Live values go up and down
+    between runs (division 24: 192, 194, 70, ...), so they are per-run deltas.
+    """
+    amounts: dict = field(default_factory=dict)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AchieveDivUpdateReq':
+        data = strip_prefix(data)
+        if not data or data[0] != 0x17:
+            raise WireError('2446 without a map tag')
+        count, offset = read_varuint(data, 1)
+        amounts = {}
+        for _ in range(count):
+            if data[offset] != 0x0F:
+                raise WireError('2446 entry without a pair tag')
+            division, amount = struct.unpack_from('<Iq', data, offset + 1)
+            amounts[division] = amount
+            offset += 13
+        return cls(amounts)
 
 @dataclass
 class AchieveChangeNot:
@@ -202,10 +255,17 @@ class AchieveChangeNot:
 
 @dataclass
 class AchieveCompleteNot:
-    """Opcode 2330: eEGS_ACHIEVE_COMPLETE_NOT (0x0079D240)."""
+    """Opcode 2330: eEGS_ACHIEVE_COMPLETE_NOT (0x0079D240).
+
+    tag 0x10 vector of AchieveEntry (0x0076EA70 -> 0x00A1ED90); the handler
+    looks each id up (0x00AABAB0) and prints the completion message. Then a
+    tag 0x10 vector of 13-byte blocks (0x00A1E7E0, not recovered, empty).
+    """
+    entries: list = field(default_factory=list)
+
     def encode(self) -> bytes:
-        # Tag 0x10 (vector) + Tag 0x10 (vector)
-        return b'\x10\x80\x10\x80'
+        return (b'\x10' + varuint(len(self.entries)) + b''.join(e.encode() for e in self.entries)
+                + b'\x10' + varuint(0))
 
 
 # =========================================================================
