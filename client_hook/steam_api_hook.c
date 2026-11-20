@@ -355,14 +355,16 @@ LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
      * Lua_DoLoadCurrentMap -> FUN_0059C0A0 looks the current map up with
      * FUN_008BE570, which returns NULL once the shim has reset the local user
      * (live 2026-11-21: Player2 died at 0x0059C161 right after
-     * ChangeState(eAS_Lobby)). Both users, mov ebp/ebx,[eax+0xF8/0xFC], then
-     * see zeros and take the early return. Only these two verified sites. */
+     * ChangeState(eAS_Lobby)). Feeding a zero buffer did not lead to an early
+     * return: the zero sizes reached `call 0x007F9330` with ecx=0 at
+     * 0x0059C2C0 (live 2026-11-21). Resume at the function's own epilogue
+     * 0x0059C2F4 instead; the jle at 0x0059C18E jumps there at the same stack
+     * depth (no push between 0x0059C161 and it). Only these two verified sites. */
     if (code == EXCEPTION_ACCESS_VIOLATION && !g_inSafeRead &&
         (addr == (BYTE*)0x0059C161 || addr == (BYTE*)0x0059C173) &&
         pExceptionInfo->ContextRecord->Eax == 0 && addr[0] == 0x8B && (addr[2] == 0xF8 || addr[2] == 0xFC)) {
-        static BYTE zeros[0x400];
-        pExceptionInfo->ContextRecord->Eax = (DWORD)zeros;
-        RawLogFmt("[RECOVER] world-map null lookup at %p skipped", addr);
+        pExceptionInfo->ContextRecord->Eip = 0x0059C2F4;
+        RawLogFmt("[RECOVER] world-map null lookup at %p: map refresh skipped", addr);
         return EXCEPTION_CONTINUE_EXECUTION;
     }
 
@@ -377,7 +379,7 @@ LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
     if (code == EXCEPTION_ACCESS_VIOLATION && !g_inSafeRead && addr == (BYTE*)0x0076F98D &&
         pExceptionInfo->ContextRecord->Edi == 0 && addr[0] == 0x8B && addr[1] == 0x07) {
         pExceptionInfo->ContextRecord->Eip = 0x0076FA74;
-        RawLog("[RECOVER] stale peer model lookup at 0076F98D skipped");
+        { static LONG hits; if (InterlockedIncrement(&hits) <= 3) RawLog("[RECOVER] stale peer model lookup at 0076F98D skipped"); }
         return EXCEPTION_CONTINUE_EXECUTION;
     }
 
