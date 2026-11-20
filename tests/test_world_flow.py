@@ -77,7 +77,9 @@ class WorldFlowTest(ServerTestCase):
                 for client, uid in ((first, b), (second, a)):
                     _, joined = await client.expect_event(5027)
                     self.assertEqual(struct.unpack_from('<q', joined, 2)[0], uid)
-                    await client.expect_event(5096)
+                    _, details = await client.expect_event(5096)
+                    # The peer's details carry the layer both are now on.
+                    self.assertIn(struct.pack('<Q', new_layer), details)
 
                 second.send_event(5028, struct.pack('<iQ', 0x7fffffff, 1))
                 await second.expect_event(5029)

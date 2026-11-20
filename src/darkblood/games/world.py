@@ -64,6 +64,10 @@ class GameWorldManager:
             char_data=char_data,
             square_id=square_id
         )
+        # The client enters town on the layer from 2007/5046, i.e. the stored one.
+        stored_layer = (char_data or {}).get('join_layer_net_id')
+        if stored_layer is not None:
+            player.layer_id = stored_layer
         self.players[char_id] = player
         self._add_presence(player)
         party = PartyManager.get().get_player_party(char_id)
@@ -138,7 +142,7 @@ class GameWorldManager:
         """
         from darkblood.games.config import OFFLINE_SERVER_ID
         from darkblood.games.handlers.frontend import build_char_details
-        new_char = Character.from_dict(new_player.char_data)
+        new_char = _town_character(new_player)
         new_p_data = dict(
             char_id=new_player.char_id,
             name=new_char.name,
@@ -178,7 +182,7 @@ class GameWorldManager:
         for existing in self.get_players_in_square(new_player.square_id, new_player.layer_id):
             if existing.char_id == new_player.char_id:
                 continue
-            existing_players.append((existing, Character.from_dict(existing.char_data)))
+            existing_players.append((existing, _town_character(existing)))
 
         if existing_players:
             ex_data_list = [
@@ -216,7 +220,7 @@ class GameWorldManager:
 
     async def broadcast_user_join(self, player: WorldPlayer):
         """Broadcast Opcode 5021 (eERC_USER_JOIN_SQUARE_NOT) to square occupants."""
-        c = Character.from_dict(player.char_data) if player.char_data else None
+        c = _town_character(player) if player.char_data else None
         join_not = UserJoinSquareNot(
             char_id=player.char_id,
             square_id=player.square_id,
@@ -462,3 +466,16 @@ class PartyManager:
                     await sess.transport.send_event(ev, note=note)
                 except Exception as e:
                     logger.debug("Failed party broadcast to char %d: %s", cid, e)
+
+
+def _town_character(player: 'WorldPlayer') -> Character:
+    """Character details for peers, carrying the player's current town layer.
+
+    The details (0x00A52630) include nJoinLayerNetID (+0x5F). It used to
+    carry the stored default layer, so after a 5030 layer change the peer's
+    JUser reported a different layer than the viewer and stayed hidden.
+    """
+    char = Character.from_dict(player.char_data)
+    if player.layer_id is not None:
+        char.join_layer_net_id = player.layer_id
+    return char
