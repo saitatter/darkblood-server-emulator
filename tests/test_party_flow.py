@@ -232,8 +232,13 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 self.assertNotEqual(PartyJoinAck.decode(rejection).result, 0)
                 self.assertEqual(set(party.members), {char_id1, char_id2})
 
-                # 3. Leader invites Client 3 via Opcode 5049 (eERC_INVITE_REQ)
-                client1.send_event(5049, PartyInviteReq(target_uid=char_id3).encode())
+                # 3. Leader invites Client 3 by nickname via Opcode 5092
+                # (eERC_INVITE_USE_NICK_REQ, prefix + J-wstring); the result is a 5050.
+                # J-wstring length is a byte-count varint (bit 7 ends it): 6 -> 0x86.
+                client1.send_event(5092, bytes.fromhex('ffffff7f') + bytes([0x86]) + 'Hero3'[:3].encode('utf-16le'))
+                _, unknown = await client1.expect_event(5050)
+                self.assertNotEqual(PartyInviteAck.decode(unknown).result, 0)  # "Her" is no character
+                client1.send_event(5092, bytes.fromhex('ffffff7f') + bytes([0x8a]) + 'Hero3'.encode('utf-16le'))
                 _, ack5050 = await client1.expect_event(5050)
                 inv_ack5050 = PartyInviteAck.decode(ack5050)
                 self.assertEqual(inv_ack5050.result, 0)

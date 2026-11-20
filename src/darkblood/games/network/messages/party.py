@@ -83,6 +83,22 @@ class UserLeaveSquareNot:
 # =========================================================================
 
 @dataclass
+class InviteUseNickReq:
+    """Opcode 5092: eERC_INVITE_USE_NICK_REQ (sender 0x007ABAA0).
+
+    Body: ffffff7f prefix + J-wstring nickname (live: ffffff7f 8a 4d00610067006500 3100
+    -> "Mage1"). The sender waits for no reply; the result reuses 5050.
+    """
+    name: str = ''
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'InviteUseNickReq':
+        data = strip_prefix(data)
+        length, offset = read_varuint(data, 0)
+        return cls(data[offset:offset + length].decode('utf-16le'))
+
+
+@dataclass
 class PartyInviteReq:
     """Opcode 2100 / 5049: eEGS_PARTY_INVITE_REQ / eERC_INVITE_REQ.
 

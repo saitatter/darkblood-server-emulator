@@ -254,6 +254,12 @@ class DungeonHandlers(BaseDomainService):
         except (struct.error, ValueError):
             pass
 
+    async def on_2204(self, correlation, body):
+        # eEGS_FRAME_STAT_NOT: client frame-rate telemetry sent after dungeon
+        # results (live: ffffff7f 3a f9010000, the u32 varies per run). The
+        # opcode has no ACK; recorded only so it no longer shows as unhandled.
+        self.transport.record('frame-stat', body)
+
     async def on_2358(self, correlation, body):
         # eEGS_GUIDE_BEGINNER_UPDATE_REQ (sender 0x79A3B0): ffffff7f + vector<u32> guide_ids.
         try:

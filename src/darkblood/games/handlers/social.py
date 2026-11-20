@@ -1,6 +1,6 @@
 import struct
 
-from darkblood.core.serialization.jser import event
+from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck, PostListAck
 
@@ -448,62 +448,55 @@ class SocialHandlers(BaseDomainService):
     async def on_2100(self, correlation, body):
         """Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK).
 
-        Client handler: 0x00758700.
-        Invites target player to co-op party.
+        Client handler: 0x00758700. Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteReq
-        from darkblood.games.world import PartyManager
+        from darkblood.games.network.messages.party import PartyInviteReq
         req = PartyInviteReq.decode(body)
-        char = self.current_char()
-        char_id = char.get('id', 0) if char else self.session.active_char_id or 0
-        char_name = char.get('name', 'Leader') if char else 'Leader'
-        char_class = char.get('char_class', 0) if char else 0
-        level = char.get('level', 1) if char else 1
-
-        target_id = req.target_uid
-        if not target_id and req.target_name:
-            target = next((c for _, c in self.store().all_characters()
-                           if c.get('name', '').lower() == req.target_name.lower()), None)
-            if target:
-                target_id = target.get('id', 0)
-
-        pm = PartyManager.get()
-        res, _ = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
-        ack = PartyInviteAck(result=res, target_uid=target_id).encode()
-        await self.transport.send_event(event(2101, ack, correlation),
-                                        note=f'party invite ack (res={res} target={target_id})')
-
-        if res == 0 and target_id:
-            await self._send_party_invite_notice(char_id, char_name, target_id)
+        await self._invite_to_party(2101, correlation, req.target_uid, req.target_name)
 
     async def on_5049(self, correlation, body):
         """Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK).
 
-        Client handler: 0x00758700.
-        Invites target player to co-op party.
+        Client handler: 0x00758700. Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import PartyInviteAck, PartyInviteReq
-        from darkblood.games.world import PartyManager
+        from darkblood.games.network.messages.party import PartyInviteReq
         req = PartyInviteReq.decode(body)
+        await self._invite_to_party(5050, correlation, req.target_uid, req.target_name)
+
+    async def on_5092(self, correlation, body):
+        """Opcode 5092 (eERC_INVITE_USE_NICK_REQ): party invite by nickname.
+
+        The sender (0x007ABAA0) waits for no dedicated ack; the result goes
+        out as 5050, like a 5049 invite.
+        """
+        from darkblood.games.network.messages.party import InviteUseNickReq
+        try:
+            req = InviteUseNickReq.decode(body)
+        except (WireError, UnicodeDecodeError):
+            self.transport.record('bad-invite-nick', body)
+            return
+        await self._invite_to_party(5050, correlation, 0, req.name)
+
+    async def _invite_to_party(self, ack_opcode, correlation, target_id, target_name):
+        """Shared invite path for 2100, 5049 and 5092 (target by id or name)."""
+        from darkblood.games.network.messages.party import PartyInviteAck
+        from darkblood.games.world import PartyManager
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         char_name = char.get('name', 'Leader') if char else 'Leader'
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
 
-        target_id = req.target_uid
-        if not target_id and req.target_name:
+        if not target_id and target_name:
             target = next((c for _, c in self.store().all_characters()
-                           if c.get('name', '').lower() == req.target_name.lower()), None)
+                           if c.get('name', '').lower() == target_name.lower()), None)
             if target:
                 target_id = target.get('id', 0)
 
-        pm = PartyManager.get()
-        res, _ = pm.invite_player(char_id, target_id, char_name, char_class, level, session=self)
+        res, _ = PartyManager.get().invite_player(char_id, target_id, char_name, char_class, level, session=self)
         ack = PartyInviteAck(result=res, target_uid=target_id).encode()
-        await self.transport.send_event(event(5050, ack, correlation),
+        await self.transport.send_event(event(ack_opcode, ack, correlation),
                                         note=f'party invite ack (res={res} target={target_id})')
-
         if res == 0 and target_id:
             await self._send_party_invite_notice(char_id, char_name, target_id)
 
