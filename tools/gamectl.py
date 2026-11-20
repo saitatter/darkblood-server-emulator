@@ -121,7 +121,7 @@ def start(server_only=False, client_only=False):
         log = open(LOGS / 'server.log', 'w')
         server = subprocess.Popen([sys.executable, '-u', str(ROOT / 'run_server.py')],
                                   cwd=str(ROOT), stdout=log, stderr=subprocess.STDOUT,
-                                  creationflags=subprocess.CREATE_NO_WINDOW)
+                                  creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS)
         state['server_pid'] = server.pid
         for _ in range(50):
             if not _port_free():
