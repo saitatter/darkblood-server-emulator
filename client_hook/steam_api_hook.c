@@ -351,6 +351,21 @@ LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo) {
         }
     }
 
+    /* World-map page refresh after a reconnect: JAppPageGameWorldMap ->
+     * Lua_DoLoadCurrentMap -> FUN_0059C0A0 looks the current map up with
+     * FUN_008BE570, which returns NULL once the shim has reset the local user
+     * (live 2026-11-21: Player2 died at 0x0059C161 right after
+     * ChangeState(eAS_Lobby)). Both users, mov ebp/ebx,[eax+0xF8/0xFC], then
+     * see zeros and take the early return. Only these two verified sites. */
+    if (code == EXCEPTION_ACCESS_VIOLATION && !g_inSafeRead &&
+        (addr == (BYTE*)0x0059C161 || addr == (BYTE*)0x0059C173) &&
+        pExceptionInfo->ContextRecord->Eax == 0 && addr[0] == 0x8B && (addr[2] == 0xF8 || addr[2] == 0xFC)) {
+        static BYTE zeros[0x400];
+        pExceptionInfo->ContextRecord->Eax = (DWORD)zeros;
+        RawLogFmt("[RECOVER] world-map null lookup at %p skipped", addr);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
     if((code==EXCEPTION_ACCESS_VIOLATION || code==EXCEPTION_ILLEGAL_INSTRUCTION) && !g_inSafeRead) {
         CONTEXT* c=pExceptionInfo->ContextRecord;
         RawLogFmt("[EXCEPTION] code=%X eip=%p eax=%p ecx=%p edx=%p esp=%p ebp=%p",code,c->Eip,c->Eax,c->Ecx,c->Edx,c->Esp,c->Ebp);
@@ -730,6 +745,74 @@ static void ResetLocalUserUid(void) {
     ((volatile DWORD*)(user + 0x10))[1] = 0xFFFFFFFF;
 }
 
+/* Remote JUsers from the lost session stay in the user manager's category-4
+ * map (manager +0x9C, map getter 0x00965A80, std::map head at map +4, node
+ * key i64 at +0x10, isnil byte at +0x21). After the Lobby fade, 0x007850F0
+ * walks that map and calls 0x0076F900 for every non-local entry; its model
+ * lookup returns NULL and the client crashed at 0x0076F98D (live 2026-11-21,
+ * the client that still saw the other player). Remove them with the client's
+ * own 5039 (eERC_LEAVE_LAYER_NOT) path: 0x009662E0, thiscall (i64 uid), ret 8. */
+static void __stdcall RemoveUser(DWORD lo, DWORD hi) {
+    __asm {
+        mov eax, 0x0043A180
+        call eax                 /* user manager singleton */
+        mov ecx, eax
+        push hi
+        push lo
+        mov eax, 0x009662E0
+        call eax
+    }
+}
+
+static void ForgetRemoteUsers(void) {
+    DWORD holder = 0, self = 0, selfUid[2] = {0, 0}, map = 0, head = 0, node = 0;
+    DWORD uids[64][2];
+    int count = 0, steps = 0, i;
+    BYTE nil = 1;
+    if (SafeRead(NETUSERMGR + 0x78, &holder, 4) && holder && SafeRead(holder, &self, 4) && self)
+        SafeRead(self + 0x10, selfUid, 8);
+    {
+        DWORD category = 4, mgr;
+        __asm {
+            mov eax, 0x0043A180
+            call eax
+            mov mgr, eax
+        }
+        mgr += 0x9C;
+        __asm {
+            lea eax, category
+            push eax
+            mov ecx, mgr
+            mov eax, 0x00965A80
+            call eax
+            mov map, eax
+        }
+    }
+    if (!map || !SafeRead(map + 4, &head, 4) || !head || !SafeRead(head, &node, 4)) return;
+    /* In-order walk from the leftmost node (head->left), as 0x007850F0 does. */
+    while (node && node != head && count < 64 && steps++ < 1024) {
+        DWORD key[2], next = 0, left = 0, parent = 0;
+        if (!SafeRead(node + 0x21, &nil, 1) || nil) break;
+        if (!SafeRead(node + 0x10, key, 8)) break;
+        if (key[0] != selfUid[0] || key[1] != selfUid[1]) { uids[count][0] = key[0]; uids[count][1] = key[1]; count++; }
+        if (!SafeRead(node + 8, &next, 4)) break;
+        if (SafeRead(next + 0x21, &nil, 1) && !nil) {
+            while (SafeRead(next, &left, 4) && SafeRead(left + 0x21, &nil, 1) && !nil) next = left;
+            node = next;
+        } else {
+            DWORD right = 0;
+            if (!SafeRead(node + 4, &parent, 4)) break;
+            while (SafeRead(parent + 0x21, &nil, 1) && !nil && SafeRead(parent + 8, &right, 4) && right == node) {
+                node = parent;
+                if (!SafeRead(node + 4, &parent, 4)) break;
+            }
+            node = parent;
+        }
+    }
+    for (i = 0; i < count; i++) RemoveUser(uids[i][0], uids[i][1]);
+    RawLogFmt("[RECONNECT] removed %d remote user(s) from the user map", count);
+}
+
 static int __cdecl ReturnToLobbyIfDisconnected(void) {
     volatile BYTE* flags = (volatile BYTE*)LOGIN_FLAGS;
     if (*(volatile BYTE*)DISCONNECT_SHOWN != 1) return 0;
@@ -752,6 +835,7 @@ static int __cdecl ReturnToLobbyIfDisconnected(void) {
         RawLog("[RECONNECT] server unreachable; disconnect box reopened");
         return 1;
     }
+    ForgetRemoteUsers();
     ResetLocalUserUid();
     FadeToLobby();
     RawLog("[RECONNECT] ChangeState(eAS_Lobby)");

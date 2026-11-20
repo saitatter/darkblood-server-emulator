@@ -646,6 +646,17 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   Looting: the checkbox handler 0x0054F86C sends 1 when the box was unchecked; 5089 stores
   (v != 1) at +0xB4 and 0x0054F910 checks control 4 when +0xB4 == 1, so the echo unchecked it.
   The ack now sends the inverse and only the host may change it. Headless-tested; live pending.
+- **Reconnect crash (live 2026-11-21)**: after a server restart, the client that still saw the
+  other player crashed at 0x0076F98D right after `ChangeState(eAS_Lobby)`. 0x007850F0 walks the
+  user manager's category-4 map (manager +0x9C, getter 0x00965A80) and calls 0x0076F900 for every
+  non-local JUser; the stale peer's model lookup returns NULL. The shim now removes remote users
+  with the client's own 5039 path (0x009662E0, i64 uid) before resetting the local UID
+  (`ForgetRemoteUsers`). The other client had already died at 0x0059C161 in an earlier run; the
+  `[RECOVER]` world-map skip for that site is committed with it. Built, not yet live-tested.
+- **Max users always 4 (open)**: the user picked 2 and 3 and 5011 still carried 4. The caller reads
+  control 2 with 0x00AF54C0 = selected item's `_combo_value` (0x00AD6710); the fill loop at
+  0x0063BD5C labels items 2..4 via code outside the dump (0x600F7E10). `research/client/bp.txt`
+  now traces the index (0x00AF54C8) and the value (0x0063BA77) for the next live check.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.
