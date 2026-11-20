@@ -628,3 +628,14 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - Decline: no refuse opcode for party exists in `assets/opcodes.tsv` (only duel 5112 and guild
   2218/6019) and no packet reached the server after clicking it. The popup handler 0x007706E0
   was not traced further. Pending invitations are therefore never cleared on decline.
+
+## Party name edit, looting buttons, popup findings — 2026-11-21
+- 5011 (party name edit) was unhandled and the client froze waiting for 5012 (u32 result +
+  RoomInfo, handler 0x00584160). Now answered; only the room host may rename.
+- 5088 looting buttons (one bool) were unhandled. 5089 ack is one bool (handler 0x00588B50) and is
+  also sent to the other members. What true/false mean (random vs free) is unverified; the value is
+  stored in `DungeonRoom.loot_mode` only, there is no drop-distribution logic yet.
+- Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
+- Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
+  with room UID 1 (not 5054); 5051 room UID fields still need decoding.
+- Shim logs are per account now (`hook_log.<account>.txt`) to debug the relogin client exit.

@@ -1103,7 +1103,12 @@ __declspec(dllexport) void* g_pSteamClientGameServer = NULL;
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
     if (fdwReason == DLL_PROCESS_ATTACH) {
-        g_hLog = CreateFileA("hook_log.txt", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        /* One log per window: with several clients the shared hook_log.txt was
+         * overwritten by every process (multibox). DARKBLOOD_ACCOUNT names it. */
+        char logName[96] = "hook_log.txt", acc[48];
+        if (GetEnvironmentVariableA("DARKBLOOD_ACCOUNT", acc, sizeof(acc)) && acc[0] && acc[0] != ' ')
+            wsprintfA(logName, "hook_log.%s.txt", acc);
+        g_hLog = CreateFileA(logName, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
         RawLog("=== Dark Blood offline research shim ===");
         AddVectoredExceptionHandler(1, VectoredHandler);
         /* Do not patch kernel32/ntdll: cutting a five-byte prologue can split

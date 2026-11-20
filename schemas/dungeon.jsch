@@ -351,3 +351,28 @@ message 5048 RequestJoinRoomAck ok_only
   i64 room_uid
   RoomMemberInfo requester = RoomMemberInfo()
 end
+
+message 5011 ChangeRoomInfoReq header?
+  ## Party name edit. Sender 0x00597970, writer 0x00A492F0. Live 2026-11-21:
+  ## i64 room UID, J-wstring title, then unset struct fields (uninitialised stack).
+  i64 room_uid
+  wstr name
+end
+
+message 5012 ChangeRoomInfoAck ok_only
+  ## Handler 0x00584160: u32 result (0 = ok), then the room info (0x00A49380).
+  ## The client waits for it with input locked, so a missing reply froze it.
+  u32 result
+  RoomInfo room = RoomInfo()
+end
+
+message 5088 ChangeItemObtainReq header?
+  ## Looting mode button. Sender 0x0058B380 (0x13E0): one bool.
+  bool mode
+end
+
+message 5089 ChangeItemObtainAck
+  ## Handler 0x00588B50 (dispatch 0x0059D970 case 0x13E1): one bool; the page
+  ## stores (value != 1) at +0xB4 and refreshes the party panel.
+  bool mode
+end

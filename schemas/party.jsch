@@ -38,9 +38,12 @@ end
 
 message 5049 PartyInviteReq header?
   ## Senders 0x0058B7F0 and 0x007AB8A0: 0x00B353D0, 0x00B35630, 0x00B353D0.
-  i64 target_uid
+  ## Live 2026-11-21: the first i64 is the target's square UID (key 31 | square id,
+  ## 0x07C0000000000001); the last is the target character id (2 for Warrior1), as in
+  ## Lua_OnBtn_Party_Accept (nSquareUID, nCharUID). Using the first made every invite fail.
+  i64 target_square_uid
   bool _                     # meaning unknown
-  i64 _                      # meaning unknown
+  i64 target_uid
 end
 
 message 5050 PartyInviteAck

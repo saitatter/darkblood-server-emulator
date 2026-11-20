@@ -416,7 +416,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', ack_fat), (0,))
 
     def test_party_and_team_messages(self):
-        req_pi = messages.PartyInviteReq.decode(struct.pack('<q?q', 5555, False, 0))
+        # Live capture: square UID (key 31 | 1), bool, target character id.
+        req_pi = messages.PartyInviteReq.decode(struct.pack('<q?q', 0x07C0000000000001, False, 5555))
         self.assertEqual(req_pi.target_uid, 5555)
         ack_pi = messages.PartyInviteAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_pi), (0,))

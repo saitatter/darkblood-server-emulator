@@ -126,13 +126,12 @@ class PartyInviteReq:
     """Opcode 5049: eERC_INVITE_REQ (request).
 
     Senders 0x0058B7F0 and 0x007AB8A0: 0x00B353D0, 0x00B35630, 0x00B353D0.
+    Live 2026-11-21: the first i64 is the target's square UID (key 31 | square id,
+    0x07C0000000000001); the last is the target character id (2 for Warrior1), as in
+    Lua_OnBtn_Party_Accept (nSquareUID, nCharUID). Using the first made every invite fail.
     """
     OPCODE: ClassVar[int] = 5049
     header: int = REQUEST_HEADER
-    # Live 2026-11-21: the first i64 is the target's *square* UID (key 31 | square id,
-    # 0x07C0000000000001) and the last i64 is the target character id (2 for
-    # Warrior1), mirroring 5054 (square UID, then UID). Using the first one made
-    # every invite target the square id and fail with result 1.
     target_square_uid: int = 0
     target_uid: int = 0
 

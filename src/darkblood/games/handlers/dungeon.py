@@ -9,6 +9,10 @@ from darkblood.games.entities.character import Character
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
     ChangeDungeonLayerNot,
+    ChangeItemObtainAck,
+    ChangeItemObtainReq,
+    ChangeRoomInfoAck,
+    ChangeRoomInfoReq,
     ChangeMapCodeAck,
     ChangeTeamAck,
     ChangeTeamReq,
@@ -54,6 +58,7 @@ class DungeonRoom:
     host: object
     members: dict = field(default_factory=dict)
     started: bool = False
+    loot_mode: bool = False  # 5088 looting button value (meaning of true/false unverified)
 
 
 class DungeonHandlers(BaseDomainService):
@@ -118,6 +123,46 @@ class DungeonHandlers(BaseDomainService):
             name=record.get('name', ''),
             char_class=int(record.get('char_class', 0)) & 0xFF,
             level=min(int(record.get('level', 1)), 0xFF))
+
+    async def on_5011(self, correlation, body):
+        # eERC_CHANGE_ROOMINFO_REQ (party name edit) -> 5012. The client locks input
+        # until the ack arrives; without it the window froze (live 2026-11-21).
+        try:
+            req = ChangeRoomInfoReq.decode(body)
+        except (WireError, struct.error):
+            await self.transport.send_event(event(5012, ChangeRoomInfoAck(result=results.INVALID_STATE).encode(),
+                                                  correlation), note='change room info refused (bad request)')
+            return
+        room = self.room
+        if room is None or room.host is not self.session:
+            await self.transport.send_event(event(5012, ChangeRoomInfoAck(result=results.INVALID_STATE).encode(),
+                                                  correlation), note='change room info refused (not host)')
+            return
+        room.info.name = req.name
+        ack = ChangeRoomInfoAck(result=0, room=self._room_info(room))
+        await self.transport.send_event(event(5012, ack.encode(), correlation),
+                                        note='change room info ack (%s)' % req.name)
+
+    async def on_5088(self, correlation, body):
+        # eERC_CHANGE_ITEM_OBTAIN_REQ (random / free looting buttons) -> 5089 (one bool).
+        try:
+            mode = ChangeItemObtainReq.decode(body).mode
+        except (WireError, struct.error):
+            return
+        room = self.room
+        if room is not None:
+            room.loot_mode = mode
+        ack = event(5089, ChangeItemObtainAck(mode=mode).encode(), correlation)
+        await self.transport.send_event(ack, note='change item obtain ack (%s)' % mode)
+        if room is not None:
+            for member in list(room.members):
+                if member is self.session:
+                    continue
+                try:
+                    await member.transport.send_event(event(5089, ChangeItemObtainAck(mode=mode).encode()),
+                                                      note='change item obtain (member sync)')
+                except (ConnectionError, OSError):
+                    pass
 
     async def on_5047(self, correlation, body):
         # eERC_REQUEST_JOIN_ROOM_REQ (View party info "Join"). The request goes

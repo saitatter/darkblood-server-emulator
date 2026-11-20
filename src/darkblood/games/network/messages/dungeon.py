@@ -45,6 +45,10 @@ __all__ = [
     'RoomMemInfoAck',
     'RequestJoinRoomReq',
     'RequestJoinRoomAck',
+    'ChangeRoomInfoReq',
+    'ChangeRoomInfoAck',
+    'ChangeItemObtainReq',
+    'ChangeItemObtainAck',
 ]
 
 
@@ -1052,4 +1056,109 @@ class RequestJoinRoomAck:
             return cls(**kw)
         kw['room_uid'] = r.read_i64()
         kw['requester'] = RoomMemberInfo.read(r)
+        return cls(**kw)
+
+
+@dataclass
+class ChangeRoomInfoReq:
+    """Opcode 5011: eERC_CHANGE_ROOMINFO_REQ (request).
+
+    Party name edit. Sender 0x00597970, writer 0x00A492F0. Live 2026-11-21:
+    i64 room UID, J-wstring title, then unset struct fields (uninitialised stack).
+    """
+    OPCODE: ClassVar[int] = 5011
+    header: int = REQUEST_HEADER
+    room_uid: int = 0
+    name: str = ''
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<iq', self.header, self.room_uid)
+        b += wide_string(self.name)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeRoomInfoReq':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['room_uid'] = r.read_i64()
+        kw['name'] = r.read_wstring()
+        return cls(**kw)
+
+
+@dataclass
+class ChangeRoomInfoAck:
+    """Opcode 5012: eERC_CHANGE_ROOMINFO_ACK (reply).
+
+    Handler 0x00584160: u32 result (0 = ok), then the room info (0x00A49380).
+    The client waits for it with input locked, so a missing reply froze it.
+    """
+    OPCODE: ClassVar[int] = 5012
+    result: int = 0
+    room: RoomInfo = field(default_factory=RoomInfo)
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<I', self.result)
+        if self.result != 0:
+            return bytes(b)
+        b += self.room.encode()
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeRoomInfoAck':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['room'] = RoomInfo.read(r)
+        return cls(**kw)
+
+
+@dataclass
+class ChangeItemObtainReq:
+    """Opcode 5088: eERC_CHANGE_ITEM_OBTAIN_REQ (request).
+
+    Looting mode button. Sender 0x0058B380 (0x13E0): one bool.
+    """
+    OPCODE: ClassVar[int] = 5088
+    header: int = REQUEST_HEADER
+    mode: bool = False
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<i?', self.header, self.mode)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeItemObtainReq':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['mode'] = r.read_bool()
+        return cls(**kw)
+
+
+@dataclass
+class ChangeItemObtainAck:
+    """Opcode 5089: eERC_CHANGE_ITEM_OBTAIN_ACK (reply).
+
+    Handler 0x00588B50 (dispatch 0x0059D970 case 0x13E1): one bool; the page
+    stores (value != 1) at +0xB4 and refreshes the party panel.
+    """
+    OPCODE: ClassVar[int] = 5089
+    mode: bool = False
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<?', self.mode)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChangeItemObtainAck':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['mode'] = r.read_bool()
         return cls(**kw)

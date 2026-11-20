@@ -120,6 +120,21 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(rejoined, joined)
                 await host.expect_event(5035)
 
+                # Party name edit (5011 -> 5012) and looting mode button (5088 -> 5089).
+                host.send_event(5011, struct.pack('<q', room_id) + wide('Renamed'), correlation=51)
+                correlation, renamed = await host.expect_event(5012)
+                self.assertEqual(correlation, 51)
+                self.assertEqual(struct.unpack_from('<I', renamed)[0], 0)
+                self.assertIn(wide('Renamed'), renamed)
+                guest.send_event(5011, struct.pack('<q', room_id) + wide('Nope'), correlation=52)
+                _, refused = await guest.expect_event(5012)
+                self.assertEqual(refused, struct.pack('<I', results.INVALID_STATE))
+                host.send_event(5088, struct.pack('<i', 0x7fffffff) + b'', correlation=53)
+                correlation, looting = await host.expect_event(5089)
+                self.assertEqual((correlation, looting), (53, b''))
+                _, synced = await guest.expect_event(5089)
+                self.assertEqual(synced, b'')
+
                 host.send_event(5005)
                 await host.expect_event(5006)
                 _, departure = await guest.expect_event(5036)
