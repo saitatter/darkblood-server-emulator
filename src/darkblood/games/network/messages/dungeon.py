@@ -13,6 +13,7 @@ from darkblood.games.entities.items import Item
 __all__ = [
     'RoomInfo',
     'RoomInfoListAck',
+    'CreateRoomReq',
     'CreateRoomAck',
     'JoinRoomReq',
     'RoomMember',
@@ -124,6 +125,41 @@ class RoomInfoListAck:
         kw['page'] = r.read_i32()
         kw['rooms'] = r.read_tagged_vector(lambda r1: RoomInfo.read(r1))
         kw['pages'] = r.read_i32()
+        return cls(**kw)
+
+
+@dataclass
+class CreateRoomReq:
+    """Opcode 5001: eERC_CREATE_ROOM_REQ (request).
+
+    Sender 0x0058B060: CreateRoomREQ( szRoomTitle, nGateID, nDungeonID,
+    sDiff, sMaxUserCount ) writes a J-wstring, two i32s and two i16s.
+    """
+    OPCODE: ClassVar[int] = 5001
+    header: int = REQUEST_HEADER
+    name: str = ''
+    gate_id: int = -1
+    map_id: int = -1
+    diff: int = -1
+    max_users: int = 4
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<i', self.header)
+        b += wide_string(self.name)
+        b += struct.pack('<iihh', self.gate_id, self.map_id, self.diff, self.max_users)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'CreateRoomReq':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['name'] = r.read_wstring()
+        kw['gate_id'] = r.read_i32()
+        kw['map_id'] = r.read_i32()
+        kw['diff'] = r.read_i16()
+        kw['max_users'] = r.read_i16()
         return cls(**kw)
 
 

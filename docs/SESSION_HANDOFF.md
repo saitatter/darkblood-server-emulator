@@ -68,6 +68,13 @@ Open, observed live:
 - Tooling: `multibox.py tile` has no borderless mode by choice; fullscreen is
   already borderless through the shim (`exclusive_fullscreen.txt` opts out).
 
+## Dungeon room creation — Cristian, 2026-11-20
+
+- 5001 uses the generated `CreateRoomReq` with an optional request header.
+  The x86 sender at `0x0058B060` writes a J-wstring, two i32s, and two i16s.
+  The two-client headless test covers both header forms and verifies that a
+  truncated request leaves the current room open. Live room creation is pending.
+
 ## All message domains schema-generated — saita machine, 2026-11-20 (night)
 
 - **Pipeline**: every module in `games/network/messages/` (15 domains, ~365

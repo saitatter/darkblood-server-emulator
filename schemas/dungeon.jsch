@@ -39,6 +39,16 @@ message 2011 RoomInfoListAck
   i32 pages
 end
 
+message 5001 CreateRoomReq header?
+  ## Sender 0x0058B060: CreateRoomREQ( szRoomTitle, nGateID, nDungeonID,
+  ## sDiff, sMaxUserCount ) writes a J-wstring, two i32s and two i16s.
+  wstr name
+  i32 gate_id = -1
+  i32 map_id = -1
+  i16 diff = -1
+  i16 max_users = 4
+end
+
 message 5002 CreateRoomAck ok_only
   ## Handler 0x005984D0: result, room info, team ID, relay endpoint.
   u32 result

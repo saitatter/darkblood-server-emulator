@@ -15,6 +15,7 @@ from darkblood.games.network.messages import (
     ChoiceRewardPartyRankAck,
     ChoiceRewardPartyRankReq,
     CreateRoomAck,
+    CreateRoomReq,
     DailyRebirthCoinUseAck,
     DailyRebirthCoinUseReq,
     DropItemNot,
@@ -105,32 +106,28 @@ class DungeonHandlers(BaseDomainService):
                                         note='room member info ack (%d, result %d)' % (room_uid, result))
 
     async def on_5001(self, correlation, body):
-        # eERC_CREATE_ROOM_REQ (writer 0x58B060): wstring name, i32, i32, i16,
-        # i16 (observed: "_singleplay", -1, -1, -1, 1) -> 5002 CREATE_ROOM_ACK.
-        # Client assert: CreateRoomREQ( szRoomTitle, nGateID, nDungeonID,
-        # sDiff, sMaxUserCount ). The body starts with the 0x7FFFFFFF prefix.
-        name, a, b, c, d = '', -1, -1, -1, 1
-        body = strip_prefix(body)
-        try:
-            length, offset = read_varuint(body, 0)
-            name = body[offset:offset + length].decode('utf-16le')
-            a, b, c, d = struct.unpack_from('<iihh', body, offset + length)
-        except (WireError, struct.error, UnicodeDecodeError):
-            pass
+        # eERC_CREATE_ROOM_REQ (sender 0x0058B060) -> 5002 CREATE_ROOM_ACK.
         char = self.current_char()
         if char is None:
             await self.transport.send_event(event(5002, CreateRoomAck(result=results.NO_EXIST_CHAR).encode(), correlation),
                                             note='create room refused (no character)')
             return
+        try:
+            req = CreateRoomReq.decode(body)
+        except WireError:
+            await self.transport.send_event(event(5002, CreateRoomAck(result=results.INVALID_STATE).encode(), correlation),
+                                            note='create room refused (invalid request)')
+            return
         await self.leave_room()
         server = self.transport.server
-        info = RoomInfo(room_id=next(server.room_ids), name=name, gate_id=a, map_id=b, diff=c,
-                        max_users=d if 0 < d <= 4 else 4, cur_users=1, host_uid=char['id'])
+        info = RoomInfo(room_id=next(server.room_ids), name=req.name, gate_id=req.gate_id, map_id=req.map_id,
+                        diff=req.diff, max_users=req.max_users if 0 < req.max_users <= 4 else 4, cur_users=1,
+                        host_uid=char['id'])
         self.room = DungeonRoom(info, self.session, {self.session: char})
         server.dungeon_rooms[info.room_id] = self.room
         ack = CreateRoomAck(room=info, relay=relay_address())
         await self.transport.send_event(event(5002, ack.encode(), correlation),
-                                        note='create room ack (%s)' % name)
+                                        note='create room ack (%s)' % req.name)
 
     async def on_5003(self, correlation, body):
         try:

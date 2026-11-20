@@ -32,12 +32,22 @@ class SharedDungeonRoomTest(ServerTestCase):
                 host_id = await enter(host, 'RoomHost')
                 guest_id = await enter(guest, 'RoomGuest')
 
-                host.send_event(5001, wide('Shared test') + struct.pack('<iihh', -1, -1, -1, 4))
+                prefix = struct.pack('<I', 0x7fffffff)
+                room_name = wide('Shared test')
+                room_options = struct.pack('<iihh', -1, -1, -1, 4)
+                host.send_event(5001, prefix + room_name + room_options)
                 _, created = await host.expect_event(5002)
                 room_id = struct.unpack_from('<q', created, 4)[0]
+                self.assertEqual(created[12:12 + len(room_name)], room_name)
+                self.assertEqual(struct.unpack_from('<hh', created, 12 + len(room_name)), (4, 1))  # max, current users
                 room_info = created[4:-10]
                 relay = bytes.fromhex('7f000001b924')
                 self.assertEqual(created[-6:], relay)
+
+                # A truncated create request must leave the current room open.
+                host.send_event(5001, prefix + room_name + room_options[:-1])
+                _, error = await host.expect_event(5002)
+                self.assertEqual(error, struct.pack('<I', results.INVALID_STATE))
 
                 # Live create body: 0x7FFFFFFF prefix, title, gate, dungeon, diff, max users.
                 gate = 0x3c00d7a1
@@ -105,9 +115,11 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, error = await guest.expect_event(5004)
                 self.assertEqual(error, struct.pack('<I', results.ROOM_NOT_EXISTS))
 
-                host.send_event(5001, wide('Another room') + struct.pack('<iihh', -1, -1, -1, 4))
+                bare_room_name = wide('Another room')
+                host.send_event(5001, bare_room_name + room_options)
                 _, created = await host.expect_event(5002)
                 new_room_id = struct.unpack_from('<q', created, 4)[0]
+                self.assertEqual(created[12:12 + len(bare_room_name)], bare_room_name)
                 self.assertNotEqual(new_room_id, room_id)
                 guest.send_event(5003, struct.pack('<q', new_room_id))
                 _, joined_again = await guest.expect_event(5004)
