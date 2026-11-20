@@ -208,26 +208,19 @@
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:152 | RMI id |
 | `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:173 | vecDuel |
 
-## party (16 of 62 fields)
+## party (9 of 62 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `5049 PartyInviteReq` | `bool` | party.jsch:45 | meaning unknown |
-| `5051 PartyInviteNot` | `bool` | party.jsch:58 |  |
-| `5051 PartyInviteNot` | `u32` | party.jsch:61 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:63 |  |
-| `5051 PartyInviteNot` | `u16` | party.jsch:64 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:65 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:66 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:67 |  |
-| `5051 PartyInviteNot` | `raw[74]` | party.jsch:68 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:69 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:70 | room UID |
-| `5051 PartyInviteNot` | `wstr` | party.jsch:71 | room name |
-| `5051 PartyInviteNot` | `u32` | party.jsch:72 | gate |
-| `5051 PartyInviteNot` | `u32` | party.jsch:73 | map |
-| `5051 PartyInviteNot` | `u16` | party.jsch:74 | difficulty |
-| `PartyMemberInfo` | `i32` | party.jsch:140 |  |
+| `5051 PartyInviteNot` | `bool` | party.jsch:62 |  |
+| `5051 PartyInviteNot` | `u32` | party.jsch:65 |  |
+| `5051 PartyInviteNot` | `u16` | party.jsch:68 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:70 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:71 |  |
+| `5051 PartyInviteNot` | `raw[74]` | party.jsch:72 |  |
+| `5051 PartyInviteNot` | `u8` | party.jsch:73 |  |
+| `PartyMemberInfo` | `i32` | party.jsch:144 |  |
 
 ## pets (7 of 50 fields)
 
