@@ -956,42 +956,33 @@ def quest_item_objectives():
     return out
 
 
-def _parse_quest_play_maps(text):
-    out = {}
-    for block in re.split(r'assert\(DictQuest:', text):
-        if not block.startswith('LoadQuest'):
-            continue
-        for q_block in re.split(r'\n  \{', block):
-            qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-            maps = re.search(r'PlayMapID\s*=\s*\{([^}]*)\}', q_block)
-            if qid and maps:
-                ids = re.findall(r'"([^"]+)"', maps.group(1))
-                if ids:
-                    out[jhash(qid.group(1)) & 0xFFFFFFFF] = ids
-    return out
-
-
 @lru_cache(maxsize=None)
-def quest_play_maps():
-    """jhash(quest id) -> PlayMapID map ids from DictQuest:LoadQuest.
+def dungeon_maps():
+    """MapID -> (DungeonID, Difficult, QuestLink) from DictMap:LoadMap.
 
-    These are the quest variants of a dungeon (e.g. Q0002S01 -> Act1_G1_A16)
-    that the dungeon gate offers while the quest is active (5044).
+    Each dungeon has up to 30 maps: PlayOrder 0..3 are the difficulties
+    (Difficult 0..3), later ones quest variants with a QuestLink.
     """
-    files = _quest_override_files()
-    if not files:
-        tsv = ASSETS_DIR / 'quest_play_maps.tsv'
+    override = _env_override('maplist.lua')
+    if not override:
+        tsv = ASSETS_DIR / 'dungeon_maps.tsv'
         if tsv.is_file():
             out = {}
             for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
                 parts = line.split('\t')
-                if len(parts) >= 2 and parts[1]:
-                    out[jhash(parts[0]) & 0xFFFFFFFF] = parts[1].split(',')
+                if len(parts) >= 4:
+                    out[parts[0]] = (parts[1], int(parts[2]), parts[3])
             return out
-        files = _quest_files()
+    path = override or (data_root() / 'maplist.lua')
+    if not path.exists():
+        return {}
+    section = _section(path.read_text(encoding='utf-8', errors='replace'), 'DictMap:LoadMap')
     out = {}
-    for path in files:
-        out.update(_parse_quest_play_maps(path.read_text(encoding='utf-8', errors='replace')))
+    for entry in _top_entries(section):
+        fields = dict(re.findall(r'^    (\w+) = "?([^",]*)"?,?$', entry, re.M))
+        if 'MapID' in fields and 'DungeonID' in fields:
+            out[fields['MapID']] = (fields['DungeonID'], int(fields.get('Difficult') or 0),
+                                    fields.get('QuestLink', ''))
     return out
 
 

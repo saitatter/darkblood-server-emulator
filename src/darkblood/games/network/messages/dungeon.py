@@ -124,30 +124,38 @@ class SelectDungeonAck:
     (0x00B35AB0), tag 0x13 set (0x005EAB90: varint, i32 elements). On success
     the wstring goes to JAppStateDungeonGate 0x006B2C00, which looks it up as
     the gate property id (failure logs "Invalidation in m_pjGateProp"), so it
-    echoes the 5043 request ("Act1_G1"). The map feeds 0x006BCD20 (SetDunHist),
-    populating JDunHistory with cleared difficulties (m_ucDiff) to enable
-    Normal/Hard/Master/Hero selection. The first set (gate +0x268) is sent
+    echoes the 5043 request ("Act1_G1"). The first set (gate +0x268) is sent
     empty; its element meaning is not recovered.
 
-    The trailing i32 set is copied to gate +0x218 and holds JHashString
-    values (0x00B3AEB0) of map ids. Each dungeon has 30 map slots
-    (prop +0xA0..+0x118); slots from index 4 up are quest variants such as
-    "Act1_G1_A16", and 0x006B5930 / 0x006C77E0 only offer one whose map id
-    hash is in this set. The server fills it with the PlayMapID maps of the
-    character's active quests.
+    History map (0x0076AD10): 0x0F, J-wstring dungeon id, value 0x00A492C0 =
+    J-wstring map id, u8 m_ucDiff, u8 cleared flag. 0x006BCD20 (SetDunHist)
+    copies it to the dungeon's gate slot; dungeons without an entry keep
+    0/0 (0x00A48970). 0x00A4BC00 allows difficulty d when d-1 < m_ucDiff,
+    or d-1 == m_ucDiff with the flag set, and the gate's auto-selection
+    (0x006D1120) picks the map with Difficult == m_ucDiff, one step higher
+    when the flag is set. So the entry is the highest cleared difficulty:
+    sending 3/1 for every dungeon made "Unique" the default everywhere.
+
+    The trailing i32 set is copied to gate +0x218 and holds active quest
+    ids (JHashString of the quest id, i.e. the u32 quest id). Each dungeon
+    has 30 map slots (prop +0xA0..+0x118); slots from index 4 are quest
+    variants (e.g. Act1_G1_A16, QuestLink Q0002S01). 0x006B5930,
+    0x006C77E0 and 0x006D1120 hash the map's +0x44 field, its QuestLink
+    (the same field 0x006D5DE0 looks up as a quest), and offer/select the
+    variant only when that hash is in this set.
     """
     result: int = 0
     gate_id: str = ''
-    dun_history: dict = field(default_factory=dict)  # {dungeon_id: (map_code, max_diff, state)}
-    quest_maps: list = field(default_factory=list)  # map ids enabled by active quests
+    dun_history: dict = field(default_factory=dict)  # {dungeon_id: (map_id, ucDiff, cleared)}
+    quest_ids: list = field(default_factory=list)  # active quest ids (u32)
 
     def encode(self) -> bytes:
         hist_bytes = b''
         for dun_id, (map_code, max_diff, state) in self.dun_history.items():
             hist_bytes += b'\x0f' + wide_string(dun_id) + wide_string(map_code) + struct.pack('<BB', max_diff, state)
         hist_map = b'\x17' + varuint(len(self.dun_history)) + hist_bytes
-        hashes = sorted({jhash(m) & 0xFFFFFFFF for m in self.quest_maps})
-        quest_set = b'\x13' + varuint(len(hashes)) + b''.join(struct.pack('<I', h) for h in hashes)
+        ids = sorted({q & 0xFFFFFFFF for q in self.quest_ids})
+        quest_set = b'\x13' + varuint(len(ids)) + b''.join(struct.pack('<I', q) for q in ids)
         return (struct.pack('<I', self.result) + hist_map + b'\x13' + varuint(0)
                 + wide_string(self.gate_id) + quest_set)
 

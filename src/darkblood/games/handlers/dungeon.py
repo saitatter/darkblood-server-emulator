@@ -162,30 +162,36 @@ class DungeonHandlers(BaseDomainService):
         except (WireError, UnicodeDecodeError):
             pass
         from darkblood.games.game_data.client_dict import gate_dungeons
-        dungeons = gate_dungeons().get(gate, [])
-        if not dungeons:
-            dungeons = [f"{gate}_A1", f"{gate}_A2", f"{gate}_A3", f"{gate}_A4"]
-        dun_history = {d: (d, 3, 1) for d in dungeons}
-        quest_maps = self._active_quest_maps()
-        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history, quest_maps=quest_maps).encode()
-        await self.transport.send_event(event(5044, ack, correlation),
-                                        note=f'select dungeon ack ({gate}, {len(dun_history)} dungeons unlocked, '
-                                             f'quest maps {quest_maps})')
-
-    def _active_quest_maps(self):
-        """PlayMapID maps of the selected character's active quests (5044 set)."""
-        from darkblood.games.game_data.client_dict import quest_play_maps
-        char = self.current_char()
-        if char is None:
-            return []
-        play_maps = quest_play_maps()
-        maps = []
+        dungeons = set(gate_dungeons().get(gate, []))
+        char = self.current_char() or {}
+        # Only cleared dungeons get an entry; the others default to Normal.
+        dun_history = {dungeon: (rec['map'], rec['diff'], 1)
+                       for dungeon, rec in char.get('dungeon_history', {}).items() if dungeon in dungeons}
+        quest_ids = []
         for quest_id in char.get('quests_active', {}):
             try:
-                maps.extend(play_maps.get(int(quest_id) & 0xFFFFFFFF, []))
+                quest_ids.append(int(quest_id))
             except ValueError:
                 continue
-        return sorted(set(maps))
+        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history, quest_ids=quest_ids).encode()
+        await self.transport.send_event(event(5044, ack, correlation),
+                                        note=f'select dungeon ack ({gate}, history {dun_history}, '
+                                             f'{len(quest_ids)} active quests)')
+
+    def _record_dungeon_clear(self, char, map_code):
+        """Remember the highest cleared difficulty per dungeon (5044 history).
+
+        Quest variants (maps with a QuestLink) do not advance difficulty.
+        """
+        from darkblood.games.game_data.client_dict import dungeon_maps
+        info = dungeon_maps().get(map_code)
+        if info is None or info[2]:
+            return
+        dungeon, diff, _ = info
+        history = char.setdefault('dungeon_history', {})
+        record = history.get(dungeon)
+        if record is None or diff >= record['diff']:
+            history[dungeon] = {'map': map_code, 'diff': diff}
 
     async def on_5009(self, correlation, body):
         # eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f
@@ -211,6 +217,7 @@ class DungeonHandlers(BaseDomainService):
             ack = StartGameAck(result=1)
         else:
             ack = StartGameAck(map_code=request.map_code)
+            self.map_code = request.map_code
             self._reset_dungeon_stats()
             if self.room is not None and self.room.host is self.session:
                 self.room.started = True
@@ -314,6 +321,9 @@ class DungeonHandlers(BaseDomainService):
         # player +0x10 by 0x0095A150). Characters have no 'char_uid' key, so
         # mapSingleReward used to go out empty and the result screen froze.
         char_uid = char.get('id', 0) if char else 0
+        if char is not None and req.is_clear:
+            self._record_dungeon_clear(char, map_code)
+            self.store().save()
 
         kill_count = getattr(self, 'dungeon_kill_count', 0)
         score = getattr(self, 'dungeon_score', 0)

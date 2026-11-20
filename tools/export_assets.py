@@ -141,23 +141,14 @@ def export_map_gates():
     print(f"Exported {len(lines)-1} map gate rows to {out.name}")
 
 
-def export_quest_play_maps(root):
-    """PlayMapID per quest: dungeon quest variants offered by the gate (5044)."""
-    lines = ['quest_id\tplay_map_ids']
-    for p in sorted(root.glob('quest_*.lua')):
-        txt = p.read_text(encoding='utf-8', errors='replace')
-        for block in re.split(r'assert\(DictQuest:', txt):
-            if not block.startswith('LoadQuest'):
-                continue
-            for q_block in re.split(r'\n  \{', block):
-                qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                maps = re.search(r'PlayMapID\s*=\s*\{([^}]*)\}', q_block)
-                ids = re.findall(r'"([^"]+)"', maps.group(1)) if maps else []
-                if qid and ids:
-                    lines.append(f"{qid.group(1)}\t{','.join(ids)}")
-    out = ASSETS_DIR / 'quest_play_maps.tsv'
+def export_dungeon_maps():
+    """MapID -> DungeonID, Difficult, QuestLink (dungeon gate history, 5044)."""
+    lines = ['map_id\tdungeon_id\tdifficult\tquest_link']
+    for map_id, (dungeon, diff, link) in sorted(client_dict.dungeon_maps().items()):
+        lines.append(f"{map_id}\t{dungeon}\t{diff}\t{link}")
+    out = ASSETS_DIR / 'dungeon_maps.tsv'
     out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-    print(f"Exported {len(lines)-1} quest play maps to {out.name}")
+    print(f"Exported {len(lines)-1} dungeon maps to {out.name}")
 
 
 def export_quests(root):
@@ -272,7 +263,7 @@ def main():
     export_skills()
     export_map_gates()
     export_quests(root)
-    export_quest_play_maps(root)
+    export_dungeon_maps()
     export_tutorial_rewards()
     export_cash_and_random_boxes()
     export_looting()

@@ -134,14 +134,17 @@ class WireMessagesTest(unittest.TestCase):
         # +0x20 is the extra-box count the result screen loops over (0x0071FF0F).
         self.assertEqual(len(reward.encode()), 40)
 
-        # SelectDungeonAck (5044) with history and quest map hashes
-        dun_hist = {'Act1_G1_A1': ('Act1_G1_A1', 3, 1)}
+        # SelectDungeonAck (5044): history (map id, ucDiff, cleared) and active quest ids
+        dun_hist = {'Act1_G1_A1': ('Act1_G1_A10', 0, 1)}
+        quest = hashing.jhash('Q0002S01')
         ack_5044 = messages.SelectDungeonAck(gate_id='Act1_G1', dun_history=dun_hist,
-                                             quest_maps=['Act1_G1_A16']).encode()
+                                             quest_ids=[quest]).encode()
+        self.assertIn(b'\x17\x81\x0f' + jser.wide_string("Act1_G1_A1") + jser.wide_string("Act1_G1_A10") + b'\x00\x01',
+                      ack_5044)
         self.assertEqual(struct.unpack_from('<I', ack_5044[:4])[0], 0)
         self.assertEqual(ack_5044[4], 0x17)  # tag 0x17 map
         self.assertIn('Act1_G1'.encode('utf-16le'), ack_5044)
-        self.assertTrue(ack_5044.endswith(b'\x13\x81' + struct.pack('<I', hashing.jhash('Act1_G1_A16'))))
+        self.assertTrue(ack_5044.endswith(b'\x13\x81' + struct.pack('<I', quest)))
         empty_5044 = messages.SelectDungeonAck(gate_id='Act1_G1').encode()
         self.assertTrue(empty_5044.endswith(b'\x13\x80'))
 

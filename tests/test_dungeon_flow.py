@@ -147,7 +147,7 @@ class DungeonFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
-    def test_select_dungeon_offers_active_quest_maps(self):
+    def test_select_dungeon_history_and_active_quests(self):
         async def scenario(client):
             await lobby_flow(client)
             client.send_event(2012, create_request('GateQuester', char_class=1))
@@ -155,18 +155,40 @@ class DungeonFlowTest(ServerTestCase):
             char_id = struct.unpack_from('<Q', ack2013, 10)[0]
             store = session.GameSession.store()
             char = store.get('OfflinePlayer', char_id)
-            quest_id = hashing.jhash('Q0002S01')  # PlayMapID = {"Act1_G1_A16"}
+            quest_id = hashing.jhash('Q0002S01')  # QuestLink of Act1_G1_A16
             char['quests_active'] = {str(quest_id): {'uid': 1, 'tracked': True, 'counters': [0]}}
             store.save()
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
+            prefix = struct.pack('<i', 0x7fffffff)
 
-            client.send_event(5043, struct.pack('<i', 0x7fffffff) + wide('Act1_G1'))
+            # A new character has no history: every dungeon defaults to Normal.
+            client.send_event(5043, prefix + wide('Act1_G1'))
             _, ack5044 = await client.expect_event(5044)
-            self.assertTrue(ack5044.endswith(b'\x13\x81' + struct.pack('<I', hashing.jhash('Act1_G1_A16'))))
+            self.assertEqual(ack5044[4:6], b'\x17\x80')
+            self.assertTrue(ack5044.endswith(b'\x13\x81' + struct.pack('<I', quest_id)))
+
+            # Clearing Hard (A11) records ucDiff 1 with the cleared flag.
+            client.send_event(5013, prefix + wide('Act1_G1_A11'))
+            await client.expect_event(5014)
+            client.send_event(5017, b'\x01')
+            await client.expect_event(5018)
+            self.assertEqual(char['dungeon_history'], {'Act1_G1_A1': {'map': 'Act1_G1_A11', 'diff': 1}})
+
+            # Clearing Normal afterwards keeps the highest difficulty; a quest
+            # variant (A16, QuestLink) never changes it.
+            for code in ('Act1_G1_A10', 'Act1_G1_A16'):
+                client.send_event(5013, prefix + wide(code))
+                await client.expect_event(5014)
+                client.send_event(5017, b'\x01')
+                await client.expect_event(5018)
+            self.assertEqual(char['dungeon_history']['Act1_G1_A1']['diff'], 1)
+
+            client.send_event(5043, prefix + wide('Act1_G1'))
+            _, ack5044 = await client.expect_event(5044)
+            self.assertIn(b'\x17\x81\x0f' + wide('Act1_G1_A1') + wide('Act1_G1_A11') + b'\x01\x01', ack5044)
 
         self.run_async(self.with_server(scenario))
-
 
 if __name__ == '__main__':
     unittest.main()
