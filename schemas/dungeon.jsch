@@ -337,3 +337,17 @@ message 5061 RoomMemInfoAck ok_only
   vector<RoomMemberInfo> members  # +0xC, 0x004B40F0 -> 0x004B1AD0 (0xA6-byte elements)
   vector<?> _                # +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered
 end
+
+message 5047 RequestJoinRoomReq header?
+  ## View party info "Join": RequestJoinRoomREQ( nRoomUID ). Live: ffffff7f + i64.
+  i64 room_uid
+end
+
+message 5048 RequestJoinRoomAck ok_only
+  ## Sent to the room host. GameRoom page dispatcher 0x0059D970 (case 46) ->
+  ## 0x005922C0: result, "nRoomUID >> jReqChar" (jReqChar via 0x00A49600, the
+  ## 5061 member struct), then a confirmation popup for the host.
+  u32 result
+  i64 room_uid
+  RoomMemberInfo requester = RoomMemberInfo()
+end

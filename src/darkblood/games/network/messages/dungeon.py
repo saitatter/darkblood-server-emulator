@@ -43,6 +43,8 @@ __all__ = [
     'RoomMemInfoReq',
     'RoomMemberInfo',
     'RoomMemInfoAck',
+    'RequestJoinRoomReq',
+    'RequestJoinRoomAck',
 ]
 
 
@@ -992,4 +994,62 @@ class RoomMemInfoAck:
         kw['room_uid'] = r.read_i64()
         kw['members'] = r.read_tagged_vector(lambda r1: RoomMemberInfo.read(r1))
         r.read_empty_container(0x10)
+        return cls(**kw)
+
+
+@dataclass
+class RequestJoinRoomReq:
+    """Opcode 5047: eERC_REQUEST_JOIN_ROOM_REQ (request).
+
+    View party info "Join": RequestJoinRoomREQ( nRoomUID ). Live: ffffff7f + i64.
+    """
+    OPCODE: ClassVar[int] = 5047
+    header: int = REQUEST_HEADER
+    room_uid: int = 0
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<iq', self.header, self.room_uid)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RequestJoinRoomReq':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['room_uid'] = r.read_i64()
+        return cls(**kw)
+
+
+@dataclass
+class RequestJoinRoomAck:
+    """Opcode 5048: eERC_REQUEST_JOIN_ROOM_ACK (reply).
+
+    Sent to the room host. GameRoom page dispatcher 0x0059D970 (case 46) ->
+    0x005922C0: result, "nRoomUID >> jReqChar" (jReqChar via 0x00A49600, the
+    5061 member struct), then a confirmation popup for the host.
+    """
+    OPCODE: ClassVar[int] = 5048
+    result: int = 0
+    room_uid: int = 0
+    requester: RoomMemberInfo = field(default_factory=RoomMemberInfo)
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<I', self.result)
+        if self.result != 0:
+            return bytes(b)
+        b += struct.pack('<q', self.room_uid)
+        b += self.requester.encode()
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RequestJoinRoomAck':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['room_uid'] = r.read_i64()
+        kw['requester'] = RoomMemberInfo.read(r)
         return cls(**kw)

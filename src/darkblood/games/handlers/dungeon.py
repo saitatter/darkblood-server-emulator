@@ -94,8 +94,7 @@ class DungeonHandlers(BaseDomainService):
     async def on_5060(self, correlation, body):
         # eERC_ROOM_MEM_INFO_REQ (Find party row click) -> 5061. The client
         # waits for it before offering the join; member vectors not recovered.
-        from darkblood.games.network.messages import RoomMemberInfo, RoomMemInfoAck, RoomMemInfoReq
-        from darkblood.games.world import square_uid
+        from darkblood.games.network.messages import RoomMemInfoAck, RoomMemInfoReq
         try:
             room_uid = RoomMemInfoReq.decode(body).room_uid
         except (WireError, struct.error):
@@ -105,15 +104,42 @@ class DungeonHandlers(BaseDomainService):
         members = []
         if result == results.OK:
             for member, record in room.members.items():
-                members.append(RoomMemberInfo(
-                    square_uid=square_uid(getattr(member, 'square_id', 1) or 1),
-                    char_uid=int(record.get('id', 0)),
-                    name=record.get('name', ''),
-                    char_class=int(record.get('char_class', 0)) & 0xFF,
-                    level=min(int(record.get('level', 1)), 0xFF)))
+                members.append(self._member_info(member, record))
         ack = RoomMemInfoAck(result=result, room_uid=room_uid, members=members)
         await self.transport.send_event(event(5061, ack.encode(), correlation),
                                         note='room member info ack (%d, result %d)' % (room_uid, result))
+
+    def _member_info(self, session, record):
+        from darkblood.games.network.messages import RoomMemberInfo
+        from darkblood.games.world import square_uid
+        return RoomMemberInfo(
+            square_uid=square_uid(getattr(session, 'square_id', 1) or 1),
+            char_uid=int(record.get('id', 0)),
+            name=record.get('name', ''),
+            char_class=int(record.get('char_class', 0)) & 0xFF,
+            level=min(int(record.get('level', 1)), 0xFF))
+
+    async def on_5047(self, correlation, body):
+        # eERC_REQUEST_JOIN_ROOM_REQ (View party info "Join"). The request goes
+        # to the room host as 5048 (requester's member entry); the host's
+        # confirmation popup continues the flow. The requester gets no reply here.
+        from darkblood.games.network.messages import RequestJoinRoomAck, RequestJoinRoomReq
+        try:
+            room_uid = RequestJoinRoomReq.decode(body).room_uid
+        except (WireError, struct.error):
+            return
+        room = self.transport.server.dungeon_rooms.get(room_uid)
+        char = self.current_char()
+        if room is None or char is None or not room.members:
+            self.transport.record('request-join-room-refused', body, room_uid=room_uid)
+            return
+        host = room.host
+        ack = RequestJoinRoomAck(room_uid=room_uid, requester=self._member_info(self.session, char))
+        try:
+            await host.transport.send_event(event(5048, ack.encode()),
+                                            note='request join room (%s -> room %d)' % (char.get('name'), room_uid))
+        except (ConnectionError, OSError):
+            pass
 
     async def on_5001(self, correlation, body):
         # eERC_CREATE_ROOM_REQ (sender 0x0058B060) -> 5002 CREATE_ROOM_ACK.
