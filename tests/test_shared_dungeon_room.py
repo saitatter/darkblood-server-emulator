@@ -178,6 +178,13 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, chosen = await host.expect_event(5010)
                 _, member_chosen = await guest.expect_event(5010)
                 self.assertEqual(member_chosen, chosen)
+                # Start: the member gets the host's 5014 for the same map.
+                host.send_event(5013, struct.pack('<i', 0x7fffffff) + wide('Act1_G1_A10'), correlation=55)
+                correlation, started = await host.expect_event(5014)
+                self.assertEqual(correlation, 55)
+                _, member_started = await guest.expect_event(5014)
+                self.assertEqual(member_started, started)
+                self.assertIn(wide('Act1_G1_A10'), started)
 
                 # Closing the dungeon gate (5045, back to square) keeps the party:
                 # both members are still listed and the guest gets no 5036.

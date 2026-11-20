@@ -391,6 +391,21 @@ class DungeonHandlers(BaseDomainService):
                 self.room.started = True
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
+        room = self.room
+        if ack.result == 0 and room is not None and room.host is self.session and room.info.name != '_singleplay':
+            # Shared dungeon, step 1: the members sit in the same gate (5044 at the
+            # host's 5043), whose dispatcher handles 5014 (0x007880A0). Start them on
+            # the host's map so all clients load it and meet in its relay group.
+            for member in list(room.members):
+                if member is self.session or member.dungeon.room is not room:
+                    continue
+                member.dungeon.map_code = request.map_code
+                member.dungeon._reset_dungeon_stats()
+                try:
+                    await member.transport.send_event(event(5014, ack.encode()),
+                                                      note='start game (party, %s)' % request.map_code)
+                except (ConnectionError, OSError):
+                    pass
 
     def _reset_dungeon_stats(self):
         self.dungeon_kill_count = 0

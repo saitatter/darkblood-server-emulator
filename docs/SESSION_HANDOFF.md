@@ -702,7 +702,8 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   peer's 0x5F (`0x005C4E40(uid)`). Only the leader entered the gate, so it always timed out. 5044's
   handler (`0x007702E0`, global) changes the state itself, so the server now sends 5044 to every
   room member when the host opens the gate, and forwards the host's 5010. Not yet confirmed live;
-  start (5013) and leaving the gate (5045) are still per player.
+  Leaving the gate (5045) is still per player. Shared dungeon step 1: the host's 5013 also sends its 5014
+  (same map) to the room members in the gate. Relay groups in the dungeon and monster sync: next.
 - **Reconnect from town, two clients (open)**: with the 0x0076F98D and 0x0059C161 recoveries both
   clients get past the lobby and character select, then stop on a modal error box ("오류") from
   `JAppStateSquarePlay::LoadMap` (0x006F9920, MessageBox call 0x006F9C00): the local user's square UID
