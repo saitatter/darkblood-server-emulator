@@ -52,7 +52,7 @@ message 2007 SelectCharacterAck
   u64 _
   u64 _
   u64 _
-  u64 _
+  u64 server_bits            # struct +0x207 -> own JUser +0x100 (0x00966690); server-list key in bits 54-58, compared with each peer's 5027 key by 0x0087DBB0 (name suffix "(server)" when they differ)
   u8 _
   u8 _
   map<?> _                   # 0x00A40720

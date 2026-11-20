@@ -138,6 +138,7 @@ class SelectCharacterAck:
     OPCODE: ClassVar[int] = 2007
     result: int = 0
     character: Character = field(default_factory=Character)
+    server_bits: int = 0  # struct +0x207 -> own JUser +0x100 (0x00966690); server-list key in bits 54-58, compared with each peer's 5027 key by 0x0087DBB0 (name suffix "(server)" when they differ)
     bags: list[Bag] = field(default_factory=list)  # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
     items: list[Item] = field(default_factory=list)  # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
     quickslots: list[QuickSlot] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
@@ -150,7 +151,7 @@ class SelectCharacterAck:
         b += b'\x80'
         b += b'\x80'
         b += self.character.encode_world_details()
-        b += struct.pack('<QQQQBB', 0, 0, 0, 0, 0, 0)
+        b += struct.pack('<QQQQBB', 0, 0, 0, self.server_bits, 0, 0)
         b += b'\x17\x80'
         b += b'\x10' + varuint(len(self.bags)) + b''.join(e0.encode() for e0 in self.bags)
         b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)

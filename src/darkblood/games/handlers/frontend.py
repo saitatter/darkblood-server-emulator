@@ -9,7 +9,7 @@ from darkblood.games.entities.items import EQUIPPED, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.frontend.relay import RELAY_PORT
-from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
+from darkblood.games.config import CHAR_SLOTS, OFFLINE_SERVER_ID, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
     DeleteCharacterAck,
     DeleteCharacterReq,
@@ -86,6 +86,9 @@ def build_select_char_ack(char):
     return SelectCharacterAck(
         result=0,
         character=c,
+        # Same key as each peer's 5027 entry, so overhead names carry no
+        # "(server)" suffix (0x007E9896 -> 0x0087DBB0).
+        server_bits=OFFLINE_SERVER_ID << 54,
         active_quests=sorted(active, key=lambda q: q.uid),
         bags=bags,
         items=items,
