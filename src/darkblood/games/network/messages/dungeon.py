@@ -41,6 +41,7 @@ __all__ = [
     'SingleReward',
     'FinishGameAck',
     'RoomMemInfoReq',
+    'RoomMemberInfo',
     'RoomMemInfoAck',
 ]
 
@@ -918,6 +919,48 @@ class RoomMemInfoReq:
 
 
 @dataclass
+class RoomMemberInfo:
+    """5061 member entry: 0x0049EA40 checks tag 0x1E without a byte, then reader
+    0x00A49600. Names from the Find party member row (near 0x0062E339):
+    SquareUID +0, CharUID +8, CharNick +0x14, Class +0x30, CharLevel +0x33.
+    """
+    square_uid: int = 0
+    char_uid: int = 0
+    name: str = ''
+    char_class: int = 0
+    level: int = 0
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<qqi', self.square_uid, self.char_uid, 0)
+        b += wide_string(self.name)
+        b += struct.pack('<BhBqq', self.char_class, 0, self.level, 0, 0)
+        b += bytes(bytes(74)).ljust(74, b'\x00')[:74]
+        b += struct.pack('<?', False)
+        return bytes(b)
+
+    @classmethod
+    def read(cls, r: JSerBufferReader) -> 'RoomMemberInfo':
+        kw = {}
+        kw['square_uid'] = r.read_i64()
+        kw['char_uid'] = r.read_i64()
+        r.read_i32()
+        kw['name'] = r.read_wstring()
+        kw['char_class'] = r.read_u8()
+        r.read_i16()
+        kw['level'] = r.read_u8()
+        r.read_i64()
+        r.read_i64()
+        r.read_bytes(74)
+        r.read_bool()
+        return cls(**kw)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RoomMemberInfo':
+        return cls.read(JSerBufferReader(data))
+
+
+@dataclass
 class RoomMemInfoAck:
     """Opcode 5061: eERC_ROOM_MEM_INFO_ACK (reply).
 
@@ -927,6 +970,7 @@ class RoomMemInfoAck:
     OPCODE: ClassVar[int] = 5061
     result: int = 0
     room_uid: int = 0
+    members: list[RoomMemberInfo] = field(default_factory=list)  # +0xC, 0x004B40F0 -> 0x004B1AD0 (0xA6-byte elements)
 
     def encode(self) -> bytes:
         b = bytearray()
@@ -934,7 +978,7 @@ class RoomMemInfoAck:
         if self.result != 0:
             return bytes(b)
         b += struct.pack('<q', self.room_uid)
-        b += b'\x10\x80'
+        b += b'\x10' + varuint(len(self.members)) + b''.join(e0.encode() for e0 in self.members)
         b += b'\x10\x80'
         return bytes(b)
 
@@ -946,6 +990,6 @@ class RoomMemInfoAck:
         if kw['result'] != 0:
             return cls(**kw)
         kw['room_uid'] = r.read_i64()
-        r.read_empty_container(0x10)
+        kw['members'] = r.read_tagged_vector(lambda r1: RoomMemberInfo.read(r1))
         r.read_empty_container(0x10)
         return cls(**kw)

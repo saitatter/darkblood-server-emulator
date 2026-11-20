@@ -68,7 +68,14 @@ class SharedDungeonRoomTest(ServerTestCase):
                 gate_room_id = struct.unpack_from('<q', gate_info)[0]
                 guest.send_event(5060, struct.pack('<iq', 0x7fffffff, gate_room_id))
                 _, info = await guest.expect_event(5061)
-                self.assertEqual(info, struct.pack('<Iq', 0, gate_room_id) + bytes.fromhex('10801080'))
+                # One member (the host): square UID, char UID, i32, name, class, i16, level, ...
+                self.assertEqual(info[:14], struct.pack('<Iq', 0, gate_room_id) + bytes.fromhex('1081'))
+                member = info[14:-2]
+                self.assertEqual(struct.unpack_from('<qq', member), ((0x1F << 54) | 1, host_id))
+                name = wide('RoomHost')
+                self.assertEqual(member[20:20 + len(name)], name)
+                self.assertEqual(len(member), 20 + len(name) + 1 + 2 + 1 + 16 + 74 + 1)
+                self.assertEqual(info[-2:], bytes.fromhex('1080'))
                 guest.send_event(5060, struct.pack('<iq', 0x7fffffff, gate_room_id + 99))
                 _, info = await guest.expect_event(5061)
                 self.assertEqual(info, struct.pack('<I', results.ROOM_NOT_EXISTS))
