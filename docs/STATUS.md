@@ -1,5 +1,8 @@
 # Research status and handoff
 
+> Older per-feature logs (2026-11-15 to 11-20) were removed once the work was implemented and summarized in the README,
+> `docs/OPCODE_REGISTRY.md` and `ROADMAP.md`; they remain in Git history. This file keeps recent evidence and the RE notes still in use.
+
 ## Live two-client playtest — 2026-11-20 (evening)
 
 - Room finder (2010 -> 2011) lists open rooms; jRoomInfo layout recovered
@@ -42,35 +45,6 @@
 The server requires a pending invitation for `2102` and `5054` and consumes it
 on acceptance. Host and party IDs resolve through separate lookups. Valid joins,
 missing invitations, and repeated acceptance are covered headlessly.
-
-## Standalone Server Assets and Client Data Elimination — 2026-11-20
-
-The server no longer requires external client Lua dictionaries (`darkblood-client-data` or `$DARKBLOOD_CLIENT_DATA`).
-All required game tables have been extracted into normalized TSV and JSON files under `assets/` (~1.6 MB total):
-- Default starter equipment (`assets/starter_equipment.tsv`)
-- Character stats and progression (`assets/char_stats.tsv`)
-- Level up AP rewards (`assets/levelup_ap.tsv`)
-- Equipment durability and grade/demand specifications (`assets/item_durabilities.tsv`, `assets/equip_index.tsv`, `assets/item_fields.tsv`)
-- NPC and store vendor catalogs (`assets/npcs.tsv`, `assets/stores.tsv`)
-- Monster combat and drop parameters (`assets/monsters.tsv`, `assets/money_drops.tsv`)
-- Skill SP and AR demand tables (`assets/skills.tsv`)
-- Dungeon map gates (`assets/map_gates.tsv`)
-- Quests, mission objectives, chains, and item groups (`assets/quests.tsv`, `assets/quest_missions.tsv`, `assets/quest_chains.tsv`, `assets/quest_item_groups.tsv`)
-- Tutorial rewards (`assets/tutorial_rewards.tsv`)
-- Cash shop item properties, packages, and random box state probabilities (`assets/cash_items.tsv`, `assets/cash_packages.tsv`, `assets/random_boxes.json`)
-- Dungeon monster drop tables (`assets/looting.json`)
-
-All 172 unit tests pass completely standalone without any external client data directory.
-
-## Server Cash Shop catalog — 2026-11-20
-
-The purchase handler loads product IDs, item codes, and quantities from the
-bundled `assets/cash_shop.tsv` or an operator-supplied override. The bundled
-catalog contains 771 entries. The optional import tool creates an override
-without overwriting operator edits. Cash package and random box contents
-still come from the extracted game tables.
-The 171 headless tests passed. A separate replay granted and persisted
-products 847, 760, 22 and 862 with no extracted game data available.
 
 ## Opcode ownership and town presence — 2026-11-20
 
@@ -180,42 +154,6 @@ keeps the party and updates its transport. Disconnect and 5037/5032 removal chec
 session ownership and broadcast departure only after removal. Closing transports
 reject writes. Three regression tests and the full suite pass locally (167 tests).
 Live verification is pending. Co-op dungeon entry remains open.
-
-## Subsystem Expansion & Master Opcode Registry — saita machine, 2026-11-17 (headless verified; 155 tests passing)
-
-Major subsystems implemented, integrated, and verified with 155 automated tests:
-- **Multiplayer Movement & Spatial Broadcasting (Milestone P6)**:
-  - Wire messages `UserMoveNot` (Opcodes 5030 / 5031), `UserJoinSquareNot` (Opcode 5021), and `UserLeaveSquareNot` (Opcode 5022).
-  - Spatial position updates (x, y, z, angle, move_state) decoded and tracked on `WorldPlayer` in `GameWorldManager`.
-  - Movement notifications broadcast to connected occupants in the same square/layer.
-  - Presence notifications broadcast to peers on square join, leave (5032/5037), and connection disconnect.
-- **Party Management Subsystem (Milestone P6)**:
-  - Implemented `PartyManager` singleton (`src/darkblood/games/world.py`) and wire messages (`src/darkblood/games/network/messages/party.py`).
-  - Opcodes 2100-2101 & 5049-5050 (Invite request/ack, client handler `0x00758700`), Opcode 5051 (`PartyInviteNot`, handler `0x007706E0`).
-  - Opcodes 2102-2103 & 5054-5055 (Join / accept request/ack), Opcode 5056 (`PartyAcceptInviteNot`).
-  - Opcodes 2104-2105 (Leave request/ack with automatic host leader re-election).
-  - Opcodes 2106-2107 (Party kick with leader permission checks and kick notice delivery).
-  - Fully verified across multi-client sessions in `tests/test_party_flow.py`.
-- **Pets, Mounts & Monster Taming Subsystem**:
-  - Implemented `PetHandlers` (`src/darkblood/games/handlers/pets.py`) and wire messages (`src/darkblood/games/network/messages/pets.py`).
-  - Opcodes 2348-2351 (Taming), 2434-2438 (Mount summon/dismiss/speed), 2464-2474 (Pet summon/dismiss/feed/rename/level).
-  - SQLite tables `mounts` and `pets` in `data/darkblood.db`. End-to-end verified in `tests/test_pets_flow.py`.
-- **PvP Arena, Duels, Teams & League Season Rankings**:
-  - Implemented `ArenaHandlers` (`src/darkblood/games/handlers/arena.py`) and wire messages (`src/darkblood/games/network/messages/arena.py`).
-  - Opcodes 5100-5113 (Duels), 5145-5154 & 2306/2307 (Arena rooms), 5269-5275 (Arena teams), 2550-2553 & 2475-2478 (League season rankings), 2709/2710 (Arena SP items).
-  - Verified in `tests/test_arena_flow.py`.
-- **Mailbox System with Attachments**:
-  - Implemented `MailHandlers` (`src/darkblood/games/handlers/mail.py`) and wire messages (`src/darkblood/games/network/messages/mail.py`).
-  - Since 2026-11-20 all wire messages are generated from `schemas/*.jsch` (`tools/gen_messages.py`). 2220 entries carry no `0x1E` byte.
-  - Opcodes 2219-2227, 2234-2237 (Mail listing, send with attached gold and items, read, claim items into inventory, delete, return, new arrival notice).
-  - Verified in `tests/test_mail_flow.py`.
-- **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**:
-  - All 34 sequential chunks mapped and documented, including mailbox substructure at `0x0074C1D0` -> `0x00A3E760`.
-- **Master Opcode Registry**:
-  - Created `docs/OPCODE_REGISTRY.md`: 501 tracked opcodes, 298 client handler virtual addresses, 140 implemented server handlers, wire formats and packet semantics.
-- **C# Architectural Refactoring & Packet Dispatcher**:
-  - Blueprint in `docs/ARCHITECTURE_REFACTOR_CSHARP.md` detailing migration from Python multiple inheritance mixins to composition.
-  - Implemented prototype `PacketDispatcher` (`src/darkblood/games/dispatcher.py`) and `BaseDomainService` (`src/darkblood/games/handlers/base.py`).
 
 ## Live play-test fixes — saita machine, 2026-11-17 (static + headless; live retest pending unless noted)
 
@@ -358,309 +296,6 @@ Evidence is the wire log of the 20:24-20:38 session plus static reconstruction. 
 
 Open: confirm all four live; find the revive-button request; check whether `2143` values are f32 before persisting durability.
 
-## 1v1 Town Duels, Arena Matchmaking, Multi-Client World Presence & SQLite Backend — 2026-11-16 ~22:45
-
-* **1v1 PvP Town Duels & Arena Matchmaking (Opcodes 5097 - 5113, 2304 - 2309, 5138, 5269 - 5275, 2550 - 2553)**:
-  - Reverse engineered binary packet schemas from client dispatchers in `research/schemas.txt`:
-    - `0x006C0A10`: `DuelRequestAck` (5101) - challenge request with opponent info.
-    - `0x006CBE60` / `0x006CCDF0`: `DuelStartAck` (5098) & `DuelStartNot` (5099) - begins duel session with 36-byte state struct.
-    - `0x006CC6B0`: `DuelResultAck` (5106) - confirms victory/defeat banner.
-    - `0x006B4120`: `DuelRefuseAck` (5113) - notifies challenger of decline.
-    - `0x004B67F0` / `0x004B96D0` / `0x004B4680`: `ArenaSquareListAck` (2305), `ArenaGetRoomListAck` (2307), `ArenaGetInviteListAck` (2309).
-    - `0x0049BEF0` / `0x0049C4B0` / `0x00490100`: `ArenaTeamCreateAck` (5270), `ArenaTeamJoinAck` (5272), `ArenaTeamLeaveAck` (5275).
-    - `0x00499DC0` / `0x00492A10`: `LeagueSeasonArenaGetRankAck` (2551), `LeagueSeasonArenaGetMyRankAck` (2553).
-  - Implemented `ArenaHandlers` in `src/darkblood/games/handlers/arena.py` with 12 semantic handler methods and opcode aliases.
-  - Added wire dataclasses in `src/darkblood/games/network/messages/arena.py`.
-  - Verified with comprehensive lifecycle scenario in `tests/test_arena_flow.py`.
-* **Multi-Client World Presence & Mutual Spawns (`GameWorldManager` & Opcode 5096 `UpdateCharInfoNot`)**:
-  - Implemented singleton `GameWorldManager` in `src/darkblood/games/world.py`:
-    - Tracks active players across town square channels and instanced sub-districts.
-    - Automated mutual player spawning via Opcode 5096 (`eERC_UPDATE_CHAR_INFO_NOT` / struct `0x00A52630` `FUN_00a52630`).
-    - Broadcaster delivers visual models of existing town inhabitants to newcomers and announces newcomer 3D appearances to existing occupants.
-    - Automatic cleanup on disconnect via `Session.run` finally block and `GameSession.on_disconnect`.
-  - Verified with dual-client live interaction in `tests/test_world_flow.py`.
-* **SQLite Primary Backend Integration (`data/darkblood.db`)**:
-  - Switched `GameSession.store()` runtime character store from JSON to `SqliteCharacterStore`.
-  - Added in-memory character caching with atomic `save()` synchronization.
-  - Added automated migration on first run if database is empty and `characters.json` exists.
-  - Linked `tools/dashboard.py` directly to `SqliteCharacterStore`.
-* **Test Suite Verification**:
-  - **114/114 tests passing cleanly** across all unit and headless flow test suites in ~1.71s.
-
-* **Modular Domain Package Architecture (`src/darkblood/games/network/messages/`)**:
-  - Deconstructed monolithic `messages.py` (110 KB, 247 dataclasses) into clean symmetric domain modules:
-    - `lobby.py`: Server list, square channels, character select, delete, relay address, back to square.
-    - `inventory.py`: Bag management, equip, use, drop, repair, upgrade, enchant, zam sockets, spirit weapon, stack splitting, expiration.
-    - `skills.py`: Skill learning, quickslots, lock status, speech bubbles, skill book consumption, AP gain.
-    - `commerce.py`: NPC merchants (buy, sell, repurchase), player-to-player trade, personal storage depot currency save/load.
-    - `quests.py`: Quest start, progress, rewards, tutorial quests, abandon, fail, beginner guide.
-    - `dungeon.py`: Party room creation, dungeon selection, map codes, layer changes, combat lifecycle, rebirth coins, loot drops.
-    - `social.py`: Friend list, chat channels, party invitations, team change, mailbox (send, read, claim, return, delete), inspection.
-    - `guild.py`: Guild creation, invite, join, leave, banking in/out, level up, notices, grade delegation, guild skills.
-    - `events.py`: Mentoring / teaching, gold goblin attack/dead/disappear, citadel reward, treasure hunt, roulette, pet taming.
-    - `system.py`: HTTP notices, play options, custom keybindings, name changing, stat verification, second password PIN, titles, achievements.
-  - Re-exported all dataclasses in `messages/__init__.py` providing 100% backward compatibility for all existing code.
-* **Standalone GM & Server Web Dashboard (`tools/dashboard.py`)**:
-  - Zero-dependency web tool running on `http://127.0.0.1:9494`.
-  - Real-time live TCP socket probes for Game Server (9400) and Relay Server (9401) with response latency measurements.
-  - Interactive Character Explorer: lists accounts, character levels, classes, items, and quests. Allows GM level editing, tutorial reset, and deletion.
-  - Searchable Opcode Browser: index of all 1,400+ opcodes with hex representation, domain prefix filtering, and implementation status.
-* **Semantic Handler Architecture**:
-  - Replaced raw opcode method names with descriptive semantic functions (`handle_buy_item`, `handle_select_character`, `handle_clear_tutorial`, etc.).
-  - Added backward-compatible `on_<opcode>` aliases and rich reverse-engineering docstrings with client handler addresses and packet layout.
-* **Granular Unit Tests**:
-  - Expanded and unbundled multi-opcode tests in `tests/test_wire_messages.py` into dedicated individual unit tests.
-  - **105/105 tests passing cleanly** across all test suites in ~1.36s.
-
-## Guild Banking, Level Up, Item Splitting & Storage Depot — 2026-11-16 ~21:30
-
-* **Guild Banking, Grade & Level-Up System (Opcodes 2157 - 2158, 2164 - 2165, 2179 - 2186, 2205)**:
-  - Reverse engineered `0x00752FF0` (`GuildInfoNot`), `0x0077ABA0` (`GuildPersonListNot`), `0x00794250` (`GuildMoneyInAck`), `0x00794470` (`GuildMoneyOutAck`), `0x00753170` (`GuildPersonGradeModifyAck`), `0x00753380` (`GuildLevelUpAck`), `0x0075A120` (`GuildNoticeModifyAck`), and `0x00779390` (`GuildSkillNot`).
-  - Wire serialization: `GuildMoneyInReq/Ack` (i64 amount -> u32 result, i64 remain_gold), `GuildMoneyOutReq/Ack`, `GuildPersonGradeModifyReq/Ack` (i64 member_uid, i16 new_grade), `GuildLevelUpReq/Ack` (i16 new_level), `GuildNoticeModifyReq/Ack` (wstring notice), and `GuildSkillNot` (bool flag, Tag 0x10 skills vector).
-  - Wired domain handlers `on_2179`, `on_2181`, `on_2164`, `on_2183`, `on_2185` in `social.py`.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **Personal Storage Depot & Mail Return (Opcodes 2227 - 2231, 2234 - 2235)**:
-  - Reverse engineered `0x00795220` (`DepotSaveArAck`), `0x00795490` (`DepotLoadArAck`), `0x007965B0` (`PostNewArrivalNot`), and `0x00771470` (`PostReturnAck`).
-  - Wire serialization: `DepotSaveArReq/Ack` (i64 gold -> u32 result, Tag 0x17 map, i64 new_storage_gold), `DepotLoadArReq/Ack`, `PostNewArrivalNot` (empty notification), and `PostReturnReq/Ack` (i64 mail_id -> u32 result, Tag 0x10 vector).
-  - Wired domain handlers `on_2228`, `on_2230` in `commerce.py` and `on_2234` in `social.py`.
-  - Verified in `tests/test_inventory_flow.py`, `tests/test_social_flow.py`, and `tests/test_wire_messages.py`.
-* **Item Stack Splitting, Skill Books & Inventory Refresh (Opcodes 2092, 2111 - 2112, 2250 - 2251, 2321 - 2322)**:
-  - Reverse engineered `0x0077F570` (`DivideItemAck`), `0x0078BCD0` (`UseLearnSkillItemAck`), `0x0077F070` (`InventoryUpdatedNot`), `0x0077AED0` (`ItemRemainTimeNot`), and `0x00774DD0` (`ItemDeleteNot`).
-  - Wire serialization: `DivideItemReq/Ack` (i64 source_uid, i64 dest_uid, i32 count, i16 slot -> u32 result, Tag 0x10 items), `UseLearnSkillItemReq/Ack` (i64 item_uid, i16 skill_id -> u32 result, i16 skill_id, u8 level, i32 item_code, i32 count, Tag 0x10 items, i32 sp), and `InventoryUpdatedNot` (Tag 0x10 deleted + Tag 0x10 added).
-  - Wired domain handlers `on_2250` and `on_2111` in `commerce.py`.
-  - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
-* **Combat AP, Dungeon Penalty & Random Box (Opcodes 2085, 2109, 2196)**:
-  - Reverse engineered `0x0078FA70` (`ChangeDungeonPenaltyNot`), `0x00790480` (`InsertApNot`), and `0x0075A2E0` (`RandomboxResultItemNot`).
-  - Wire serialization: `InsertApNot` (i32 current_ap, i32 total_ap), `ChangeDungeonPenaltyNot` (bool in_dungeon, bool is_penalty, i16 level, i32 id, i32 duration), and `RandomboxResultItemNot` (u32 result, i32 item_code, i16 count, bool is_jackpot).
-  - Verified in `tests/test_wire_messages.py`.
-* **72/72 unit and flow tests passing cleanly** across all test modules in ~1.33s.
-
-
-## Titles, Achievements, Avatar Zam Socketing, Security & Inspection — 2026-11-16 ~21:15
-
-* **Titles & Achievements System (Opcodes 2327 - 2336)**:
-  - Reverse engineered `0x007751C0` (`TitleChangeAck`), `0x0079D650` (`AchieveGetListAck`), `0x0076C720` (`AchieveChangeNot`), and `0x0079D240` (`AchieveCompleteNot`).
-  - Wire serialization: `TitleChangeReq/Ack` (i32 title_id -> i32 result, i32 title_id), `AchieveGetListReq/Ack` (Tag 0x1E + Tag 0x17 + Tag 0x17 + Tag 0x0A + Tag 0x10), `AchieveChangeNot` (3x Tag 0x17 maps), and `AchieveCompleteNot` (2x Tag 0x10 vectors).
-  - Wired domain handlers `on_2335` and `on_2327` in `social.py`.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **Avatar Gem / Zam Socketing System (Opcodes 2362 - 2365)**:
-  - Reverse engineered `0x00782D00` (`AvatarZamInsertAck`) and `0x00782F40` (`AvatarZamEraseAck`).
-  - Wire serialization: `AvatarZamInsertReq/Ack` (i64 avatar_uid, i64 zam_uid -> i32 result, Tag 0x10 items) and `AvatarZamEraseReq/Ack` (i64 avatar_uid -> i32 result, Tag 0x10 items).
-  - Wired domain handlers `on_2362` and `on_2364` in `commerce.py`.
-  - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
-* **Class Promotion, Skill Reset & Rebirth Coins (Opcodes 2280, 2283, 2286)**:
-  - Reverse engineered `0x00797740` (`InitSkillNot`), `0x00797F00` (`PromotionNot`), and `0x007983B0` (`RebirthCoinChangeNot`).
-  - Wire serialization: `InitSkillNot` (u32 result, i32 sp, Tag 0x17 skills map), `PromotionNot` (u32 result, u8 new_class, i32 sp, Tag 0x17 skills map), and `RebirthCoinChangeNot` (u32 result, i16 coins).
-  - Verified in `tests/test_wire_messages.py`.
-* **Arena SP Item & Arena Return (Opcodes 2709 - 2710, 5165 - 5166)**:
-  - Reverse engineered `0x007A7CA0` (`UseArenaSpItemAck`) and `0x00758550` (`ArenaBackToSquareAck`).
-  - Wire serialization: `UseArenaSpItemReq/Ack` (i64 item_uid -> u32 result, Tag 0x10 items, i32 arena_sp) and `ArenaBackToSquareReq/Ack`.
-  - Wired domain handler `on_2709` in `commerce.py` and `on_5165` in `social.py`.
-  - Verified in `tests/test_inventory_flow.py` and `tests/test_social_flow.py`.
-* **Second Password / Security PIN (Opcodes 5256 - 5261)**:
-  - Reverse engineered `0x0075B020` (`SecondPassCreateAck`), `0x0075B050` (`SecondPassModifyAck`), and `0x0075B080` (`SecondPassAuthAck`).
-  - Wire serialization: `SecondPassCreateReq/Ack`, `SecondPassModifyReq/Ack`, `SecondPassAuthReq/Ack`.
-  - Wired domain handlers `on_5256`, `on_5258`, and `on_5260` in `social.py`.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **Remote Player & Item Inspection (Opcodes 6011 - 6012, 6028 - 6029)**:
-  - Reverse engineered `0x00790FA0` (`RequestCharInfoAck`) and `0x00766C20` (`RequestItemInfoAck`).
-  - Wire serialization: `RequestCharInfoReq/Ack` (i64 char_uid -> u32 result, bool flag, Tag 0x1E summary, 2x Tag 0x10 item vectors) and `RequestItemInfoReq/Ack` (i64 item_uid -> u32 result, i64 item_uid, Tag 0x1E item struct).
-  - Wired domain handlers `on_6011` and `on_6028` in `social.py`.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **69/69 unit and flow tests passing cleanly** across all test modules in ~1.40s.
-
-
-## Mentoring, Teaching & Gold Goblin Encounter Events — 2026-11-16 ~21:00
-
-* **Mentoring & Teaching System (Opcodes 5351 - 5357)**:
-  - Reverse engineered `0x0075C200` (`RequestTeachingAck`), `0x0075C430` (`AcceptRequestTeachingAck`), and `0x007A5890` (`TeachingGetInfoNot`).
-  - Wire serialization: `RequestTeachingReq/Ack` (i64 target_uid, wstring target_name), `AcceptRequestTeachingReq/Ack` (bool accepted, i64 mentor_uid, wstring mentor_name), and `TeachingGetInfoNot` (Tag 0x1E struct).
-  - Wired domain handlers `on_5351` and `on_5353` in `social.py`.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **Gold Goblin Encounter Events (Opcodes 5362 - 5367)**:
-  - Reverse engineered `0x007A6D10` (`GoldGoblinAppearNot`), `0x00784A10` (`GoldGoblinAttackAck`), and `0x00784CA0` (`GoldGoblinDeadAck`).
-  - Wire serialization: `GoldGoblinAppearNot` (i32 goblin_id, tag 0x10 items), `GoldGoblinAttackReq/Ack`, `GoldGoblinDeadReq/Ack`, and `GoldGoblinDisappearNot`.
-  - Wired domain handlers `on_5363` (attack goblin) and `on_5365` (kill goblin and reward items) in `dungeon.py`.
-  - Verified in `tests/test_dungeon_flow.py` and `tests/test_wire_messages.py`.
-* **Citadel & Treasure Notifications (Opcodes 5344 - 5346)**:
-  - Reverse engineered `0x007722F0` (`TreasureStartNot`), `0x0075BC00` (`TreasureEndNot`), and `0x007833F0` (`CitadelRewardNot`).
-  - Wire serialization: `TreasureStartNot`, `TreasureEndNot`, and `CitadelRewardNot` (Tag 0x17 map + Tag 0x10 items vector).
-  - Verified in `tests/test_wire_messages.py`.
-* **64/64 unit and flow tests passing cleanly** across all test modules in ~1.48s.
-
-## Character & Guild Renaming, Custom Keybindings & Spirit Weapons — 2026-11-16 ~20:45
-
-* **Character & Guild Renaming (Opcodes 2310 - 2315)**:
-  - Reverse engineered `0x00780200` (`CharNickChangeAck`) and `0x00780590` (`GuildNameChangeAck`).
-  - Wire serialization: `CharNickChangeReq/Ack` (wstring new_name, i64 item_uid -> i32 result, tag 0x10 items, wstring new_name) and `GuildNameChangeReq/Ack`.
-  - Wired domain handlers `on_2310` (character nickname change with character store persistence) and `on_2314` (guild name change) in `social.py`.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **Custom Keymapping & Keybindings (Opcodes 2319 - 2320)**:
-  - Reverse engineered `0x00753960` (`KeyboardSetCustomKeyAck`).
-  - Wire serialization: `KeyboardSetCustomKeyReq/Ack` (arbitrary raw keyboard mapping blob).
-  - Wired domain handler `on_2319` in `social.py` persisting custom key bindings on character record.
-  - Verified in `tests/test_social_flow.py` and `tests/test_wire_messages.py`.
-* **Spirit Weapon System (Opcodes 2338 - 2339)**:
-  - Reverse engineered `0x00780860` (`ItemSpiritChangeAck`).
-  - Wire serialization: `ItemSpiritChangeReq/Ack` (i64 item_uid, i64 spirit_item_uid -> i32 result, i64 spirit_uid, tag 0x10 items).
-  - Wired domain handler `on_2338` in `commerce.py`.
-  - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
-* **62/62 unit and flow tests passing cleanly** across all test modules in ~1.94s.
-
-## SQLite Storage Backend, Item Enchanting, Upgrades & Loot Pickup — 2026-11-16 ~20:30
-
-* **SQLite Character Store & JSON Migration (Milestone P9)**:
-  - Designed `ICharacterStore` interface and implemented `SqliteCharacterStore` in `src/darkblood/player_management/store.py` backed by `data/darkblood.db`.
-  - Supports atomic transactions, relational indexes on `name` (case-insensitive) and `account`, and full character JSON blob storage.
-  - Implemented bidirectional migration utilities `import_from_json(json_path)` and `export_to_json(json_path)`.
-  - Verified in `tests/test_character_store.py`: CRUD operations, case-insensitive duplicate name rejection, and bidirectional JSON <-> SQLite migration.
-* **Magic Enchanting & Item Upgrades (Opcodes 2254 - 2259, 2284 - 2285, 2672 - 2673)**:
-  - Reverse engineered `0x00796DC0` (`MagicEnchantEnchantAck`), `0x00797120` (`MagicEnchantEraseOptionAck`), `0x0077FC60` (`MagicEnchantExpendSlotAck`), `0x0077FED0` (`RandomItemUpgradeAck`), and `0x00783C40` (`FixItemUpgradeAck`).
-  - Implemented wire serialization and domain handlers `on_2254`, `on_2256`, `on_2258`, `on_2284`, and `on_2672` in `commerce.py`.
-  - Verified in `tests/test_inventory_flow.py` and `tests/test_wire_messages.py`.
-* **Item Drop, Pickup & Real-Time Presence (Opcodes 5065 - 5068, 5114, 5118 - 5119, 5096)**:
-  - Reverse engineered `0x0078AD80` (`PickUpItemResultAck`), `0x00792700` (`GetDropArNot`), `0x0077A8A0` (`FriendMyConnectionNot`), `0x00758FA0` (`FriendMyDisconnectionNot`), and `0x0078C990` (`UpdateCharInfoNot`).
-  - Implemented wire serialization and domain handlers `on_5065` (Pick up item) emitting 5066 and 5068 in `dungeon.py`.
-  - Verified in `tests/test_dungeon_flow.py` and `tests/test_wire_messages.py`.
-* **61/61 unit and flow tests passing cleanly** across all test modules in ~1.38s.
-
-## Mailbox, P2P Trade, Party Invites, GM Console Commands & Quest State — 2026-11-16 ~20:10
-
-* **Mailbox System (Opcodes 2221 - 2237)**:
-  - Reverse engineered `0x00795D70` (`PostSendReq`), `0x00795F40` (`PostSendAck`), `0x007963C0` (`PostReadReq`), `0x0075A660` (`PostReadAck`), `0x0079664C` (`PostGetAppendItemReq`), `0x0077F8E0` (`PostGetAppendItemAck`), `0x007964EC` (`PostDeleteReq`), and `0x007715F0` (`PostDeleteAck`).
-  - Implemented wire serialization and domain handlers `on_2221`, `on_2223`, `on_2225`, and `on_2236` in `social.py`.
-  - Added support for reading mail, claiming attached items and gold, and batch deleting letters.
-* **P2P Direct Trade Lifecycle (Opcodes 5069 - 5084)**:
-  - Reverse engineered `0x00770E50` (`RequestTradeAck`), `0x007587B0` (`AcceptRequestTradeAck`), `0x0077DE00` (`CancelTradeAck`), `0x0077D980` (`InsertTradeItemAck`), `0x0077DBB0` (`DeleteTradeItemAck`), `0x00758940` (`UpdateTradeArAck`), and `0x0078EB40` (`AcceptTradeAck`).
-  - Implemented wire serialization and domain handlers `on_5069`, `on_5071`, `on_5073`, `on_5075`, `on_5077`, `on_5079`, `on_5081`, and `on_5083` in `commerce.py`.
-  - Supports trading invitations, gold staging, item staging/unstaging, mutual trade acceptance, and trade cancellations.
-* **Party & Team Management (Opcodes 5049 - 5055, 5015 - 5016)**:
-  - Reverse engineered `0x00758700` (`PartyInviteAck`), party acceptance (`PartyAcceptInviteAck`), and team changes (`ChangeTeamAck`).
-  - Implemented wire serialization and domain handlers `on_5049`, `on_5054`, and `on_5015` in `dungeon.py`.
-* **Chat & In-Game GM Console Commands (Opcodes 5040 - 5041)**:
-  - Reverse engineered `0x007AC5E0` (`ChatReq`) and `0x007AC890` (`ChatAck`) using Tag `0x1E` message struct.
-  - Implemented wire serialization and domain handler `on_5040` in `social.py` supporting regular chat broadcasting and in-game GM commands:
-    - `/gold <amount>`: Instantly adds gold to character balance and syncs character state.
-    - `/levelup [n]`: Levels up character by `n` levels, grants 3 SP per level, calculates HP/MP, emits `5087 eERC_LEVEL_UP_NOT`, and replies in chat.
-    - `/sp <amount>`: Grants bonus skill points for testing skill trees.
-    - `/item <item_code> [count]`: Grants items directly into character bags via `add_reward_items`.
-* **Quest Giveup & Fail Handling (Opcodes 2078 - 2081)**:
-  - Reverse engineered `0x006223B0` (`QuestGiveupAck` / `QuestFailAck`).
-  - Implemented wire serialization and domain handlers `on_2078` and `on_2080` in `quests.py`, removing active quests from character storage and sending confirmation ACKs.
-* **54/54 unit and flow tests passing cleanly** across all 11 test modules.
-
-
-## Level-Up Progression, Store Economy & Guild Banking — 2026-11-16 ~19:50
-
-* **Level-Up & SP Progression on EXP Overflow**:
-  - Implemented `char_level_stats()` and `char_level_stat(char_class, level)` in `src/darkblood/games/game_data/client_dict.py`, parsing `UPExp`, `HealthPoint`, and `ManaPoint` from `Data/Dict/charstat.lua` across all 7 character classes (`Warrior`, `Knight`, `Hunter`, `Mage`, `Thief`, `Fighter`, `WHunter`) with fallback geometric scaling.
-  - Wired level-up evaluation loop into quest reward completion (`on_2076` in `quests.py`). When EXP overflows `UPExp`, increments character level, grants 3 SP per level, updates max HP and MP, emits `5087 eERC_LEVEL_UP_NOT` and `5086 eERC_CHANGE_EXP_NOT`, and persists character state.
-  - Verified progression in `tests/test_quest_flow.py` (character levels from 1 -> 2, accumulates 3 SP, and carries remaining EXP).
-* **Store Economy Transactions & Inventory Persistence**:
-  - Reverse engineered `0x0077E2F0` (`On_eEGS_BUY_ITEM_ACK`), `0x0077E8E0` (`On_eEGS_SELL_ITEM_ACK`), and `0x0077EC30` (`On_eEGS_REPURCHASE_ITEM_ACK`).
-  - Implemented wire encoding for `BuyItemAck` (tag 0x1E store record, i32, i64 player gold, tag 0x10 item vector, i32, i16, i64, i32), `SellItemAck` (tag 0x10 item vector, i64 player gold, tag 0x1E repurchase item struct, tag 0x13 map), and `RepurchaseItemAck` (tag 0x10 item vector, i64 player gold).
-  - Wired `on_2067` (Buy Item): matches `item_id` hash against store item catalog, deducts gold, generates and adds item to player inventory via `add_reward_items`, and persists balance.
-  - Wired `on_2069` (Sell Item): decrements/removes sold item from player bags, awards gold, and saves character state.
-  - Wired `on_2071` (Repurchase Item): returns player gold balance.
-* **Guild Economy, Progression & Skill Reset Opcodes**:
-  - `2179 eEGS_GUILD_MONEY_IN_REQ` & `2180 eEGS_GUILD_MONEY_IN_ACK` (`0x00794250`): `<q` (deposit amount) -> `<iq` (result=0, remaining gold), updating player gold and guild bank.
-  - `2181 eEGS_GUILD_MONEY_OUT_REQ` & `2182 eEGS_GUILD_MONEY_OUT_ACK` (`0x00794470`): `<q` (withdraw amount) -> `<iq` (result=0, remaining gold), updating player gold and guild bank.
-  - `2183 eEGS_GUILD_LEVEL_UP_REQ` & `2184 eEGS_GUILD_LEVEL_UP_ACK` (`0x00753380`): empty -> `<ih` (result=0, new_level), incrementing guild level.
-  - `2185 eEGS_GUILD_NOTICE_MODIFY_REQ` & `2186 eEGS_GUILD_NOTICE_MODIFY_ACK` (`0x0075A120`): wide string notice -> `<i` (result=0).
-  - `2188 eEGS_GUILD_NOTICE_DELETE_REQ` & `2189 eEGS_GUILD_NOTICE_DELETE_ACK` (`0x0074B830`): empty -> `<i` (result=0).
-  - `2214 eEGS_GUILD_ALL_SKILL_INIT_REQ` & `2215 eEGS_GUILD_ALL_SKILL_INIT_ACK` (`0x00752D80`): empty -> `<ii` (result=0, param=0).
-* 48/48 unit and flow tests pass cleanly across all 11 test modules.
-
-## Milestone P1: Reproducible Transport & Serialization Hardening — 2026-11-16 ~19:30
-
-* Transport & Serialization Test Suite (`tests/test_transport.py`, 11 comprehensive tests):
-  - ProudNet signed scalar boundaries across widths 1, 2, 4, 8 bytes and overflow checks beyond 64-bit signed ranges.
-  - Verification of invalid scalar width handling (e.g. widths 0, 3, 5, 255) raising `ProtocolError`.
-  - Regression fixture for the exact observed first client frame `13 57 01 05 30 0F 00 00 40` (type 0x30, parameter `0x4000000F`).
-  - Fragmented TCP frames (streaming 1 byte at a time through `pop_frame`) and coalesced TCP frames (multiple ProudNet frames in a single chunk).
-  - JSerBuffer inverted terminal bit varuints (bit 7 set: 0 -> `\x80`, 128 -> `\x00\x81`), truncation bounds, and length limit enforcement.
-  - Implemented `JSerBufferReader` class in `darkblood.core.serialization.jser` supporting bounds-checked reads for all primitive types, UTF-16LE wide strings, UTF-8 strings, and dynamic vector parsing.
-  - Hardened `parse_event` and `event` for zlib compression with 4-byte uncompressed size prefix matching client behavior.
-* Updated `ROADMAP.md` milestone progress across P0, P1, P2, P3, P4, and P5.
-* 47/47 unit and flow tests pass cleanly across all 11 test modules.
-
-## Guilds, Megaphone, Repairs, Upgrades, Bag Renaming, Contracts & Memos — 2026-11-16 ~19:15
-
-* Decompiled and implemented wire schemas, domain handlers, and tests for 13 additional opcodes:
-  - `2032 eEGS_CHANGE_BAG_NAME_REQ` & `2033 eEGS_CHANGE_BAG_NAME_ACK`: `<q` (bag_uid) + wide string -> `<iq` + wide string, persisting custom bag tab labels on character. Handled in `on_2032`.
-  - `2117 eEGS_UPDATE_SKILL_LOCKED_REQ` & `2118 eEGS_UPDATE_SKILL_LOCKED_ACK`: `<h?` (sKindNameIndex, bLocked) -> `<ih?` (result, sKindNameIndex, bLocked), persisting locked skill set on character. Handled in `on_2117`.
-  - `2145 eEGS_DURABILITY_REPAIR_REQ` & `2146 eEGS_DURABILITY_REPAIR_ACK`: tag 0x17 map -> `<i` (result=0) + `b'\x17\x80'` (empty tag 0x17 map) + `<q` (remain_gold), updating player gold and completing gear durability repairs. Handled in `on_2145`.
-  - `2115 eEGS_ITEM_UPGRADE_REQ` & `2116 eEGS_ITEM_UPGRADE_ACK`: `<qqq` (target_item_uid, catalyst_uid, protect_uid) -> `<i` (result=1 rejection until upgrade recipes are wired). Handled in `on_2115`.
-  - `2086 eEGS_BUY_LIFE_WATER_REQ` & `2087 eEGS_BUY_LIFE_WATER_ACK`: `<?` (flag) -> `<i?q` (result, flag, remain_currency). Handled in `on_2086`.
-  - `2128 eEGS_USE_SPEAKER_ITEM_REQ` & `2129 eEGS_USE_SPEAKER_ITEM_ACK`: `<q` (speaker_uid) + wide string (megaphone message) + `<q` (target_uid) -> `<iq` + `b'\x10\x80'` (empty updated item vector). Handled in `on_2128`.
-  - `5121 eERC_GUILD_CREATE_PROPOSAL_REQ` & `5122 eERC_GUILD_CREATE_PROPOSAL_ACK`: wide string (guild_name) -> `<i` (result=0). Handled in `on_5121`.
-  - `2150 eEGS_GUILD_CREATE_REQ` & `2151 eEGS_GUILD_CREATE_ACK`: wide string (guild_name) -> `<iq` (result=0, guild_uid) + wide string (guild_name) + `<q` (remain_gold). Handled in `on_2150`.
-  - `2121 eEGS_CONTRACT_UPDATE_REQ` & `2122 eEGS_CONTRACT_UPDATE_ACK`: `<i` (contract_id) -> `<ii` (result, contract_id). Handled in `on_2121`.
-  - `2143 eEGS_DURABILITY_CHANGE_REQ` & `2144 eEGS_DURABILITY_CHANGE_ACK`: tag 0x17 map -> `<i` + `b'\x10\x80'` (empty item vector). Handled in `on_2143`.
-  - `2133 eEGS_FRIEND_LIST_UPDATE_REQ` & `2134 eEGS_FRIEND_LIST_UPDATE_ACK`: `<q` (friend_uid) + wide string (memo) -> `<iq` + wide string (memo). Handled in `on_2133`.
-  - `2155 eEGS_GUILD_PERSON_JOIN_REQ` & `2156 eEGS_GUILD_PERSON_JOIN_ACK`: `<q` (guild_uid) -> `<i` (result=0). Handled in `on_2155`.
-  - `2160 eEGS_GUILD_INVITE_REQ` & `2161 eEGS_GUILD_INVITE_ACK`: wide string (char_name) -> `<i` (result=0). Handled in `on_2160`.
-  - `2162 eEGS_GUILD_PERSON_LEAVE_REQ` & `2163 eEGS_GUILD_PERSON_LEAVE_ACK`: empty -> `<i` (result=0). Handled in `on_2162`.
-* 36/36 headless tests pass cleanly across all categories.
-
-## Diagnostic Export Tooling & GitHub Issue Templates — 2026-11-16 ~18:50
-
-* Added GitHub Issue Templates under `.github/ISSUE_TEMPLATE/`:
-  - `bug_report.yml`: GitHub Issue form for player bug reports, gameplay areas, unhandled opcodes, executable hashes, and diagnostic bundles.
-  - `opcode_investigation.yml`: Reverse engineering form for opcode number/name, handler address, hex payload, decompiled C snippet, and diagnostic bundle.
-  - `config.yml`: Helpful links to local documentation.
-* Implemented `tools/export_diagnostics.py`:
-  - Automatically gathers OS info, Git commit hash, client executable SHA-256 (`DarkBlood.exe`), recent entries from `wire.jsonl`, `data/characters.json`, `research/client/handler_map.txt`, and `assets/opcodes.tsv`.
-  - Packages diagnostics into a zip file `darkblood_diagnostics_<timestamp>.zip` for easy issue submission.
-* Decompiled and implemented wire schemas, domain handlers, and tests for 8 additional opcodes:
-  - `2048 eEGS_CHANGE_BAG_PROPERTY_REQ` & `2049 eEGS_CHANGE_BAG_PROPERTY_ACK`: `<qB` (nBagUID, ucProperty) -> `<iqB` (result, nBagUID, ucProperty) updating tab filter `b28` on bag. Handled in `on_2048`.
-  - `2053 eEGS_MODIFY_SKILL_SPEECH_REQ` & `2054 eEGS_MODIFY_SKILL_SPEECH_ACK`: `<H` (sKindNameIndex) + wide string -> `<iH` + wide string, persisting custom skill shout text on character. Handled in `on_2053`.
-  - `2055 eEGS_DELETE_SKILL_SPEECH_REQ` & `2056 eEGS_DELETE_SKILL_SPEECH_ACK`: `<H` (sKindNameIndex) -> `<iH` (result, sKindNameIndex) removing shout text. Handled in `on_2055`.
-  - `2067 eEGS_BUY_ITEM_REQ` & `2068 eEGS_BUY_ITEM_ACK`: `<iiH` (store_id, item_id, count) -> `<i` (result=1 rejection until store inventory is populated). Handled in `on_2067`.
-  - `2069 eEGS_SELL_ITEM_REQ` & `2070 eEGS_SELL_ITEM_ACK`: `<iqi` (npc_id, item_uid, count) -> `<i` (result=1 rejection). Handled in `on_2069`.
-  - `2071 eEGS_REPURCHASE_ITEM_REQ` & `2072 eEGS_REPURCHASE_ITEM_ACK`: `<q` (item_uid) -> `<i` (result=1 rejection). Handled in `on_2071`.
-  - `2139 eEGS_FRIEND_LIST_ADD_REQ` & `2140 eEGS_FRIEND_LIST_ADD_ACK`: wide string -> `<i` (0xCE player offline / not found). Handled in `on_2139`.
-  - `2135 eEGS_FRIEND_LIST_DELETE_REQ` & `2136 eEGS_FRIEND_LIST_DELETE_ACK`: `<q` (char_uid) -> `<iq` (result=0, char_uid). Handled in `on_2135`.
-* 35/35 headless tests pass cleanly across all categories.
-
-## Modular Test Suite Refactoring — 2026-11-16 ~18:30
-
-* Refactored monolithic `test_headless_flow.py` into 10 granular, modular test modules:
-  - `test_character_store.py`: CharacterStore creation, duplicate check, deletion, inventory.
-  - `test_wire_messages.py`: Unit encoding/decoding for all opcode dataclasses.
-  - `test_hashing.py`: JHash algorithm verification against client DJB2.
-  - `test_lobby_flow.py`: Lobby handshake, server/channel/character listing, creation/deletion/selection.
-  - `test_inventory_flow.py`: Drag, use, discard, bags, quickslots, skill learning.
-  - `test_dungeon_flow.py`: Gates, layers, monster combat, death/revival, cards, town return.
-  - `test_quest_flow.py`: Quest acceptance, completion, client dict rewards, tracking restore.
-  - `test_social_flow.py`: Mailbox, friends, invite lists, web notices, NPC dialogue.
-  - `test_relay_flow.py`: Relay server isolation.
-  - `test_jpk.py`: JPK archive and crypto.
-* 31/31 tests pass cleanly across all categories.
-
-## Skills, Character deletion, Item management, Bag & Quickslots — 2026-11-16 ~18:15
-
-* 2014 eEGS_DELETE_CHARACTER_REQ & 2015 eEGS_DELETE_CHARACTER_ACK: Wire schema i64 char_uid -> i32 result + i64 char_uid + i32 complete_time=0. CharacterStore.delete() persists account character removals.
-* 2040 eEGS_DELETE_ITEM_REQ & 2041 eEGS_DELETE_ITEM_ACK: i64 item_uid + i32 amount -> i32 result + i64 item_uid + i32 del_amount. Inventory item deletion and stack decrementing persisted to store.
-* 2030 eEGS_SWITCH_BAG_REQ & 2031 eEGS_SWITCH_BAG_ACK: u16 from + u16 to -> i32 result + u16 from + u16 to. Bag reordering persisted.
-* 2046 eEGS_SWITCH_QUCIKSLOT_REQ & 2047 eEGS_SWITCH_QUCIKSLOT_ACK: u8 type + u8 from + u8 to -> i32 result + echoes slot payload.
-* 2050 eEGS_LEARN_SKILL_REQ & 2051 eEGS_LEARN_SKILL_ACK: u16 sKindNameIndex + u8 ucLevel -> i32 result + u16 index + u8 level + i32 remain_sp + i64 remain_gold. Character skill points and learned levels persisted.
-* 2594 eEGS_HTTPNOTICE_CHECK_REQ & 2595 eEGS_HTTPNOTICE_CHECK_ACK: i32 result + bool bWatch=False.
-* 2216 eEGS_PLAY_OPTION_UPDATE_REQ: i64 char_uid + tag 0x1E struct recorded and consumed.
-* 2024 eEGS_GET_INVITELIST_REQ & 2025 eEGS_GET_INVITELIST_ACK: i32 result + tag 0x10 empty user vector.
-* 5087 eERC_LEVEL_UP_NOT & 5086 eERC_CHANGE_EXP_NOT: wire structures mapped from 0x0078CCF0 / 0x0078D170.
-* Item entity updated with item count/amount at +0 offset.
-* 17/17 headless tests pass.
-
-## Dungeon schemas & Bag cell display resolved — 2026-11-16 ~17:15
-
-* 5095 eERC_CHANGE_DUNGEON_LAYER_NOT: payload decoded as i32 0x7FFFFFFF + i64 layer_net_id = (jhash(map_code) << 32) | layer_id. For Lucid Forest Entrance (Act1_G1_A10), jhash is 0x32ADCD46 and layer is 4 (fffff7f 04000000 46cdad32). Sent by JAppStateGamePlay::Initialize (0x006C0000.c:10234 via 0x0087D1F0 -> 0x007900B0). Handled in on_5095.
-* 2422 eEGS_ACTIVE_WARFLAG_REQ: decoded as i32 0x7FFFFFFF + u32 war_flag_id (31). Sent by 0x0087D170 via 0x0079C300. Client registers no 2423 ACK. Handled in on_2422.
-* 2358 eEGS_GUIDE_BEGINNER_UPDATE_REQ: guide vector (i32 0x7FFFFFFF + tag 0x10 vector<u32>). Handled in on_2358.
-* 5063 eERC_MONSTER_DEAD_REQ & 5064 eERC_DROP_ITEM_NOT: JUserClient::MonsterDeadREQ (0x0078A690) sends u32 monster_id + u32 param. On_eERC_DROP_ITEM_NOT (0x0078A870) maps 26-byte item drop structs (drop_uid, item_id, count, drop_type, 3x float coords, flags).
-* Bag cell display: Field semantics recovered from 0x00827D80, 0x005509F0, 0x00551310. Bag id must have high dword < 0x80000000; +0x28 is item category tab (0 accepts all items; 0xFF blocked matching), +0x29 is cell capacity (BagSize = 5 for Ibaga0004; 0 displayed zero cells), +0x2A is UI slot (0). Container 2 added to ensure_inventory.
-* 16/16 headless tests pass.
-
 ## Dungeon render reproduced — Cristian machine, 2026-11-16 ~13:50
 
 Fresh e410c89 server; 13/13 headless tests pass. Existing Mage `lindic` entered
@@ -702,25 +337,6 @@ monsters, combo counter and movement; no exception in ~1 minute. Next requests:
 `eEGS_ACTIVE_WARFLAG_REQ` (`ffffff7f 1f000000`), both unhandled. Kills, drops,
 dungeon clear and return to town are not yet verified. 13/13 headless tests pass.
 
-## Latest resume verification — Cristian, 2026-11-16
-
-Local live test (~11:54–12:00): existing Mage `lindic` selected successfully
-and rendered its tutorial. Relay JoinGroupACK and mailbox/friend replies were
-exercised; 2353 monster-death notifications arrived and no crash was logged.
-Attempted tutorial exit did not emit 2082. Further UI input was stopped because
-movement/attacks continued between commands; user-control clarification pending.
-Town/skip/dungeon acceptance remains unverified in this local run.
-
-`origin main` was already current at `cbcc82e`; upstream includes room list and
-creation responses, store dict loading, quest persistence/history and waypoints.
-Rebuilt/deployed the latest shim locally and verified the client executable hash.
-All 13 headless tests pass, including the corrected 5014 start-game response.
-Static and assembly evidence confirms its empty string has no type tag and its
-last container is a mandatory vector. Live dungeon entry remains unverified;
-see PROTOCOL.md's dungeon start correction and SESSION_HANDOFF.md.
-
-Updated **November 16, 2026** (second session). Offline gameplay is not available yet; the client now reaches character creation and selection against the local server.
-
 ## Tutorial skip and client data (saitatter machine, 2026-11-16, sixth session)
 
 1. **Skip-tutorial loop explained (static).** The 2083 path requests
@@ -754,38 +370,6 @@ Updated **November 16, 2026** (second session). Offline gameplay is not availabl
    for publication) with a manifest and `tools/luac51_dump.py` listings of all
    86 Lua 5.1 dict chunks.
 
-## World entry reproduced (saitatter machine, 2026-11-16, 03:23)
-
-The Proud error 14 blocker is resolved. 2007's handler connects `JP2PClient`
-(`0x00956C80`) to a relay endpoint that only 5134 `eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT`
-fills. The server now sends 5134 (127.0.0.1:9401) after 5029 and
-`run_bootstrap.py` also listens on 9401 as a handshake-only relay. After selecting
-"Tester", the town loaded with the character and an NPC dialogue, and Space
-advanced the dialogue. Movement and further gameplay are not verified. Unhandled
-next requests: 2131, 2569, opcode 0. See PROTOCOL.md §5.
-
-## Latest local handoff ? 2026-11-16
-
-[SESSION_HANDOFF.md](SESSION_HANDOFF.md) records the current machine setup and
-resume instructions. Local world entry is **not verified**. The last test captured
-a Proud::Exception with error 14, "Unknown Internet address", at a connection
-validation path in 0x00B54B40. Earlier world-transition claims below are historical
-collaborator notes and must not be treated as a reproduction on this machine.
-The next target is endpoint reader 0x00A48A90 and the 2007 connection fields.
-All owned final-test processes were stopped; generated artifacts remain local.
-
-## Verified in the second session
-
-1. The send blocker was encryption: game requests use ProudNet strong encryption (RmiContext `0x00F2C410`, mode 1) and `0x00B76050` aborted at `0x00B76515` because the shortened handshake never established a session key.
-2. The emulator now performs the real key exchange (type 5 → 6 → 7): RSA-1024 OAEP-SHA1 for the session key, AES-128 ECB with a CRC-32 envelope for messages. The fast key in type 6 and every client message decrypt with a valid CRC.
-3. The client's opcode → name table (1,191 entries) and runtime handler map (298 entries) were recovered; see `server/data/opcodes.tsv` and [PROTOCOL.md](PROTOCOL.md#5-application-flow-observed-in-the-live-client).
-4. Observed flow with parser-accepted responses: welcome 5020 → DB list 2402/2403 (title Server List shows "Offline / None") → knock 2001/2002 → square list 2021/2022 (Channel List shows "Channel 1 · Normal · [Good]") → join square 5028/5029 → character list 2008/2009 (character select, "4 SLOT") → create 2012/2013 (character "Tester" appears, Warrior).
-5. Characters persist in `data/characters.json` (ignored by Git) and are listed again after a client restart.
-6. The intro cinematics are skipped by clicking once loading is complete; `gamectl skip-intro` clicks until the Server List opens.
-7. The client runs in exclusive fullscreen; GDI capture works once the window is focused. DXUT's Alt+Enter toggles windowed mode.
-
-Screenshots of each stage are kept locally in `research/` (`shot8.png` server list, `g7.png` channel list, `g10.png` empty character select, `g11.png` creation, `g13.png` created character).
-
 ## Fifth session findings & breakthroughs (2026-11-16)
 
 1. **Asset Cryptography Fully Broken & Verified (`docs/CRYPTO_KEYS.md`):**
@@ -807,58 +391,6 @@ Screenshots of each stage are kept locally in `research/` (`shot8.png` server li
    - Discovered `DictTutorialReward:CompleteLoad` and `DictTutorialReward:SkipLoad` in `data\dict\tutorialreward.lua` with starting reward items (`Aneca0001`, `Ihppa0000`, `Imppa0000`).
 5. **Multi-Agent Conventional Commits Rule:**
    - Updated `AGENTS.md` and `CONTRIBUTING.md` mandating Semantic Commit Conventions (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
-
-## Fourth session findings & achievements (2026-11-16)
-
-1. **Square Relay Server & JoinGroup Protocol:**
-   - Identified ProudNet error 14 resolution: `5134` (`eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT`) announces relay server at `127.0.0.1:9401`.
-   - Reverse engineered Relay PIDL RMI 1001 (`JoinGroup`) and implemented RMI 3001 (`JoinGroupACK`) with group host ID `0x10000` and member assignment.
-2. **Decompiled Tutorial & Town Opcode Suite:**
-   - Opcode `2131` -> `2132` (`eEGS_FRIEND_LIST_REQUEST_ACK`, handler `0x007712E0`): `struct.pack('<I', 0) + b'\x17\x00'`.
-   - Opcode `2569` -> `2570` (handler `0x00772160`): `struct.pack('<I', 0) + b'\x17\x00'`.
-   - Opcode `2082` -> `2083` (`eEGS_CLEAR_TUTORIAL_ACK`, handler `0x0077EEB0`): `struct.pack('<I', 0) + b'\x10\x00'`. Triggers `0x006DBFA0(9)` to transition to Town Scene.
-   - Opcode `2346` -> `2347` (`eEGS_TUTORIAL_QUEST_START_ACK`, handler `0x006481E0`): `struct.pack('<I', 0)`.
-   - Opcode `2390` -> `2391` (`eEGS_ROULETTE_MANAGER_INFO_ACK`, handler `0x006CC6B0`): `struct.pack('<I', 0) + (b'\x00' * 21)`.
-   - Opcode `2353` (`eEGS_TUTORIAL_MONSTER_DEAD_NOT`) & `2352` (`eEGS_IP_ADDRESS_NOT`): client notifications mapped and recognized.
-3. **High-Level Domain Models (`server/models.py`):**
-   - Implemented dataclasses for `JoinSquareAck`, `RelayAddressNot`, `PostListAck`, `FriendListAck`, `GuildOrAttendanceAck`, `ClearTutorialAck`, `TutorialQuestStartAck`, `RouletteManagerInfoAck`, and `RelayJoinGroupAck`.
-   - Refactored `server/game_wire.py` to use domain models directly, maintaining human-readable code.
-4. **Direct3D 9 Multi-Adapter Hook (`client_hook/steam_api_hook.c`):**
-   - Intercepted `Direct3DCreate9` and `IDirect3D9::CreateDevice`.
-   - Added automatic adapter fallback for headless/virtual display systems (Parsec Adapter 0 fallback to Adapter 1 or Reference Rasterizer `d3dref9.dll`).
-5. **Headless Test Suite (`tests/test_headless_flow.py`):**
-   - Added automated headless tests for character selection, relay handshake, and all town/tutorial opcodes.
-   - 100% test pass rate in 0.6s without opening game windows.
-
-## Third session findings & achievements (2026-11-16)
-
-1. **Character Selection (2006 → 2007):** Recovered the complete 651-byte binary schema for `eEGS_SELECT_CHAR_ACK` (`0x007AA4B0` / reader `0x00A40760`). Modeled with high-level dataclasses in `server/models.py` (`GameServer`, `ChannelSquare`, `CharacterClass`, `CharacterVisuals`, `Character`, `SelectCharacterAck`).
-2. **ProudNet RMI Ping/Pong Protocol (0xFA01 → 0xFA02):** Reverse engineered client ping handler at `0x00B47ED0` in `normal.bin`. Client sends RMI ping type 1 (`0x01`, ID `0xFA01`). Implemented immediate `0xFA02` pong response echoing timestamp and sequence in `server/bootstrap_server.py`.
-3. **World Transition Opcode Pipeline:**
-   - **5030 → 5031 (`eERC_JOIN_LAYER`):** Handler `0x00787A70` (`u32 result`, `u64 layer_id`, `u64 instance_id`, `u8 tag`).
-   - **2016 → 2017 (`eEGS_ENTER_MAPTOOL`):** Handler `0x00757D20` (`u32 result` = 0 triggers Scene 5).
-   - **5013 → 5014 (`eERC_START_GAME`):** Handler `0x007880A0`/`0x00788199` (`u32 result`, `u16`, `u32`, `wstr`, 3 × `0x17` map, `u8 tag` = 0 triggers Scene 9 / Town).
-4. **Multi-Desktop Windows Sandbox Automation:**
-   - Discovered that the Windows agent sandbox creates isolated virtual desktops on `WinSta0` (`exebox-...`).
-   - Enhanced `tools/gamectl.py` to traverse all desktops via `EnumDesktopsW` and `EnumDesktopWindows`, attaching via `SetThreadDesktop`.
-   - Enhanced input delivery using `AttachThreadInput`, `BringWindowToTop`, `SetForegroundWindow`, and dual `mouse_event`/`keybd_event` + `PostMessageW` routing.
-5. **Collaborator Setup & Recurring Sync:**
-   - Granted repository collaborator status to `CristianVita` (`cri999sti@gmail.com`) and `mauvalefotos@gmail.com`.
-   - Branch protection enabled on `main` (`allow_force_pushes: false`, required PR reviews: 1, `enforce_admins: false` allowing owner `saitatter` administrative privileges).
-   - Contributors submit changes via feature branches and Pull Requests (PRs); force pushes are blocked.
-   - Updated [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md) mandating Semantic Commit Conventions and the 10-minute sync cycle.
-
-## Immediate blocker
-
-The world load sequence triggers Scene 9 (Town). Next step is to observe and implement the in-world entity synchronization and movement notifications (`eERC_UPDATE_CHAR_INFO_NOT` 5096, `eERC_MOVE_NOT`, etc.) to achieve full interactive free-roam in town.
-
-## First session findings (2026-11-15)
-
-1. The initial Steam shim lacked exports required during dynamic import resolution; termination hooks concealed this.
-2. Completing the export surface and disabling termination hooks allowed `SteamAPI_RestartAppIfNecessary(267790)` and `SteamAPI_Init`.
-3. Returning pointer `1` from Steam interface getters caused invalid accesses (crash at `0x0092C322`); minimal SteamUser/SteamFriends interfaces fixed startup.
-4. The client connects to `54.173.235.121:9400`; the shim redirects IPv4 `connect` to loopback, preserving the port.
-5. The plaintext route to `OnJoinServerComplete result=0` and the decoded 5020 welcome were reached; the encrypted route above replaces it.
 
 ## Artifact identities
 
@@ -1000,18 +532,12 @@ The original REA seed `0x92C2E0` begins inside the Steam-related function. Its c
 
 ## Outstanding code and asset issues
 
-- Existing XML in `extracted_sample/` is malformed, for example `"!xol vkNukon=...` instead of valid XML. The key in `CRYPTO_KEYS.md` is inherited and unverified; the old README contained a different value. Recover and validate the algorithm/key again.
-- The supplied `DarkbloodKR.ini` is not plaintext INI. Its packaging/obfuscation remains unresolved.
-- The Steam shim has incomplete export semantics and invalid interfaces not yet exercised by startup.
-- Termination-hook definitions remain as dead WIP code; they are not installed.
-- The server does not validate type-8 connection requests. Application handlers exist only for the flow up to character creation.
-- Server → client messages are sent unencrypted; the client accepts them, but the original server may have encrypted them.
-- `0x1D → 0x1F` is exploratory. The `0x1E` timing parser is recovered; complete control-message semantics are not.
-- No dedicated automatic protocol test suite has been added. Native builds and bounded live-client experiments succeeded through the milestones above; these are not gameplay end-to-end tests.
-
-## Workspace state at pause
-
-Second session: changes are uncommitted on `main` (no commit was requested). The test client and server started by `gamectl` were stopped. The pre-existing `server/server.py` process (ports 10001/10002) was left untouched. Verify processes and ports before resuming.
+- Existing XML in `extracted_sample/` is malformed and must not be treated as plaintext. JPK extraction itself is
+  verified (`docs/JPK_FORMAT.md`, `tests/test_jpk.py`); `docs/CRYPTO_KEYS.md` records the cipher.
+- The supplied `DarkbloodKR.ini` is not plaintext INI; its packaging/obfuscation is unresolved.
+- The Steam shim implements few interface slots (see ROADMAP, P5) and redirects IPv4 `connect` only.
+- Server → client messages are unencrypted (the client accepts them); `0x1D -> 0x1F` is exploratory.
+- Unmapped wire fields: `docs/UNMAPPED_FIELDS.md` (generated). Open features: `ROADMAP.md`.
 
 ## Public repository preparation
 

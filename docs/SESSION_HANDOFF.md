@@ -1,5 +1,16 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Docs cleanup and progress CI — saita machine, 2026-11-20 (late)
+
+- ROADMAP.md now lists only open work; implemented items and the per-feature logs in STATUS.md and this file
+  were removed (Git history keeps them). The README names the supported client (SHA-256 `a82ae3d7...`).
+- `tools/gen_progress.py` builds the README "Progress by system" table (named vs `_` fields per `schemas/*.jsch`
+  domain) and `docs/UNMAPPED_FIELDS.md`. `.github/workflows/ci.yml` runs the tests and, on every push to `main`,
+  regenerates both and commits them as `docs(readme): update per-domain progress [skip ci]`. If branch protection
+  blocks the bot push, allow `github-actions[bot]` to bypass it. After changing a schema, run
+  `python tools/gen_progress.py` locally so the commit already carries the update.
+- Next targets: see ROADMAP.md "Open work" (town movement desync, shared dungeon instances) and the largest
+  unmapped groups (lobby 72, dungeon 43, social 24).
 ## Live two-client playtest — saita machine, 2026-11-20 (evening)
 
 Data reset at the start (`data/darkblood.db` removed; backup in the session
@@ -177,30 +188,6 @@ achievement completion live; then title ownership and item dye arrays. Then look
 fields still sent as zero: item dyes, mapSingleReward `+0x00`/`+0x14..+0x1C`, the first
 5044 set, and the 2009 trailing map/set.
 
-## Standalone Server Assets (Elimination of external data_root requirement) — saita machine, 2026-11-20
-
-- Per user request to eliminate `data_root` / external client data dependency:
-  Exported all client dictionary tables required by the server into clean, normalized TSV and JSON files in `assets/`:
-  - `starter_equipment.tsv` (default class equipment)
-  - `char_stats.tsv` (per-class HP, MP, UpExp progression)
-  - `levelup_ap.tsv` (level up AP rewards)
-  - `item_durabilities.tsv` (equipment max durability)
-  - `equip_index.tsv` (item grade, demand level, demand class)
-  - `item_fields.tsv` (item BuyPrice, SellPrice, BagSize)
-  - `npcs.tsv` & `stores.tsv` (NPC IDs and store inventory lists)
-  - `monsters.tsv` (monster HP, Lv, Exp, DropCnt)
-  - `money_drops.tsv` (AR gold drop ranges)
-  - `skills.tsv` (SP and AR learning demand costs)
-  - `map_gates.tsv` (dungeon gate to dungeon IDs)
-  - `quests.tsv`, `quest_missions.tsv`, `quest_chains.tsv`, `quest_item_groups.tsv` (quest rewards, chains, objectives, items)
-  - `tutorial_rewards.tsv` (complete and skip rewards)
-  - `cash_items.tsv`, `cash_packages.tsv`, `random_boxes.json` (cash shop items, packages, random box tables)
-  - `looting.json` (dungeon monster drop tables, looting items, groups)
-- Created `tools/export_assets.py` to regenerate all asset tables reproducibly from client Lua if ever needed. Total asset size is only ~1.6 MB.
-- Updated `src/darkblood/games/game_data/client_dict.py` to read directly from `assets/` by default.
-  Added test override support via `_env_override()` so in-memory mock tests in the test suite run flawlessly.
-- All 172 unit tests pass standalone with `DARKBLOOD_CLIENT_DATA="C:\does_not_exist"`.
-
 ## Dungeon difficulty, end-of-dungeon chest & stats, quest item tracking — saita machine, 2026-11-20
 
 - **Dungeon difficulty switching (Issue 1)**:
@@ -239,19 +226,6 @@ fields still sent as zero: item dyes, mapSingleReward `+0x00`/`+0x14..+0x1C`, th
   Consumed quest items are cleaned up on quest turn-in (2076 -> 2077).
   All 172 unit tests pass.
 
-
-## Server Cash Shop catalog — saita machine, 2026-11-20
-
-- `2712` resolves product IDs through the bundled `assets/cash_shop.tsv`.
-  An operator can supply a complete `data/cash_shop.tsv` override or put
-  that file in `DARKBLOOD_DATA`. An invalid catalog returns result 24 with
-  diagnostics in the server log.
-- Per user request, the public source tree includes the normalized 771-entry
-  server catalog. The extracted Lua source and local override stay outside Git.
-- All 171 tests passed. Isolated headless replay persisted the four captured
-  products (847, 760, 22 and 862) using only the bundled catalog.
-  The active diagnostic server was left running while the clients were in use.
-- Cash package and random box contents still use the extracted game tables.
 
 ## Server compatibility cleanup — saita machine, 2026-11-20
 
@@ -633,44 +607,6 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - Death (5093/5094 echoes the request UID) and revive with a rebirth coin; no more crash at `0x0055BF71`.
 - Item delete (2040) and use (2038); Steam cash-shop purchases (2712 -> unsolicited 2037 + 2714, free offline).
 - Stats after the Quality fix (2406 reports attack/m.attack/defense/m.defense floats).
-
-## Implemented 2026-11-17, headless only (verify live next)
-
-- Monster EXP on 5063 from `monster.lua` (`Exp`, rounded), shared `_grant_exp` with quests (5087/5086 fixed).
-- Monster drops (`games/loot.py`): `itemlooting.lua` LoadMonLooting per dungeon (MonID entries only for that
-  monster), UsuallyProb scaled by HP/AveMonHP, item from OneItemID / ItemGroup / equipment criteria
-  (`<lv><grade>_<Weapon|Armor|Accessory>`, class bit from Demand1Class). 5064 announces drops at the 5063 instance
-  id; 5065 pick-up -> 5068 + 2037. Map `Act1_G1_A10` falls back to table `Act1_G1_A1` (assumption).
-  Simulation: ~4.4% drop per normal hog, ~4.3 items per `1fpi03U0`.
-- Cash packages (Type 36, PACKAGEnnn -> DictItem:LoadPackage) and random boxes (DictRandomBox) open on use;
-  bag capacity (`free_bag_slots`, bag `b29`) is enforced for opening, buying and picking up.
-- 5017 finish game -> 5018: full victory payload implemented in `dungeon.py` / `messages/dungeon.py` (u32 result, bool bVictory, wstring map_code, bool bSamePerson, tag 0x17 mapGuildPersonCnt, tag 0x17 mapSingleReward with 40-byte stats, 4x i32 ranks/box, tag 0x10 vecBonusMonster). Fixed client dropping out of 0x007ADB60 on truncated read. Dynamic rank calculation (SSS/SS/S/A) based on kills/score and reward statistics payload.
-- Blood effect unlocked in options: `m_bAdultUser = True` in welcome 5020 ungrays `Btn_ShowBlood` (JNetUserMgr+0x4C / 0x00577860).
-- Quest monster kill tracking: 5063 now resolves active quest objectives via `quest_monster_objectives()` and broadcasts 2075 progress updates.
-- Learn skill list (2697 -> 2698): resolved UI freeze in `Lua_OnVirtualLearnSkill` (waiting for 0x0A8A in `0x0094E1F0`). Decoded wire format: 2697 prefix + tag 0x10 vector, 2698 result + tag 0x17 map + remain SP + remain Gold.
-- Empty/record-only handlers: 2242->2243, 2446->2447, 2592 (no client handler), 2509, monster cards 2601/2608/2617.
-- `GameSession.current_char()` replaces 26 copied character lookups.
-- Depot / warehouse: 2228/2229 (DepotSaveArReq/Ack), 2230/2231 (DepotLoadArReq/Ack), 2242/2243 (DepotShareExpireTimeGetReq/Ack), 2461/2462 (DepotSlotExtendReq/Ack) fully wired to character store persistence.
-- Codebase modularization: split monolithic `commerce.py` (~940 lines) into dedicated domain mixins: `src/darkblood/games/handlers/skills.py` (`SkillHandlers`), `src/darkblood/games/handlers/inventory.py` (`InventoryHandlers`), and streamlined `commerce.py` (`CommerceHandlers`).
-- Shared `strip_prefix(data, prefix=b'\xff\xff\xff\x7f')` in `jser.py` adopted across all handler decoders.
-- Audited and eliminated invalid literal `b'\x1e'` from encoders across all domain messages where client `0x00B35010` returns immediately without consuming wire bytes.
-- The live character's bag was upgraded once to Ibaga0003 (20 slots) in `data/darkblood.db` (backup in scratchpad).
-- **Pets, Mounts & Monster Taming Subsystem**: Opcodes 2348-2351 (Taming), 2434-2438 (Mount summon/dismiss/speed), 2464-2474 (Pet summon/dismiss/feed/rename/level) with SQLite persistence (`mounts`, `pets` tables) and automated flow tests (`test_pets_flow.py`).
-- **PvP Arena, Duels, Teams & League Season Rankings**: Opcodes 5100-5113 (Duels), 5145-5154 & 2306/2307 (Arena rooms), 5269-5275 (Arena teams), 2550-2553 & 2475-2478 (League season rankings), 2709/2710 (Arena SP items) with dedicated tests (`test_arena_flow.py`).
-- **Mailbox System (Post Office)**: Opcodes 2219-2227, 2234-2237 (list, read, send with attached gold and items, claim append items, delete, return, new arrival notice) with full persistence and tests (`test_mail_flow.py`).
-- **Character Struct `0x00A40760` (Opcode 2007) Field Mapping**: All 34 sequential chunks mapped and documented, including mailbox substructure at `0x0074C1D0` -> `0x00A3E760`.
-- **Master Opcode Registry**: Created `docs/OPCODE_REGISTRY.md` detailing 501 tracked opcodes, 298 client handler virtual addresses, 140 implemented server handlers, wire formats and packet semantics.
-- **GameSession Pure Composition Refactoring**: Eliminated multiple inheritance mixins from `GameSession`. Replaced with central `PacketDispatcher` (`self.dispatcher`) and 11 domain service instances (`self.frontend`, `self.social`, `self.mail`, `self.square`, `self.commerce`, `self.inventory`, `self.skills`, `self.quests`, `self.dungeon`, `self.arena`, `self.pets`) inheriting from `BaseDomainService`. Two-way dynamic delegation preserves 100% backward compatibility for all existing tests and callers.
-- **Personal Shop (Player Stalls in town) & Broker Marketplace (P7)**:
-  - Personal stalls: Opcodes 2340/2341 (Start/Open, alias 2078/2079), 2342/2343 (Close, alias 2088/2089), 5242/5243 (Buy Stall Item, alias 2080/2081), 2090/2091 (Change Title), 6021/6022 (Get Products), and town broadcasts (5250, 5254, 5255). Atomic gold deduction/credit, inventory item transfer, and SQLite persistence managed by `PersonalShopManager`.
-  - Broker Marketplace / Auction House: Opcodes 2262/2263 (List), 2264/2265 (MyList), 2266/2267 (Register Item), 2268/2269 (Buy Item), 2270/2271 (Cancel Listing), 2272/2273 (Price History) managed by `BrokerManager`. Verified by `tests/test_stall_flow.py`.
-- Test suite expanded to **164 automated tests** passing 100% (0 failures, 0 errors).
-
-## Open items (priority order)
-
-1. **Co-op Dungeons Instance Synchronization (P6)**: Synchronized party dungeon entry and instance state across party members.
-2. **Live verification of Depot / Warehouse, Mailbox, Pets, Stalls, and Party**: In-game client verification of storage, mail send/receive with attachments, pet summoning, personal stalls, and party invites.
-3. **C# / .NET 8 Server Scaffolding (P10)**: Initialize `DarkBloodServer.sln` matching MHServerEmu architecture.
 
 ## Environment notes (saita machine)
 

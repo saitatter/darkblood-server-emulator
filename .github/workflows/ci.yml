@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Generated message modules are current
+        run: python tools/gen_messages.py --check
+      - name: Headless tests
+        run: python -m unittest discover -s tests -v
+
+  progress:
+    # Regenerates the README progress table and docs/UNMAPPED_FIELDS.md from
+    # schemas/*.jsch and commits them back when they changed.
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Regenerate progress
+        run: python tools/gen_progress.py
+      - name: Commit when changed
+        run: |
+          if git diff --quiet -- README.md docs/UNMAPPED_FIELDS.md; then
+            echo "Progress is current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/UNMAPPED_FIELDS.md
+          git commit -m "docs(readme): update per-domain progress [skip ci]"
+          git push origin HEAD:main
