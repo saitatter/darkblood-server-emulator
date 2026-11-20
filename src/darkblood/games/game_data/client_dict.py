@@ -956,6 +956,45 @@ def quest_item_objectives():
     return out
 
 
+def _parse_quest_play_maps(text):
+    out = {}
+    for block in re.split(r'assert\(DictQuest:', text):
+        if not block.startswith('LoadQuest'):
+            continue
+        for q_block in re.split(r'\n  \{', block):
+            qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+            maps = re.search(r'PlayMapID\s*=\s*\{([^}]*)\}', q_block)
+            if qid and maps:
+                ids = re.findall(r'"([^"]+)"', maps.group(1))
+                if ids:
+                    out[jhash(qid.group(1)) & 0xFFFFFFFF] = ids
+    return out
+
+
+@lru_cache(maxsize=None)
+def quest_play_maps():
+    """jhash(quest id) -> PlayMapID map ids from DictQuest:LoadQuest.
+
+    These are the quest variants of a dungeon (e.g. Q0002S01 -> Act1_G1_A16)
+    that the dungeon gate offers while the quest is active (5044).
+    """
+    files = _quest_override_files()
+    if not files:
+        tsv = ASSETS_DIR / 'quest_play_maps.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 2 and parts[1]:
+                    out[jhash(parts[0]) & 0xFFFFFFFF] = parts[1].split(',')
+            return out
+        files = _quest_files()
+    out = {}
+    for path in files:
+        out.update(_parse_quest_play_maps(path.read_text(encoding='utf-8', errors='replace')))
+    return out
+
+
 @lru_cache(maxsize=None)
 def gate_dungeons():
     """Mapping: gate_id ("Act1_G1") -> list of dungeon_ids (["Act1_G1_A1", ...])."""
