@@ -524,8 +524,20 @@ class SocialHandlers(BaseDomainService):
             return
         await self._invite_to_party(5050, correlation, 0, req.name)
 
+    @staticmethod
+    def _char_id(uid):
+        """Character id inside a client UID.
+
+        Peers are announced with the server key (31) in bits 54-58, so the
+        client sends e.g. 0x07C0000000000001 for character 1. Live 2026-11-21:
+        the unmasked lookup found no player, so no 5051 reached the invitee.
+        """
+        from darkblood.games.world import SQUARE_UID_MASK
+        return int(uid) & SQUARE_UID_MASK if uid and uid > 0 else int(uid or 0)
+
     async def _invite_to_party(self, ack_opcode, correlation, target_id, target_name):
         """Shared invite path for 2100, 5049 and 5092 (target by id or name)."""
+        target_id = self._char_id(target_id)
         from darkblood.games.network.messages.party import PartyInviteAck
         from darkblood.games.world import PartyManager
         char = self.current_char()
@@ -573,8 +585,9 @@ class SocialHandlers(BaseDomainService):
         level = char.get('level', 1) if char else 1
 
         pm = PartyManager.get()
-        party = pm.get_party(req.party_id) if req.party_id else pm.get_player_party(req.host_uid)
-        if req.host_uid and party and party.leader_id != req.host_uid:
+        host_id = self._char_id(req.host_uid)
+        party = pm.get_party(req.party_id) if req.party_id else pm.get_player_party(host_id)
+        if host_id and party and party.leader_id != host_id:
             party = None
         res, party = pm.accept_invite(char_id, party, char_name, char_class, level, session=self)
         party_id = party.party_id if party else 0
@@ -598,8 +611,9 @@ class SocialHandlers(BaseDomainService):
         level = char.get('level', 1) if char else 1
 
         pm = PartyManager.get()
-        party = pm.get_player_party(req.host_uid)
-        if party and party.leader_id != req.host_uid:
+        host_id = self._char_id(req.host_uid)
+        party = pm.get_player_party(host_id)
+        if party and party.leader_id != host_id:
             party = None
         res, party = pm.accept_invite(char_id, party, char_name, char_class, level, session=self)
         party_id = party.party_id if party else 0

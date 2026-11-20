@@ -216,7 +216,8 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
 
                 # Drain 5021 join notifications from clients
                 # 1. Leader (Client 1) invites Client 2 via Opcode 2100 (eEGS_PARTY_INVITE_REQ)
-                client1.send_event(2100, LegacyPartyInviteReq(target_uid=char_id2).encode())
+                # The client addresses peers by UID with the server key (31) in bits 54-58.
+                client1.send_event(2100, LegacyPartyInviteReq(target_uid=(0x1F << 54) | char_id2).encode())
                 _, ack2101 = await client1.expect_event(2101)
                 inv_ack = PartyInviteAck.decode(ack2101)
                 self.assertEqual(inv_ack.result, 0)
