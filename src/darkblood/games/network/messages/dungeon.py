@@ -1148,22 +1148,27 @@ class ChangeItemObtainReq:
 class ChangeItemObtainAck:
     """Opcode 5089: eERC_CHANGE_ITEM_OBTAIN_ACK (reply).
 
-    Handler 0x00588B50 (dispatch 0x0059D970 case 0x13E1): one bool; the page
-    stores (value != 1) at +0xB4 and 0x0054F910 checks control 4 when +0xB4 == 1.
-    The button (0x0054F86C) sends 1 when the box was unchecked, so echoing the
-    request unchecks it again: the ack carries the inverse of the request.
+    Handler 0x00588B50 (dispatch 0x0059D970 case 0x13E1). It starts with
+    0x00A1EA20(0), which reads an i32 result and returns -1 when the read fails;
+    anything but 0 takes the error path. A bool-only body therefore never reached
+    the checkbox (live trace 2026-11-21: 0x0054F910 not called). Then one bool: the
+    page stores (value != 1) at +0xB4 and 0x0054F910 checks the box when +0xB4 == 1.
+    The button (0x0054F86C) sends 1 when the box was unchecked, so the ack carries
+    the inverse of the request.
     """
     OPCODE: ClassVar[int] = 5089
+    result: int = 0
     random_loot: bool = False
 
     def encode(self) -> bytes:
         b = bytearray()
-        b += struct.pack('<?', self.random_loot)
+        b += struct.pack('<i?', self.result, self.random_loot)
         return bytes(b)
 
     @classmethod
     def decode(cls, data: bytes) -> 'ChangeItemObtainAck':
         r = JSerBufferReader(data)
         kw = {}
+        kw['result'] = r.read_i32()
         kw['random_loot'] = r.read_bool()
         return cls(**kw)

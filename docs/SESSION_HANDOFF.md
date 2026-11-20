@@ -671,6 +671,17 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   `_record_dungeon_clear` used to skip them; a clear now counts for that difficulty and is stored under
   the regular map of that difficulty. Room map hashes (5001/5011) are DungeonID hashes (Act1_G1_A1 =
   0xCD450996), not MapIDs.
+- **Live trace 2026-11-21 (bp.txt)**: (1) Capacity works: an earlier run stored `max 2`; this run the combo
+  (0x00AF54C8) was on index 2 = "4", preselected as `max - 2`. (2) Loot: 5089 starts with
+  `0x00A1EA20(0)`, which reads an **i32 result** (returns -1 when the read fails, error path otherwise),
+  so the bool-only ack never reached 0x0054F910. 5089 is now `i32 result, bool`. Check other handlers
+  that start with 0x00A1EA20(0) for the same missing result. (3) Join request: the host's Accept ran
+  the host branch (0x0063A695 eax=1) and sent 5049; the requester got 5051 but its
+  `OnBtn_Party_Accept` never ran. A 5049 for a pending 5047 requester now joins it directly (5004 on
+  the 5047 correlation, 5035 to the room); whether the requester's client accepts that 5004 outside
+  the GameRoom page is unverified.
+- **Find user (2024 -> 2025)**: the request is low/high level, page, job (7 = eCK_Max), layer, square;
+  2025 is `i32 result, vector<RoomMemberInfo>`. The server sent an empty list; now online players.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.

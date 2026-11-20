@@ -58,6 +58,8 @@ class DungeonRoom:
     host: object
     members: dict = field(default_factory=dict)
     started: bool = False
+    # 5047 join requests waiting for the host: char id -> (session, correlation).
+    join_requests: dict = field(default_factory=dict)
     loot_mode: bool = False  # 5088 looting checkbox state (which mode 'checked' means is unverified)
 
 
@@ -174,7 +176,8 @@ class DungeonHandlers(BaseDomainService):
     async def on_5047(self, correlation, body):
         # eERC_REQUEST_JOIN_ROOM_REQ (View party info "Join"). The request goes
         # to the room host as 5048 (requester's member entry); the host's
-        # confirmation popup continues the flow. The requester gets no reply here.
+        # confirmation popup continues the flow: its Accept sends 5049 for the
+        # requester (AcceptJoinRoomREQ, 0x0063A6CD), which joins it directly.
         from darkblood.games.network.messages import RequestJoinRoomAck, RequestJoinRoomReq
         try:
             room_uid = RequestJoinRoomReq.decode(body).room_uid
@@ -186,6 +189,7 @@ class DungeonHandlers(BaseDomainService):
             self.transport.record('request-join-room-refused', body, room_uid=room_uid)
             return
         host = room.host
+        room.join_requests[int(char['id'])] = (self.session, correlation)
         ack = RequestJoinRoomAck(room_uid=room_uid, requester=self._member_info(self.session, char))
         try:
             await host.transport.send_event(event(5048, ack.encode()),

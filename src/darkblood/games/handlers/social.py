@@ -581,6 +581,19 @@ class SocialHandlers(BaseDomainService):
             if target:
                 target_id = target.get('id', 0)
 
+        room = self.session.dungeon.room
+        pending = room.join_requests.pop(target_id, None) if room is not None else None
+        if pending is not None and room.host is self.session:
+            # Host accepted a 5047 join request (OnBtn_Party_Accept on the host
+            # calls AcceptJoinRoomREQ = 5049): the requester joins at once and gets
+            # 5004 for its pending 5047. A second invite/accept round never
+            # completed live (the requester's Accept handler did not run).
+            requester, request_correlation = pending
+            await self.transport.send_event(event(ack_opcode, PartyInviteAck(result=0).encode(), correlation),
+                                            note=f'party invite ack (join request of {target_id} accepted)')
+            if requester.dungeon.room is None:
+                await requester.dungeon.join_room(room, request_correlation)
+            return
         res, _ = PartyManager.get().invite_player(char_id, target_id, char_name, char_class, level, session=self)
         ack = PartyInviteAck(result=res).encode()
         await self.transport.send_event(event(ack_opcode, ack, correlation),

@@ -89,11 +89,22 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(len(member), 20 + len(name) + 1 + 2 + 1 + 16 + 74 + 1)
                 self.assertEqual(info[-2:], bytes.fromhex('1080'))
                 # 5047 (Join in View party info) -> 5048 to the host with the requester.
-                guest.send_event(5047, struct.pack('<iq', 0x7fffffff, gate_room_id))
+                guest.send_event(5047, struct.pack('<iq', 0x7fffffff, gate_room_id), correlation=36)
                 _, request = await host.expect_event(5048)
                 self.assertEqual(request[:12], struct.pack('<Iq', 0, gate_room_id))
                 self.assertEqual(struct.unpack_from('<q', request, 20)[0], guest_id)
                 self.assertIn(wide('RoomGuest'), request)
+                # The host's Accept sends 5049 for the requester (AcceptJoinRoomREQ):
+                # the requester joins at once, answered on its 5047 correlation.
+                host.send_event(5049, struct.pack('<iq?q', 0x7fffffff, 1, False, guest_id))
+                _, accepted = await host.expect_event(5050)
+                self.assertEqual(struct.unpack_from('<i', accepted)[0], 0)
+                correlation, joined = await guest.expect_event(5004)
+                self.assertEqual((correlation, struct.unpack_from('<Iq', joined)), (36, (0, gate_room_id)))
+                await host.expect_event(5035)
+                guest.send_event(5005)
+                await guest.expect_event(5006)
+                await host.expect_event(5036)
                 guest.send_event(5060, struct.pack('<iq', 0x7fffffff, gate_room_id + 99))
                 _, info = await guest.expect_event(5061)
                 self.assertEqual(info, struct.pack('<I', results.ROOM_NOT_EXISTS))
@@ -152,9 +163,9 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(refused, struct.pack('<I', results.INVALID_STATE))
                 host.send_event(5088, struct.pack('<i?', 0x7fffffff, True), correlation=53)
                 correlation, looting = await host.expect_event(5089)
-                self.assertEqual((correlation, looting), (53, b'\x00'))
+                self.assertEqual((correlation, looting), (53, struct.pack('<i?', 0, False)))  # result, inverse
                 _, synced = await guest.expect_event(5089)
-                self.assertEqual(synced, b'\x00')
+                self.assertEqual(synced, looting)
 
                 host.send_event(5005)
                 await host.expect_event(5006)
