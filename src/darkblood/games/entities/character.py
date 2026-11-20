@@ -15,15 +15,22 @@ SQUARE_IDS = ('Act1', 'Act2', 'ArenaLobby', 'Act4')
 DEFAULT_SQUARE = 'Act1'
 
 
-DEFAULT_LAYER = 1  # low dword: not validated by CanEnter; local default
+# Low dword of nJoinLayerNetID: the town layer (zone) id. Entering SquarePlay,
+# 0x008EC230 takes it through 0x005DDD10 (returns the low dword) and asks
+# 0x008B59F0 for the start-point dood whose layer (0x008A0AB0) matches; after
+# GamePlay it looks up the layer's waypoint through 0x0098BE00 instead. Act1
+# layers observed in client 5030 requests: 0, 2, 5, 7. The old default 1 put
+# every player on the same start point regardless of where they left town.
+# 0 (the first layer) is assumed to be the main town; live check pending.
+DEFAULT_LAYER = 0
 
 
 def layer_net_id(square: str = DEFAULT_SQUARE, layer: int = DEFAULT_LAYER) -> int:
-    """u64 nJoinLayerNetID: high dword = jhash(SquareID), low dword = layer.
+    """u64 nJoinLayerNetID: high dword = jhash(SquareID), low dword = layer id.
 
     0x006FA540 converts it with 0x00A45380 (returns the high dword) and looks
-    it up in DictMap+0x3C through 0x00990030. The meaning of the low dword is
-    not recovered; 1 is a local default.
+    it up in DictMap+0x3C through 0x00990030. The low dword selects the town
+    layer and its start point (see DEFAULT_LAYER).
     """
     return (jhash(square) << 32) | (layer & 0xffffffff)
 
@@ -247,7 +254,7 @@ class Character:
         #  * player+0x80 selects the state after selection (0x006F88C0):
         #    0 -> ChangeState(eAS_Tutorial), nonzero -> eAS_SquarePlay.
         #  * +0x59 / +0x5B -> player +0x7C rebirth coins / +0x7E daily coins received.
-        b += struct.pack('<Q?HHHHII', layer_net_id(), bool(self.tutorial_cleared),
+        b += struct.pack('<Q?HHHHII', self.join_layer_net_id, bool(self.tutorial_cleared),
                          self.rebirth_coins & 0xFFFF, self.daily_rebirth_recv & 0xFFFF,
                          0, 0, 0xffffffff, 0xffffffff)
         b += struct.pack('<f', 0.0)

@@ -135,9 +135,25 @@ class SquareHandlers(BaseDomainService):
         Transitions the player entity from a dungeon session back to the default town square.
         """
         await self.session.dungeon.leave_room()
-        ack = BackToSquareAck(square_uid=self.session.square_id, cur_ar=self._current_gold()).encode()
+        # Return to the layer the player left town from: after GamePlay the
+        # client places the unit by that layer's waypoint (0x008EC230).
+        ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=self._town_layer(),
+                              cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
+
+    def _town_layer(self):
+        char = self.current_char()
+        stored = char.get('join_layer_net_id') if char else None
+        return stored if stored is not None and _is_town_layer(stored) else layer_net_id()
+
+    def _remember_layer(self, layer_id):
+        """Keep the last town layer (5030) so 2007 and 5046 spawn the player there."""
+        char = self.current_char()
+        if char is None or not _is_town_layer(layer_id) or char.get('join_layer_net_id') == layer_id:
+            return
+        char['join_layer_net_id'] = layer_id
+        self.store().save()
 
     def _current_gold(self):
         char = self.current_char()
@@ -157,6 +173,7 @@ class SquareHandlers(BaseDomainService):
         from darkblood.games.world import GameWorldManager
 
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
+        self._remember_layer(layer_id)
         world = GameWorldManager.get()
         player, previous_layer = world.change_layer(self.session, layer_id)
         ack = BackToSquareAck(square_uid=self.session.square_id, layer_net_id=layer_id,
@@ -236,3 +253,10 @@ class SquareHandlers(BaseDomainService):
     on_5032 = handle_leave_square
     on_2016 = handle_enter_maptool
     on_2344 = handle_waypoint_insert
+
+
+def _is_town_layer(layer_id: int) -> bool:
+    """High dword must be a loaded SquareID hash (CanEnter 0x006FA540)."""
+    from darkblood.games.entities.character import SQUARE_IDS
+    from darkblood.core.hashing import jhash
+    return (layer_id >> 32) in {jhash(sq) for sq in SQUARE_IDS}

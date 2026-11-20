@@ -10,6 +10,31 @@ from headless_client import HeadlessClient
 
 
 class WorldFlowTest(ServerTestCase):
+    def test_town_layer_is_remembered_for_back_to_square_and_select(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('LayerKeeper'))
+            _, created = await client.expect_event(2013)
+            uid = struct.unpack_from('<q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iq', 0x7fffffff, uid))
+            _, details = await client.expect_event(2007)
+            # New characters start on layer 0 (the old local default 1 always
+            # spawned players on the same start point).
+            self.assertIn(struct.pack('<Q', layer_net_id(layer=0)), details)
+
+            layer = layer_net_id(layer=5)
+            client.send_event(5030, struct.pack('<iQ?', 0x7fffffff, layer, False))
+            await client.expect_event(5031)
+            client.send_event(5045, struct.pack('<i', 0x7fffffff))
+            _, back = await client.expect_event(5046)
+            self.assertEqual(struct.unpack_from('<IQQ', back)[2], layer)
+
+            client.send_event(2006, struct.pack('<iq', 0x7fffffff, uid))
+            _, details = await client.expect_event(2007)
+            self.assertIn(struct.pack('<Q', layer), details)
+
+        self.run_async(self.with_server(scenario))
+
     def test_layer_change_updates_peer_visibility_on_selected_channel(self):
         async def enter(client, name):
             await lobby_flow(client)
