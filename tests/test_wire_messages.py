@@ -417,12 +417,12 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', ack_fat), (0,))
 
     def test_party_and_team_messages(self):
-        req_pi = messages.PartyInviteReq.decode(struct.pack('<q', 5555))
+        req_pi = messages.PartyInviteReq.decode(struct.pack('<q?q', 5555, False, 0))
         self.assertEqual(req_pi.target_uid, 5555)
         ack_pi = messages.PartyInviteAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_pi), (0,))
 
-        req_pa = messages.PartyAcceptInviteReq.decode(struct.pack('<q', 4444))
+        req_pa = messages.PartyAcceptInviteReq.decode(struct.pack('<qq', 1, 4444))
         self.assertEqual(req_pa.host_uid, 4444)
         ack_pa = messages.PartyAcceptInviteAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack_pa), (0,))

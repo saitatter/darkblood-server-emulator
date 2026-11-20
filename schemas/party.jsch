@@ -1,0 +1,149 @@
+# Square presence and party management. Format: schemas/README.md.
+#
+# The earlier server used opcodes 2100-2107 and 5021/5022 for party and square
+# presence messages. The client's own table names them differently
+# (2100-2107 are eEGS_CHEAT_* messages; 5021/5022 are eERC_CHANGE_ROOMHOST_REQ/ACK)
+# and research/client/handler_map.txt has no client handler for any of them.
+# Those layouts are kept as plain structs (no OPCODE) for the existing handlers
+# and headless tests; the client party flow uses 5049-5051, 5054-5056 and 5092.
+
+domain party Dark Blood wire messages - Party and Spatial Movement domain.
+
+struct UserJoinSquareNot
+  ## Sent as 5021 by the server (client name eERC_CHANGE_ROOMHOST_REQ, no client
+  ## handler). Layout is the earlier server's guess.
+  i64 char_id
+  i32 square_id = 1
+  f32 x
+  f32 y
+  f32 z
+  f32 angle
+  u8 char_class
+  u8 level = 1
+  wstr char_name
+end
+
+struct UserLeaveSquareNot
+  ## Sent as 5022 by the server (client name eERC_CHANGE_ROOMHOST_ACK, no client
+  ## handler). Layout is the earlier server's guess.
+  i64 char_id
+  i32 reason
+end
+
+message 5092 InviteUseNickReq header
+  ## Sender 0x007ABAA0; live: ffffff7f 8a 4d00610067006500 3100 -> "Mage1".
+  ## The sender waits for no reply; the result reuses 5050.
+  wstr name
+end
+
+message 5049 PartyInviteReq header?
+  ## Senders 0x0058B7F0 and 0x007AB8A0: 0x00B353D0, 0x00B35630, 0x00B353D0.
+  i64 target_uid
+  bool _                     # meaning unknown
+  i64 _                      # meaning unknown
+end
+
+message 5050 PartyInviteAck
+  ## Handler 0x00758700.
+  i32 result
+end
+
+message 5051 PartyInviteNot
+  ## Handler 0x007706E0. Reader 0x00A4AD10: bool, host summary (0x00A49600), room
+  ## UID, room name, gate, map and difficulty. Room fields use the client's
+  ## constructor defaults (0x00473E60), including the 74-byte block read by 0x00A48B40.
+  bool _
+  i64 inviter_square_uid = 1 # host summary
+  i64 inviter_uid
+  u32 _
+  wstr inviter_name
+  u8 _
+  u16 _ = 0xFFFF
+  u8 _
+  i64 _ = -1
+  i64 _ = -1
+  raw[74] _
+  u8 _
+  i64 _                      # room UID
+  wstr _                     # room name
+  u32 _ = 0xFFFFFFFF         # gate
+  u32 _ = 0xFFFFFFFF         # map
+  u16 _ = 0xFFFF             # difficulty
+end
+
+struct LegacyPartyInviteReq
+  ## Received by the server as 2100 (client name eEGS_CHEAT_QUEST_START_ACK).
+  i64 target_uid
+end
+
+struct PartyJoinReq
+  ## Received by the server as 2102 (client name eEGS_CHEAT_INSERT_COIN_ACK).
+  i32 party_id
+  i32 host_uid
+end
+
+struct PartyJoinAck
+  ## Sent by the server as 2103 (client name eEGS_CHEAT_INSERT_AR_REQ, no client handler).
+  i32 result
+  i32 party_id
+end
+
+struct PartyLeaveReq
+  ## Received by the server as 2104 (client name eEGS_CHEAT_INSERT_AR_ACK).
+  i32 party_id
+end
+
+struct PartyLeaveAck
+  ## Sent by the server as 2105 (client name eEGS_CHEAT_INSERT_AP_REQ, no client handler).
+  i32 result
+end
+
+struct PartyKickReq
+  ## Received by the server as 2106 (client name eEGS_CHEAT_INSERT_AP_ACK).
+  i64 target_uid
+  i32 party_id
+end
+
+struct PartyKickAck
+  ## Sent by the server as 2107 (client name eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_REQ, no client handler).
+  i32 result
+  i64 target_uid
+end
+
+message 5054 PartyAcceptInviteReq header?
+  ## Sender 0x0058B430: host square UID, then host UID.
+  i64 host_square_uid
+  i64 host_uid
+end
+
+message 5055 PartyAcceptInviteAck
+  ## No client handler in handler_map.txt.
+  i32 result
+end
+
+message 5056 PartyAcceptInviteNot
+  ## No client handler in handler_map.txt; layout is the earlier server's guess.
+  i32 party_id
+  i64 member_uid
+  bool is_leader
+  wstr member_name
+end
+
+struct PartyMemberInfo
+  ## Party member state; not tied to a recovered reader.
+  i64 char_id
+  u8 char_class
+  u8 level = 1
+  i32 _
+  u32 hp = 1000
+  u32 max_hp = 1000
+  bool is_leader
+  wstr char_name
+end
+
+struct PartyInfoNot
+  ## Party roster; no opcode assigned.
+  i32 party_id
+  i64 leader_uid
+  vector<PartyMemberInfo> members
+end

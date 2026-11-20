@@ -44,6 +44,10 @@ class QuestObjective:
         count = r.read_i32()
         return cls(quest_id=quest_id, objective_index=objective_index, count=count)
 
+    @classmethod
+    def decode(cls, data: bytes) -> 'QuestObjective':
+        return cls.read(JSerBufferReader(data))
+
 
 @dataclass
 class QuestStartAck:

@@ -2,6 +2,8 @@
 import struct
 import unittest
 
+from darkblood.games.network.messages import PartyAcceptInviteReq, PartyInviteReq
+
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.core import hashing
 from darkblood.games import session
@@ -105,12 +107,12 @@ class DungeonFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack5046)[0], 0)
 
             # 12. Party invite (5049 -> 5050)
-            client.send_event(5049, struct.pack('<q', 12345))
+            client.send_event(5049, PartyInviteReq(target_uid=12345).encode())
             _, ack5050 = await client.expect_event(5050)
             self.assertEqual(struct.unpack_from('<i', ack5050)[0], 0)
 
             # 13. Accepting without an invitation is rejected (5054 -> 5055).
-            client.send_event(5054, struct.pack('<q', 12345))
+            client.send_event(5054, PartyAcceptInviteReq(host_uid=12345).encode())
             _, ack5055 = await client.expect_event(5055)
             self.assertNotEqual(struct.unpack_from('<i', ack5055)[0], 0)
 

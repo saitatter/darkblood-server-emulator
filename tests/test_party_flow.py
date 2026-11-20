@@ -6,7 +6,7 @@ from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.core.serialization.jser import event
 from darkblood.games.network.messages.party import (
     PartyAcceptInviteAck, PartyAcceptInviteNot, PartyAcceptInviteReq,
-    PartyInviteAck, PartyInviteNot, PartyInviteReq,
+    LegacyPartyInviteReq, PartyInviteAck, PartyInviteNot, PartyInviteReq,
     PartyJoinAck, PartyJoinReq, PartyKickAck, PartyKickReq,
     PartyLeaveAck, PartyLeaveReq, UserJoinSquareNot, UserLeaveSquareNot
 )
@@ -44,7 +44,9 @@ class PartyWireMessagesTest(unittest.TestCase):
         inv_req = PartyInviteReq(target_uid=7777)
         self.assertEqual(PartyInviteReq.decode(inv_req.encode()).target_uid, 7777)
 
-        inv_ack = PartyInviteAck(result=0, target_uid=7777).encode()
+        self.assertEqual(LegacyPartyInviteReq.decode(LegacyPartyInviteReq(target_uid=7777).encode()).target_uid, 7777)
+
+        inv_ack = PartyInviteAck(result=0).encode()
         self.assertEqual(PartyInviteAck.decode(inv_ack).result, 0)
 
         inv_not = PartyInviteNot(inviter_uid=6666, inviter_square_uid=4, inviter_name='LeaderX').encode()
@@ -89,7 +91,7 @@ class PartyWireMessagesTest(unittest.TestCase):
         acc_req = PartyAcceptInviteReq(host_uid=6666).encode()
         self.assertEqual(PartyAcceptInviteReq.decode(acc_req).host_uid, 6666)
 
-        acc_ack = PartyAcceptInviteAck(result=0, party_id=1).encode()
+        acc_ack = PartyAcceptInviteAck(result=0).encode()
         self.assertEqual(PartyAcceptInviteAck.decode(acc_ack).result, 0)
 
         acc_not = PartyAcceptInviteNot(party_id=1, member_uid=7777, member_name='WarriorY', is_leader=False).encode()
@@ -198,7 +200,7 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
 
                 # Drain 5021 join notifications from clients
                 # 1. Leader (Client 1) invites Client 2 via Opcode 2100 (eEGS_PARTY_INVITE_REQ)
-                client1.send_event(2100, PartyInviteReq(target_uid=char_id2).encode())
+                client1.send_event(2100, LegacyPartyInviteReq(target_uid=char_id2).encode())
                 _, ack2101 = await client1.expect_event(2101)
                 inv_ack = PartyInviteAck.decode(ack2101)
                 self.assertEqual(inv_ack.result, 0)

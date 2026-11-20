@@ -546,6 +546,9 @@ class PythonBackend:
                 out.append('        if result != 0:')
                 out.append('            return cls(result=result)')
         out.append('        return cls(%s)' % ', '.join('%s=%s' % (n, n) for n in named))
+        if not s.is_message:
+            out += ['', '    @classmethod', "    def decode(cls, data: bytes) -> '%s':" % s.name,
+                    '        return cls.read(JSerBufferReader(data))']
         return out
 
     @staticmethod

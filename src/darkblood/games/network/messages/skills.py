@@ -55,6 +55,10 @@ class LearnedSkill:
         r.read_bool()
         return cls(skill_index=skill_index, level=level, speech=speech, locked=locked)
 
+    @classmethod
+    def decode(cls, data: bytes) -> 'LearnedSkill':
+        return cls.read(JSerBufferReader(data))
+
 
 @dataclass
 class SkillLevel:
@@ -74,6 +78,10 @@ class SkillLevel:
         skill_index = r.read_u16()
         level = r.read_u8()
         return cls(skill_index=skill_index, level=level)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'SkillLevel':
+        return cls.read(JSerBufferReader(data))
 
 
 @dataclass

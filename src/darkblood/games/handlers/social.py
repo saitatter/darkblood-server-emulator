@@ -490,9 +490,9 @@ class SocialHandlers(BaseDomainService):
 
         Client handler: 0x00758700. Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import PartyInviteReq
-        req = PartyInviteReq.decode(body)
-        await self._invite_to_party(2101, correlation, req.target_uid, req.target_name)
+        from darkblood.games.network.messages.party import LegacyPartyInviteReq
+        req = LegacyPartyInviteReq.decode(body)
+        await self._invite_to_party(2101, correlation, req.target_uid, '')
 
     async def on_5049(self, correlation, body):
         """Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK).
@@ -501,7 +501,7 @@ class SocialHandlers(BaseDomainService):
         """
         from darkblood.games.network.messages.party import PartyInviteReq
         req = PartyInviteReq.decode(body)
-        await self._invite_to_party(5050, correlation, req.target_uid, req.target_name)
+        await self._invite_to_party(5050, correlation, req.target_uid, '')
 
     async def on_5092(self, correlation, body):
         """Opcode 5092 (eERC_INVITE_USE_NICK_REQ): party invite by nickname.
@@ -534,7 +534,7 @@ class SocialHandlers(BaseDomainService):
                 target_id = target.get('id', 0)
 
         res, _ = PartyManager.get().invite_player(char_id, target_id, char_name, char_class, level, session=self)
-        ack = PartyInviteAck(result=res, target_uid=target_id).encode()
+        ack = PartyInviteAck(result=res).encode()
         await self.transport.send_event(event(ack_opcode, ack, correlation),
                                         note=f'party invite ack (res={res} target={target_id})')
         if res == 0 and target_id:
@@ -596,7 +596,7 @@ class SocialHandlers(BaseDomainService):
             party = None
         res, party = pm.accept_invite(char_id, party, char_name, char_class, level, session=self)
         party_id = party.party_id if party else 0
-        ack = PartyAcceptInviteAck(result=res, party_id=party_id).encode()
+        ack = PartyAcceptInviteAck(result=res).encode()
         await self.transport.send_event(event(5055, ack, correlation),
                                         note=f'party accept invite ack (res={res} party={party_id})')
 

@@ -57,6 +57,10 @@ class GameServer:
         flag_c = r.read_bool()
         return cls(name=name, u16=u16, u64=u64, flag_a=flag_a, flag_b=flag_b, flag_c=flag_c)
 
+    @classmethod
+    def decode(cls, data: bytes) -> 'GameServer':
+        return cls.read(JSerBufferReader(data))
+
 
 @dataclass
 class ChannelSquare:
@@ -82,6 +86,10 @@ class ChannelSquare:
         load = r.read_u32()
         c = r.read_u32()
         return cls(square_id=square_id, name=name, a=a, load=load, c=c)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ChannelSquare':
+        return cls.read(JSerBufferReader(data))
 
 
 @dataclass
@@ -109,6 +117,10 @@ class QuickSlot:
         r.read_i64()
         r.read_u16()
         return cls(type=type, slot=slot, ref_id=ref_id, ref_uid=ref_uid)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'QuickSlot':
+        return cls.read(JSerBufferReader(data))
 
 
 @dataclass
@@ -282,6 +294,10 @@ class RelayJoinGroupAck:
         group_host_id = r.read_u32()
         return cls(group_host_id=group_host_id)
 
+    @classmethod
+    def decode(cls, data: bytes) -> 'RelayJoinGroupAck':
+        return cls.read(JSerBufferReader(data))
+
 
 @dataclass
 class PageCharTemp:
@@ -319,6 +335,10 @@ class PageCharTemp:
         guild_name = r.read_wstring()
         server_bits = r.read_u64()
         return cls(char_id=char_id, x=x, y=y, z=z, name=name, char_class=char_class, level=level, guild_uid=guild_uid, guild_name=guild_name, server_bits=server_bits)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'PageCharTemp':
+        return cls.read(JSerBufferReader(data))
 
 
 @dataclass
