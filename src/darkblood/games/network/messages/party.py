@@ -129,11 +129,16 @@ class PartyInviteReq:
     """
     OPCODE: ClassVar[int] = 5049
     header: int = REQUEST_HEADER
+    # Live 2026-11-21: the first i64 is the target's *square* UID (key 31 | square id,
+    # 0x07C0000000000001) and the last i64 is the target character id (2 for
+    # Warrior1), mirroring 5054 (square UID, then UID). Using the first one made
+    # every invite target the square id and fail with result 1.
+    target_square_uid: int = 0
     target_uid: int = 0
 
     def encode(self) -> bytes:
         b = bytearray()
-        b += struct.pack('<iq?q', self.header, self.target_uid, False, 0)
+        b += struct.pack('<iq?q', self.header, self.target_square_uid, False, self.target_uid)
         return bytes(b)
 
     @classmethod
@@ -141,9 +146,9 @@ class PartyInviteReq:
         r = JSerBufferReader(data)
         kw = {}
         kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_uid'] = r.read_i64()
+        kw['target_square_uid'] = r.read_i64()
         r.read_bool()
-        r.read_i64()
+        kw['target_uid'] = r.read_i64()
         return cls(**kw)
 
 

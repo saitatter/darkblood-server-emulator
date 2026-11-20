@@ -619,3 +619,12 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
 - Decompile with `tools\decomp.ps1 OUT.c 0xADDR...`; `research/decompiled/*.c` is a function corpus with names.
 - Editing tip: Python heredocs that contain `\x..`/`\n` escapes inside triple-quoted strings were mangled several
   times this session; prefer the Edit tool for code containing byte literals.
+
+## Party invite target field — 2026-11-21
+- Live: 5049 body is `[header][i64 target square UID = key31|square id][bool][i64 target char id]`.
+  The server used the first i64 (square UID, masked to the square id 1) as the target, so a
+  Knight1 -> Warrior1 invite targeted char 1 and failed with result 1 ("Unavailable
+  character", `JERI_NO_EXIST_CHAR`). `PartyInviteReq` now decodes the last i64 as `target_uid`.
+- Decline: no refuse opcode for party exists in `assets/opcodes.tsv` (only duel 5112 and guild
+  2218/6019) and no packet reached the server after clicking it. The popup handler 0x007706E0
+  was not traced further. Pending invitations are therefore never cleared on decline.
