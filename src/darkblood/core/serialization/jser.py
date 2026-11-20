@@ -9,6 +9,7 @@ import zlib
 # Header word of every client request body: 0x00A1E620 writes it, and reply
 # handlers read the same slot as the result via 0x00A1EA20. Observed live.
 REQUEST_HEADER = 0x7FFFFFFF
+REQUEST_HEADER_BYTES = b'\xff\xff\xff\x7f'
 
 
 def varuint(value):
@@ -203,6 +204,26 @@ class JSerBufferReader:
             result[key] = value_parser(self)
         return result
 
+    def read_tagged_set(self, item_parser):
+        """Tag 0x13, J-varuint count, elements."""
+        self.expect_tag(0x13)
+        return self.read_vector(item_parser)
+
+    def read_empty_container(self, tag: int) -> None:
+        """A container whose element layout is not recovered: only the empty form is accepted."""
+        self.expect_tag(tag)
+        count = self.read_varuint()
+        if count:
+            raise WireError(f'Container 0x{tag:02X} with {count} elements of unknown layout')
+
     def read_rest(self) -> bytes:
         return self.read_bytes(self.remaining)
+
+    def peek(self, count: int) -> bytes:
+        return self.data[self.offset:self.offset + count]
+
+    def expect_bytes(self, expected: bytes) -> None:
+        got = self.read_bytes(len(expected))
+        if got != expected:
+            raise WireError(f'Expected {expected.hex()}, got {got.hex()} at offset {self.offset - len(expected)}')
 

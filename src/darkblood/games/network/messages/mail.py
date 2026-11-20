@@ -94,11 +94,11 @@ class PostListAck:
 
     def encode(self) -> bytes:
         b = bytearray()
-        b += struct.pack('<i', self.result)
+        b += struct.pack('<I', self.result)
         if self.result != 0:
             return bytes(b)
-        b += b'\x17' + varuint(len(self.inbox)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in self.inbox.items())
-        b += b'\x17' + varuint(len(self.outbox)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in self.outbox.items())
+        b += b'\x17' + varuint(len(self.inbox)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in sorted(self.inbox.items()))
+        b += b'\x17' + varuint(len(self.outbox)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in sorted(self.outbox.items()))
         b += struct.pack('<I?', self.unread_count, self.notify)
         return bytes(b)
 
@@ -262,7 +262,7 @@ class PostNewArrivalNot:
     """Opcode 2227: eEGS_POST_NEW_ARRIVAL_NOT (reply).
 
     Handler 0x007965B0. Sent as an empty body; whether the handler reads a
-    header word is unverified.
+    result word is unverified.
     """
     OPCODE: ClassVar[int] = 2227
 

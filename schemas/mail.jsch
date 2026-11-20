@@ -1,11 +1,4 @@
-# Mailbox (post) messages. Source of truth for
-# src/darkblood/games/network/messages/mail.py; regenerate with
-#     python tools/gen_messages.py
-#
-# Wire conventions (see schemas/README.md):
-#   every JEvent body starts with an i32 header word (written by 0x00A1E620,
-#   read as the result by 0x00A1EA20). Requests carry 0x7FFFFFFF there;
-#   replies carry the result code. `ok_only` replies stop after a non-zero result.
+# Mailbox (post) messages. Format: schemas/README.md.
 
 domain mail Mailbox wire messages (eEGS_POST_*).
 
@@ -29,20 +22,21 @@ struct PostEntry
   vector<Item> items         # +0x7C
 end
 
-message 2219 PostListReq request
+message 2219 PostListReq header
   ## Sender 0x00796270. Observed live body: ffffff7f 00.
   bool flag                  # 0x00B35630 argument; meaning unknown
 end
 
-message 2220 PostListAck reply ok_only
+message 2220 PostListAck ok_only
   ## Handler 0x007AEF70. Map values are read by 0x00784F30.
+  u32 result
   map<i64,PostEntry> inbox   # key = mail uid
   map<i64,PostEntry> outbox  # key = mail uid
   u32 unread_count
   bool notify
 end
 
-message 2221 PostSendReq request
+message 2221 PostSendReq header
   ## Sender 0x00795D40.
   wstr recipient
   wstr title
@@ -52,58 +46,63 @@ message 2221 PostSendReq request
   bool is_cod
 end
 
-message 2222 PostSendAck reply ok_only
+message 2222 PostSendAck ok_only
   ## Handler 0x00795F40.
+  i32 result
   vector<Item> items         # updated inventory items
   i64 remain_gold
   i16 daily_send_count = 1
   i16 max_daily_send_count = 30
 end
 
-message 2223 PostReadReq request
+message 2223 PostReadReq header
   ## Sender 0x00796390.
   i64 mail_uid
 end
 
-message 2224 PostReadAck reply
+message 2224 PostReadAck
   ## Handler 0x0075A660.
+  i32 result
   i64 mail_uid
 end
 
-message 2225 PostGetAppendItemReq request
+message 2225 PostGetAppendItemReq header
   ## Sender 0x007965F0.
   i64 mail_uid
   rest item_record           # item record written by 0x00A4FAA0; not decoded
 end
 
-message 2226 PostGetAppendItemAck reply ok_only
+message 2226 PostGetAppendItemAck ok_only
   ## Handler 0x0077F8E0.
+  i32 result
   i64 mail_uid
   i64 gold
   vector<Item> items
 end
 
-message 2227 PostNewArrivalNot reply bare
+message 2227 PostNewArrivalNot bare
   ## Handler 0x007965B0. Sent as an empty body; whether the handler reads a
-  ## header word is unverified.
+  ## result word is unverified.
 end
 
-message 2234 PostReturnReq request
+message 2234 PostReturnReq header
   ## No sender recovered in research/opcode_xrefs.tsv (call site near 0x00A33907).
   i64 mail_id
 end
 
-message 2235 PostReturnAck reply ok_only
+message 2235 PostReturnAck ok_only
   ## Handler 0x00771470.
+  i32 result
   vector<i64> mail_uids
 end
 
-message 2236 PostDeleteReq request
+message 2236 PostDeleteReq header
   ## Sender 0x00796470: header, then tag 0x10 vector (0x004CB5E0).
   vector<i64> mail_uids
 end
 
-message 2237 PostDeleteAck reply ok_only
+message 2237 PostDeleteAck ok_only
   ## Handler 0x007715F0.
+  i32 result
   vector<i64> mail_uids
 end

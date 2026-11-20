@@ -295,7 +295,7 @@ class DungeonHandlers(BaseDomainService):
     async def _update_quest_monsters(self, mon_code, char):
         """Advance kill counters for active quests targeting mon_code."""
         from darkblood.games.game_data.client_dict import quest_monster_objectives
-        from darkblood.games.network.messages import QuestUpdateNot
+        from darkblood.games.network.messages import QuestObjective, QuestUpdateNot
         objectives = quest_monster_objectives().get(mon_code, [])
         if not objectives:
             return
@@ -310,7 +310,7 @@ class DungeonHandlers(BaseDomainService):
                 if counters[obj_idx] < target_count:
                     counters[obj_idx] += 1
                     self.store().save()
-                    update = QuestUpdateNot(updates=[(q_hash, obj_idx, counters[obj_idx])]).encode()
+                    update = QuestUpdateNot(updates=[QuestObjective(q_hash, obj_idx, counters[obj_idx])]).encode()
                     await self.transport.send_event(
                         event(2075, update),
                         note=f'quest update not ({q_key} obj={obj_idx} count={counters[obj_idx]}/{target_count})'

@@ -21,10 +21,12 @@ class GeneratedMessagesTest(unittest.TestCase):
             sys.path.pop(0)
         names = gen_messages.client_names()
         cases = {
-            'message 2219 X reply\nend\n': 'does not look like a reply',
-            'message 999999 X request\nend\n': 'not in assets/opcodes.tsv',
-            'message 2223 X request\n  mystery a\nend\n': 'unknown type',
-            'message 2225 X request\n  rest a\n  i64 c\nend\n': 'rest must be the last field',
+            'message 2220 X header\nend\n': 'only requests carry the header word',
+            'message 999999 X\nend\n': 'not in assets/opcodes.tsv',
+            'message 2223 X\n  mystery a\nend\n': 'unknown type',
+            'message 2225 X\n  rest a\n  i64 c\nend\n': 'rest must be the last field',
+            'message 2220 X ok_only\n  i64 uid\nend\n': 'ok_only needs a scalar first field named result',
+            'message 2220 X\n  vector<?> items\nend\n': 'must be anonymous',
         }
         import tempfile
         from pathlib import Path

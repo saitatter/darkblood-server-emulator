@@ -464,14 +464,14 @@ class WireMessagesTest(unittest.TestCase):
         req_gu = messages.QuestGiveupReq.decode(
             bytes.fromhex('aa') + '2015-02-23 15:42:11, '.encode('utf-16le') + struct.pack('<I', 0x12345678))
         self.assertEqual(req_gu.quest_id, 0x12345678)
-        ack_gu = messages.QuestGiveupAck(result=0, quest_id=0x12345678).encode()
+        ack_gu = messages.QuestGiveupAck(result=0, quest_ids=[0x12345678]).encode()
         self.assertEqual(struct.unpack_from('<i', ack_gu[:4])[0], 0)
         self.assertEqual(ack_gu[4:6], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<I', ack_gu, 6)[0], 0x12345678)
 
         req_fl = messages.QuestFailReq.decode(bytes.fromhex('82') + 'x'.encode('utf-16le') + struct.pack('<I', 0x87654321))
         self.assertEqual(req_fl.quest_id, 0x87654321)
-        ack_fl = messages.QuestFailAck(result=0, quest_id=0x87654321).encode()
+        ack_fl = messages.QuestFailAck(result=0, quest_ids=[0x87654321]).encode()
         self.assertEqual(struct.unpack_from('<i', ack_fl[:4])[0], 0)
         self.assertEqual(ack_fl[4:6], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<I', ack_fl, 6)[0], 0x87654321)

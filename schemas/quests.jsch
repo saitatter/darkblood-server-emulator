@@ -1,0 +1,105 @@
+# Quest start, progress, completion, give-up and tutorial messages.
+# Format: schemas/README.md.
+
+domain quests Dark Blood protocol wire messages - Quests domain.
+
+extern Item from darkblood.games.entities.items
+
+struct QuestObjective
+  ## Element of 2075 (reader 0x00529010). Its 0x1E check consumes no byte.
+  h32 quest_id               # jhash, e.g. jhash('Q0882S01')
+  i32 objective_index        # 0-based
+  i32 count                  # current progress / kill count
+end
+
+message 2074 QuestStartAck
+  ## JAppPageTalkBox, case 0x659F00 -> 0x659790. Field names from the read-failure
+  ## message "iQuestID >> iQuestUID >> jInfo >> vecItem". The quest UID is a local
+  ## counter. jInfo is 18 raw bytes (0x00A48A90), sent as the client's defaults.
+  u32 result
+  h32 quest_id               # jhash of the quest key, e.g. 'Q0001S01'
+  i64 quest_uid = 1
+  i32 _ = -1                 # jInfo
+  u16 _ = 0xFFFF             # jInfo
+  i32 _ = -1                 # jInfo
+  i32 _ = -1                 # jInfo
+  i32 _ = -1                 # jInfo
+  vector<?> _                # vecItem (0x004B9210)
+end
+
+message 2075 QuestUpdateNot
+  ## JAppPageQuestDlg::On_eEGS_QUEST_UPDATE_NOT (0x0061C7E0).
+  vector<QuestObjective> updates
+end
+
+message 2410 QuestHistoryNot
+  ## Handler 0x0076C1E0; names from "setQuestHistory >> bWeekly".
+  set<h32> quest_ids         # jhash of 'Q....S..'
+  bool weekly
+end
+
+message 2077 QuestCompleteAck
+  ## JAppPageTalkBox, case 0x659F00 -> 0x656870; implicit struct jAck (reader
+  ## 0x00A55B70). The consumer never writes the player's EXP; the server
+  ## persists it and the client sees it at the next selection.
+  u32 result
+  h32 quest_id               # +0x00, 0x00A7B390 lookup
+  i32 _                      # +0x04 index for 0x00A88560 (-1 skips its table; 0 observed safe)
+  i32 _ = -1                 # +0x08 jInfo; first i32 1/2 selects extra actions (2 = class change)
+  u16 _ = 0xFFFF             # jInfo
+  i32 _ = -1                 # jInfo
+  i32 _ = -1                 # jInfo
+  i32 _ = -1                 # jInfo
+  i32 _                      # +0x1A, not read by the consumer
+  i64 total                  # +0x1E new gold total, diff with player +0x70 is announced
+  vector<Item> items         # +0x26 (0x004B94C0) -> inventory insert 0x007741D0
+  map<?> _                   # +0x36 (0x004B0310), meaning unknown
+  i32 exp                    # +0x42 reward EXP (floating number type 0xC)
+  i32 gp                     # +0x46 reward GP (floating number type 0xE)
+end
+
+message 2347 TutorialQuestStartAck
+  ## Reader 0x006481E0.
+  u32 result
+end
+
+message 2078 QuestGiveupReq
+  ## Observed body: J-wstring then u32 quest id (jhash), same shape as 2073. No header.
+  wstr timestamp             # e.g. "2015-02-23 15:42:11, "; meaning unknown
+  h32 quest_id
+end
+
+message 2079 QuestGiveupAck ok_only
+  ## Handler 0x006223B0.
+  i32 result
+  vector<h32> quest_ids
+  raw[18] _                  # meaning unknown
+  vector<?> _
+  vector<?> _
+end
+
+message 2080 QuestFailReq
+  ## Assumed to share the 2078 shape; not yet observed on the wire.
+  wstr timestamp             # meaning unknown
+  h32 quest_id
+end
+
+message 2081 QuestFailAck ok_only
+  ## Handler 0x006223B0 (shared with 2079).
+  i32 result
+  vector<h32> quest_ids
+  raw[18] _                  # meaning unknown
+  vector<?> _
+  vector<?> _
+end
+
+message 2083 ClearTutorialAck
+  ## Reader 0x0077EEB0. Moves the client to the town scene (0x006DBFA0(9)).
+  u32 result
+  vector<Item> elements      # applied by 0x0077EEB0; the server resends the inventory
+end
+
+message 2358 GuideBeginnerUpdateReq header
+  ## Sender 0x0079A3B0. Captures always carry the header.
+  vector<u32> guide_ids
+end

@@ -11,6 +11,7 @@ from darkblood.games.network.messages import (
     ClearTutorialAck,
     GTargetListAck,
     NpcFirstMeetAck,
+    QuestObjective,
     QuestUpdateNot,
 )
 
@@ -110,7 +111,7 @@ class SquareHandlers(BaseDomainService):
             counters[obj_idx] += 1
             self.store().save()
 
-            update = QuestUpdateNot(updates=[(TUTORIAL_QUEST_ID, obj_idx, counters[obj_idx])]).encode()
+            update = QuestUpdateNot(updates=[QuestObjective(TUTORIAL_QUEST_ID, obj_idx, counters[obj_idx])]).encode()
             await self.transport.send_event(
                 event(2075, update),
                 note=f'quest update not (Q0882S01 obj={obj_idx} count={counters[obj_idx]}/{target})'

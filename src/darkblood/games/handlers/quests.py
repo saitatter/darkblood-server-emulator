@@ -85,7 +85,7 @@ class QuestHandlers(BaseDomainService):
         if not char:
             return
         from darkblood.games.game_data.client_dict import quest_item_objectives, quest_mission_counts
-        from darkblood.games.network.messages import QuestUpdateNot
+        from darkblood.games.network.messages import QuestObjective, QuestUpdateNot
         active = char.get('quests_active', {})
         if not active:
             return
@@ -116,7 +116,7 @@ class QuestHandlers(BaseDomainService):
                         new_val = min(target_val, cur_count)
                         if counters[obj_idx] != new_val:
                             counters[obj_idx] = new_val
-                            updates.append((qid, obj_idx, new_val))
+                            updates.append(QuestObjective(qid, obj_idx, new_val))
 
         if updates:
             self.store().save()
@@ -264,7 +264,7 @@ class QuestHandlers(BaseDomainService):
         reported like kill counters: 2075 with (quest, objective, count).
         """
         from darkblood.games.game_data.client_dict import quest_mission_objectives
-        from darkblood.games.network.messages import QuestUpdateNot
+        from darkblood.games.network.messages import QuestObjective, QuestUpdateNot
         from darkblood.core.serialization.jser import strip_prefix
         mission = ''
         try:
@@ -284,7 +284,7 @@ class QuestHandlers(BaseDomainService):
             while len(counters) <= idx:
                 counters.append(0)
             counters[idx] = target
-            updates.append((q_hash, idx, target))
+            updates.append(QuestObjective(q_hash, idx, target))
         if updates:
             self.store().save()
             await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
@@ -304,7 +304,7 @@ class QuestHandlers(BaseDomainService):
             del char['quests_active'][str(req.quest_id)]
             self.store().save()
         self.transport.record('quest-giveup', body, quest_id=req.quest_id)
-        ack = QuestGiveupAck(result=0, quest_id=req.quest_id).encode()
+        ack = QuestGiveupAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
 
     async def handle_quest_fail(self, correlation: int, body: bytes):
@@ -319,7 +319,7 @@ class QuestHandlers(BaseDomainService):
             del char['quests_active'][str(req.quest_id)]
             self.store().save()
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
-        ack = QuestFailAck(result=0, quest_id=req.quest_id).encode()
+        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
 
     # Client opcode bindings
