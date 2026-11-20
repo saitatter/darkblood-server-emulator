@@ -48,9 +48,8 @@ class PetsWireMessagesTest(unittest.TestCase):
         self.assertEqual(decoded_ins.slot, 2)
 
         # 2349: Insert ack
-        ack_insert = TamingMonsterInsertAck(result=0, monsters=[{'monster_id': 101}]).encode()
-        self.assertEqual(struct.unpack_from('<I', ack_insert, 0)[0], 0)
-        self.assertEqual(ack_insert[4], 0x10)  # tag 0x10 vector
+        ack_insert = TamingMonsterInsertAck(result=0).encode()
+        self.assertEqual(ack_insert, b'\x00\x00\x00\x00\x10\x80')  # empty vector: element layout unknown
 
         # 2350: Delete req
         req_del = TameingMonsterDeleteReq(monster_id=101, slot=2)
@@ -60,18 +59,18 @@ class PetsWireMessagesTest(unittest.TestCase):
         self.assertEqual(decoded_del.slot, 2)
 
         # 2351: Delete ack
-        ack_del = TamingMonsterDeleteAck(result=0, monsters=[], deleted_slot=2).encode()
+        ack_del = TamingMonsterDeleteAck(result=0, deleted_slot=2).encode()
         self.assertEqual(struct.unpack_from('<I', ack_del, 0)[0], 0)
         self.assertEqual(struct.unpack_from('<i', ack_del, -4)[0], 2)
 
     def test_riding_messages_encoding_and_decoding(self):
         # 2434: Get list req
         req_list = RidingGetListReq()
-        self.assertEqual(req_list.encode(), b'')
-        self.assertIsInstance(RidingGetListReq.decode(b''), RidingGetListReq)
+        self.assertEqual(req_list.encode(), b'\xff\xff\xff\x7f')
+        self.assertIsInstance(RidingGetListReq.decode(b''), RidingGetListReq)  # header is optional
 
         # 2435: Get list ack
-        ack_list = RidingGetListAck(result=0, rides=[]).encode()
+        ack_list = RidingGetListAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<I', ack_list, 0)[0], 0)
         self.assertEqual(ack_list[4], 0x17)  # tag 0x17 container map
 
@@ -91,9 +90,9 @@ class PetsWireMessagesTest(unittest.TestCase):
         # 2464 / 2465: Create
         req_create = PetCreateReq(pet_uid=42)
         self.assertEqual(PetCreateReq.decode(req_create.encode()).pet_uid, 42)
-        ack_create = PetCreateAck(result=0, pets=[], slot=0).encode()
-        self.assertEqual(struct.unpack_from('<I', ack_create, 0)[0], 0)
-        self.assertEqual(ack_create[4], 0x10)  # tag 0x10 vector
+        ack_create = PetCreateAck(result=0, slot=0).encode()
+        self.assertEqual(ack_create[:10], b'\x00\x00\x00\x00\x10\x80\x00\x00\x00\x00')
+        self.assertEqual(len(ack_create), 10 + 52)  # item record follows without a 0x1E byte
 
         # 2466 / 2467: Delete
         req_delete = PetDeleteReq(pet_uid=42)
@@ -102,8 +101,7 @@ class PetsWireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<Iq', ack_delete, 0), (0, 42))
 
         # 2468 / 2469: Summon
-        req_summon = PetSummonReq(pet_slot=1)
-        self.assertEqual(PetSummonReq.decode(req_summon.encode()).pet_slot, 1)
+        self.assertEqual(PetSummonReq().encode(), b'')  # sender 0x0079E3C0 writes no fields
         ack_summon = PetSummonAck(result=0, pet_slot=1).encode()
         self.assertEqual(struct.unpack_from('<IH', ack_summon, 0), (0, 1))
 
@@ -201,7 +199,7 @@ class PetsFlowTest(ServerTestCase):
             self.assertEqual(char['pets'][0]['uid'], 10)
 
             # 6. Pet Lifecycle: Summon pet (2468 -> 2469)
-            client.send_event(2468, PetSummonReq(pet_slot=0).encode())
+            client.send_event(2468, PetSummonReq().encode())
             _, ack2469 = await client.expect_event(2469)
             res, slot = struct.unpack_from('<IH', ack2469, 0)
             self.assertEqual(res, 0)

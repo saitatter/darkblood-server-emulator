@@ -1,0 +1,171 @@
+# Taming, riding and pet lifecycle. Format: schemas/README.md.
+# Senders without 0x00A1E620 and without writer calls (2468, 2470, 2484) send an
+# empty body, like the captured 2131/2390/2402/5045 requests.
+# Replies whose element layout is unknown send empty containers. Earlier
+# encoders wrote the list length without elements, which is not valid JSer.
+
+domain pets Dark Blood protocol wire messages - Pet, Mount and Taming domain.
+
+message 2348 TameingMonsterInsertReq header?
+  ## Sender 0x00799BA0 writes a struct (0x00A48AB0) and a 4-byte value; the two
+  ## i32 below are the earlier guess and are not confirmed.
+  i32 monster_id
+  i32 slot
+end
+
+message 2349 TamingMonsterInsertAck
+  ## Handler 0x00771A00.
+  u32 result
+  vector<?> _                # tamed monsters, element layout unknown
+end
+
+message 2350 TameingMonsterDeleteReq header?
+  ## Sender 0x00799D30: two 4-byte values (0x00B352B0).
+  i32 monster_id
+  i32 slot
+end
+
+message 2351 TamingMonsterDeleteAck
+  ## Handler 0x00771BB0.
+  u32 result
+  vector<?> _                # tamed monsters, element layout unknown
+  i32 deleted_slot
+end
+
+message 2434 RidingGetListReq header?
+  ## No sender recovered; no fields known.
+end
+
+message 2435 RidingGetListAck ok_only
+  ## Handler 0x0076C5A0.
+  u32 result
+  map<?> _                   # rides, element layout unknown
+end
+
+message 2437 RidingRideObjectReq header?
+  ## Sender 0x0079CDE0: one 4-byte value.
+  u32 ride_object_id
+end
+
+message 2438 RidingRideObjectAck ok_only
+  ## Handler 0x00753A90.
+  u32 result
+  u32 ride_object_id
+end
+
+message 2464 PetCreateReq header?
+  ## Sender 0x0079E090.
+  i64 pet_uid
+end
+
+message 2465 PetCreateAck ok_only
+  ## Handler 0x0079E620. The earlier encoder put a 0x1E byte before the item;
+  ## 0x00B35010 consumes none for that tag, so it is not sent.
+  u32 result
+  vector<?> _                # pets, element layout unknown
+  i32 slot
+  raw[52] pet_item           # item record, not recovered
+end
+
+message 2466 PetDeleteReq header?
+  ## Sender 0x0079E200.
+  i64 pet_uid
+end
+
+message 2467 PetDeleteAck ok_only
+  ## Handler 0x0079EA50.
+  u32 result
+  i64 pet_uid
+end
+
+message 2468 PetSummonReq bare
+  ## Sender 0x0079E3C0 writes no fields.
+end
+
+message 2469 PetSummonAck ok_only
+  ## Handler 0x0079ECF0.
+  u32 result
+  u16 pet_slot
+end
+
+message 2470 PetReleaseSummonReq bare
+  ## Sender 0x0079E4F0 writes no fields.
+end
+
+message 2471 PetReleaseSummonAck
+  ## Handler 0x0079EEE0.
+  u32 result
+end
+
+message 2473 PetSaveReq header?
+  ## Sender 0x0079F1E0: one 2-byte value (0x00B35190).
+  u16 value                  # meaning unknown
+end
+
+message 2474 PetSaveAck ok_only
+  ## Handler 0x007758B0.
+  u32 result
+  u16 value                  # meaning unknown
+end
+
+message 2475 PetLoadReq header?
+  ## Sender 0x0079F300.
+  i64 pet_uid
+end
+
+message 2476 PetLoadAck ok_only
+  ## Handler 0x0079F560.
+  u32 result
+  i64 pet_uid
+end
+
+message 2477 PetReplaceReq header?
+  ## Sender 0x0079F430.
+  i64 pet_uid
+end
+
+message 2478 PetReplaceAck ok_only
+  ## Handler 0x0079F770.
+  u32 result
+  i64 pet_uid
+end
+
+message 2480 PetEatNormalReq header?
+  ## Sender 0x0079FB80.
+  i64 item_uid
+end
+
+message 2481 PetEatNormalAck ok_only
+  ## Handler 0x00781260.
+  u32 result
+  vector<?> _                # pets, element layout unknown
+  u16 satiety = 100
+  u8 status = 1
+end
+
+message 2484 PetEvolutionReq bare
+  ## Sender 0x0079FE00 writes no fields.
+end
+
+message 2485 PetEvolutionAck ok_only
+  ## Handler 0x0079FEF0.
+  u32 result
+  i64 old_pet_uid
+  u32 new_pet_id
+  vector<?> _
+  i64 new_pet_uid
+end
+
+message 2510 PetNickChangeReq header?
+  ## Sender 0x007A16B0.
+  i64 pet_uid
+  wstr new_name
+end
+
+message 2511 PetNickChangeAck ok_only
+  ## Handler 0x00781CD0 (client name eEGS_PET_NICK_CHANGE_AKC).
+  u32 result
+  vector<?> _
+  i64 pet_uid
+  wstr new_name
+end

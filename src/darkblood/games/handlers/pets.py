@@ -51,7 +51,7 @@ class PetHandlers(BaseDomainService):
         m_entry = {'monster_id': req.monster_id, 'slot': slot}
         tamed.append(m_entry)
         self.store().save()
-        ack = TamingMonsterInsertAck(result=0, monsters=tamed).encode()
+        ack = TamingMonsterInsertAck(result=0).encode()
         await self.transport.send_event(event(2349, ack, correlation),
                                         note=f'tame monster insert ack (monster={req.monster_id}, slot={slot})')
 
@@ -69,7 +69,7 @@ class PetHandlers(BaseDomainService):
                 tamed.remove(m)
                 break
         self.store().save()
-        ack = TamingMonsterDeleteAck(result=0, monsters=tamed, deleted_slot=req.slot).encode()
+        ack = TamingMonsterDeleteAck(result=0, deleted_slot=req.slot).encode()
         await self.transport.send_event(event(2351, ack, correlation),
                                         note=f'tame monster delete ack (slot={req.slot})')
 
@@ -79,7 +79,7 @@ class PetHandlers(BaseDomainService):
         # eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0)
         char = self.current_char()
         mounts = char.get('mounts', []) if char else []
-        ack = RidingGetListAck(result=0, rides=mounts).encode()
+        ack = RidingGetListAck(result=0).encode()
         await self.transport.send_event(event(2435, ack, correlation),
                                         note=f'riding get list ack (count={len(mounts)})')
 
@@ -127,7 +127,7 @@ class PetHandlers(BaseDomainService):
         }
         pets.append(new_pet)
         self.store().save()
-        ack = PetCreateAck(result=0, pets=pets, slot=new_pet['slot']).encode()
+        ack = PetCreateAck(result=0, slot=new_pet['slot']).encode()
         await self.transport.send_event(event(2465, ack, correlation),
                                         note=f'pet create ack (uid={new_uid})')
 
@@ -152,17 +152,18 @@ class PetHandlers(BaseDomainService):
 
     async def on_2468(self, correlation, body):
         # eEGS_PET_SUMMON_REQ (0x0079E3E0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0)
-        req = PetSummonReq.decode(body)
+        PetSummonReq.decode(body)
+        pet_slot = 0  # 2468 carries no fields (sender 0x0079E3C0)
         char = self.current_char()
         if not char:
             await self.transport.send_event(event(2469, PetSummonAck(result=1).encode(), correlation),
                                             note='pet summon fail (no char)')
             return
-        char['summoned_pet'] = req.pet_slot
+        char['summoned_pet'] = pet_slot
         self.store().save()
-        ack = PetSummonAck(result=0, pet_slot=req.pet_slot).encode()
+        ack = PetSummonAck(result=0, pet_slot=pet_slot).encode()
         await self.transport.send_event(event(2469, ack, correlation),
-                                        note=f'pet summon ack (slot={req.pet_slot})')
+                                        note=f'pet summon ack (slot={pet_slot})')
 
     async def on_2470(self, correlation, body):
         # eEGS_PET_RELEASE_SUMMON_REQ (0x0079E510) -> 2471 eEGS_PET_RELEASE_SUMMON_ACK (0x0079EEE0)
@@ -213,7 +214,7 @@ class PetHandlers(BaseDomainService):
                 active['satiety'] = min(100, active.get('satiety', 50) + 30)
                 satiety = active['satiety']
                 self.store().save()
-        ack = PetEatNormalAck(result=0, pets=char.get('pets', []) if char else [], satiety=satiety, status=1).encode()
+        ack = PetEatNormalAck(result=0, satiety=satiety, status=1).encode()
         await self.transport.send_event(event(2481, ack, correlation),
                                         note=f'pet eat normal ack (satiety={satiety})')
 
