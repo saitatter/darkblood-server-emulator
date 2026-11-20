@@ -176,3 +176,20 @@ python tools\gamectl.py stop           # Stop processes
 * **Mounts & Pets**: Mount summoning (`ridecall`) and pet items (`PetCall`).
 
 See [ROADMAP.md](ROADMAP.md) for milestones.
+
+---
+
+## License
+
+Copyright (C) 2026 the Dark Blood server emulator contributors.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. It is distributed WITHOUT ANY WARRANTY; see [LICENSE](LICENSE)
+for the full text. If you run a modified version as a network service, the
+AGPL requires you to offer its users the corresponding source code.
+
+The license covers this repository's source and documentation only. The Dark
+Blood client, its game data and any extracted assets are not part of this
+project and are not covered by it.
