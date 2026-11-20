@@ -295,3 +295,18 @@ message 5018 FinishGameAck
   vector<?> _                # vecBonusMonster
   endif
 end
+
+message 5060 RoomMemInfoReq header?
+  ## Sent when a Find party row is clicked: GetRoomMemberInfoREQ(
+  ## m_vecRoomList[iChildIdx].m_nRoomUID ). Live: ffffff7f + i64 room uid.
+  i64 room_uid
+end
+
+message 5061 RoomMemInfoAck ok_only
+  ## JUserClient::OneERC_ROOM_MEM_INFO_ACK 0x0076BC60: result peek, then jAck
+  ## (0x00A53B80): i32 result, i64 room uid, two tagged vectors.
+  u32 result
+  i64 room_uid
+  vector<?> _                # 0x004B40F0 (+0xC, elements 0x004B2720), not recovered
+  vector<?> _                # 0x004B0BB0 (+0x1C), not recovered
+end

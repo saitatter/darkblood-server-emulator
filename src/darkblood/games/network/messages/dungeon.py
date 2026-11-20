@@ -39,6 +39,8 @@ __all__ = [
     'FinishGameReq',
     'SingleReward',
     'FinishGameAck',
+    'RoomMemInfoReq',
+    'RoomMemInfoAck',
 ]
 
 
@@ -851,4 +853,63 @@ class FinishGameAck:
             kw['box_grade'] = r.read_i32()
             kw['extra_box_cost'] = r.read_i32()
             r.read_empty_container(0x10)
+        return cls(**kw)
+
+
+@dataclass
+class RoomMemInfoReq:
+    """Opcode 5060: eERC_ROOM_MEM_INFO_REQ (request).
+
+    Sent when a Find party row is clicked: GetRoomMemberInfoREQ(
+    m_vecRoomList[iChildIdx].m_nRoomUID ). Live: ffffff7f + i64 room uid.
+    """
+    OPCODE: ClassVar[int] = 5060
+    header: int = REQUEST_HEADER
+    room_uid: int = 0
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<iq', self.header, self.room_uid)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RoomMemInfoReq':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['room_uid'] = r.read_i64()
+        return cls(**kw)
+
+
+@dataclass
+class RoomMemInfoAck:
+    """Opcode 5061: eERC_ROOM_MEM_INFO_ACK (reply).
+
+    JUserClient::OneERC_ROOM_MEM_INFO_ACK 0x0076BC60: result peek, then jAck
+    (0x00A53B80): i32 result, i64 room uid, two tagged vectors.
+    """
+    OPCODE: ClassVar[int] = 5061
+    result: int = 0
+    room_uid: int = 0
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<I', self.result)
+        if self.result != 0:
+            return bytes(b)
+        b += struct.pack('<q', self.room_uid)
+        b += b'\x10\x80'
+        b += b'\x10\x80'
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RoomMemInfoAck':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['result'] = r.read_u32()
+        if kw['result'] != 0:
+            return cls(**kw)
+        kw['room_uid'] = r.read_i64()
+        r.read_empty_container(0x10)
+        r.read_empty_container(0x10)
         return cls(**kw)

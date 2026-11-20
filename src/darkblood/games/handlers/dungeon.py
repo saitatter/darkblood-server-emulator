@@ -90,6 +90,20 @@ class DungeonHandlers(BaseDomainService):
         await self.transport.send_event(event(2011, ack.encode(), correlation),
                                         note='room info list ack (%d rooms)' % len(rooms))
 
+    async def on_5060(self, correlation, body):
+        # eERC_ROOM_MEM_INFO_REQ (Find party row click) -> 5061. The client
+        # waits for it before offering the join; member vectors not recovered.
+        from darkblood.games.network.messages import RoomMemInfoAck, RoomMemInfoReq
+        try:
+            room_uid = RoomMemInfoReq.decode(body).room_uid
+        except (WireError, struct.error):
+            room_uid = -1
+        room = self.transport.server.dungeon_rooms.get(room_uid)
+        result = results.OK if room is not None and room.members else results.ROOM_NOT_EXISTS
+        ack = RoomMemInfoAck(result=result, room_uid=room_uid)
+        await self.transport.send_event(event(5061, ack.encode(), correlation),
+                                        note='room member info ack (%d, result %d)' % (room_uid, result))
+
     async def on_5001(self, correlation, body):
         # eERC_CREATE_ROOM_REQ (writer 0x58B060): wstring name, i32, i32, i16,
         # i16 (observed: "_singleplay", -1, -1, -1, 1) -> 5002 CREATE_ROOM_ACK.
