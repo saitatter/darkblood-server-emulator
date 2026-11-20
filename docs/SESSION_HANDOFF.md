@@ -4,7 +4,7 @@
 
 - ROADMAP.md now lists only open work; implemented items and the per-feature logs in STATUS.md and this file
   were removed (Git history keeps them). The README names the supported client (SHA-256 `a82ae3d7...`).
-- `tools/gen_progress.py` builds the README "Progress by system" table (named vs `_` fields per `schemas/*.jsch`
+- `tools/gen_progress.py` builds the README "Progress by system" table (opcode coverage x named-field share per `schemas/*.jsch`
   domain) and `docs/UNMAPPED_FIELDS.md`. `.github/workflows/ci.yml` runs the tests and, on every push to `main`,
   regenerates both and commits them as `docs(readme): update per-domain progress [skip ci]`. If branch protection
   blocks the bot push, allow `github-actions[bot]` to bypass it. After changing a schema, run

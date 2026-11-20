@@ -3,8 +3,14 @@
 
 Source of truth: schemas/*.jsch. Every field named `_` is sent as its default
 because the client reader that consumes it has not been mapped to a meaning, so
-the share of named fields is a direct measure of how much of a system is
-understood.
+the share of named fields measures how much of the implemented wire is understood.
+
+Coverage counts the client-facing opcodes (eEGS_, eERC_, eERT_ in
+assets/opcodes.tsv) that have a schema message or a server handler. Each opcode
+is assigned to a domain: its schema's domain when it has one, otherwise by the
+keyword rules in DOMAIN_RULES. GM cheats, anti-cheat, login/billing back ends
+and similar opcodes (OUT_OF_SCOPE) are not counted. Overall = coverage x field
+mapping, so unimplemented or schema-less opcodes lower the percentage.
 
 Writes:
   docs/UNMAPPED_FIELDS.md   full list, grouped by domain
@@ -17,12 +23,37 @@ import re
 import sys
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS = ROOT / 'schemas'
 README = ROOT / 'README.md'
 UNMAPPED = ROOT / 'docs' / 'UNMAPPED_FIELDS.md'
 START, END = '<!-- PROGRESS:START -->', '<!-- PROGRESS:END -->'
 BAR = 20
+
+OUT_OF_SCOPE = re.compile(r'^(CHEAT|AUTHENTICATE|NPROTECT|XTRAP|AUTOCHECK|LOG_|USER_LOG|DB_|COMPUTER|FRAME_STAT|WARFLAG_HACK)')
+DOMAIN_RULES = [(domain, re.compile(rx)) for domain, rx in [
+    ('arena', r'^(ARENA|LEAGUE|DUEL|GBB|MINIGAME)'),
+    ('guild', r'^(GUILD|SIEGE|CITADEL|CIDADEL|REFUSE_GUILD|CURRENT_GUILD|ACTIVE_WARFLAG|STRESS_CHANGE_WARFLAG)'),
+    ('mail', r'^POST'),
+    ('pets', r'^(PET|RIDING|TAMEING|MONSTERCARD)'),
+    ('stalls', r'^(PERSONALSHOP|BROKER|SALEBYBULK)'),
+    ('party', r'^(INVITE|ACCEPT_INVITE|ROOM_MEM|REQUEST_JOIN_ROOM|TEACHING|GUIDE|SUMMON|ACKNOWLEDGE_TELEPORT)'),
+    ('quests', r'^(QUEST|TUTORIAL|CLEAR_TUTORIAL|NPC|WAYPOINT_|ACHIEVE|TITLE|ACT_KAIRO)'),
+    ('skills', r'^(LEARN|SKILL|DUALSKILL|INIT_SKILL|INIT_PROF|MODIFY_SKILL|READJUST|ASSIGN|SWITCH_QU)'),
+    ('commerce', r'^(BUY|SELL|REPURCHASE|BILLING|STEAM|ACTOZ|CASH|STORE|TRADE|ACCEPT_REQUEST_TRADE|CANCEL_TRADE|'
+                 r'INSERT_TRADE|DELETE_TRADE|FINALLY|DEPOT|STORAGE|BEAUTYSHOP|ROULETTE|VIP)'),
+    ('social', r'^(FRIEND|CHAT|BANISH|ALARM|CONTRACT|HTTPNOTICE|WATCH|REQUEST_)'),
+    ('dungeon', r'^(CLEAR_|EXPLORE|DUNGEON|STORYDUNGEON|TRAINING|MONSTER_|TREASURE|DAILY|FAIL|GOLDGOBLIEN|'
+                r'START_GAME|FINISH_GAME|BACK_TO|AGAIN|CHOICE|GAMEPLAY|RELAY_|SELECT_DUNGEON|CREATE_ROOM|JOIN_ROOM|'
+                r'CHANGE_ROOM|WAYPOINTCHARLAYER|DROP_ITEM|PICK|LEVEL_UP|REBIRTH|INCREASING|CRONOS|SERVERBUFF|KEEP|'
+                r'QUESTITEM|GET_ROOMINFO|LEAVE_ROOM)'),
+    ('inventory', r'^(USE|ITEM|AVATAR|MAGICENCHANT|SMELTING|MARK|SEAL|RANDOM|FIX|DURABILITY|DRAG|EQUIP|OPEN_BAG|'
+                  r'CLOSE_BAG|SWITCH_BAG|CHANGE_BAG|CHANGE_ITEM|BAG|REPLACE|DIVIDE|INVENTORY|NOT_ENOUGH|INSERT_AP|'
+                  r'DECREASE|RAREAVATAR|DELETE_ITEM|DELETE_ALL)'),
+    ('lobby', r'^(KNOCK|SELECT_CHAR|GET_CHAR|GET_INVITE|CREATE_CHAR|DELETE_CHAR|UNDELETE|CHARSLOT|CHAR_|SQUARELIST|'
+              r'SQUARE|JOIN_SQUARE|LEAVE_SQUARE|ENTER|LEAVE_MAPTOOL|UPDATE_KNOCK|PLAY|KEYBOARD|SECOND|IMPLIED)'),
+]]
 
 HEADER = re.compile(r'^(message|struct)\s+(\d+\s+)?(\w+)')
 FIELD = re.compile(r'^\s+(raw\[\d+\]|\w+(?:<[^>\s]*>)?)\s+(\w+)\s*(?:=\s*[^#]*?)?\s*(?:#\s*(.*))?$')
@@ -58,34 +89,77 @@ def bar(done, total):
     return '█' * filled + '░' * (BAR - filled)
 
 
+def client_opcodes():
+    names = {}
+    for line in (ROOT / 'assets' / 'opcodes.tsv').read_text(encoding='utf-8').splitlines():
+        parts = line.split('	')
+        if len(parts) >= 2 and parts[0].isdigit():
+            match = re.match(r'eE(?:GS|RC|RT)_(.*)', parts[1])
+            if match and not OUT_OF_SCOPE.match(match.group(1)):
+                names[int(parts[0])] = match.group(1)
+    return names
+
+
+def keyword_domain(name):
+    for domain, rule in DOMAIN_RULES:
+        if rule.match(name):
+            return domain
+    return 'system'
+
+
+def server_handlers():
+    sys.path.insert(0, str(ROOT / 'src'))
+    from darkblood.games import session  # registers every controller
+    return set(session.DISPATCHER._handlers)
+
+
 def collect():
-    rows = []
+    parsed = {}
     for path in sorted(SCHEMAS.glob('*.jsch')):
-        messages, fields, unmapped = parse(path)
+        parsed[path] = parse(path)
+    names, handled = client_opcodes(), server_handlers()
+    schema_domain = {op: path.stem for path, (messages, _f, _u) in parsed.items() for op in messages}
+    scope = {d: [0, 0] for d in (p.stem for p in parsed)}  # [implemented, total]
+    for op, name in names.items():
+        domain = schema_domain.get(op) or keyword_domain(name)
+        scope[domain][1] += 1
+        if op in schema_domain or op in handled:
+            scope[domain][0] += 1
+    rows = []
+    for path, (messages, fields, unmapped) in parsed.items():
         rows.append({'domain': path.stem, 'file': path.name, 'messages': messages,
-                     'fields': fields, 'unmapped': unmapped, 'named': fields - len(unmapped)})
+                     'fields': fields, 'unmapped': unmapped, 'named': fields - len(unmapped),
+                     'impl': scope[path.stem][0], 'total': scope[path.stem][1]})
     return rows
+
+
+def overall(row):
+    return (row['impl'] / row['total'] if row['total'] else 1) * (row['named'] / row['fields'] if row['fields'] else 1)
+
+
+def table_row(label, impl, total, named, fields):
+    cov = impl / total if total else 1
+    fmap = named / fields if fields else 1
+    return '| {l} | {i}/{t} ({c:.0f}%) | {n}/{f} ({m:.0f}%) | `{b}` {o:.0f}% |'.format(
+        l=label, i=impl, t=total, c=100 * cov, n=named, f=fields, m=100 * fmap,
+        b=bar(cov * fmap * 1000, 1000), o=100 * cov * fmap)
 
 
 def render_readme(rows):
     lines = ['_Generated by `tools/gen_progress.py` on every push; do not edit by hand._', '',
-             'A field counts as **mapped** once its meaning is recovered from the client reader or writer. '
-             'Unmapped fields (`_` in `schemas/*.jsch`) are sent as zero or defaults, so they bound how '
-             'faithfully each system behaves.', '',
-             '| Domain | Messages | Field mapping | Mapped | Unmapped |',
-             '| :--- | ---: | :--- | ---: | ---: |']
-    total_f = total_n = total_m = 0
-    for row in rows:
-        pct = 100 * row['named'] / row['fields'] if row['fields'] else 100
-        lines.append('| {d} | {m} | `{b}` {p:.0f}% | {n}/{f} | {u} |'.format(
-            d=row['domain'], m=len(row['messages']), b=bar(row['named'], row['fields']),
-            p=pct, n=row['named'], f=row['fields'], u=len(row['unmapped'])))
-        total_f += row['fields']
-        total_n += row['named']
-        total_m += len(row['messages'])
-    pct = 100 * total_n / total_f if total_f else 100
-    lines.append('| **Total** | **{m}** | `{b}` **{p:.0f}%** | **{n}/{f}** | **{u}** |'.format(
-        m=total_m, b=bar(total_n, total_f), p=pct, n=total_n, f=total_f, u=total_f - total_n))
+             '**Opcodes** are the client-facing requests and notices (`eEGS_`, `eERC_`, `eERT_`) that have a schema '
+             'message or a server handler, out of all the client defines for that system. **Fields** are the share '
+             'of fields in implemented messages whose meaning is recovered; unmapped ones (`_` in '
+             '`schemas/*.jsch`) are sent as zero or defaults. **Overall** = opcodes x fields, so unimplemented '
+             'opcodes and unmapped fields both lower it. GM cheats, anti-cheat and login/billing back ends are not '
+             'counted, and opcodes without a schema are assigned to a system by name, so the split is approximate.', '',
+             '| System | Opcodes | Fields | Overall |', '| :--- | ---: | ---: | :--- |']
+    tot = [0, 0, 0, 0]
+    for row in sorted(rows, key=lambda r: -overall(r)):
+        lines.append(table_row(row['domain'], row['impl'], row['total'], row['named'], row['fields']))
+        for i, key in enumerate(('impl', 'total', 'named', 'fields')):
+            tot[i] += row[key]
+    lines.append(table_row('**Total**', *tot))
     lines += ['', 'Every unmapped field, with the reader-address note recorded next to it, is in '
               '[docs/UNMAPPED_FIELDS.md](docs/UNMAPPED_FIELDS.md).', '',
               '<details><summary>Messages and structs that still contain unmapped fields</summary>', '']
