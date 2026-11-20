@@ -1,0 +1,181 @@
+# Personal shops (player stalls) and the broker marketplace. Format: schemas/README.md.
+# These flows are synthetic (not confirmed with the client). The earlier encoders
+# put 0x1E bytes before structs; 0x00B35010 consumes no byte for that tag, so
+# they are not sent.
+
+domain stalls Dark Blood protocol wire messages - Personal Shop (Player Stalls) and Broker (Marketplace).
+
+extern Item from darkblood.games.entities.items
+
+struct StallItem
+  ## Item offered in a personal stall.
+  Item item = Item()
+  i64 price                  # AR price
+end
+
+struct StallOffer
+  ## Element of the 2340 item vector (earlier server's guess).
+  i64 item_uid
+  i32 count = 1
+  i64 price
+end
+
+message 2340 PersonalShopOpenReq header?
+  ## No sender recovered; layout is the earlier guess.
+  wstr title
+  vector<StallOffer> items
+end
+
+message 2341 PersonalShopOpenAck ok_only
+  ## Reader 0x00601AA0 -> 0x00A55D70: result, jPersonalShop, title.
+  i32 result
+  i64 owner_uid              # jPersonalShop
+  u16 _ = 2026               # fixed date header (earlier guess)
+  u8 _ = 11
+  u8 _ = 17
+  u8 _ = 12
+  u8 _
+  vector<StallItem> items
+  vector<?> _                # sold items
+  i64 _
+  i16 _
+  i32 expire_time = 86400    # remaining seconds
+  bool _ = true              # active
+  bool _ = true              # open
+  wstr title
+end
+
+message 2342 PersonalShopCloseReq header?
+  i64 owner_uid
+end
+
+message 2343 PersonalShopCloseAck
+  i32 result
+  i64 owner_uid
+end
+
+message 5242 PersonalShopBuyReq header?
+  i64 seller_uid
+  i64 item_uid
+  i32 count = 1
+end
+
+message 5243 PersonalShopBuyAck ok_only
+  ## "vecItemOut >> jPersonalShop >> nCurrentAr".
+  i32 result
+  vector<Item> items         # vecItemOut: granted or updated for the buyer
+  i64 seller_uid             # jPersonalShop
+  u16 _ = 2026
+  u8 _ = 11
+  u8 _ = 17
+  u8 _ = 12
+  u8 _
+  vector<StallItem> stall_items
+  vector<?> _
+  i64 _
+  i16 _
+  i32 expire_time = 86400
+  bool _ = true
+  bool _ = true
+  i64 gold                   # nCurrentAr
+end
+
+message 6021 PersonalShopGetProductsReq header?
+  i64 seller_uid
+end
+
+message 6022 PersonalShopGetProductsAck ok_only
+  i32 result
+  i64 seller_uid
+  wstr title
+  vector<StallItem> items
+  i32 expire_time = 86400
+end
+
+message 5250 PersonalShopChangeNot
+  i64 seller_uid
+  wstr title
+  i32 item_count
+end
+
+message 5254 PersonalShopStartNot
+  i64 seller_uid
+  wstr title
+end
+
+message 5255 PersonalShopCloseNot
+  i64 seller_uid
+end
+
+struct BrokerProduct
+  ## Broker listing (earlier server's guess).
+  Item item = Item()
+  i64 price
+  wstr seller_name
+  i32 expire_time = 86400
+  i64 unit_price
+  i64 listing_id
+end
+
+message 2262 BrokerListReq header?
+  i32 page
+  i32 category
+  wstr filter_name
+end
+
+message 2263 BrokerListAck ok_only
+  ## Reader 0x005ADAC0.
+  i32 result
+  vector<BrokerProduct> products
+  i32 page
+  i32 total_count
+end
+
+message 2264 BrokerMyListReq header?
+end
+
+message 2265 BrokerMyListAck ok_only
+  ## Reader 0x005ADFF0.
+  i32 result
+  vector<BrokerProduct> products
+end
+
+message 2266 BrokerRegistItemReq header?
+  i64 item_uid
+  i32 count = 1
+  i64 price
+  i32 period_hours = 24
+end
+
+message 2267 BrokerRegistItemAck
+  i32 result
+end
+
+message 2268 BrokerBuyItemReq header?
+  i64 listing_id
+  i32 count = 1
+end
+
+message 2269 BrokerBuyItemAck
+  i32 result
+  i64 gold
+end
+
+message 2270 BrokerCancelReq header?
+  i64 listing_id
+end
+
+message 2271 BrokerCancelAck
+  ## Handler 0x00789882.
+  i32 result
+end
+
+message 2272 BrokerPriceReq header?
+  i32 item_id
+end
+
+message 2273 BrokerPriceAck
+  i32 result
+  i64 avg_price
+  i64 min_price
+end

@@ -29,7 +29,7 @@ from darkblood.games.network.messages.stalls import (
     PersonalShopOpenAck,
     PersonalShopOpenReq,
     PersonalShopStartNot,
-    StallItem,
+    StallItem, StallOffer,
 )
 from darkblood.games.session import GameSession
 from darkblood.games.stalls import BrokerManager, PersonalShopManager
@@ -89,7 +89,7 @@ class StallFlowTest(ServerTestCase):
                 # 2. Seller opens stall via Opcode 2340
                 open_req = PersonalShopOpenReq(
                     title='Rare Potions Stall',
-                    items=[(item_uid, 2, 3000)]  # sell 2 for 3000 AR each
+                    items=[StallOffer(item_uid, 2, 3000)]  # sell 2 for 3000 AR each
                 ).encode()
                 client1.send_event(2340, open_req)
 
@@ -196,7 +196,7 @@ class StallFlowTest(ServerTestCase):
                 # Vendor starts shop via Opcode 2340 (eEGS_PERSONALSHOP_START_REQ)
                 start_req = PersonalShopOpenReq(
                     title='Mana Supplies',
-                    items=[(item_uid, 4, 1500)]
+                    items=[StallOffer(item_uid, 4, 1500)]
                 ).encode()
                 client1.send_event(2340, start_req)
 
@@ -303,16 +303,15 @@ class StallWireMessagesTest(unittest.TestCase):
         item = Item(owner=UPDATE_OWNER, uid=101, code='Ihppa0001', count=3)
         stall_item = StallItem(item=item, price=2500)
         encoded = stall_item.encode()
-        self.assertEqual(encoded[0], 0x1e)
-        self.assertIn(struct.pack('<q', 2500), encoded)
+        self.assertEqual(encoded, item.encode() + struct.pack('<q', 2500))  # no 0x1E byte
 
     def test_personal_shop_open_req_and_ack_roundtrip(self):
-        req = PersonalShopOpenReq(title='Grand Emporium', items=[(1001, 2, 5000), (1002, 1, 9999)])
+        req = PersonalShopOpenReq(title='Grand Emporium', items=[StallOffer(1001, 2, 5000), StallOffer(1002, 1, 9999)])
         encoded_req = req.encode()
         decoded_req = PersonalShopOpenReq.decode(encoded_req)
         self.assertEqual(decoded_req.title, 'Grand Emporium')
         self.assertEqual(len(decoded_req.items), 2)
-        self.assertEqual(decoded_req.items[0], (1001, 2, 5000))
+        self.assertEqual(decoded_req.items[0], StallOffer(1001, 2, 5000))
 
         item1 = Item(owner=UPDATE_OWNER, uid=1001, code='Ihppa0001', count=2)
         stall_items = [StallItem(item=item1, price=5000)]

@@ -364,7 +364,8 @@ class CommerceHandlers(BaseDomainService):
         char_uid = char.get('id', self.char_id)
         char_name = char.get('name', 'Player')
         mgr = PersonalShopManager.get()
-        success, msg, stall = mgr.open_stall(char_uid, char_name, req.title, req.items, char)
+        success, msg, stall = mgr.open_stall(char_uid, char_name, req.title,
+                                             [(o.item_uid, o.count, o.price) for o in req.items], char)
         if success and stall:
             ack = PersonalShopOpenAck(
                 result=0,
