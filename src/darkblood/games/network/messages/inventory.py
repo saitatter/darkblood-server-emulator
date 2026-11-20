@@ -359,7 +359,10 @@ class SwitchBagAck:
 class SwitchQuickslotReq:
     """Opcode 2046: eEGS_SWITCH_QUCIKSLOT_REQ (0x00780000.c:8591).
 
-    Wire format: u8 ucType + u8 ucSlotNumFrom + u8 ucSlotNumTo (3 bytes).
+    Wire format: u8 ucType + u8 ucSlotNumFrom + u8 ucSlotNumTo (3 bytes),
+    after the usual ffffff7f prefix (live: ffffff7f 01 02 02). Reading from
+    offset 0 decoded 255/255/255, so the ack told the client to swap slot
+    255 with itself and the dragged quickslots vanished.
     """
     slot_type: int = 0
     from_slot: int = 0
@@ -367,8 +370,9 @@ class SwitchQuickslotReq:
 
     @classmethod
     def decode(cls, data: bytes) -> 'SwitchQuickslotReq':
-        if len(data) >= 3:
-            t, f, to = struct.unpack_from('<BBB', data, 0)
+        offset = 4 if len(data) >= 7 and data[:4] == PREFIX else 0
+        if len(data) >= offset + 3:
+            t, f, to = struct.unpack_from('<BBB', data, offset)
             return cls(slot_type=t, from_slot=f, to_slot=to)
         return cls()
 

@@ -75,10 +75,15 @@ class InventoryFlowTest(ServerTestCase):
             for entry in ((1, 1, 0x19a, -1), (0, 1, 0x1234, 2)):
                 self.assertIn(struct.pack('<BBiq?qH', *entry, False, 0, 0xFFFF), ack2007)
 
-            # 8. Switch quickslot (2046 -> 2047)
-            client.send_event(2046, struct.pack('<BBB', 0, 0, 1))
+            # 8. Switch quickslot (2046 -> 2047), live form: prefix + type 1,
+            # from 1, to 2. The skill in slot 1 moves to slot 2.
+            client.send_event(2046, bytes.fromhex('ffffff7f010102'))
             _, ack2047 = await client.expect_event(2047)
-            self.assertEqual(struct.unpack_from('<iBBB', ack2047), (0, 0, 0, 1))
+            self.assertEqual(struct.unpack_from('<iBBB', ack2047), (0, 1, 1, 2))
+            slots = session.GameSession.store().get('OfflinePlayer', char_id)['quickslots']
+            self.assertEqual((slots['1:2']['slot'], slots['1:2']['ref_id']), (2, 0x19a))
+            self.assertNotIn('1:1', slots)
+            self.assertIn('0:1', slots)  # the item bar is untouched
 
             # 9. Learn skill (2050 -> 2051)
             client.send_event(2050, struct.pack('<HB', 101, 2))
