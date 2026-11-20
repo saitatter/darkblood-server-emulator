@@ -224,6 +224,10 @@ class DungeonHandlers(BaseDomainService):
             room = None
         else:
             room = self.transport.server.dungeon_rooms.get(req.room_id)
+        await self.join_room(room, correlation)
+
+    async def join_room(self, room, correlation=0):
+        """Join `room` and answer with 5004 (shared by 5003 and the 5054 invite accept)."""
         char = self.current_char()
         result = results.OK
         if char is None:
@@ -308,13 +312,20 @@ class DungeonHandlers(BaseDomainService):
     def _record_dungeon_clear(self, char, map_code):
         """Remember the highest cleared difficulty per dungeon (5044 history).
 
-        Quest variants (maps with a QuestLink) do not advance difficulty.
+        A quest variant (map with a QuestLink, e.g. Act1_G1_A16) belongs to its
+        dungeon at a fixed Difficult (Act1_G1_A1, 0), so it counts as a clear of
+        that difficulty. The history keeps the regular map of that difficulty:
+        the gate auto-selects the history map (0x006D1120), and the quest map
+        would stay selected after the quest is done.
         """
         from darkblood.games.game_data.client_dict import dungeon_maps
-        info = dungeon_maps().get(map_code)
-        if info is None or info[2]:
+        maps = dungeon_maps()
+        info = maps.get(map_code)
+        if info is None:
             return
-        dungeon, diff, _ = info
+        dungeon, diff, quest = info
+        if quest:
+            map_code = next((m for m, (d, f, q) in maps.items() if d == dungeon and f == diff and not q), map_code)
         history = char.setdefault('dungeon_history', {})
         record = history.get(dungeon)
         if record is None or diff >= record['diff']:

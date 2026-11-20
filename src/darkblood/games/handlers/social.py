@@ -568,8 +568,17 @@ class SocialHandlers(BaseDomainService):
         if not target or not target.session or not getattr(target.session, 'transport', None):
             return
         inviter = world.get_player(char_id)
+        char = self.current_char() or {}
         notice = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name,
-                                inviter_square_uid=inviter.square_id if inviter else 1)
+                                inviter_square_uid=inviter.square_id if inviter else 1,
+                                inviter_class=int(char.get('char_class', 0)) & 0xFF,
+                                inviter_level=min(int(char.get('level', 1)), 0xFF))
+        room = self.session.dungeon.room
+        if room is not None and room.info.name != '_singleplay':
+            # nInviteRoomUID: with a room UID > 0 Accept sends 5003 for this room.
+            info = room.info
+            notice.room_uid, notice.room_name = info.room_id, info.name
+            notice.gate_id, notice.map_id, notice.diff = info.gate_id, info.map_id, info.diff
         await target.session.transport.send_event(event(5051, notice.encode()),
                                                   note=f'party invite not from {char_name}')
 
@@ -610,8 +619,16 @@ class SocialHandlers(BaseDomainService):
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
 
-        pm = PartyManager.get()
         host_id = self._char_id(req.host_uid)
+        from darkblood.games.world import GameWorldManager
+        host = GameWorldManager.get().get_player(host_id)
+        host_room = getattr(getattr(getattr(host, 'session', None), 'dungeon', None), 'room', None)
+        if host_room is not None:
+            # The client's party is the dungeon room (5004/5035 have handlers;
+            # 5055/5056 do not): accepting joins the host's room.
+            await self.session.dungeon.join_room(host_room, correlation)
+            return
+        pm = PartyManager.get()
         party = pm.get_player_party(host_id)
         if party and party.leader_id != host_id:
             party = None

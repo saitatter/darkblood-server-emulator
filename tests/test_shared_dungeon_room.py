@@ -2,11 +2,11 @@
 
 import struct
 
-from darkblood.games.network.messages import ChangeRoomInfoAck
-
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
+from darkblood.games.network.messages import ChangeRoomInfoAck
+from darkblood.games.network.messages.party import PartyInviteNot
 from darkblood.games.session import GameSession
 from headless_client import HeadlessClient
 
@@ -160,7 +160,16 @@ class SharedDungeonRoomTest(ServerTestCase):
                 new_room_id = struct.unpack_from('<q', created, 4)[0]
                 self.assertEqual(created[12:12 + len(bare_room_name)], bare_room_name)
                 self.assertNotEqual(new_room_id, room_id)
-                guest.send_event(5003, struct.pack('<q', new_room_id))
+                # Invite (5049: square UID, bool, char UID) carries the host's room as
+                # nInviteRoomUID; Accept without a room UID sends 5054, which joins it.
+                host.send_event(5049, struct.pack('<iq?q', 0x7fffffff, 1, False, guest_id))
+                _, invited = await host.expect_event(5050)
+                self.assertEqual(struct.unpack_from('<i', invited)[0], 0)
+                _, notice = await guest.expect_event(5051)
+                invite = PartyInviteNot.decode(notice)
+                self.assertEqual((invite.room_uid, invite.room_name, invite.inviter_uid),
+                                 (new_room_id, 'Another room', host_id))
+                guest.send_event(5054, struct.pack('<iqq', 0x7fffffff, 1, host_id))
                 _, joined_again = await guest.expect_event(5004)
                 self.assertEqual(struct.unpack_from('<Iq', joined_again), (0, new_room_id))
                 await host.expect_event(5035)

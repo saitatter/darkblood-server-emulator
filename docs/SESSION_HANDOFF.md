@@ -658,6 +658,19 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   control 2 with 0x00AF54C0 = selected item's `_combo_value` (0x00AD6710); the fill loop at
   0x0063BD5C labels items 2..4 via code outside the dump (0x600F7E10). `research/client/bp.txt`
   now traces the index (0x00AF54C8) and the value (0x0063BA77) for the next live check.
+- **Invite accept (static, 2026-11-21)**: `JAppPageRequestList::OnBtn_Party_Accept` (0x0063A600). On the
+  room host (0x00966EA0) it calls `AcceptJoinRoomREQ(nSquareUID, nCharUID)` = 5049, which answers a 5048
+  join request with an invite. On the invitee it refuses with `JERI_ALREADY_JOIN_CHAR` while GameRoom
+  +0xAC is set, else `JoinRoomREQ(nInviteRoomUID, nHostSquareUID, nHostCharUID)` (0x0058B430): 5003 for
+  a room UID > 0, otherwise 5054. nInviteRoomUID is 5051 +0x90, which the server sent as 0. 5051 now
+  carries the inviter's room (UID, name, gate, map, diff), and 5054 joins the host's room through the 5003
+  path (5004 + 5035) instead of the invented PartyManager reply (5055/5056 have no client handler).
+  The 5051 handler only runs in `eAS_Square`. Live 2026-11-21: after the 5051, no 5054 reached the server;
+  the client-side reason is not established yet.
+- **Quest dungeons**: a QuestLink map is its dungeon at a fixed Difficult (Act1_G1_A16 = A1/0, A15 = A1/2).
+  `_record_dungeon_clear` used to skip them; a clear now counts for that difficulty and is stored under
+  the regular map of that difficulty. Room map hashes (5001/5011) are DungeonID hashes (Act1_G1_A1 =
+  0xCD450996), not MapIDs.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.

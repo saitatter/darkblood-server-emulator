@@ -180,21 +180,32 @@ class PartyInviteNot:
     Handler 0x007706E0. Reader 0x00A4AD10: bool, host summary (0x00A49600), room
     UID, room name, gate, map and difficulty. Room fields use the client's
     constructor defaults (0x00473E60), including the 74-byte block read by 0x00A48B40.
+    The request list stores the room UID as nInviteRoomUID; Accept (0x0063A600)
+    calls JoinRoomREQ(nInviteRoomUID, nHostSquareUID, nHostCharUID) = 0x0058B430,
+    which sends 5003 for a room UID > 0 and 5054 otherwise. It refuses with
+    JERI_ALREADY_JOIN_CHAR while the GameRoom page +0xAC flag is set.
     """
     OPCODE: ClassVar[int] = 5051
-    inviter_square_uid: int = 1  # host summary
+    inviter_square_uid: int = 1  # host summary (0x00A49600, RoomMemberInfo layout)
     inviter_uid: int = 0
     inviter_name: str = ''
+    inviter_class: int = 0
+    inviter_level: int = 0
+    room_uid: int = 0  # +0x90 nInviteRoomUID
+    room_name: str = ''  # +0x98
+    gate_id: int = -1  # +0xB4
+    map_id: int = -1  # +0xB8
+    diff: int = -1  # +0xBC
 
     def encode(self) -> bytes:
         b = bytearray()
         b += struct.pack('<?qqI', False, self.inviter_square_uid, self.inviter_uid, 0)
         b += wide_string(self.inviter_name)
-        b += struct.pack('<BHBqq', 0, 0xFFFF, 0, -1, -1)
+        b += struct.pack('<BHBqq', self.inviter_class, 0xFFFF, self.inviter_level, -1, -1)
         b += bytes(bytes(74)).ljust(74, b'\x00')[:74]
-        b += struct.pack('<Bq', 0, 0)
-        b += wide_string('')
-        b += struct.pack('<IIH', 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFF)
+        b += struct.pack('<Bq', 0, self.room_uid)
+        b += wide_string(self.room_name)
+        b += struct.pack('<iih', self.gate_id, self.map_id, self.diff)
         return bytes(b)
 
     @classmethod
@@ -206,18 +217,18 @@ class PartyInviteNot:
         kw['inviter_uid'] = r.read_i64()
         r.read_u32()
         kw['inviter_name'] = r.read_wstring()
-        r.read_u8()
+        kw['inviter_class'] = r.read_u8()
         r.read_u16()
-        r.read_u8()
+        kw['inviter_level'] = r.read_u8()
         r.read_i64()
         r.read_i64()
         r.read_bytes(74)
         r.read_u8()
-        r.read_i64()
-        r.read_wstring()
-        r.read_u32()
-        r.read_u32()
-        r.read_u16()
+        kw['room_uid'] = r.read_i64()
+        kw['room_name'] = r.read_wstring()
+        kw['gate_id'] = r.read_i32()
+        kw['map_id'] = r.read_i32()
+        kw['diff'] = r.read_i16()
         return cls(**kw)
 
 

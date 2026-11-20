@@ -55,23 +55,27 @@ message 5051 PartyInviteNot
   ## Handler 0x007706E0. Reader 0x00A4AD10: bool, host summary (0x00A49600), room
   ## UID, room name, gate, map and difficulty. Room fields use the client's
   ## constructor defaults (0x00473E60), including the 74-byte block read by 0x00A48B40.
+  ## The request list stores the room UID as nInviteRoomUID; Accept (0x0063A600)
+  ## calls JoinRoomREQ(nInviteRoomUID, nHostSquareUID, nHostCharUID) = 0x0058B430,
+  ## which sends 5003 for a room UID > 0 and 5054 otherwise. It refuses with
+  ## JERI_ALREADY_JOIN_CHAR while the GameRoom page +0xAC flag is set.
   bool _
-  i64 inviter_square_uid = 1 # host summary
+  i64 inviter_square_uid = 1 # host summary (0x00A49600, RoomMemberInfo layout)
   i64 inviter_uid
   u32 _
   wstr inviter_name
-  u8 _
+  u8 inviter_class
   u16 _ = 0xFFFF
-  u8 _
+  u8 inviter_level
   i64 _ = -1
   i64 _ = -1
   raw[74] _
   u8 _
-  i64 _                      # room UID
-  wstr _                     # room name
-  u32 _ = 0xFFFFFFFF         # gate
-  u32 _ = 0xFFFFFFFF         # map
-  u16 _ = 0xFFFF             # difficulty
+  i64 room_uid               # +0x90 nInviteRoomUID
+  wstr room_name             # +0x98
+  i32 gate_id = -1           # +0xB4
+  i32 map_id = -1            # +0xB8
+  i16 diff = -1              # +0xBC
 end
 
 struct LegacyPartyInviteReq
