@@ -52,7 +52,7 @@ class RoomInfo:
     Destinations: +0, +8, +0x2C, +0x2E, +0x30, +0x24, +0x34, +0x3C, +0x40,
     +0x44. The find-party row filler (near 0x0062DA71) prints UI_625 with
     +0x2E / +0x2C as the player count, picks the status layer from +0x30
-    (1 or 2 -> layer 2, 8 -> layer 1, anything else -> "FULL") and passes
+    (1 or 2 -> "PLAY", 8 -> waiting/joinable, anything else -> "FULL") and passes
     +0x44 to 0x0074B3E0. Gate, map and difficulty follow the create order
     (szRoomName << nGateID << nMapID << sMapDiff << sMaxNumUser).
     """
@@ -60,7 +60,7 @@ class RoomInfo:
     name: str = ''
     max_users: int = 4
     cur_users: int = 1
-    state: int = 1  # 1 open (layer 2); 8 assumed in game; exact labels not recovered
+    state: int = 8  # 8 waiting (Join enabled, 0x0062E422); 1/2 shown as PLAY (live); else FULL
     host_uid: int = 0
     gate_id: int = -1
     map_id: int = -1

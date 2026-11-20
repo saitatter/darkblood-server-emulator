@@ -11,14 +11,14 @@ struct RoomInfo
   ## Destinations: +0, +8, +0x2C, +0x2E, +0x30, +0x24, +0x34, +0x3C, +0x40,
   ## +0x44. The find-party row filler (near 0x0062DA71) prints UI_625 with
   ## +0x2E / +0x2C as the player count, picks the status layer from +0x30
-  ## (1 or 2 -> layer 2, 8 -> layer 1, anything else -> "FULL") and passes
+  ## (1 or 2 -> "PLAY", 8 -> waiting/joinable, anything else -> "FULL") and passes
   ## +0x44 to 0x0074B3E0. Gate, map and difficulty follow the create order
   ## (szRoomName << nGateID << nMapID << sMapDiff << sMaxNumUser).
   i64 room_id
   wstr name
   i16 max_users = 4
   i16 cur_users = 1
-  i32 state = 1              # 1 open (layer 2); 8 assumed in game; exact labels not recovered
+  i32 state = 8              # 8 waiting (Join enabled, 0x0062E422); 1/2 shown as PLAY (live); else FULL
   i64 host_uid
   i64 _
   i32 gate_id = -1

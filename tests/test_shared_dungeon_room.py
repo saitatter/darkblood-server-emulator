@@ -58,7 +58,7 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(struct.unpack_from('<q', gate_info)[0] > room_id, True)
                 self.assertIn(wide('Gate room'), gate_info)
 
-                gate_live = gate_info  # one member, open (state 1): same as the create ack
+                gate_live = gate_info  # one member, waiting (state 8): same as the create ack
                 # 2010: nPage, bWait, nGateID, nMapID, sDiff -> the gate's open rooms.
                 guest.send_event(2010, struct.pack('<ii?iih', 0x7fffffff, 0, True, gate, -1, -1))
                 _, listing = await guest.expect_event(2011)

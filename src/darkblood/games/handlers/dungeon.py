@@ -448,9 +448,14 @@ class DungeonHandlers(BaseDomainService):
 
     @staticmethod
     def _room_info(room):
-        """jRoomInfo with the live member count and state (1 open, 8 started)."""
+        """jRoomInfo with the live member count and state.
+
+        State 8 is a joinable waiting room: View party info enables Join only
+        when +0x30 == 8 (0x0062E422). 1 and 2 show "PLAY" (live), anything else
+        "FULL".
+        """
         from dataclasses import replace
-        state = 8 if room.started else (1 if len(room.members) < room.info.max_users else 0)
+        state = 1 if room.started else (8 if len(room.members) < room.info.max_users else 0)
         return replace(room.info, cur_users=len(room.members), state=state)
 
     def _current_char(self):
