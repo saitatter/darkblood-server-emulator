@@ -41,6 +41,10 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Multiple accounts and profile switching.
 
 ### Gameplay (P3)
+- [ ] Unimplemented client features with leads in `docs/REVIVAL_PACKAGE_ANALYSIS.md`: attendance calendar (CRONOS
+  2289-2300), native GM cheat opcodes (2057, 2061, 2088, 2101-2107, 2130, 2137, 2414), waypoints, fishing, guild.
+- [ ] Try constructor defaults in the 2007 details (24-byte options block, five-slot `-1` vector) and a non-zero
+  `nAuthLevel` in 5020.
 - [ ] Monster AI aggro and damage calculation from the client property tables.
 - [ ] Live checks for the 11-20 work: gate history and quest variants, EXP bar, town AR, chest names,
   counter achievements, revive layer, floor gold.
@@ -64,6 +68,8 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Steam shim: SteamUser has three slots and SteamFriends one; other interfaces return placeholder `1`.
 
 ### Multiplayer (P6)
+- [ ] Town send throttle (`0x87C0D0` limit 8/2 selects a 2000 ms per-peer branch) and remote-position drift handling
+  (`peer+0x108`, path request `0x810CA0`): see `docs/REVIVAL_PACKAGE_ANALYSIS.md` lead 1.
 - [ ] Town movement desync/latency (worst with world-map click-to-move): decode relayed P2P messages with the
   server-generated keys and compare against the peer view.
 - [ ] Answer 5060 (room member info) and 5088 (party looting mode).
