@@ -136,6 +136,8 @@ class MonsterExpTest(ServerTestCase):
             client.send_event(5063, struct.pack('<iII', 0x7fffffff, jhash('1npi01n0') & 0xFFFFFFFF, 77))
             _, drop = await client.expect_event(5064)
             drop_uid = struct.unpack_from('<I', drop, 6)[0]
+            # The floor label shows the rolled AR, the same amount 5114 awards.
+            self.assertEqual(struct.unpack_from('<H', drop, 16)[0], 40)
 
             client.send_event(5065, struct.pack('<iI', 0x7fffffff, drop_uid))
             _, note = await client.expect_event(5114)

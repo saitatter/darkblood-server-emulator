@@ -379,12 +379,23 @@ class DungeonHandlers(BaseDomainService):
         codes = loot.roll_drops(getattr(self, 'map_code', ''), monster, int(char.get('char_class', 0)))
         if not codes:
             return
+        import random
+        from darkblood.games.game_data.client_dict import money_drops
         drops = self.__dict__.setdefault('floor_drops', {})
+        gold = self.__dict__.setdefault('floor_gold', {})
         entries = []
         for code in codes:
             self.next_drop_uid = getattr(self, 'next_drop_uid', 0) + 1
             drops[self.next_drop_uid] = code
-            entries.append(ItemDropEntry(drop_uid=self.next_drop_uid, item_id=jhash(code)))
+            count = 1
+            money = money_drops().get(code)
+            if money:
+                # Roll the AR now so the floor label (count, passed to
+                # 0x004C8CA0 as the amount) matches what 5114 awards.
+                low = int(money[0])
+                count = min(0xFFFF, random.randint(low, max(low, int(money[1]))))
+                gold[self.next_drop_uid] = count
+            entries.append(ItemDropEntry(drop_uid=self.next_drop_uid, item_id=jhash(code), count=count))
         await self.transport.send_event(event(5064, DropItemNot(source_id=source_id, drops=entries).encode()),
                                         note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
 
@@ -526,10 +537,12 @@ class DungeonHandlers(BaseDomainService):
         if money:
             # AR drop: 5114 eERC_GET_DROP_AR_NOT (0x00792700) adds the amount
             # to player +0x70, removes the drop (0x0086AFF0) and prints it.
-            import random
             from darkblood.games.network.messages import GetDropArNot
             del drops[req.drop_uid]
-            amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
+            amount = getattr(self, 'floor_gold', {}).pop(req.drop_uid, None)
+            if amount is None:
+                import random
+                amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
             char['gold'] = char.get('gold', 0) + amount
             char['u66'] = char['gold']
             self.store().save()
