@@ -2,11 +2,15 @@
 import struct
 import unittest
 
-from darkblood.games.network.messages import PartyAcceptInviteReq, PartyInviteReq
-
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.core import hashing
 from darkblood.games import session
+from darkblood.games.network.messages import (
+    FinishGameAck,
+    PartyAcceptInviteReq,
+    PartyInviteReq,
+    SelectDungeonAck,
+)
 
 
 class DungeonFlowTest(ServerTestCase):
@@ -193,6 +197,61 @@ class DungeonFlowTest(ServerTestCase):
             self.assertIn(b'\x17\x81\x0f' + wide('Act1_G1_A1') + wide('Act1_G1_A11') + b'\x01\x01', ack5044)
 
         self.run_async(self.with_server(scenario))
+
+    def test_second_gate_reports_exp_and_only_unlocks_on_clear(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('SecondGate', char_class=1))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            prefix = struct.pack('<I', 0x7fffffff)
+            client.send_event(2006, prefix + struct.pack('<Q', char_id))
+            await client.expect_event(2007)
+
+            async def select_gate():
+                client.send_event(5043, prefix + wide('Act1_G2'))
+                _, body = await client.expect_event(5044)
+                ack = SelectDungeonAck.decode(body)
+                self.assertEqual((ack.result, ack.gate_id), (0, 'Act1_G2'))
+                return ack.dun_history
+
+            self.assertEqual(await select_gate(), {})
+            runs = (
+                # Map, victory, monster instance, result EXP, cleared map and difficulty.
+                ('Act1_G2_B10', True, 101, 10, 'Act1_G2_B10', 0),
+                ('Act1_G2_B11', False, 102, 0, 'Act1_G2_B10', 0),
+                ('Act1_G2_B11', True, None, 0, 'Act1_G2_B11', 1),
+            )
+            for code, victory, monster_instance, exp, cleared_map, diff in runs:
+                with self.subTest(map=code, victory=victory):
+                    client.send_event(5013, prefix + wide(code))
+                    _, started = await client.expect_event(5014)
+                    self.assertEqual(started, b'\x00' * 10 + wide(code) + bytes.fromhex('1780178017801080'))
+
+                    if monster_instance is not None:
+                        kill = struct.pack('<II', hashing.jhash('1npi01n0'), monster_instance)
+                        client.send_event(5063, prefix + kill)
+                        _, gained = await client.expect_event(5086)
+                        self.assertEqual(struct.unpack_from('<i', gained, 12)[0], 10)
+
+                    client.send_event(5017, bytes([victory]))
+                    _, finished = await client.expect_event(5018)
+                    result = FinishGameAck.decode(finished)
+                    self.assertEqual((result.result, result.map_code, result.is_clear), (0, code, victory))
+                    if victory:
+                        self.assertEqual(set(result.rewards), {char_id})
+                        reward = result.rewards[char_id]
+                        self.assertEqual((reward.exp, reward.total, reward.extra_box_count), (exp, exp, 0))
+                    else:
+                        self.assertEqual(result.rewards, {})
+
+                    history = await select_gate()
+                    self.assertEqual(set(history), {'Act1_G2_B1'})
+                    entry = history['Act1_G2_B1']
+                    self.assertEqual((entry.map_id, entry.max_diff, entry.cleared), (cleared_map, diff, 1))
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()
