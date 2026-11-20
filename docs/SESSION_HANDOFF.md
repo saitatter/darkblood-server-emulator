@@ -1,5 +1,69 @@
 # Session handoff — 2026-11-20 (compressed)
 
+## Live two-client playtest — saita machine, 2026-11-20 (evening)
+
+Data reset at the start (`data/darkblood.db` removed; backup in the session
+scratchpad). Two multibox clients (`OfflinePlayer`/Knight1, `Player2`/Warrior1),
+user testing by hand, server log monitored. 181 headless tests pass.
+
+Fixed this session (live-confirmed only where stated):
+- **5094 revive position**: the client's read assert names the fields
+  `nFromCharUID >> nToCharUID >> bDie >> nLayerID >> nX >> nY >>
+  sCurPartyRebirthLimit`; the request assert is `GamePlayDieCharREQ(netID, bDie,
+  m_nLayerID, (int)pos.x, (int)pos.y)`. The server sent HP values as nX/nY. Now
+  echoed. Live check pending.
+- **Town layer (`nJoinLayerNetID` low dword)**: it is the town layer (zone).
+  `0x008EC230` (SquarePlay entry) reads it via `0x005DDD10` (returns the low
+  dword) and picks the start-point dood of that layer (`0x008B59F0`), or the
+  layer waypoint after GamePlay (`0x0098BE00`); state 9 (Tutorial) uses the
+  start point. The server always sent 1. Act1 layers seen in 5030: 0, 2, 5, 7.
+  Default is now 0 (assumed main town, unconfirmed: the user expects to spawn
+  next to the first quest giver after the tutorial), 5030 stores the layer,
+  2007/5046 send it. Live check pending.
+- **Peer layer in 5096**: details `+0x5F` carried the stored default layer, so
+  after a 5030 the peer's JUser reported another layer. Now the presence layer.
+- **Floor gold**: the 5064 entry count (amount, `0x004C8CA0`) was always 1; the
+  AR is now rolled at drop time and awarded unchanged by 5114.
+- **Relay group leave**: the departing member now also gets 0xF61E for every
+  remaining peer before its own. Hypothesis (stale P2P entry and keys after a
+  layer change); live result not isolated.
+- **Room finder 2010 -> 2011**: was always empty. Element = jRoomInfo
+  (`0x00580B40` -> `0x00A49380`). Layout: id, name, i16 max users (+0x2C),
+  i16 current users (+0x2E), i32 state (+0x30: 1/2 -> status layer 2, 8 -> 1,
+  else "FULL"), i64 host, i64 ?, i32 gate, i32 map, i16 diff. The row prints
+  UI_625 with +0x2E / +0x2C. The last 2011 field is shown plus one (last page
+  index). 5001 skips the 0x7FFFFFFF prefix. **Live-confirmed**: the room
+  appeared in the other client's Find party list (before the layout fix).
+- **"(Offline)" name suffix**: `0x007E9896` adds "(server)" unless
+  `0x0087DBB0` finds equal keys (bits 54-58, `0x00A614A0`) in the peer's and
+  the own JUser `+0x100`. Live breakpoint at `0x0087DBF8`: own `+0x100` is
+  `0xFFFFFFFFFFFFFFFF` (key 31), peers had 1. 5027 now sends `0x1F << 54`.
+  The 2007 field at struct `+0x207` is not the own key (that change was
+  reverted). Live check of the suffix pending.
+- **Peer spawn timing**: live, a 5027 sent 1 ms after 2006 was never shown, one
+  at +0.9 s (after 2219, before the relay JoinGroup) was shown, and one after
+  5124 (+10 s, after JoinGroup) was not shown. A player is now `loading` from
+  2006 and is announced both ways at 2131 (~2 s after 2006, just before
+  JoinGroup); 5124 is a fallback. **Live-confirmed**: both players saw each
+  other after this change.
+
+Open, observed live:
+- **Town movement desync and latency** (next target). Positions drift, worst
+  with click-to-move on the world map (no 5030 involved). Each client sends a
+  relay `0x16` every ~216 ms (shim patch `peer_update_interval`, 2000 -> 100 ms
+  at `0x00966C9C`), plus ~35 reliable `0x15` per minute; the relay drops
+  nothing and forwards at once. Plan: the server generates the P2P AES/Fast keys
+  (0xF619), so add a diagnostic relay decoder that logs the inner message type
+  per sender (position revision 0x4D in the 0x53 bundle vs move commands), then
+  compare a map click with what the peer renders.
+- 5060 eERC_ROOM_MEM_INFO_REQ (Find party member view) and 5088
+  eERC_CHANGE_ITEM_OBTAIN_REQ (party looting mode button) are unhandled.
+- The IME button next to the name in character creation is a Korean/English
+  input toggle (`g_jAP_CreateChar:OnToggleIME()`), not a name check; names are
+  validated by 2012 (result codes 14-17).
+- Tooling: `multibox.py tile` has no borderless mode by choice; fullscreen is
+  already borderless through the shim (`exclusive_fullscreen.txt` opts out).
+
 ## All message domains schema-generated — saita machine, 2026-11-20 (night)
 
 - **Pipeline**: every module in `games/network/messages/` (15 domains, ~365

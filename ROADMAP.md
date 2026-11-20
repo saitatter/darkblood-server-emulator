@@ -16,7 +16,7 @@ Final objective: launch without the original services, establish a local session
 | **P3: Gameplay & Economy** | Combat, dungeons, drops, store, level-up, guild | **Verified (~95%)** | Live 11-17: tutorial, equip/swap, stats, death/revive, cash shop, depot, pets, mounts, loot. 11-20: result screen, dyeing, tutorial-exit gear; gate history/quest variants, EXP bar, town AR, chest names and counter achievements await live checks |
 | **P4: Assets & Config** | JPK unpacker, Lua tables, dictionaries | **In Progress (~80%)** | Validated decoder, bundled Cash Shop purchase catalog, store/quest/stat/monster tables parsed |
 | **P5: Stability & Launcher** | Steam shim, process supervisor, gamectl, MCP | **In Progress (~85%)** | Clean headless test runner, process cleanup, GM web dashboard |
-| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress** | Town peer rendering and movement verified with two live clients. Shared dungeon instances remain open. |
+| **P6: Multiplayer & Relay Sync** | P2P client relay, party instances, town broadcast | **In Progress** | Town peer rendering verified with two live clients; room finder lists open rooms (11-20). Open: town movement desync/latency (worst with world-map click-to-move), shared dungeon instances. |
 | **P7: Commerce & Post System** | P2P trade, personal shops, mail/attachments, depot | **Verified (~95%)** | P2P trade, full mailbox with attachments, depot AR/slots, player stalls & broker marketplace live |
 | **P8: Guild Warfare & Arena PvP** | Guild wars, sieges, arena rooms, ladder matchmaking | **In Progress (~90%)** | Guild banking/notice/skills live; duels, arena rooms, teams, league rankings live; siege warfare next |
 | **P9: Refactoring & Architecture** | Modular messages, GM dashboard, opcode ownership, world lifecycle | **In Progress** | Startup-validated opcode registry, generated opcode registry doc, per-connection identity, indexed town presence, shared party-invite path. 176 headless tests pass. Shared instance ownership remains open. |
@@ -120,6 +120,11 @@ Final objective: launch without the original services, establish a local session
     same-connection character replacement is covered headlessly.
   - Chat broadcasting: normal chat, whisper, party chat, guild chat, and world megaphone (2128/2129).
   - Live clients send town updates with 512-bit ProudNet Fast keys.
+  - 11-20: peers are announced at 2131 (spawn timing verified live), carry
+    server key 31 and their current layer; 2011 lists rooms (jRoomInfo).
+  - [ ] Fix town movement desync/latency: decode relayed P2P messages with the
+    server-generated keys and compare world-map click-to-move with the peer view.
+  - [ ] Answer 5060 (room member info) and 5088 (party looting mode).
     The relay forwards `0x16` updates as `0x1A` within the group.
   - The two-client rerun measured a 215 ms median town revision interval
     with the shim and showed the correct “Offline” server name.

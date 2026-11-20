@@ -1,5 +1,23 @@
 # Research status and handoff
 
+## Live two-client playtest — 2026-11-20 (evening)
+
+- Room finder (2010 -> 2011) lists open rooms; jRoomInfo layout recovered
+  (max/current users, state, gate, map, difficulty). Verified live that the
+  room appears.
+- Town peers are announced both ways at 2131 (after the town load starts,
+  before the relay JoinGroup). Verified live: both players see each other.
+- Peers carry server key 31 (own JUser `+0x100` read live as all ones), which
+  should remove the "(Offline)" name suffix.
+- Revive (5094) echoes nLayerID/nX/nY; town layer is the low dword of
+  nJoinLayerNetID (default 0, persisted from 5030); 5096 carries the current
+  layer; floor gold shows the rolled amount; relay leaves notify the departing
+  member of every peer. Live checks pending.
+- Open: town movement desync/latency, worst with world-map click-to-move.
+  Positions arrive every ~216 ms through the relay with no drops. Next: decode
+  relayed P2P messages with the server-generated keys.
+- 181 headless tests pass.
+
 ## Gate history, result screen, dyeing and tutorial exit — 2026-11-20
 
 - 5018: the 40-byte mapSingleReward block is recovered (`SingleReward`). `+0x20` is
