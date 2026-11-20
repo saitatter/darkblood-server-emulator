@@ -2,7 +2,7 @@
 import struct
 import unittest
 
-from tests.common import ServerTestCase, create_request, lobby_flow
+from tests.common import chat_request, ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
 from darkblood.player_management.characters import (
     EQUIP_CONTAINER, ensure_inventory, free_bag_slots, grant_test_bags)
@@ -35,7 +35,7 @@ class GmBagsFlowTest(ServerTestCase):
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
 
-            client.send_event(5040, b'\x00' + '/bags'.encode('utf-16le'))
+            client.send_event(5040, chat_request('/bags'))
             _, ack = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)

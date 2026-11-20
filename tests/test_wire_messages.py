@@ -276,8 +276,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i?q', ack), (0, True, 999))
 
     def test_speaker_item_messages(self):
-        msg_raw = 'Hello World'.encode('utf-16le') + b'\x00\x00'
-        raw_spk = struct.pack('<q', 555) + msg_raw + struct.pack('<q', 0)
+        raw_spk = struct.pack('<q', 555) + jser.wide_string('Hello World') + struct.pack('<q', 0)
         req = messages.UseSpeakerItemReq.decode(raw_spk)
         self.assertEqual(req.speaker_uid, 555)
         self.assertEqual(req.message, 'Hello World')
@@ -300,8 +299,7 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<ii', ack), (0, 42))
 
     def test_friend_list_update_memo_messages(self):
-        memo = 'My friend'.encode('utf-16le') + b'\x00\x00'
-        req = messages.FriendListUpdateReq.decode(struct.pack('<q', 999) + memo)
+        req = messages.FriendListUpdateReq.decode(struct.pack('<q', 999) + jser.wide_string('My friend'))
         self.assertEqual(req.char_uid, 999)
         self.assertEqual(req.comment, 'My friend')
         ack = messages.FriendListUpdateAck(result=0, char_uid=999, comment='My friend').encode()
@@ -433,9 +431,11 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<ii', ack_ct), (0, 2))
 
     def test_chat_messages(self):
-        msg_raw = b'\x00' + 'Hello world'.encode('utf-16le')
-        req_chat = messages.ChatReq.decode(msg_raw)
-        self.assertEqual(req_chat.channel, 0)
+        # Captured form: u8 channel, sender, target, message, undecoded tail.
+        raw = bytes.fromhex('0180808a2f0062006100670073000010801080010000') + b'\xff' * 28
+        req_chat = messages.ChatReq.decode(raw)
+        self.assertEqual((req_chat.channel, req_chat.message), (1, '/bags'))
+        self.assertEqual(req_chat.encode(), raw)
         ack_chat = messages.ChatAck(result=0, channel=0, sender='Tester', message='Hello world').encode()
         self.assertEqual(struct.unpack_from('<iB', ack_chat[:5]), (0, 0))
 
@@ -672,13 +672,13 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', ack3), (0,))
 
     def test_remote_inspection_char_info(self):
-        req = messages.RequestCharInfoReq.decode(struct.pack('<q', 123))
+        req = messages.RequestCharInfoReq.decode(struct.pack('<?qq', False, 123, 0))
         self.assertEqual(req.char_uid, 123)
         ack = messages.RequestCharInfoAck(result=0).encode()
         self.assertEqual(struct.unpack_from('<i', ack[:4])[0], 0)
 
     def test_remote_inspection_item_info(self):
-        req = messages.RequestItemInfoReq.decode(struct.pack('<q', 456))
+        req = messages.RequestItemInfoReq.decode(struct.pack('<iqq', 0, 456, 0))
         self.assertEqual(req.item_uid, 456)
         ack = messages.RequestItemInfoAck(result=0, item_uid=456).encode()
         self.assertEqual(struct.unpack_from('<iq', ack[:12]), (0, 456))

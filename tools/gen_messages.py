@@ -91,7 +91,7 @@ class Struct:
     client_name: str = ''
     direction: str = ''           # request | reply
     header: str = ''              # '' | 'header' | 'header?'
-    ok_only: bool = False
+    ok_index: Optional[int] = None  # fields after this many are sent only when result == 0
     bare: bool = False
 
     @property
@@ -240,7 +240,11 @@ class Parser:
             if not line or (line.startswith('#') and not line.startswith('##')):
                 continue
             if current is not None:
-                if line == 'end':
+                if line == 'ok_only':
+                    if current.ok_index is not None or not current.fields:
+                        self.fail('ok_only marker needs preceding fields and appears once')
+                    current.ok_index = len(current.fields)
+                elif line == 'end':
                     self.finish(current)
                     current = None
                 elif line.startswith('##'):
@@ -303,12 +307,12 @@ class Parser:
         if any(s.opcode == opcode for s in self.schema.structs):
             self.fail('opcode %d defined twice' % opcode)
         return Struct(name, opcode=opcode, client_name=client, direction=direction, header=header,
-                      ok_only='ok_only' in flags, bare='bare' in flags)
+                      ok_index=1 if 'ok_only' in flags else None, bare='bare' in flags)
 
     def finish(self, struct):
         if struct.bare and (struct.fields or struct.header):
             self.fail('bare messages carry no header and no fields')
-        if struct.ok_only and (not struct.fields or struct.fields[0].name != 'result'
+        if struct.ok_index is not None and (not struct.fields or struct.fields[0].name != 'result'
                                or struct.fields[0].type.kind != 'scalar'):
             self.fail('ok_only needs a scalar first field named result')
         self.schema.structs.append(struct)
@@ -465,7 +469,7 @@ class PythonBackend:
             reader, item, inner, self.dec(t.args[1], inner, depth + 1))
 
     # -- emitters
-    def encode_lines(self, fields, ok_only):
+    def encode_lines(self, fields, ok_index):
         """Statements appending each field to bytearray `b`; consecutive scalars share one pack."""
         lines, run = [], []
 
@@ -485,7 +489,7 @@ class PythonBackend:
             else:
                 flush()
                 lines.append('b += %s' % self.enc(f.type, self.value(f)))
-            if ok_only and index == 0:
+            if ok_index is not None and index == ok_index - 1:
                 flush()
                 lines.append('if self.result != 0:')
                 lines.append('    return bytes(b)')
@@ -517,7 +521,7 @@ class PythonBackend:
             out.append("        return b''")
         else:
             out.append('        b = bytearray()')
-            out += ['        ' + line for line in self.encode_lines(fields, s.ok_only)]
+            out += ['        ' + line for line in self.encode_lines(fields, s.ok_index)]
             out.append('        return bytes(b)')
         if all(self.readable(f.type) for f in fields if not f.anonymous):
             out += self.emit_read(s, fields)
@@ -542,9 +546,9 @@ class PythonBackend:
             else:
                 out.append('        %s = %s' % (f.name, self.dec(f.type)))
                 named.append(f.name)
-            if s.ok_only and index == 0:
+            if s.ok_index is not None and index == s.ok_index - 1:
                 out.append('        if result != 0:')
-                out.append('            return cls(result=result)')
+                out.append('            return cls(%s)' % ', '.join('%s=%s' % (n, n) for n in named))
         out.append('        return cls(%s)' % ', '.join('%s=%s' % (n, n) for n in named))
         if not s.is_message:
             out += ['', '    @classmethod', "    def decode(cls, data: bytes) -> '%s':" % s.name,

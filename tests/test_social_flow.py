@@ -2,8 +2,9 @@
 import struct
 import unittest
 
-from tests.common import ServerTestCase, create_request, lobby_flow
+from tests.common import ServerTestCase, chat_request, create_request, lobby_flow
 from darkblood.games.network.messages import (
+    FriendListAddReq, FriendListUpdateReq, RequestCharInfoReq, RequestItemInfoReq, UseSpeakerItemReq,
     GuildCreateProposalReq, GuildNameChangeReq, GuildNoticeModifyReq, GuildPersonGradeModifyReq,
     PostDeleteReq, PostGetAppendItemReq, PostListReq, PostReadReq, PostReturnReq, PostSendReq,
 )
@@ -35,7 +36,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2570)[0], 0)
 
             # 4. Invite list (2024 -> 2025)
-            client.send_event(2024, b'\x1e\x00')
+            client.send_event(2024, b'')
             _, ack2025 = await client.expect_event(2025)
             self.assertEqual(struct.unpack_from('<i', ack2025)[0], 0)
             self.assertEqual(ack2025[4:], b'\x10\x80')
@@ -55,7 +56,7 @@ class SocialFlowTest(ServerTestCase):
 
             # 8. Friend list add (2139 -> 2140: returns 0xCE player offline / not found)
             fname = 'Buddy'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(2139, fname)
+            client.send_event(2139, FriendListAddReq(char_name='Buddy').encode())
             _, ack2140 = await client.expect_event(2140)
             self.assertEqual(struct.unpack_from('<i', ack2140)[0], 0xCE)
 
@@ -65,8 +66,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iq', ack2136), (0, 123456))
 
             # 10. Use speaker megaphone (2128 -> 2129)
-            spk_msg = 'Party at town!'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(2128, struct.pack('<q', 888) + spk_msg + struct.pack('<q', 0))
+            client.send_event(2128, UseSpeakerItemReq(speaker_uid=888, message='Party at town!').encode())
             _, ack2129 = await client.expect_event(2129)
             self.assertEqual(struct.unpack_from('<iq', ack2129), (0, 888))
 
@@ -82,8 +82,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iq', ack2151), (0, 1001))
 
             # 13. Friend list update memo (2133 -> 2134)
-            memo = 'Best ally'.encode('utf-16le') + b'\x00\x00'
-            client.send_event(2133, struct.pack('<q', 123456) + memo)
+            client.send_event(2133, FriendListUpdateReq(char_uid=123456, comment='Best ally').encode())
             _, ack2134 = await client.expect_event(2134)
             self.assertEqual(struct.unpack_from('<iq', ack2134), (0, 123456))
 
@@ -155,28 +154,24 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2237)[0], 0)
 
             # 27. Chat message (5040 -> 5041)
-            chat_bytes = b'\x00' + 'Hello from test'.encode('utf-16le')
-            client.send_event(5040, chat_bytes)
+            client.send_event(5040, chat_request('Hello from test'))
             _, ack5041 = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<iB', ack5041[:5]), (0, 0))
 
             # 28. Chat GM command /gold
-            gm_gold = b'\x00' + '/gold 5000'.encode('utf-16le')
-            client.send_event(5040, gm_gold)
+            client.send_event(5040, chat_request('/gold 5000'))
             _, ack_gold = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<iB', ack_gold[:5]), (0, 0))
 
             # 29. Chat GM command /levelup (triggers 5087 LevelUpNot followed by 5041 ChatAck)
-            gm_lvl = b'\x00' + '/levelup 2'.encode('utf-16le')
-            client.send_event(5040, gm_lvl)
+            client.send_event(5040, chat_request('/levelup 2'))
             _, not5087 = await client.expect_event(5087)
             self.assertGreater(len(not5087), 0)
             _, ack_lvl = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<iB', ack_lvl[:5]), (0, 0))
 
             # 30. Chat GM command /sp
-            gm_sp = b'\x00' + '/sp 10'.encode('utf-16le')
-            client.send_event(5040, gm_sp)
+            client.send_event(5040, chat_request('/sp 10'))
             _, ack_sp = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<iB', ack_sp[:5]), (0, 0))
 
@@ -234,12 +229,12 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack5261)[0], 0)
 
             # 41. Request char info (6011 -> 6012)
-            client.send_event(6011, struct.pack('<q', 8888))
+            client.send_event(6011, RequestCharInfoReq(char_uid=8888).encode())
             _, ack6012 = await client.expect_event(6012)
             self.assertEqual(struct.unpack_from('<i', ack6012[:4])[0], 0)
 
             # 42. Request item info (6028 -> 6029)
-            client.send_event(6028, struct.pack('<q', 9999))
+            client.send_event(6028, RequestItemInfoReq(item_uid=9999).encode())
             _, ack6029 = await client.expect_event(6029)
             self.assertEqual(struct.unpack_from('<iq', ack6029[:12]), (0, 9999))
 

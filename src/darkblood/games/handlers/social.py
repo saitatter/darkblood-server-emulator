@@ -14,7 +14,7 @@ class SocialHandlers(BaseDomainService):
         char = self.current_char()
         friends = [self._friend_entry(uid) for uid in (char or {}).get('friends', [])]
         friends = [f for f in friends if f]
-        ack = FriendListAck(friends=friends).encode()
+        ack = FriendListAck(friends={f.uid: f for f in friends}).encode()
         await self.transport.send_event(event(2132, ack, correlation),
                                         note='friend list ack (%d)' % len(friends))
 
@@ -26,7 +26,7 @@ class SocialHandlers(BaseDomainService):
             if char.get('id') == uid:
                 return FriendEntry(uid=uid, name=char.get('name', ''), level=int(char.get('level', 1)),
                                    char_class=int(char.get('char_class', 0)),
-                                   online=uid in GameWorldManager.get().players)
+                                   location=1 if uid in GameWorldManager.get().players else -1)
         return None
 
     async def on_2569(self, correlation, body):

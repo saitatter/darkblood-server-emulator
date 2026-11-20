@@ -33,6 +33,16 @@ def create_request(name: str, char_class: int = 1) -> bytes:
             + struct.pack('<II', 1, 1) + bytes([50] * 5) + b'\x00')
 
 
+# Captured 5040 tail after the message text (vectors, i32 1, -1 fields); not decoded.
+CHAT_TAIL = bytes.fromhex('001080108001000000') + b'\xff' * 28
+
+
+def chat_request(text: str, channel: int = 0) -> bytes:
+    """5040 body in the captured client form (no header)."""
+    from darkblood.games.network.messages import ChatReq
+    return ChatReq(channel=channel, message=text, tail=CHAT_TAIL).encode()
+
+
 class ServerTestCase(unittest.TestCase):
     """Base class for tests requiring an async server instance."""
 

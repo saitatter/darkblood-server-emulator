@@ -1,0 +1,177 @@
+# Friends, chat, speaker items, contracts and remote inspection. Format: schemas/README.md.
+
+domain social Dark Blood protocol wire messages - Social domain.
+
+struct FriendEntry
+  ## Friend struct, reader 0x00A49450 (2140 and the 2132 map).
+  i64 uid                    # +0x00 char uid
+  wstr name                  # +0x08
+  u8 char_class              # +0x24 (sent as class, like the lobby entry; not confirmed)
+  u8 level = 1               # +0x25 (not confirmed)
+  i64 location = -1          # +0x26: 0x00926800 counts the friend online when not -1
+  wstr _                     # +0x2E
+  i64 _                      # +0x4A
+  bool _ = true              # +0x52
+end
+
+message 2132 FriendListAck
+  ## Reader 0x007712E0: map 0x0076AE20, key i64 uid (0x0074D520).
+  u32 result
+  map<i64,FriendEntry> friends
+end
+
+message 2139 FriendListAddReq header
+  ## Sender 0x00791FA0. Live: ffffff7f + J-wstring name ("Mage1").
+  wstr char_name
+end
+
+message 2140 FriendListAddAck ok_only
+  ## On_eEGS_FRIEND_LIST_ADD_ACK 0x007591A0. 0xCE: not found (0x00AB29C0); 0x1A5
+  ## another error. On success the client adds the entry to its list (0x00926800).
+  i32 result = 0xCE
+  FriendEntry friend = FriendEntry()
+end
+
+message 2135 FriendListDeleteReq header?
+  ## Sender 0x00792500.
+  i64 char_uid
+end
+
+message 2136 FriendListDeleteAck
+  ## On_eEGS_FRIEND_LIST_DELETE_ACK 0x00759560.
+  i32 result
+  i64 char_uid
+end
+
+message 2133 FriendListUpdateReq header?
+  ## Sender 0x007922E0: 0x00B353D0 uid, J-wstring comment.
+  i64 char_uid
+  wstr comment
+end
+
+message 2134 FriendListUpdateAck
+  ## On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80.
+  i32 result
+  i64 char_uid
+  wstrz comment              # null-terminated UTF-16 as sent so far; reader not checked
+end
+
+message 5118 FriendMyConnectionNot
+  ## Handler 0x0077A8A0.
+  i64 char_uid
+  bool is_online = true
+  i64 param1                 # meaning unknown
+  i64 param2                 # meaning unknown
+end
+
+message 5119 FriendMyDisconnectionNot
+  ## Handler 0x00758FA0.
+  i64 char_uid
+  bool notify = true
+end
+
+message 5015 ChangeTeamReq header?
+  i32 team_id
+end
+
+message 5016 ChangeTeamAck
+  i32 result
+  i32 team_id
+end
+
+message 5040 ChatReq
+  ## Sender 0x007AC570 writes one struct (0x00A4DC70). Captures carry no header:
+  ## 01 80 80 8a "/bags" 00 1080 1080 01000000 ff... The tail is not decoded.
+  u8 channel
+  wstr sender
+  wstr target
+  wstr message
+  rest tail
+end
+
+message 5041 ChatAck ok_only
+  ## Handler 0x007AC890.
+  i32 result
+  u8 channel
+  wstr sender = 'System'
+  wstr target
+  wstr message
+  u8 _ = 0x0A                # meaning unknown
+  u8 _
+  vector<?> _
+  vector<?> _
+  i32 _
+  i64 _
+  i64 _
+  i64 _
+  i32 _
+end
+
+message 2128 UseSpeakerItemReq header?
+  ## Sender 0x00792960: 0x00B353D0, J-wstring, 0x00B353D0.
+  i64 speaker_uid
+  wstr message
+  i64 target_uid
+end
+
+message 2129 UseSpeakerItemAck ok_only
+  ## On_eEGS_USE_SPEAKER_ITEM_ACK 0x0077F320.
+  i32 result
+  i64 speaker_uid
+  vector<?> _                # updated item
+end
+
+message 2121 ContractUpdateReq header?
+  i32 contract_id            # nContractID
+end
+
+message 2122 ContractUpdateAck
+  ## On_eEGS_CONTRACT_UPDATE_ACK 0x00752D80.
+  i32 result
+  i32 contract_id
+end
+
+message 6011 RequestCharInfoReq header?
+  ## Sender 0x00790C80: 0x00B35630, 0x00B353D0, 0x00B353D0. Which i64 is the
+  ## character uid is not confirmed.
+  bool _
+  i64 char_uid
+  i64 _
+end
+
+message 6012 RequestCharInfoAck ok_only
+  ## Handler 0x00790FA0. Summary struct not recovered (32 zero bytes).
+  i32 result
+  u8 _ = 0x0A                # meaning unknown
+  u8 _
+  raw[32] _                  # summary
+  vector<?> _                # equipment
+  vector<?> _                # avatar
+end
+
+message 6028 RequestItemInfoReq header?
+  ## Sender 0x007A4F20: 0x00B352B0 (4 bytes), 0x00B353D0, 0x00B353D0. Which i64 is
+  ## the item uid is not confirmed.
+  i32 _
+  i64 item_uid
+  i64 _
+end
+
+message 6029 RequestItemInfoAck
+  ## Handler 0x00766C20. Item record not recovered (16 zero bytes).
+  i32 result
+  i64 item_uid
+  ok_only
+  raw[16] _
+end
+
+message 2024 GetInviteListReq
+  ## Sender 0x007AB560. Captures carry no header; the body is not decoded.
+  rest raw
+end
+
+message 2025 GetInviteListAck
+  ## Handler 0x006A2E10.
+  i32 result
+  vector<?> _                # UserEntry
+end
