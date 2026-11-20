@@ -34,9 +34,11 @@ class WorldPlayer:
     y: float = 0.0
     z: float = 0.0
     angle: float = 0.0
-    # Set while the client loads the town after 2006. A JUser created by 5027
-    # during that load never gets a scene actor (0x00866C90 returned 0 live),
-    # so peers are sent to it only after its 5124 (sent once the town is up).
+    # Set from 2006 until the client is ready for town peers. Live timing:
+    # 5027 sent 1 ms after 2006 (before the client's 2219) was never shown;
+    # 5027 at +0.9 s (after 2219, before the relay JoinGroup) was shown;
+    # 5027 only after 5124 (+10 s, after JoinGroup) was not shown either.
+    # 2131 (+2 s, just before JoinGroup) ends the wait; 5124 is a fallback.
     loading: bool = False
 
 
@@ -161,6 +163,9 @@ class GameWorldManager:
             server_bits=PEER_SERVER_BITS,
         )
 
+        if new_player.loading:
+            return  # announced both ways once ready (player_ready)
+
         # 1. Notify others in square of newcomer
         layer_not_ev = event(5027, JoinLayerNot(players=[PageCharTemp(**new_p_data)]).encode())
         await self.broadcast_to_square(
@@ -191,7 +196,7 @@ class GameWorldManager:
         if player is None or player.session is not session or not player.loading:
             return
         player.loading = False
-        await self.send_existing_players(player)
+        await self.broadcast_player_spawn(player)
 
     async def send_existing_players(self, new_player: WorldPlayer):
         if new_player.loading:

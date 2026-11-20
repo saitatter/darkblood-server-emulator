@@ -136,13 +136,14 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 client2.send_event(5124, struct.pack('<i', 0x7fffffff))
                 await client2.expect_event(5125)
 
-                # Client 1 should receive layer spawn (5027, 5096) and join notification (5021) for Watcher2
-                await client1.expect_event(5027)
-                await client1.expect_event(5096)
+                # Client 1 gets the join notification (5021) at Watcher2's 2006, then
+                # the layer spawn (5027, 5096) once Watcher2 is ready for town peers.
                 _, join_payload = await client1.expect_event(5021)
                 join_not = UserJoinSquareNot.decode(join_payload)
                 self.assertEqual(join_not.char_id, char_id2)
                 self.assertEqual(join_not.char_name, 'Watcher2')
+                await client1.expect_event(5027)
+                await client1.expect_event(5096)
 
                 # Client 2 leaves square (Opcode 5032)
                 client2.send_event(5032, b'')

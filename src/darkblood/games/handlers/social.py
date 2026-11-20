@@ -17,6 +17,10 @@ class SocialHandlers(BaseDomainService):
         ack = FriendListAck(friends={f.uid: f for f in friends}).encode()
         await self.transport.send_event(event(2132, ack, correlation),
                                         note='friend list ack (%d)' % len(friends))
+        # Live, 2131 follows 2006 by ~2 s, right before the relay JoinGroup:
+        # the earliest point where a town peer sent by 5027 is displayed.
+        from darkblood.games.world import GameWorldManager
+        await GameWorldManager.get().player_ready(self.session)
 
     def _friend_entry(self, uid):
         """FriendEntry for a character of any account, or None."""

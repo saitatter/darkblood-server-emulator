@@ -10,6 +10,37 @@ from headless_client import HeadlessClient
 
 
 class WorldFlowTest(ServerTestCase):
+    def test_town_peers_wait_until_the_client_is_ready(self):
+        async def select(client, name):
+            await lobby_flow(client)
+            client.send_event(2012, create_request(name))
+            _, created = await client.expect_event(2013)
+            uid = struct.unpack_from('<q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iq', 0x7fffffff, uid))
+            await client.expect_event(2007)
+            return uid
+
+        async def scenario(first):
+            second = HeadlessClient(port=first.port)
+            try:
+                a = await select(first, 'ReadyFirst')
+                first.send_event(2131, struct.pack('<i', 0x7fffffff))
+                await first.expect_event(2132)
+                b = await select(second, 'ReadySecond')
+                # Live: a 5027 sent while the client is still entering town is never shown.
+                with self.assertRaises(asyncio.TimeoutError):
+                    await asyncio.wait_for(first.expect_event(5027), timeout=0.2)
+                second.send_event(2131, struct.pack('<i', 0x7fffffff))
+                await second.expect_event(2132)
+                for client, uid in ((first, b), (second, a)):
+                    _, joined = await client.expect_event(5027)
+                    self.assertEqual(struct.unpack_from('<q', joined, 2)[0], uid)
+                    await client.expect_event(5096)
+            finally:
+                await second.close()
+
+        self.run_async(self.with_server(scenario))
+
     def test_town_layer_is_remembered_for_back_to_square_and_select(self):
         async def scenario(client):
             await lobby_flow(client)
