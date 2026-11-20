@@ -690,6 +690,14 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   pending, so the wait is client-side. Both clients send 5024 (`P2P_DIRECT_CONNECT_RESULT_NOT`: bool +
   peer char id) after joining a room; it is unhandled. `sample.txt` now takes the sampling interval in
   ms (shim) to profile that wait.
+- **Party gate barrier (sampler, 2026-11-21)**: after 5044 the leader's main thread sat 15 s in
+  `0x005C6D40(2, 15000)`, called by `0x006C7920` (state Enter, loading page 0x31): it sends P2P 0x5F
+  (`0x005C51A0` -> `0x00954810(0x5F, own uid)`) and polls `0x005C4FB0(2)` until every other user with
+  flag 2, `+0x2C0 == -1`, `+0x2BA == 0` has `+0x138` set, which the P2P handler `0x009695F0` does on a
+  peer's 0x5F (`0x005C4E40(uid)`). Only the leader entered the gate, so it always timed out. 5044's
+  handler (`0x007702E0`, global) changes the state itself, so the server now sends 5044 to every
+  room member when the host opens the gate, and forwards the host's 5010. Not yet confirmed live;
+  start (5013) and leaving the gate (5045) are still per player.
 - Party decline = `Lua_OnBtn_Refuse` -> `JAppPageRequestList::RemoveElt` (local only, no packet).
 - Open: accepting a party invite showed "this is an unknown message" and the client sent 5060/5047
   with room UID 1 (not 5054); 5051 room UID fields still need decoding.

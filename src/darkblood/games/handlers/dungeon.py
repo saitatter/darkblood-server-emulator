@@ -295,9 +295,31 @@ class DungeonHandlers(BaseDomainService):
             gate = body[offset:offset + length].decode('utf-16le')
         except (WireError, UnicodeDecodeError):
             pass
+        char = self.current_char() or {}
+        ack = self._select_dungeon_ack(gate, char)
+        await self.transport.send_event(event(5044, ack.encode(), correlation),
+                                        note=f'select dungeon ack ({gate}, history {ack.dun_history}, '
+                                             f'{len(ack.quest_ids)} active quests)')
+        # The whole party enters the gate: entering it (0x006C7920) sends P2P 0x5F
+        # and waits up to 15 s (0x005C6D40(2, 15000)) until every room member has
+        # answered with its own 0x5F (0x009695F0 -> 0x005C4E40). Members only enter
+        # through 5044, whose global handler 0x007702E0 changes the state itself;
+        # without it the leader sat 10-15 s on a black screen (live 2026-11-21).
+        room = self.room
+        if room is not None and room.host is self.session and room.info.name != '_singleplay':
+            for member, record in list(room.members.items()):
+                if member is self.session:
+                    continue
+                notice = self._select_dungeon_ack(gate, record)
+                try:
+                    await member.transport.send_event(event(5044, notice.encode()),
+                                                      note=f'select dungeon (party gate {gate})')
+                except (ConnectionError, OSError):
+                    pass
+
+    def _select_dungeon_ack(self, gate, char):
         from darkblood.games.game_data.client_dict import gate_dungeons
         dungeons = set(gate_dungeons().get(gate, []))
-        char = self.current_char() or {}
         # Only cleared dungeons get an entry; the others default to Normal.
         dun_history = {dungeon: DungeonHistory(rec['map'], rec['diff'], 1)
                        for dungeon, rec in char.get('dungeon_history', {}).items() if dungeon in dungeons}
@@ -307,11 +329,8 @@ class DungeonHandlers(BaseDomainService):
                 quest_ids.append(int(quest_id))
             except ValueError:
                 continue
-        ack = SelectDungeonAck(gate_id=gate, dun_history=dun_history,
-                               quest_ids=sorted({q & 0xFFFFFFFF for q in quest_ids})).encode()
-        await self.transport.send_event(event(5044, ack, correlation),
-                                        note=f'select dungeon ack ({gate}, history {dun_history}, '
-                                             f'{len(quest_ids)} active quests)')
+        return SelectDungeonAck(gate_id=gate, dun_history=dun_history,
+                                quest_ids=sorted({q & 0xFFFFFFFF for q in quest_ids}))
 
     def _record_dungeon_clear(self, char, map_code):
         """Remember the highest cleared difficulty per dungeon (5044 history).
@@ -350,6 +369,11 @@ class DungeonHandlers(BaseDomainService):
         ack = ChangeMapCodeAck(map_code=code, flag=flag).encode()
         await self.transport.send_event(event(5010, ack, correlation),
                                         note='change mapcode ack (%s)' % code)
+        room = self.room
+        if room is not None and room.host is self.session and room.info.name != '_singleplay':
+            # The members sit in the same gate (5044 above): show the host's choice.
+            await self._notify_room(room, [m for m in room.members if m is not self.session],
+                                    event(5010, ack), 'change mapcode (party gate %s)' % code)
 
     async def on_5013(self, correlation, body):
         try:

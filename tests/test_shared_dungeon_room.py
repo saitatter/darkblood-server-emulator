@@ -167,6 +167,18 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, synced = await guest.expect_event(5089)
                 self.assertEqual(synced, looting)
 
+                # The host opens the dungeon gate: the member enters it too (5044), so
+                # both clients reach the P2P loading barrier, and sees the map choice.
+                host.send_event(5043, struct.pack('<i', 0x7fffffff) + wide('Act1_G1'), correlation=54)
+                correlation, gate_ack = await host.expect_event(5044)
+                self.assertEqual(correlation, 54)
+                _, member_gate = await guest.expect_event(5044)
+                self.assertEqual(member_gate, gate_ack)  # same gate; neither has history yet
+                host.send_event(5009, struct.pack('<i', 0x7fffffff) + wide('Act1_G1_A10') + b'\x00')
+                _, chosen = await host.expect_event(5010)
+                _, member_chosen = await guest.expect_event(5010)
+                self.assertEqual(member_chosen, chosen)
+
                 # Closing the dungeon gate (5045, back to square) keeps the party:
                 # both members are still listed and the guest gets no 5036.
                 host.send_event(5045, struct.pack('<i', 0x7fffffff))
