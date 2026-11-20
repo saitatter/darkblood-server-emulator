@@ -103,6 +103,12 @@ class Character:
     # daily-claim sender refuses when either is >= 3).
     rebirth_coins: int = 3
     daily_rebirth_recv: int = 0
+    # Details +0x67 / +0x71 (2 x 0x00A49BB0: u16, i32, i32), copied by
+    # 0x0095A150 to the blocks behind player +0xCC / +0xD4. The 2211 apply
+    # (0x00515B40) writes hair dyes (stain Type 2) to +0xCC and skin dyes
+    # (Type 3) to +0xD4. Values are the 2210 dye block; None = undyed.
+    hair_dye: tuple = None
+    skin_dye: tuple = None
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -150,7 +156,9 @@ class Character:
             blocked=data.get('blocked', False),
             tutorial_cleared=data.get('tutorial_cleared', False),
             rebirth_coins=data.get('rebirth_coins', 3),
-            daily_rebirth_recv=data.get('daily_rebirth_recv', 0)
+            daily_rebirth_recv=data.get('daily_rebirth_recv', 0),
+            hair_dye=tuple(data['hair_dye']) if data.get('hair_dye') else None,
+            skin_dye=tuple(data['skin_dye']) if data.get('skin_dye') else None,
         )
 
     def to_dict(self) -> dict:
@@ -183,7 +191,9 @@ class Character:
             'blocked': self.blocked,
             'tutorial_cleared': self.tutorial_cleared,
             'rebirth_coins': self.rebirth_coins,
-            'daily_rebirth_recv': self.daily_rebirth_recv
+            'daily_rebirth_recv': self.daily_rebirth_recv,
+            'hair_dye': list(self.hair_dye) if self.hair_dye else None,
+            'skin_dye': list(self.skin_dye) if self.skin_dye else None,
         }
 
     def encode_lobby_entry(self) -> bytes:
@@ -242,9 +252,10 @@ class Character:
                          0, 0, 0xffffffff, 0xffffffff)
         b += struct.pack('<f', 0.0)
         b += struct.pack('<QHHHHHHHH', 0, 0, 0, 0, 0, 0, 0, 0, 0)
-        # 2 x 0xa49bb0 (untagged u16, u32, u32)
-        b += struct.pack('<HII', 0, 0, 0)
-        b += struct.pack('<HII', 0, 0, 0)
+        # 2 x 0xa49bb0 (untagged u16, i32, u32): hair (+0x67), skin (+0x71)
+        for dye in (self.hair_dye, self.skin_dye):
+            part, option, color = dye or (0, 0, 0)
+            b += struct.pack('<HiI', part & 0xFFFF, option, color & 0xFFFFFFFF)
         # bool + 0xa48b40 (untagged 74 bytes)
         b += struct.pack('<?', False)
         b += (b'\x00' * 74)

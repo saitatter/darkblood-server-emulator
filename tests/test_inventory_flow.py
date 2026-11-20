@@ -359,7 +359,11 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iHiI', ack2211), (0, 0, -1, 0xFF945A4C))
             self.assertEqual(ack2211[14:16], b'\x10\x81')  # one item update: the emptied dye slot
             self.assertFalse(any(i['uid'] == 40 for i in char['items']))
-            self.assertEqual(char['dyes']['-1']['color'], 0xFF945A4C)
+            self.assertEqual(char['skin_dye'], [0, -1, 0xFF945A4C])
+            # The skin dye comes back on the next selection (details +0x71).
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            self.assertIn(struct.pack('<HiI', 0, 0, 0) + struct.pack('<HiI', 0, -1, 0xFF945A4C), ack2007)
 
             # Unknown dye item -> JERI_INVEN_01 (63).
             client.send_event(2210, bytes.fromhex('2800000000000000ffffffffffffffff0000ffffffff4c5a94ff00'))

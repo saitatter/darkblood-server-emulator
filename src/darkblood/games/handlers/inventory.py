@@ -240,9 +240,13 @@ class InventoryHandlers(BaseDomainService):
         else:
             dye_item['count'] = count
             update = Item(owner=UPDATE_OWNER, **dye_item)
-        # Kept for a later login-time appearance field; not resent yet.
-        char.setdefault('dyes', {})[str(req.target_uid)] = {
-            'part': req.dye.part, 'option': req.dye.option, 'color': req.dye.color}
+        # Hair (stain Type 2) and skin (Type 3) dyes come back in 2007
+        # (details +0x67 / +0x71). Item dyes (weapon/gear/pet) are not kept yet.
+        from darkblood.games.game_data import client_dict
+        stain = client_dict.cash_items().get(dye_item.get('code', ''), {}).get('type')
+        slot = {2: 'hair_dye', 3: 'skin_dye'}.get(stain)
+        if slot and req.target_uid == -1:
+            char[slot] = [req.dye.part, req.dye.option, req.dye.color]
         self.store().save()
         ack = UseDyeingItemAck(result=0, dye=req.dye, items=[update]).encode()
         await self.transport.send_event(event(2211, ack, correlation),
