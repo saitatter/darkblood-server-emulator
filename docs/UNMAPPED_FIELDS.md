@@ -266,34 +266,33 @@
 | `LearnedSkill` | `bool` | skills.jsch:16 | meaning unknown |
 | `2280 InitSkillNot` | `map<?>` | skills.jsch:82 |  |
 
-## social (24 of 76 fields)
+## social (23 of 81 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `FriendEntry` | `wstr` | social.jsch:12 | +0x2E |
-| `FriendEntry` | `i64` | social.jsch:13 | +0x4A |
-| `FriendEntry` | `bool` | social.jsch:14 | +0x52 |
-| `5041 ChatAck` | `u8` | social.jsch:99 | meaning unknown |
-| `5041 ChatAck` | `u8` | social.jsch:100 |  |
-| `5041 ChatAck` | `vector<?>` | social.jsch:101 |  |
+| `FriendEntry` | `wstr` | social.jsch:13 | +0x2E |
+| `FriendEntry` | `i64` | social.jsch:14 | +0x4A |
+| `FriendEntry` | `bool` | social.jsch:15 | +0x52 |
+| `5041 ChatAck` | `u8` | social.jsch:100 | meaning unknown |
+| `5041 ChatAck` | `u8` | social.jsch:101 |  |
 | `5041 ChatAck` | `vector<?>` | social.jsch:102 |  |
-| `5041 ChatAck` | `i32` | social.jsch:103 |  |
-| `5041 ChatAck` | `i64` | social.jsch:104 |  |
+| `5041 ChatAck` | `vector<?>` | social.jsch:103 |  |
+| `5041 ChatAck` | `i32` | social.jsch:104 |  |
 | `5041 ChatAck` | `i64` | social.jsch:105 |  |
 | `5041 ChatAck` | `i64` | social.jsch:106 |  |
-| `5041 ChatAck` | `i32` | social.jsch:107 |  |
-| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:121 | updated item |
-| `6011 RequestCharInfoReq` | `bool` | social.jsch:137 |  |
-| `6011 RequestCharInfoReq` | `i64` | social.jsch:139 |  |
-| `6012 RequestCharInfoAck` | `u8` | social.jsch:145 | meaning unknown |
-| `6012 RequestCharInfoAck` | `u8` | social.jsch:146 |  |
-| `6012 RequestCharInfoAck` | `raw[32]` | social.jsch:147 | summary |
-| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:148 | equipment |
-| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:149 | avatar |
-| `6028 RequestItemInfoReq` | `i32` | social.jsch:155 |  |
-| `6028 RequestItemInfoReq` | `i64` | social.jsch:157 |  |
-| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:165 |  |
-| `2025 GetInviteListAck` | `vector<?>` | social.jsch:176 | UserEntry |
+| `5041 ChatAck` | `i64` | social.jsch:107 |  |
+| `5041 ChatAck` | `i32` | social.jsch:108 |  |
+| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:122 | updated item |
+| `6011 RequestCharInfoReq` | `bool` | social.jsch:138 |  |
+| `6011 RequestCharInfoReq` | `i64` | social.jsch:140 |  |
+| `6012 RequestCharInfoAck` | `u8` | social.jsch:146 | meaning unknown |
+| `6012 RequestCharInfoAck` | `u8` | social.jsch:147 |  |
+| `6012 RequestCharInfoAck` | `raw[32]` | social.jsch:148 | summary |
+| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:149 | equipment |
+| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:150 | avatar |
+| `6028 RequestItemInfoReq` | `i32` | social.jsch:156 |  |
+| `6028 RequestItemInfoReq` | `i64` | social.jsch:158 |  |
+| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:166 |  |
 
 ## stalls (20 of 86 fields)
 
