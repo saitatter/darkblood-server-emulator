@@ -5,7 +5,7 @@ import struct
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
-from darkblood.games.network.messages import ChangeRoomInfoAck
+from darkblood.games.network.messages import ChangeRoomInfoAck, GetInviteListAck
 from darkblood.games.network.messages.party import PartyInviteNot
 from darkblood.games.session import GameSession
 from headless_client import HeadlessClient
@@ -33,6 +33,16 @@ class SharedDungeonRoomTest(ServerTestCase):
             try:
                 host_id = await enter(host, 'RoomHost')
                 guest_id = await enter(guest, 'RoomGuest')
+
+                # Find user (2024, live body: low/high level, page, job 7, layer -1,
+                # square UID) lists the other player; a level range above it does not.
+                guest.send_event(2024, struct.pack('<iiiBqq', 1, 99, 0, 7, -1, 1))
+                _, found = await guest.expect_event(2025)
+                users = GetInviteListAck.decode(found).users
+                self.assertEqual([(u.char_uid, u.name) for u in users], [(host_id, 'RoomHost')])
+                guest.send_event(2024, struct.pack('<iiiBqq', 50, 60, 0, 7, -1, 1))
+                _, none = await guest.expect_event(2025)
+                self.assertEqual(GetInviteListAck.decode(none).users, [])
 
                 prefix = struct.pack('<I', 0x7fffffff)
                 room_name = wide('Shared test')

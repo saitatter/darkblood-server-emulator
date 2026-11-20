@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.games.network.messages.dungeon import RoomMemberInfo
 
 __all__ = [
     'FriendEntry',
@@ -663,21 +664,35 @@ class RequestItemInfoAck:
 class GetInviteListReq:
     """Opcode 2024: eEGS_GET_INVITELIST_REQ (request).
 
-    Sender 0x007AB560. Captures carry no header; the body is not decoded.
+    Find user search. Sender 0x007AB560 (writer 0x0074BFF0); field names from its
+    asserts: nHighLevel >= nLowLevel, nPageNum >= 0, ucJob <= eCK_Max and
+    nSquareUID / iLayerNetID. Live 2026-11-21: 1, 2, 0, 7, -1, square 1.
     """
     OPCODE: ClassVar[int] = 2024
-    raw: bytes = b''
+    header: int = REQUEST_HEADER
+    low_level: int = 0
+    high_level: int = 0
+    page: int = 0
+    job: int = 0  # 7 in the live capture (all classes, unverified)
+    layer_net_id: int = -1
+    square_uid: int = 0
 
     def encode(self) -> bytes:
         b = bytearray()
-        b += bytes(self.raw)
+        b += struct.pack('<iiiiBqq', self.header, self.low_level, self.high_level, self.page, self.job, self.layer_net_id, self.square_uid)
         return bytes(b)
 
     @classmethod
     def decode(cls, data: bytes) -> 'GetInviteListReq':
         r = JSerBufferReader(data)
         kw = {}
-        kw['raw'] = r.read_rest()
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['low_level'] = r.read_i32()
+        kw['high_level'] = r.read_i32()
+        kw['page'] = r.read_i32()
+        kw['job'] = r.read_u8()
+        kw['layer_net_id'] = r.read_i64()
+        kw['square_uid'] = r.read_i64()
         return cls(**kw)
 
 
@@ -685,15 +700,17 @@ class GetInviteListReq:
 class GetInviteListAck:
     """Opcode 2025: eEGS_GET_INVITELIST_ACK (reply).
 
-    Handler 0x006A2E10.
+    Handler 0x006A2E10: i32 result, then vecInviteList (tag 0x10, elements read by
+    0x004B1AD0, the 0xA6-byte member struct of 5061).
     """
     OPCODE: ClassVar[int] = 2025
     result: int = 0
+    users: list[RoomMemberInfo] = field(default_factory=list)
 
     def encode(self) -> bytes:
         b = bytearray()
         b += struct.pack('<i', self.result)
-        b += b'\x10\x80'
+        b += b'\x10' + varuint(len(self.users)) + b''.join(e0.encode() for e0 in self.users)
         return bytes(b)
 
     @classmethod
@@ -701,5 +718,5 @@ class GetInviteListAck:
         r = JSerBufferReader(data)
         kw = {}
         kw['result'] = r.read_i32()
-        r.read_empty_container(0x10)
+        kw['users'] = r.read_tagged_vector(lambda r1: RoomMemberInfo.read(r1))
         return cls(**kw)

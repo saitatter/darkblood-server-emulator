@@ -52,10 +52,39 @@ class SocialHandlers(BaseDomainService):
         pass
 
     async def on_2024(self, correlation, body):
-        # eEGS_GET_INVITELIST_REQ -> 2025 eEGS_GET_INVITELIST_ACK (0x006A2E10).
-        from darkblood.games.network.messages import GetInviteListAck
-        ack = GetInviteListAck().encode()
-        await self.transport.send_event(event(2025, ack, correlation), note='invite list ack')
+        # eEGS_GET_INVITELIST_REQ (Find user) -> 2025 eEGS_GET_INVITELIST_ACK
+        # (0x006A2E10): the other online players that match the search.
+        from darkblood.games.network.messages import GetInviteListAck, GetInviteListReq, RoomMemberInfo
+        from darkblood.games.world import SQUARE_UID_MASK, GameWorldManager, square_uid
+        try:
+            req = GetInviteListReq.decode(body)
+        except (WireError, struct.error):
+            await self.transport.send_event(event(2025, GetInviteListAck().encode(), correlation),
+                                            note='invite list ack (bad request)')
+            return
+        square = req.square_uid & SQUARE_UID_MASK if req.square_uid >= 0 else None
+        users = []
+        for player in GameWorldManager.get().players.values():
+            if player.char_id == self.char_id:
+                continue
+            record = player.char_data
+            level = int(record.get('level', 1))
+            char_class = int(record.get('char_class', 0)) & 0xFF
+            if not req.low_level <= level <= req.high_level:
+                continue
+            if req.job < 7 and char_class != req.job:  # 7 = eCK_Max, taken as "any class"
+                continue
+            if square is not None and player.square_id != square:
+                continue
+            if req.layer_net_id != -1 and player.layer_id != req.layer_net_id:
+                continue
+            users.append(RoomMemberInfo(square_uid=square_uid(player.square_id), char_uid=player.char_id,
+                                        name=record.get('name', ''), char_class=char_class, level=min(level, 0xFF)))
+        # Page size not recovered: everything is sent as page 0.
+        ack = GetInviteListAck(users=users).encode()
+        await self.transport.send_event(event(2025, ack, correlation),
+                                        note='invite list ack (%d users, lv %d-%d, job %d)'
+                                             % (len(users), req.low_level, req.high_level, req.job))
 
     async def on_2139(self, correlation, body):
         # eEGS_FRIEND_LIST_ADD_REQ (0x00790000.c:1595) -> 2140 eEGS_FRIEND_LIST_ADD_ACK (0x007591A0).

@@ -1,6 +1,7 @@
 # Friends, chat, speaker items, contracts and remote inspection. Format: schemas/README.md.
 
 domain social Dark Blood protocol wire messages - Social domain.
+extern RoomMemberInfo from darkblood.games.network.messages.dungeon readable
 
 struct FriendEntry
   ## Friend struct, reader 0x00A49450 (2140 and the 2132 map).
@@ -165,13 +166,21 @@ message 6029 RequestItemInfoAck
   raw[16] _
 end
 
-message 2024 GetInviteListReq
-  ## Sender 0x007AB560. Captures carry no header; the body is not decoded.
-  rest raw
+message 2024 GetInviteListReq header?
+  ## Find user search. Sender 0x007AB560 (writer 0x0074BFF0); field names from its
+  ## asserts: nHighLevel >= nLowLevel, nPageNum >= 0, ucJob <= eCK_Max and
+  ## nSquareUID / iLayerNetID. Live 2026-11-21: 1, 2, 0, 7, -1, square 1.
+  i32 low_level
+  i32 high_level
+  i32 page
+  u8 job                     # 7 in the live capture (all classes, unverified)
+  i64 layer_net_id = -1
+  i64 square_uid
 end
 
 message 2025 GetInviteListAck
-  ## Handler 0x006A2E10.
+  ## Handler 0x006A2E10: i32 result, then vecInviteList (tag 0x10, elements read by
+  ## 0x004B1AD0, the 0xA6-byte member struct of 5061).
   i32 result
-  vector<?> _                # UserEntry
+  vector<RoomMemberInfo> users
 end
