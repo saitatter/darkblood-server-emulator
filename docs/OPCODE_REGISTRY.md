@@ -432,7 +432,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 
 | Opcode | Enum name | Client handler | Server handler | Messages | Notes |
 | ---: | :--- | :--- | :--- | :--- | :--- |
-| 5001 | `eERC_CREATE_ROOM_REQ` | — | dungeon.py | — | eERC_CREATE_ROOM_REQ (writer 0x58B060): wstring name, i32, i32, i16, |
+| 5001 | `eERC_CREATE_ROOM_REQ` | — | dungeon.py | `CreateRoomReq` | eERC_CREATE_ROOM_REQ (sender 0x0058B060) -> 5002 CREATE_ROOM_ACK. |
 | 5002 | `eERC_CREATE_ROOM_ACK` | — | — | `CreateRoomAck` |  |
 | 5003 | `eERC_JOIN_ROOM_REQ` | — | dungeon.py | `JoinRoomReq` |  |
 | 5004 | `eERC_JOIN_ROOM_ACK` | — | — | `JoinRoomAck` |  |

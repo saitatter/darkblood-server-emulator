@@ -13,6 +13,7 @@ from darkblood.games.entities.items import Item
 __all__ = [
     'RoomInfoListAck',
     'RoomInfo',
+    'CreateRoomReq',
     'CreateRoomAck',
     'JoinRoomReq',
     'RoomMember',
@@ -112,6 +113,40 @@ class RoomInfo:
     @classmethod
     def decode(cls, data: bytes) -> 'RoomInfo':
         return cls.read(JSerBufferReader(data))
+
+
+@dataclass
+class CreateRoomReq:
+    """Opcode 5001: eERC_CREATE_ROOM_REQ (request).
+
+    Sender 0x0058B060 writes the room name, two i32s, and two i16s.
+    """
+    OPCODE: ClassVar[int] = 5001
+    header: int = REQUEST_HEADER
+    name: str = ''
+    req_a: int = -1
+    req_b: int = -1
+    req_c: int = -1
+    req_d: int = 1
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<i', self.header)
+        b += wide_string(self.name)
+        b += struct.pack('<iihh', self.req_a, self.req_b, self.req_c, self.req_d)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'CreateRoomReq':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
+        kw['name'] = r.read_wstring()
+        kw['req_a'] = r.read_i32()
+        kw['req_b'] = r.read_i32()
+        kw['req_c'] = r.read_i16()
+        kw['req_d'] = r.read_i16()
+        return cls(**kw)
 
 
 @dataclass
