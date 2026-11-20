@@ -267,6 +267,7 @@ python tools\gamectl.py stop           # Stop processes
 * [Recovered Protocol](docs/PROTOCOL.md): Wire framing, opcode tables, and client handler addresses.
 * [Opcode Registry](docs/OPCODE_REGISTRY.md): Generated per-opcode status (`python tools/gen_opcode_registry.py`).
 * [Unmapped Fields](docs/UNMAPPED_FIELDS.md): Generated list of wire fields whose meaning is not recovered (`python tools/gen_progress.py`).
+* [Revival Package Analysis](docs/REVIVAL_PACKAGE_ANALYSIS.md): Comparison with a third-party Chinese private-server client package, and client telemetry notes.
 * [Architecture](docs/ARCHITECTURE.md): Package layout, rules, and porting notes.
 * [Roadmap](ROADMAP.md): Milestones, priority items, and development trajectory.
 * [Agent Guidelines](AGENTS.md): Working instructions, commit conventions, and synchronization rules.

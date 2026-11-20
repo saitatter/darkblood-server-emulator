@@ -59,6 +59,8 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Verify complete network isolation: hook `WSAConnect`, `ConnectEx`, IPv6 and UDP (today only IPv4 `connect`).
 - [ ] Automatic test-client staging (clean copy of the game folder without touching the original install).
 - [ ] Release build producing a portable launcher zip.
+- [ ] Find whether the client's `mon.changyou.com` monitoring ping (MAC, IP, disk serial) can run and block it
+  (`docs/REVIVAL_PACKAGE_ANALYSIS.md`).
 - [ ] Steam shim: SteamUser has three slots and SteamFriends one; other interfaces return placeholder `1`.
 
 ### Multiplayer (P6)
