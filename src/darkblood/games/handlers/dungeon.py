@@ -3,7 +3,7 @@ import time
 from dataclasses import dataclass, field
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import WireError, event, read_varuint
+from darkblood.core.serialization.jser import WireError, event, read_varuint, strip_prefix
 from darkblood.frontend.relay import relay_address
 from darkblood.games.entities.character import Character
 from darkblood.games.network.messages import (
@@ -63,14 +63,38 @@ class DungeonHandlers(BaseDomainService):
         self.room = None
 
     async def on_2010(self, correlation, body):
-        # eEGS_GET_ROOMINFOLIST_REQ (sender 0x7AB140) -> 2011: no open rooms.
-        await self.transport.send_event(event(2011, RoomInfoListAck().encode(), correlation),
-                                        note='room info list ack')
+        # eEGS_GET_ROOMINFOLIST_REQ (sender 0x7AB140), written as
+        # "nPage << bWait << nGateID << nMapID << sDiff" (live: page 0,
+        # wait 0/1, the gate hash, -1, -1) -> 2011 with the open rooms.
+        page, wait_only, gate, map_id, diff = 0, False, -1, -1, -1
+        try:
+            page, wait_only, gate, map_id, diff = struct.unpack_from('<i?iih', strip_prefix(body))
+        except struct.error:
+            pass
+        rooms = []
+        for room in self.transport.server.dungeon_rooms.values():
+            info = room.info
+            if info.name == '_singleplay' or not room.members:
+                continue
+            if wait_only and room.started:
+                continue
+            if gate != -1 and info.req_a != gate:
+                continue
+            if map_id != -1 and info.req_b != map_id:
+                continue
+            rooms.append(info)
+        # Page size of the client list is not recovered: everything on one page.
+        ack = RoomInfoListAck(show_only_wait=wait_only, page=0, rooms=rooms, pages=1)
+        await self.transport.send_event(event(2011, ack.encode(), correlation),
+                                        note='room info list ack (%d rooms)' % len(rooms))
 
     async def on_5001(self, correlation, body):
         # eERC_CREATE_ROOM_REQ (writer 0x58B060): wstring name, i32, i32, i16,
         # i16 (observed: "_singleplay", -1, -1, -1, 1) -> 5002 CREATE_ROOM_ACK.
+        # Client assert: CreateRoomREQ( szRoomTitle, nGateID, nDungeonID,
+        # sDiff, sMaxUserCount ). The body starts with the 0x7FFFFFFF prefix.
         name, a, b, c, d = '', -1, -1, -1, 1
+        body = strip_prefix(body)
         try:
             length, offset = read_varuint(body, 0)
             name = body[offset:offset + length].decode('utf-16le')

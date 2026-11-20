@@ -39,6 +39,30 @@ class SharedDungeonRoomTest(ServerTestCase):
                 relay = bytes.fromhex('7f000001b924')
                 self.assertEqual(created[-6:], relay)
 
+                # Live create body: 0x7FFFFFFF prefix, title, gate, dungeon, diff, max users.
+                gate = 0x3c00d7a1
+                host.send_event(5001, struct.pack('<i', 0x7fffffff) + wide('Gate room')
+                                + struct.pack('<iihh', gate, 0x1234, -1, 4))
+                _, gate_room = await host.expect_event(5002)
+                gate_info = gate_room[4:-10]
+                self.assertEqual(struct.unpack_from('<q', gate_info)[0] > room_id, True)
+                self.assertIn(wide('Gate room'), gate_info)
+
+                # 2010: nPage, bWait, nGateID, nMapID, sDiff -> the gate's open rooms.
+                guest.send_event(2010, struct.pack('<ii?iih', 0x7fffffff, 0, True, gate, -1, -1))
+                _, listing = await guest.expect_event(2011)
+                self.assertEqual(listing, struct.pack('<I?i', 0, True, 0) + bytes.fromhex('1081') + gate_info
+                                 + struct.pack('<i', 1))
+                guest.send_event(2010, struct.pack('<ii?iih', 0x7fffffff, 0, False, gate + 1, -1, -1))
+                _, listing = await guest.expect_event(2011)
+                self.assertEqual(listing, struct.pack('<I?i', 0, False, 0) + bytes.fromhex('1080') + struct.pack('<i', 1))
+
+                # The host moves back to the first room for the rest of the flow.
+                host.send_event(5001, wide('Shared test') + struct.pack('<iihh', -1, -1, -1, 4))
+                _, created = await host.expect_event(5002)
+                room_id = struct.unpack_from('<q', created, 4)[0]
+                room_info = created[4:-10]
+
                 guest.send_event(5003, struct.pack('<q', room_id + 100))
                 _, error = await guest.expect_event(5004)
                 self.assertEqual(error, struct.pack('<I', results.ROOM_NOT_EXISTS))

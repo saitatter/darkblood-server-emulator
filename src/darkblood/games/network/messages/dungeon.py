@@ -11,8 +11,8 @@ from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 
 __all__ = [
-    'RoomInfoListAck',
     'RoomInfo',
+    'RoomInfoListAck',
     'CreateRoomAck',
     'JoinRoomReq',
     'RoomMember',
@@ -40,39 +40,6 @@ __all__ = [
     'SingleReward',
     'FinishGameAck',
 ]
-
-
-@dataclass
-class RoomInfoListAck:
-    """Opcode 2011: eEGS_GET_ROOMINFOLIST_ACK (reply).
-
-    JUserClient handler 0x0077A1F0; names from the read-failure messages:
-    nOK, m_bShowOnlyWaitRoom, m_iViewRoomPage, m_vecRoomList (0x46-byte
-    elements, reader 0x00778F50), m_iN* (probably the page count). Offline: no rooms.
-    """
-    OPCODE: ClassVar[int] = 2011
-    result: int = 0
-    show_only_wait: bool = False
-    page: int = 0
-    pages: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I?i', self.result, self.show_only_wait, self.page)
-        b += b'\x10\x80'
-        b += struct.pack('<i', self.pages)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomInfoListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['show_only_wait'] = r.read_bool()
-        kw['page'] = r.read_i32()
-        r.read_empty_container(0x10)
-        kw['pages'] = r.read_i32()
-        return cls(**kw)
 
 
 @dataclass
@@ -112,6 +79,42 @@ class RoomInfo:
     @classmethod
     def decode(cls, data: bytes) -> 'RoomInfo':
         return cls.read(JSerBufferReader(data))
+
+
+@dataclass
+class RoomInfoListAck:
+    """Opcode 2011: eEGS_GET_ROOMINFOLIST_ACK (reply).
+
+    JUserClient handler 0x0077A1F0; names from the read-failure messages:
+    nOK, m_bShowOnlyWaitRoom, m_iViewRoomPage, m_vecRoomList (0x46-byte
+    elements, reader 0x00778F50), m_iN* (probably the page count). Each element
+    is read by 0x00580B40: a 0x1E tag check that consumes no byte, then
+    jRoomInfo (0x00A49380), the same untagged struct as in 5002.
+    """
+    OPCODE: ClassVar[int] = 2011
+    result: int = 0
+    show_only_wait: bool = False
+    page: int = 0
+    rooms: list[RoomInfo] = field(default_factory=list)  # m_vecRoomList
+    pages: int = 0
+
+    def encode(self) -> bytes:
+        b = bytearray()
+        b += struct.pack('<I?i', self.result, self.show_only_wait, self.page)
+        b += b'\x10' + varuint(len(self.rooms)) + b''.join(e0.encode() for e0 in self.rooms)
+        b += struct.pack('<i', self.pages)
+        return bytes(b)
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'RoomInfoListAck':
+        r = JSerBufferReader(data)
+        kw = {}
+        kw['result'] = r.read_u32()
+        kw['show_only_wait'] = r.read_bool()
+        kw['page'] = r.read_i32()
+        kw['rooms'] = r.read_tagged_vector(lambda r1: RoomInfo.read(r1))
+        kw['pages'] = r.read_i32()
+        return cls(**kw)
 
 
 @dataclass

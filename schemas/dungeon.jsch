@@ -6,17 +6,6 @@ domain dungeon Dark Blood protocol wire messages - Dungeon domain.
 extern Character from darkblood.games.entities.character encode=encode_world_details
 extern Item from darkblood.games.entities.items
 
-message 2011 RoomInfoListAck
-  ## JUserClient handler 0x0077A1F0; names from the read-failure messages:
-  ## nOK, m_bShowOnlyWaitRoom, m_iViewRoomPage, m_vecRoomList (0x46-byte
-  ## elements, reader 0x00778F50), m_iN* (probably the page count). Offline: no rooms.
-  u32 result
-  bool show_only_wait
-  i32 page
-  vector<?> _                # m_vecRoomList
-  i32 pages
-end
-
 struct RoomInfo
   ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002 and 5004.
   i64 room_id
@@ -29,6 +18,19 @@ struct RoomInfo
   i32 req_b = -1
   i32 _ = -1
   i16 req_d_end = 1          # sent equal to req_d so far
+end
+
+message 2011 RoomInfoListAck
+  ## JUserClient handler 0x0077A1F0; names from the read-failure messages:
+  ## nOK, m_bShowOnlyWaitRoom, m_iViewRoomPage, m_vecRoomList (0x46-byte
+  ## elements, reader 0x00778F50), m_iN* (probably the page count). Each element
+  ## is read by 0x00580B40: a 0x1E tag check that consumes no byte, then
+  ## jRoomInfo (0x00A49380), the same untagged struct as in 5002.
+  u32 result
+  bool show_only_wait
+  i32 page
+  vector<RoomInfo> rooms     # m_vecRoomList
+  i32 pages
 end
 
 message 5002 CreateRoomAck ok_only
