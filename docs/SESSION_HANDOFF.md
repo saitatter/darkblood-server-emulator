@@ -5,10 +5,10 @@
 - ROADMAP.md now lists only open work; implemented items and the per-feature logs in STATUS.md and this file
   were removed (Git history keeps them). The README names the supported client (SHA-256 `a82ae3d7...`).
 - `tools/gen_progress.py` builds the README "Progress by system" table (opcode coverage x named-field share per `schemas/*.jsch`
-  domain) and `docs/UNMAPPED_FIELDS.md`. `.github/workflows/ci.yml` runs the tests and, on every push to `main`,
-  regenerates both and commits them as `docs(readme): update per-domain progress [skip ci]`. If branch protection
-  blocks the bot push, allow `github-actions[bot]` to bypass it. After changing a schema, run
-  `python tools/gen_progress.py` locally so the commit already carries the update.
+  domain) and `docs/UNMAPPED_FIELDS.md`. `.github/workflows/ci.yml` runs `gen_messages.py --check`,
+  `gen_progress.py --check` and the tests. The earlier auto-commit job was removed on 2026-11-21: branch
+  protection rejected the bot push (GH006) and failed CI. After changing a schema, run
+  `python tools/gen_messages.py` and `python tools/gen_progress.py` before committing.
 - Next targets: see ROADMAP.md "Open work" (town movement desync, shared dungeon instances) and the largest
   unmapped groups (lobby 72, dungeon 43, social 24).
 ## Live two-client playtest — saita machine, 2026-11-20 (evening)
