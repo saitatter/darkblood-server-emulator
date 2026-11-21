@@ -597,12 +597,16 @@ class DarkBloodLauncher(tk.Tk):
         footer.pack(fill='x')
         footer.pack_propagate(False)
 
-        self.status_var = tk.StringVar(value=f'Config: {options.OPTIONS_PATH}')
-        tk.Label(footer, textvariable=self.status_var, bg=BG_HEADER, fg=TEXT_DIM,
-                 font=('Segoe UI', 8), anchor='w').pack(side='left', padx=16, fill='x', expand=True)
-
         right = tk.Frame(footer, bg=BG_HEADER)
         right.pack(side='right', padx=16)
+
+        try:
+            cfg_display = options.OPTIONS_PATH.relative_to(ROOT).as_posix()
+        except ValueError:
+            cfg_display = str(options.OPTIONS_PATH)
+        self.status_var = tk.StringVar(value=f'Config: {cfg_display}')
+        tk.Label(footer, textvariable=self.status_var, bg=BG_HEADER, fg=TEXT_DIM,
+                 font=('Segoe UI', 8), anchor='w').pack(side='left', padx=16, fill='x', expand=True)
 
         self._make_btn(right, 'Save Config', self._save_config,
                        bg=BG_CARD_ALT, hover=BORDER, padx=12, pady=8).pack(side='left', padx=(0, 8))

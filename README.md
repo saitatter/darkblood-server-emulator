@@ -1,8 +1,8 @@
 # Dark Blood Online — Offline Server Emulator
 
-A Python-based offline server emulator and reverse-engineering project for **Dark Blood Online**.
+An open-source offline and LAN server emulator, modular client hook, and reverse-engineering project for **Dark Blood Online** (Steam build `1.6.5#0`).
 
-The project allows playing the original client offline via a local server (`127.0.0.1:9400` game, `127.0.0.1:9401` relay) backed by SQLite persistence, real ProudNet encryption, Lua game data integration, and automated headless testing.
+Run the original game client locally or over LAN with real ProudNet cryptography (RSA-OAEP + AES), SQLite persistence, schema-generated typed wire messages, a custom dark-themed launcher, and 213 automated headless tests — built purely on the Python standard library.
 
 ## Supported client
 
@@ -17,6 +17,20 @@ struct layouts were recovered from it, and other builds are not supported.
 | Version label | `1.6.5#0` (from early notes; not independently verified, so rely on the hash) |
 
 `tools/gamectl.py` refuses to start a client whose hash differs. The client files are not part of this repository.
+
+## Custom Launcher
+
+Launch and configure the emulator using `Launch_DarkBlood.bat` (or `python tools/launcher.py`). The launcher verifies the client binary, probes game/relay server latency, starts/stops the local server, rebuilds and deploys the modular `steam_api.dll` hook, and launches 1–4 clients with automatic multibox mutex release.
+
+### News & Server
+Displays the live repository commit feed, server connection settings (`host`, `port`, `relay_port`), account/multibox configuration, live TCP latency probes, and a summary of enabled patches.
+
+![Dark Blood Custom Launcher — News & Server](docs/images/launcher_news_server.png)
+
+### Patches & Hacks
+Configure individual modular client hooks (`client_hook/patches/*.c`) and server-side toggles (borderless fullscreen, auto-reconnect to lobby on disconnect, 100 ms town peer sync, skip logos/tutorial, adult blood effect, native GM console, and diagnostics) without editing INI files by hand.
+
+![Dark Blood Custom Launcher — Patches & Hacks](docs/images/launcher_patches_hacks.png)
 
 ## Progress by system
 
@@ -169,81 +183,81 @@ The server is a Python package laid out like MHServerEmu so it can be ported to 
 
 ```text
 src/darkblood/
-├── core/  # Shared infrastructure: networking, crypto, serialization (C#: DarkBlood.…
-│   ├── network/  # ProudNet framing and encryption
-│   │   ├── crypto.py  # ProudNet session crypto as recovered from the Dark Blood client
-│   │   └── proudnet.py  # Dark Blood's observed ProudNet framing (x86 client 1.6.5#0)
-│   ├── serialization/  # JSerBuffer / JEvent encoding
-│   │   ├── jser.py  # JSerBuffer / JEvent primitives recovered from client 0xA1EB90/0xB35E50
-│   │   └── wire.py  # Typed JSerBuffer wire serialization (WireMessage + JSerBufferWriter)
-│   ├── hashing.py  # JHashString (client 0x00B3B5A0)
-│   └── options.py  # Shared configuration in research/client/darkblood_options.ini (edited by…
-├── frontend/  # Client-facing listeners: game connection and relay (C#: DarkBlood.Fronte…
-│   ├── relay.py  # Square/room relay endpoint and relay PIDL (JoinGroup/JoinGroupACK)
-│   └── server.py  # Loopback ProudNet server for the Dark Blood client
-├── games/  # Game logic (C#: DarkBlood.Games)
-│   ├── entities/  # Characters, items, bags
-│   │   ├── character.py  # Player character entity and its wire encodings (lobby entry, world detai…
-│   │   └── items.py  # Items and bag containers (client structs 0x00A53F50 / 0x00A1EC30)
-│   ├── game_data/  # Readers for the client's own data tables (Data/Dict)
-│   │   ├── cash_shop.py  # Server-owned catalog for offline Cash Shop purchases
-│   │   └── client_dict.py  # Read game tables from normalized assets or fallback client data
-│   ├── handlers/  # JEvent handlers grouped by game domain (mixins of GameSession)
-│   │   ├── commerce/  # Commerce domain controller composed from stores, cash shop, trade and st…
+├── core/                     # Shared infrastructure: networking, crypto, serialization (C#: DarkBlood.…
+│   ├── network/              # ProudNet framing and encryption
+│   │   ├── crypto.py         # ProudNet session crypto as recovered from the Dark Blood client
+│   │   └── proudnet.py       # Dark Blood's observed ProudNet framing (x86 client 1.6.5#0)
+│   ├── serialization/        # JSerBuffer / JEvent encoding
+│   │   ├── jser.py           # JSerBuffer / JEvent primitives recovered from client 0xA1EB90/0xB35E50
+│   │   └── wire.py           # Typed JSerBuffer wire serialization (WireMessage + JSerBufferWriter)
+│   ├── hashing.py            # JHashString (client 0x00B3B5A0)
+│   └── options.py            # Shared configuration in research/client/darkblood_options.ini (edited by…
+├── frontend/                 # Client-facing listeners: game connection and relay (C#: DarkBlood.Fronte…
+│   ├── relay.py              # Square/room relay endpoint and relay PIDL (JoinGroup/JoinGroupACK)
+│   └── server.py             # Loopback ProudNet server for the Dark Blood client
+├── games/                    # Game logic (C#: DarkBlood.Games)
+│   ├── entities/             # Characters, items, bags
+│   │   ├── character.py      # Player character entity and its wire encodings (lobby entry, world detai…
+│   │   └── items.py          # Items and bag containers (client structs 0x00A53F50 / 0x00A1EC30)
+│   ├── game_data/            # Readers for the client's own data tables (Data/Dict)
+│   │   ├── cash_shop.py      # Server-owned catalog for offline Cash Shop purchases
+│   │   └── client_dict.py    # Read game tables from normalized assets or fallback client data
+│   ├── handlers/             # JEvent handlers grouped by game domain (mixins of GameSession)
+│   │   ├── commerce/         # Commerce domain controller composed from stores, cash shop, trade and st…
 │   │   │   ├── cash_shop.py  # Offline Steam Cash Shop, cash packages, HTTP notices and play options
-│   │   │   ├── stalls.py  # Personal shops (town stalls) and Broker (Auction House) handlers
-│   │   │   ├── stores.py  # NPC store catalog, buying, selling, buyback, beauty shop, roulette and d…
-│   │   │   └── trade.py  # Player-to-player trade request, item/gold staking and completion
-│   │   ├── dungeon/  # Dungeon domain controller composed from rooms, combat and events mixins
-│   │   │   ├── combat.py  # Dungeon start, layer transitions, monster kills, loot drops/pickups, dea…
-│   │   │   ├── events.py  # Cronos attendance, Explore, Clear Rank, war flags and dungeon telemetry
-│   │   │   └── rooms.py  # Dungeon room creation, joining, leaving, host promotion, gate selection …
-│   │   ├── inventory/  # Inventory domain controller composed from responsibility-focused mixins
-│   │   │   ├── bags.py  # Bag management and quickslot handlers (2026, 2028, 2030, 2032, 2044, 204…
-│   │   │   ├── crafting.py  # Upgrading, durability repair, enchanting, avatar/zam, smelting and mark …
-│   │   │   ├── depot.py  # Depot / warehouse gold and slot handlers (2228, 2230, 2242, 2461)
-│   │   │   └── items.py  # Core item movement, equip, consumption, dyeing, splitting and sealing ha…
-│   │   ├── social/  # Social domain controller composed from friends, chat, party and guild mi…
-│   │   │   ├── chat.py  # Town/party/whisper chat, speaker items and GM slash commands
-│   │   │   ├── friends.py  # Friends, block list, character/item inspection, achievements and system …
-│   │   │   ├── guild.py  # Guild creation, roster, bank, skills, broker, siege and citadel handlers
-│   │   │   └── party.py  # Party invites, joins, kicks and teaching/guide/summon handlers
-│   │   ├── arena.py  # Arena matches, teams, ladder rankings, and 1v1 town duels handlers
-│   │   ├── base.py  # Shared access to the owning game session
-│   │   ├── frontend.py  # Frontend flow: server/channel lists, character list, creation and select…
-│   │   ├── gm.py  # Native GM Console & Cheat command handlers (eEGS_CHEAT_* / eERC_CHEAT_*)
-│   │   ├── mail.py  # Mailbox (Post) system handlers for Dark Blood Online
-│   │   ├── pets.py  # Pet, Mount and Taming domain handlers
-│   │   ├── quests.py  # Quest start/complete, failure, abandon, and tutorial quest handlers
-│   │   ├── skills.py  # Skill learning, quickslots, locked skills, cooltime display, dual skill,…
-│   │   └── square.py  # Town (square) play: tutorial, layers, NPCs, waypoints
-│   ├── missions/  # Quests
-│   │   └── quests.py  # Quest state carried in 2007 (active-quest map 0x00A3E450)
-│   ├── network/  # Game message definitions
-│   │   ├── messages/  # 17 schema-generated typed WireMessage modules
-│   │   └── results.py  # Client result codes (JERI_*) for ACK `result` fields
-│   ├── achievements.py  # Counter achievements (DictAchieve Type 0) driven by 2446 division report…
-│   ├── config.py  # Local offline world configuration: server list, channels, slots
-│   ├── dispatcher.py  # Route client JEvents to asynchronous domain handlers
-│   ├── loot.py  # Monster drops from itemlooting.lua (DictItemDrop), rolled on 5063
-│   ├── progression.py  # Character level, ability point, and stress (fatigue) accounting
-│   ├── session.py  # Game connection session (JEvent dispatcher)
-│   ├── stalls.py  # Personal Shop (Player Stalls in town) and Market / Auction House (Broker…
-│   └── world.py  # Multi-client Game World Manager and Party Subsystem
-├── player_management/  # Accounts and character persistence (C#: DarkBlood.PlayerManagement)
-│   ├── characters.py  # Local character storage and the client's character struct
-│   └── store.py  # Character storage: the ICharacterStore interface and its SQLite backend
-└── __main__.py  # Entry point: ``python -m darkblood`` (with src/ on sys.path) or ``python…
+│   │   │   ├── stalls.py     # Personal shops (town stalls) and Broker (Auction House) handlers
+│   │   │   ├── stores.py     # NPC store catalog, buying, selling, buyback, beauty shop, roulette and d…
+│   │   │   └── trade.py      # Player-to-player trade request, item/gold staking and completion
+│   │   ├── dungeon/          # Dungeon domain controller composed from rooms, combat and events mixins
+│   │   │   ├── combat.py     # Dungeon start, layer transitions, monster kills, loot drops/pickups, dea…
+│   │   │   ├── events.py     # Cronos attendance, Explore, Clear Rank, war flags and dungeon telemetry
+│   │   │   └── rooms.py      # Dungeon room creation, joining, leaving, host promotion, gate selection …
+│   │   ├── inventory/        # Inventory domain controller composed from responsibility-focused mixins
+│   │   │   ├── bags.py       # Bag management and quickslot handlers (2026, 2028, 2030, 2032, 2044, 204…
+│   │   │   ├── crafting.py   # Upgrading, durability repair, enchanting, avatar/zam, smelting and mark …
+│   │   │   ├── depot.py      # Depot / warehouse gold and slot handlers (2228, 2230, 2242, 2461)
+│   │   │   └── items.py      # Core item movement, equip, consumption, dyeing, splitting and sealing ha…
+│   │   ├── social/           # Social domain controller composed from friends, chat, party and guild mi…
+│   │   │   ├── chat.py       # Town/party/whisper chat, speaker items and GM slash commands
+│   │   │   ├── friends.py    # Friends, block list, character/item inspection, achievements and system …
+│   │   │   ├── guild.py      # Guild creation, roster, bank, skills, broker, siege and citadel handlers
+│   │   │   └── party.py      # Party invites, joins, kicks and teaching/guide/summon handlers
+│   │   ├── arena.py          # Arena matches, teams, ladder rankings, and 1v1 town duels handlers
+│   │   ├── base.py           # Shared access to the owning game session
+│   │   ├── frontend.py       # Frontend flow: server/channel lists, character list, creation and select…
+│   │   ├── gm.py             # Native GM Console & Cheat command handlers (eEGS_CHEAT_* / eERC_CHEAT_*)
+│   │   ├── mail.py           # Mailbox (Post) system handlers for Dark Blood Online
+│   │   ├── pets.py           # Pet, Mount and Taming domain handlers
+│   │   ├── quests.py         # Quest start/complete, failure, abandon, and tutorial quest handlers
+│   │   ├── skills.py         # Skill learning, quickslots, locked skills, cooltime display, dual skill,…
+│   │   └── square.py         # Town (square) play: tutorial, layers, NPCs, waypoints
+│   ├── missions/             # Quests
+│   │   └── quests.py         # Quest state carried in 2007 (active-quest map 0x00A3E450)
+│   ├── network/              # Game message definitions
+│   │   ├── messages/         # 17 schema-generated typed WireMessage modules
+│   │   └── results.py        # Client result codes (JERI_*) for ACK `result` fields
+│   ├── achievements.py       # Counter achievements (DictAchieve Type 0) driven by 2446 division report…
+│   ├── config.py             # Local offline world configuration: server list, channels, slots
+│   ├── dispatcher.py         # Route client JEvents to asynchronous domain handlers
+│   ├── loot.py               # Monster drops from itemlooting.lua (DictItemDrop), rolled on 5063
+│   ├── progression.py        # Character level, ability point, and stress (fatigue) accounting
+│   ├── session.py            # Game connection session (JEvent dispatcher)
+│   ├── stalls.py             # Personal Shop (Player Stalls in town) and Market / Auction House (Broker…
+│   └── world.py              # Multi-client Game World Manager and Party Subsystem
+├── player_management/        # Accounts and character persistence (C#: DarkBlood.PlayerManagement)
+│   ├── characters.py         # Local character storage and the client's character struct
+│   └── store.py              # Character storage: the ICharacterStore interface and its SQLite backend
+└── __main__.py               # Entry point: ``python -m darkblood`` (with src/ on sys.path) or ``python…
 
 client_hook/
-├── patches/  # 8 modular patches: auto_reconnect, borderless_fullscreen, debug_tools, diagnostic_hooks, network_redirect, peer_update_interval, skip_logos, skip_tutorial_always
+├── patches/                  # 8 modular patches: auto_reconnect, borderless_fullscreen, debug_tools, diagnostic_hooks, network_redirect, peer_update_interval, skip_logos, skip_tutorial_always
 ├── build.bat
 ├── common.c
 ├── common.h
-└── steam_api_hook.c  # Dark Blood offline Steam API shim & modular patch loader.
+└── steam_api_hook.c          # Dark Blood offline Steam API shim & modular patch loader.
 
-schemas/  # 17 JSerBuffer wire schema domains (*.jsch -> tools/gen_messages.py)
-tools/    # launcher.py, gamectl.py, multibox.py, mcp_server.py, headless_client.py, gen_*.py
+schemas/                      # 17 JSerBuffer wire schema domains (*.jsch -> tools/gen_messages.py)
+tools/                        # launcher.py, gamectl.py, multibox.py, mcp_server.py, headless_client.py, gen_*.py
 ```
 <!-- ARCHITECTURE:END -->
 
