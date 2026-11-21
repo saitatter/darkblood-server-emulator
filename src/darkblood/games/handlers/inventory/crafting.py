@@ -56,7 +56,14 @@ class CraftingHandlersMixin:
 
     @packet_handler(DurabilityRepairReq)
     async def handle_durability_repair(self, correlation, body):
-        """Opcode 2145 (eEGS_DURABILITY_REPAIR_REQ) -> 2146 (eEGS_DURABILITY_REPAIR_ACK): repair equipment with AR."""
+        """Opcode 2145 (eEGS_DURABILITY_REPAIR_REQ) -> 2146 (eEGS_DURABILITY_REPAIR_ACK): repair equipment with AR.
+
+        Client formula (0x00525ea0 Lua_ShowMessageRepairEquipItem / 0x00525af0):
+          max_dur = *(short *)(item_dict + 0xBE)  (integer-truncated Durability)
+          missing = max(0, max_dur - ceil(cur_dur))
+          cost    = missing * *(short *)(item_dict + 0xC2)  (RepairPrice)
+        """
+        import math
         from darkblood.games.game_data.client_dict import item_field, item_max_durability
         req = DurabilityRepairReq.decode(body)
         self.transport.record('durability-repair-req', body, count=len(req.repair_items))
@@ -69,18 +76,21 @@ class CraftingHandlersMixin:
         items_by_uid = {int(it.get('uid', -1)): it for it in char.get('items', [])}
         repaired = {}
         total_cost = 0
-        for item_uid in req.repair_items:
+        for item_uid, req_dur in req.repair_items.items():
             item = items_by_uid.get(int(item_uid))
             if item is None:
                 continue
             code = item.get('code', '')
             max_dur = item_max_durability(code)
-            target_dur = float(max_dur) if max_dur is not None else 100.0
-            cur_dur = float(item.get('durability', target_dur))
-            missing = max(0.0, target_dur - cur_dur)
-            if missing > 0.0:
-                sell_price = int(item_field(code, 'SellPrice', 10) or 10)
-                total_cost += max(1, int(round(missing * max(1.0, sell_price / max(1.0, target_dur)))))
+            target_dur = float(int(max_dur)) if max_dur is not None else 100.0
+            stored_dur = float(item.get('durability', target_dur))
+            # Client sends its current durability float; use the lower of stored and reported
+            # (clamped to [0, target_dur]) in case a 2143 durability tick has not flushed yet.
+            cur_dur = max(0.0, min(stored_dur, float(req_dur), target_dur))
+            missing = max(0, int(target_dur) - math.ceil(cur_dur))
+            if missing > 0:
+                repair_price = int(item_field(code, 'RepairPrice', 0) or 0)
+                total_cost += missing * repair_price
             repaired[int(item_uid)] = target_dur
         if total_cost > gold:
             await self.reply(DurabilityRepairAck(result=1, remain_gold=gold), correlation,
@@ -117,7 +127,7 @@ class CraftingHandlersMixin:
             if item is None:
                 continue
             max_dur = item_max_durability(item.get('code', ''))
-            target_dur = float(max_dur) if max_dur is not None else 100.0
+            target_dur = float(int(max_dur)) if max_dur is not None else 100.0
             item['durability'] = target_dur
             repaired[int(item_uid)] = target_dur
         kit = items_by_uid.get(int(req.repair_item_uid))

@@ -383,7 +383,7 @@ ITEM_FIELD_RE = re.compile(r'^ {4}(\w+) = (-?\d+),?$')
 
 @lru_cache(maxsize=None)
 def item_int_fields():
-    """{item id: {field: int}} for integer top-level fields (BuyPrice, SellPrice, BagSize)."""
+    """{item id: {field: int}} for integer top-level fields (BuyPrice, SellPrice, BagSize, RepairPrice)."""
     tsv = ASSETS_DIR / 'item_fields.tsv'
     if tsv.is_file():
         out = {}
@@ -394,6 +394,7 @@ def item_int_fields():
                     'BuyPrice': int(parts[1]),
                     'SellPrice': int(parts[2]),
                     'BagSize': int(parts[3]),
+                    'RepairPrice': int(parts[4]) if len(parts) >= 5 else 0,
                 }
         return out
 
@@ -402,18 +403,30 @@ def item_int_fields():
     if not root.exists():
         return out
     for path in sorted(root.glob('item_*.lua')):
+        item_id = None
         fields = {}
         for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
             if line.startswith('  {'):
+                if item_id is not None and fields:
+                    out.setdefault(item_id, {}).update(fields)
+                item_id = None
+                fields = {}
+                continue
+            if line.startswith('  }'):
+                if item_id is not None and fields:
+                    out.setdefault(item_id, {}).update(fields)
+                item_id = None
                 fields = {}
                 continue
             m = ITEM_ID_RE.match(line)
             if m:
-                out.setdefault(m.group(1), {}).update(fields)
+                item_id = m.group(1)
                 continue
             m = ITEM_FIELD_RE.match(line)
             if m:
                 fields[m.group(1)] = int(m.group(2))
+        if item_id is not None and fields:
+            out.setdefault(item_id, {}).update(fields)
     return out
 
 
@@ -430,14 +443,14 @@ ITEM_ID_RE = re.compile(r'^ {4}ItemID = "([^"]+)",?$')
 
 @lru_cache(maxsize=None)
 def item_durabilities():
-    """Returns {item id: max Durability}."""
+    """Returns {item id: max Durability} truncated to integer as the client loads it into short (+0xBE)."""
     tsv = ASSETS_DIR / 'item_durabilities.tsv'
     if tsv.is_file():
         out = {}
         for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
             parts = line.split('\t')
             if len(parts) >= 2:
-                out[parts[0]] = float(parts[1])
+                out[parts[0]] = float(int(float(parts[1])))
         return out
 
     out = {}
@@ -452,7 +465,8 @@ def item_durabilities():
                 continue
             m = DURABILITY_RE.match(line)
             if m:
-                durability = float(m.group(1))
+                # Client stores dict max durability in a 16-bit short (+0xBE), truncating decimals.
+                durability = float(int(float(m.group(1))))
                 continue
             m = ITEM_ID_RE.match(line)
             if m and durability is not None:

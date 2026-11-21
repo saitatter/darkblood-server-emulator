@@ -72,13 +72,14 @@ def export_equip_index():
 
 def export_item_fields():
     data = client_dict.item_int_fields()
-    lines = ['item_id\tbuy_price\tsell_price\tbag_size']
+    lines = ['item_id\tbuy_price\tsell_price\tbag_size\trepair_price']
     for iid, fields in sorted(data.items()):
         buy = fields.get('BuyPrice', 0)
         sell = fields.get('SellPrice', 0)
         bag = fields.get('BagSize', 0)
-        if buy != 0 or sell != 0 or bag != 0:
-            lines.append(f"{iid}\t{buy}\t{sell}\t{bag}")
+        repair = fields.get('RepairPrice', 0)
+        if buy != 0 or sell != 0 or bag != 0 or repair != 0:
+            lines.append(f"{iid}\t{buy}\t{sell}\t{bag}\t{repair}")
     out = ASSETS_DIR / 'item_fields.tsv'
     out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     print(f"Exported {len(lines)-1} item fields rows to {out.name}")

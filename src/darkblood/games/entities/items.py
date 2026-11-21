@@ -70,11 +70,13 @@ class Item(WireMessage):
     )
 
     def current_durability(self) -> float:
-        if self.durability is not None:
-            return float(self.durability)
         from darkblood.games.game_data.client_dict import item_max_durability
         maximum = item_max_durability(self.code)
-        return float(int(maximum)) if maximum is not None else 100.0
+        max_cap = float(int(maximum)) if maximum is not None else None
+        if self.durability is not None:
+            val = float(self.durability)
+            return min(val, max_cap) if max_cap is not None else val
+        return max_cap if max_cap is not None else 100.0
 
 
 @dataclass

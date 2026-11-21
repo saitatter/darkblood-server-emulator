@@ -347,15 +347,31 @@ class InventoryFlowTest(ServerTestCase):
             parsed2144_broken = DurabilityChangeAck.decode(ack2144_broken)
             self.assertEqual((parsed2144_broken.result, parsed2144_broken.changed_item_uids), (0, [item_uid]))
             self.assertAlmostEqual(target_item['durability'], 0.0, places=3)
-            # 2145 repair with AR -> restores durability and deducts gold
+            # 2145 repair with AR -> restores integer max durability and deducts exact RepairPrice * missing
+            from darkblood.games.game_data.client_dict import item_field, item_max_durability
             client.send_event(2145, DurabilityRepairReq(repair_items={item_uid: 0.0}).encode())
             _, ack2146 = await client.expect_event(2146)
             parsed2146 = DurabilityRepairAck.decode(ack2146)
             self.assertEqual(parsed2146.result, 0)
             self.assertIn(item_uid, parsed2146.repaired_items)
-            self.assertGreater(parsed2146.repaired_items[item_uid], 0.0)
-            self.assertAlmostEqual(target_item['durability'], parsed2146.repaired_items[item_uid], places=3)
-            self.assertLess(parsed2146.remain_gold, 5000)
+            expected_max = float(int(item_max_durability('Abodk0002') or 100))
+            expected_cost = int(expected_max) * int(item_field('Abodk0002', 'RepairPrice', 0) or 0)
+            self.assertEqual(parsed2146.repaired_items[item_uid], expected_max)
+            self.assertEqual(target_item['durability'], expected_max)
+            self.assertEqual(parsed2146.remain_gold, 5000 - expected_cost)
+            # Fractional Lua Durability (e.g. Aglok0001 = 19.2, RepairPrice = 5) must truncate to 19.0
+            # (matching client short +0xBE) so client never displays 20/19, and charge (19 - ceil(15.2)) * 5 = 15 AR.
+            glove_uid = 778
+            glove_item = {'uid': glove_uid, 'code': 'Aglok0001', 'container': 1, 'slot': 3, 'durability': 15.2}
+            char['items'].append(glove_item)
+            gold_pre_glove = char['gold']
+            client.send_event(2145, DurabilityRepairReq(repair_items={glove_uid: 15.2}).encode())
+            _, ack2146_glove = await client.expect_event(2146)
+            parsed_glove = DurabilityRepairAck.decode(ack2146_glove)
+            self.assertEqual(parsed_glove.result, 0)
+            self.assertEqual(parsed_glove.repaired_items[glove_uid], 19.0)
+            self.assertEqual(glove_item['durability'], 19.0)
+            self.assertEqual(parsed_glove.remain_gold, gold_pre_glove - (19 - 16) * 5)
             # 2154 repair by item -> restores durability without deducting AR
             target_item['durability'] = 1.0
             gold_before = char['gold']
