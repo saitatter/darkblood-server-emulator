@@ -4,12 +4,14 @@ import struct
 
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
     BuyLifeWaterAck,
     BuyLifeWaterReq,
     CharVerifyStatAck,
+    CharVerifyStatReq,
     DeleteItemAck,
     DeleteItemReq,
     DivideItemAck,
@@ -46,8 +48,9 @@ from darkblood.player_management.characters import (
 class ItemHandlersMixin:
     """Item drag/equip/use/dye/delete/divide/decompose/seal and misc consumables."""
 
-    async def on_2036(self, correlation, body):
-        # eEGS_DRAG_ITEM_REQ -> 2037 eEGS_DRAG_ITEM_ACK (0x0077F570).
+    @packet_handler(DragItemReq)
+    async def handle_drag_item(self, correlation, body):
+        """Opcode 2036 (eEGS_DRAG_ITEM_REQ) -> 2037 (eEGS_DRAG_ITEM_ACK): move or swap an item between cells."""
         req = DragItemReq.decode(body)
         char = self.current_char()
         if not char:
@@ -93,8 +96,9 @@ class ItemHandlersMixin:
         await self.reply(DragItemAck(result=0, items=wire_items), correlation,
                          note='drag item ack (uid=%d to c=%d s=%d)' % (req.item_uid, req.to_container, req.to_slot))
 
-    async def on_2038(self, correlation, body):
-        # eEGS_USE_ITEM_REQ -> 2039 eEGS_USE_ITEM_ACK (0x0077D4C0).
+    @packet_handler(UseItemReq)
+    async def handle_use_item(self, correlation, body):
+        """Opcode 2038 (eEGS_USE_ITEM_REQ) -> 2039 (eEGS_USE_ITEM_ACK): consume an item, open cash boxes or pet/mount items."""
         req = UseItemReq.decode(body)
         char = self.current_char()
         if not char:
@@ -134,8 +138,9 @@ class ItemHandlersMixin:
                                 note='cash box opened (%s -> %s)' % (
                                     used_item.get('code'), ', '.join(i['code'] for i in stored)))
 
-    async def on_2210(self, correlation, body):
-        # eEGS_USE_DYEING_ITEM_REQ (0x00505E30) -> 2211 (coloring page 0x00511B70).
+    @packet_handler(UseDyeingItemReq)
+    async def handle_use_dyeing_item(self, correlation, body):
+        """Opcode 2210 (eEGS_USE_DYEING_ITEM_REQ) -> 2211 (eEGS_USE_DYEING_ITEM_ACK): apply hair/skin/item dye and consume it."""
         try:
             req = UseDyeingItemReq.decode(body)
         except struct.error:
@@ -184,8 +189,9 @@ class ItemHandlersMixin:
         pool = [entry for name in names for entry in groups.get(name, [])]
         return [random.choice(pool)] if pool else []
 
-    async def on_2042(self, correlation, body):
-        # eEGS_EQUIP_ITEM_REQ -> 2043 eEGS_EQUIP_ITEM_ACK (0x007AE940).
+    @packet_handler(EquipItemReq)
+    async def handle_equip_item(self, correlation, body):
+        """Opcode 2042 (eEGS_EQUIP_ITEM_REQ) -> 2043 (eEGS_EQUIP_ITEM_ACK): equip or unequip a gear piece."""
         req = EquipItemReq.decode(body)
         char = self.current_char()
         if not char:
@@ -246,8 +252,9 @@ class ItemHandlersMixin:
         await self.reply(EquipItemAck(result=0, items=wire_items), correlation,
                          note='equip item ack (uid=%d slot=%d)' % (req.item_uid, target_item.get('slot', 0)))
 
-    async def on_2040(self, correlation, body):
-        # eEGS_DELETE_ITEM_REQ -> 2041 eEGS_DELETE_ITEM_ACK (0x00557420).
+    @packet_handler(DeleteItemReq)
+    async def handle_delete_item(self, correlation, body):
+        """Opcode 2040 (eEGS_DELETE_ITEM_REQ) -> 2041 (eEGS_DELETE_ITEM_ACK): discard an item or stack portion."""
         req = DeleteItemReq.decode(body)
         char = self.current_char()
         if not char:
@@ -270,8 +277,9 @@ class ItemHandlersMixin:
         await self.reply(DeleteItemAck(result=0, item_uid=req.item_uid, del_amount=del_amount),
                          correlation, note=f'delete item ack (uid={req.item_uid} amount={del_amount})')
 
-    async def on_2086(self, correlation, body):
-        # eEGS_BUY_LIFE_WATER_REQ -> 2087 eEGS_BUY_LIFE_WATER_ACK (0x0078FF90).
+    @packet_handler(BuyLifeWaterReq)
+    async def handle_buy_life_water(self, correlation, body):
+        """Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): purchase life water."""
         req = BuyLifeWaterReq.decode(body)
         self.transport.record('buy-life-water-req', body, flag=req.flag)
         char = self.current_char()
@@ -279,14 +287,16 @@ class ItemHandlersMixin:
         await self.reply(BuyLifeWaterAck(result=0, flag=req.flag, remain_currency=gold),
                          correlation, note=f'buy life water ack (flag={req.flag})')
 
-    async def on_2119(self, correlation, body):
-        # eEGS_ALARM_UPDATE_REQ (observed: i32 0x7FFFFFFF, i16, tag 0x10 vector<i32>)
+    @packet_handler(2119)
+    async def handle_alarm_update(self, correlation, body):
+        """Opcode 2119 (eEGS_ALARM_UPDATE_REQ) -> 2120 (eEGS_ALARM_UPDATE_ACK): acknowledge alarm flags."""
         rest = body[4:] if len(body) >= 7 else b'\x00\x00\x10\x80'
         await self.transport.send_event(event(2120, struct.pack('<I', 0) + rest, correlation),
                                         note='alarm update ack')
 
-    async def on_2147(self, correlation, body):
-        # eEGS_SEAL_ITEM_REQ (0x0062D1F0) -> 2148 eEGS_SEAL_ITEM_ACK (0x00639C90).
+    @packet_handler(SealItemReq)
+    async def handle_seal_item(self, correlation, body):
+        """Opcode 2147 (eEGS_SEAL_ITEM_REQ) -> 2148 (eEGS_SEAL_ITEM_ACK): seal a tradable equipment piece."""
         req = SealItemReq.decode(body)
         char = self.current_char()
         items = char.get('items', []) if char else []
@@ -298,19 +308,22 @@ class ItemHandlersMixin:
         await self.reply(SealItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **target)]), correlation,
                          note=f'seal item ack (uid={req.item_uid})')
 
-    async def on_2250(self, correlation, body):
-        # eEGS_DIVIDE_ITEM_REQ -> 2251 eEGS_DIVIDE_ITEM_ACK (0x0077F570).
+    @packet_handler(DivideItemReq)
+    async def handle_divide_item(self, correlation, body):
+        """Opcode 2250 (eEGS_DIVIDE_ITEM_REQ) -> 2251 (eEGS_DIVIDE_ITEM_ACK): split a stacked item."""
         req = DivideItemReq.decode(body)
         self.transport.record('divide-item-req', body, source_uid=req.source_item_uid, count=req.count)
         await self.reply(DivideItemAck(result=0, items=[]), correlation,
                          note=f'divide item ack (item={req.source_item_uid})')
 
-    async def on_2406(self, correlation, body):
-        # eEGS_CHAR_VERIFY_STAT_REQ -> 2407 eEGS_CHAR_VERIFY_STAT_ACK (0x0074B830).
+    @packet_handler(CharVerifyStatReq)
+    async def handle_char_verify_stat(self, correlation, body):
+        """Opcode 2406 (eEGS_CHAR_VERIFY_STAT_REQ) -> 2407 (eEGS_CHAR_VERIFY_STAT_ACK): accept client combat stat report."""
         await self.reply(CharVerifyStatAck(result=0), correlation, note='char verify stat ack')
 
-    async def on_2428(self, correlation, body):
-        # eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ (0x0079C490) -> 2429 (0x0079C5E0).
+    @packet_handler(UseSelectedSkillChangeItemReq)
+    async def handle_use_selected_skill_change_item(self, correlation, body):
+        """Opcode 2428 (eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ) -> 2429: reset/change a selected skill via item."""
         req = UseSelectedSkillChangeItemReq.decode(body)
         char = self.current_char()
         sp = char.get('sp', 0) if char else 0
@@ -318,8 +331,9 @@ class ItemHandlersMixin:
             UseSelectedSkillChangeItemAck(result=0, margin_ap=sp, learned_skills={}, items=[], quickslots=[]),
             correlation, note=f'use selected skill change item ack (item={req.item_uid})')
 
-    async def on_2545(self, correlation, body):
-        # eEGS_ITEM_DECOMPOSE_REQ (0x007A26D0) -> 2546 eEGS_ITEM_DECOMPOSE_ACK (0x00782300).
+    @packet_handler(ItemDecomposeReq)
+    async def handle_item_decompose(self, correlation, body):
+        """Opcode 2545 (eEGS_ITEM_DECOMPOSE_REQ) -> 2546 (eEGS_ITEM_DECOMPOSE_ACK): dismantle an item."""
         req = ItemDecomposeReq.decode(body)
         char = self.current_char()
         items = char.get('items', []) if char else []
@@ -335,8 +349,9 @@ class ItemHandlersMixin:
         await self.reply(ItemDecomposeAck(result=0, items=[vacated]), correlation,
                          note=f'item decompose ack (uid={req.item_uid})')
 
-    async def on_2573(self, correlation, body):
-        # eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ (0x0083DCC2) -> 2574 (0x007A3140).
+    @packet_handler(UseItemLeaguePointAddReq)
+    async def handle_use_league_point_item(self, correlation, body):
+        """Opcode 2573 (eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ) -> 2574: consume an item that awards league points."""
         req = UseItemLeaguePointAddReq.decode(body)
         char = self.current_char()
         items = char.get('items', []) if char else []
@@ -359,8 +374,9 @@ class ItemHandlersMixin:
             UseItemLeaguePointAddAck(result=0, items=[update], league_point=char['league_points']),
             correlation, note=f'use league point item ack (uid={req.item_uid} pts={char["league_points"]})')
 
-    async def on_2709(self, correlation, body):
-        # eEGS_USE_ARENA_SP_ITEM_REQ -> 2710 eEGS_USE_ARENA_SP_ITEM_ACK (0x007A7CA0).
+    @packet_handler(UseArenaSpItemReq)
+    async def handle_use_arena_sp_item(self, correlation, body):
+        """Opcode 2709 (eEGS_USE_ARENA_SP_ITEM_REQ) -> 2710 (eEGS_USE_ARENA_SP_ITEM_ACK): consume an arena SP item."""
         req = UseArenaSpItemReq.decode(body)
         self.transport.record('use-arena-sp-item-req', body, item_uid=req.item_uid)
         await self.reply(UseArenaSpItemAck(result=0, consumed_items=[], arena_sp=100), correlation,

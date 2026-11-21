@@ -10,20 +10,40 @@ logger = logging.getLogger(__name__)
 Handler = Callable[[Any, int, bytes], Awaitable[None]]
 
 
+def packet_handler(opcode_or_msg):
+    """Register an async controller method as the handler for an opcode or WireMessage."""
+    opcode = getattr(opcode_or_msg, 'OPCODE', opcode_or_msg)
+    if not isinstance(opcode, int):
+        raise TypeError(f'packet_handler expects an int opcode or WireMessage class, got {opcode_or_msg!r}')
+
+    def decorator(fn):
+        opcodes = getattr(fn, '_packet_opcodes', ())
+        fn._packet_opcodes = (*opcodes, opcode)
+        return fn
+
+    return decorator
+
+
 class PacketDispatcher:
     def __init__(self):
         self._handlers: Dict[int, Tuple[Optional[str], Handler]] = {}
 
     def register_controller(self, controller_type, session_attr: Optional[str] = None):
         for name in dir(controller_type):
-            if not name.startswith('on_') or not name[3:].isdigit():
-                continue
-            opcode = int(name[3:])
             handler = getattr(controller_type, name)
-            if opcode in self._handlers:
-                _, previous = self._handlers[opcode]
-                raise ValueError(f'Opcode {opcode} registered by {previous.__qualname__} and {handler.__qualname__}')
-            self._handlers[opcode] = (session_attr, handler)
+            opcodes = getattr(handler, '_packet_opcodes', None)
+            if opcodes is None:
+                if name.startswith('on_') and name[3:].isdigit():
+                    opcodes = (int(name[3:]),)
+                else:
+                    continue
+            for opcode in opcodes:
+                if opcode in self._handlers:
+                    _, previous = self._handlers[opcode]
+                    if previous is handler:
+                        continue
+                    raise ValueError(f'Opcode {opcode} registered by {previous.__qualname__} and {handler.__qualname__}')
+                self._handlers[opcode] = (session_attr, handler)
 
     async def dispatch(self, session, opcode: int, correlation: int, body: bytes):
         route = self._handlers.get(opcode)

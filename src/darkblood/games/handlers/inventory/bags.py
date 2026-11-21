@@ -1,4 +1,5 @@
 """Bag management and quickslot handlers (2026, 2028, 2030, 2032, 2044, 2046, 2048)."""
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Bag, Item, UPDATE_OWNER
 from darkblood.games.network.messages import (
     AssignQuickslotAck,
@@ -22,8 +23,9 @@ from darkblood.player_management.characters import INVENTORY_BAG_CONTAINER, add_
 class BagHandlersMixin:
     """Bag equip/close/switch/rename/property and hotbar quickslot operations."""
 
-    async def on_2026(self, correlation, body):
-        # eEGS_OPEN_BAG_REQ -> 2027 eEGS_OPEN_BAG_ACK (0x00557860).
+    @packet_handler(OpenBagReq)
+    async def handle_open_bag(self, correlation, body):
+        """Opcode 2026 (eEGS_OPEN_BAG_REQ) -> 2027 (eEGS_OPEN_BAG_ACK): equip a bag item into a free UI slot."""
         from darkblood.games.game_data.client_dict import item_field
         req = OpenBagReq.decode(body)
         char = self.current_char()
@@ -45,8 +47,9 @@ class BagHandlersMixin:
         await self.reply(OpenBagAck(result=0, bag=Bag(**record)), correlation,
                          note=f'open bag ack ({item["code"]} uid={req.item_uid} size={size} slot={free[0]})')
 
-    async def on_2028(self, correlation, body):
-        # eEGS_CLOSE_BAG_REQ (0x005520B0) -> 2029 eEGS_CLOSE_BAG_ACK (0x00558050).
+    @packet_handler(CloseBagReq)
+    async def handle_close_bag(self, correlation, body):
+        """Opcode 2028 (eEGS_CLOSE_BAG_REQ) -> 2029 (eEGS_CLOSE_BAG_ACK): unequip an empty bag back to inventory."""
         req = CloseBagReq.decode(body)
         self.transport.record('close-bag', body, bag_id=req.bag_id)
         char = self.current_char()
@@ -68,8 +71,9 @@ class BagHandlersMixin:
         await self.reply(CloseBagAck(result=0, bag_item=bag_item, bags=[Bag(**b) for b in bags]),
                          correlation, note=f'close bag ack (bag_id={req.bag_id})')
 
-    async def on_2030(self, correlation, body):
-        # eEGS_SWITCH_BAG_REQ -> 2031 eEGS_SWITCH_BAG_ACK (0x00557680).
+    @packet_handler(SwitchBagReq)
+    async def handle_switch_bag(self, correlation, body):
+        """Opcode 2030 (eEGS_SWITCH_BAG_REQ) -> 2031 (eEGS_SWITCH_BAG_ACK): swap two equipped bag slots."""
         req = SwitchBagReq.decode(body)
         char = self.current_char()
         if char:
@@ -80,8 +84,9 @@ class BagHandlersMixin:
         await self.reply(SwitchBagAck(result=0, from_index=req.from_index, to_index=req.to_index),
                          correlation, note=f'switch bag ack ({req.from_index} <-> {req.to_index})')
 
-    async def on_2032(self, correlation, body):
-        # eEGS_CHANGE_BAG_NAME_REQ -> 2033 eEGS_CHANGE_BAG_NAME_ACK (0x007528B0).
+    @packet_handler(ChangeBagNameReq)
+    async def handle_change_bag_name(self, correlation, body):
+        """Opcode 2032 (eEGS_CHANGE_BAG_NAME_REQ) -> 2033 (eEGS_CHANGE_BAG_NAME_ACK): rename an equipped bag."""
         req = ChangeBagNameReq.decode(body)
         self.transport.record('change-bag-name-req', body, bag_uid=req.bag_uid, name=req.name)
         char = self.current_char()
@@ -94,8 +99,9 @@ class BagHandlersMixin:
         await self.reply(ChangeBagNameAck(result=0, bag_uid=req.bag_uid, name=req.name),
                          correlation, note=f'change bag name ack (bag={req.bag_uid} name={req.name})')
 
-    async def on_2044(self, correlation, body):
-        # eEGS_ASSIGN_QUICKSLOT_REQ -> 2045 eEGS_ASSIGN_QUICKSLOT_ACK (0x0078C4A0).
+    @packet_handler(AssignQuickslotReq)
+    async def handle_assign_quickslot(self, correlation, body):
+        """Opcode 2044 (eEGS_ASSIGN_QUICKSLOT_REQ) -> 2045 (eEGS_ASSIGN_QUICKSLOT_ACK): bind an item or skill to a hotbar slot."""
         req = AssignQuickslotReq.decode(body)
         char = self.current_char()
         if char:
@@ -108,8 +114,9 @@ class BagHandlersMixin:
                                ref_id=req.ref_id, ref_uid=req.ref_uid),
             correlation, note='assign quickslot ack (slot=%d ref=%08x)' % (req.slot_num, req.ref_id))
 
-    async def on_2046(self, correlation, body):
-        # eEGS_SWITCH_QUCIKSLOT_REQ -> 2047 eEGS_SWITCH_QUCIKSLOT_ACK (0x0078C790).
+    @packet_handler(SwitchQuickslotReq)
+    async def handle_switch_quickslot(self, correlation, body):
+        """Opcode 2046 (eEGS_SWITCH_QUCIKSLOT_REQ) -> 2047 (eEGS_SWITCH_QUCIKSLOT_ACK): swap two hotbar quickslots."""
         req = SwitchQuickslotReq.decode(body)
         char = self.current_char()
         if char:
@@ -126,8 +133,9 @@ class BagHandlersMixin:
                                from_slot=req.from_slot, to_slot=req.to_slot),
             correlation, note=f'switch quickslot ack ({req.from_slot} -> {req.to_slot})')
 
-    async def on_2048(self, correlation, body):
-        # eEGS_CHANGE_BAG_PROPERTY_REQ -> 2049 eEGS_CHANGE_BAG_PROPERTY_ACK (0x00774040).
+    @packet_handler(ChangeBagPropertyReq)
+    async def handle_change_bag_property(self, correlation, body):
+        """Opcode 2048 (eEGS_CHANGE_BAG_PROPERTY_REQ) -> 2049 (eEGS_CHANGE_BAG_PROPERTY_ACK): update bag filter property."""
         req = ChangeBagPropertyReq.decode(body)
         char = self.current_char()
         if char:

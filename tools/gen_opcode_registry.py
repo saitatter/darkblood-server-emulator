@@ -64,7 +64,12 @@ def first_line(text):
 def server_handlers():
     out = {}
     for opcode, (_, handler) in session.DISPATCHER._handlers.items():
-        module = handler.__module__.rsplit('.', 1)[-1] + '.py'
+        parts = handler.__module__.split('.')
+        if len(parts) >= 2 and parts[-2] != 'handlers':
+            module = f'{parts[-2]}/{parts[-1]}.py'
+        else:
+            module = parts[-1] + '.py'
+        label = f'`{module}` (`{handler.__name__}`)'
         doc = handler.__doc__
         if not doc:
             try:
@@ -72,7 +77,7 @@ def server_handlers():
                 doc = '\n'.join(l for l in body if l.strip().startswith('#'))
             except (OSError, TypeError):
                 doc = ''
-        out[opcode] = (module, first_line(doc))
+        out[opcode] = (label, first_line(doc))
     return out
 
 

@@ -2,6 +2,7 @@
 import struct
 
 from darkblood.core.serialization.jser import event
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
     DepotLoadArAck,
     DepotLoadArReq,
@@ -15,8 +16,9 @@ from darkblood.games.network.messages import (
 class DepotHandlersMixin:
     """Character and shared depot storage operations."""
 
-    async def on_2228(self, correlation, body):
-        # eEGS_DEPOT_SAVE_AR_REQ -> 2229 eEGS_DEPOT_SAVE_AR_ACK (0x00795220).
+    @packet_handler(DepotSaveArReq)
+    async def handle_depot_save_ar(self, correlation, body):
+        """Opcode 2228 (eEGS_DEPOT_SAVE_AR_REQ) -> 2229 (eEGS_DEPOT_SAVE_AR_ACK): deposit AR into depot."""
         req = DepotSaveArReq.decode(body)
         self.transport.record('depot-save-ar-req', body, gold=req.gold)
         char = self.current_char()
@@ -33,8 +35,9 @@ class DepotHandlersMixin:
         await self.reply(DepotSaveArAck(result=0, new_gold=current_gold), correlation,
                          note=f'depot save ar ack (deposit={req.gold} remain_player_gold={current_gold})')
 
-    async def on_2230(self, correlation, body):
-        # eEGS_DEPOT_LOAD_AR_REQ -> 2231 eEGS_DEPOT_LOAD_AR_ACK (0x00795490).
+    @packet_handler(DepotLoadArReq)
+    async def handle_depot_load_ar(self, correlation, body):
+        """Opcode 2230 (eEGS_DEPOT_LOAD_AR_REQ) -> 2231 (eEGS_DEPOT_LOAD_AR_ACK): withdraw AR from depot."""
         req = DepotLoadArReq.decode(body)
         self.transport.record('depot-load-ar-req', body, gold=req.gold)
         char = self.current_char()
@@ -51,13 +54,15 @@ class DepotHandlersMixin:
         await self.reply(DepotLoadArAck(result=0, new_gold=current_gold), correlation,
                          note=f'depot load ar ack (withdraw={req.gold} new_player_gold={current_gold})')
 
-    async def on_2242(self, correlation, body):
-        # eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ -> 2243 (0x0076C040).
+    @packet_handler(2242)
+    async def handle_depot_share_expire_time(self, correlation, body):
+        """Opcode 2242 (eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ) -> 2243: return shared depot expiration map."""
         await self.transport.send_event(event(2243, struct.pack('<I', 0) + bytes.fromhex('1780'), correlation),
                                         note='depot share expire time ack (none)')
 
-    async def on_2461(self, correlation, body):
-        # eEGS_DEPOT_SLOT_EXTEND_REQ -> 2462 eEGS_DEPOT_SLOT_EXTEND_ACK (0x00651B20).
+    @packet_handler(DepotSlotExtendReq)
+    async def handle_depot_slot_extend(self, correlation, body):
+        """Opcode 2461 (eEGS_DEPOT_SLOT_EXTEND_REQ) -> 2462 (eEGS_DEPOT_SLOT_EXTEND_ACK): expand depot storage slots."""
         req = DepotSlotExtendReq.decode(body)
         self.transport.record('depot-slot-extend-req', body, item_uid=req.item_uid, slot_index=req.slot_index)
         char = self.current_char()
