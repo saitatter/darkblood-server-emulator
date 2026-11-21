@@ -25,7 +25,7 @@
 | `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:288 | guild awards (0x007682A0) |
 | `5135 ArenaSquareChangeRelayAddressNot` | `raw[24]` | arena.jsch:323 | P2P address struct |
 
-## commerce (17 of 125 fields)
+## commerce (18 of 145 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -46,8 +46,9 @@
 | `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:245 | cards (0x004AFD30) |
 | `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:251 | album (0x004D6E60) |
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:302 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
+| `2387 RouletteRollDiceAck` | `vector<?>` | commerce.jsch:349 | 0x00A3EA40 |
 
-## dungeon (47 of 202 fields)
+## dungeon (54 of 280 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -98,6 +99,13 @@
 | `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:445 | vecKeepBuffChange (0x0076EB20) |
 | `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:446 | jKeepCooltimeInfo (0x00A4A070) |
 | `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:474 | vecFishingInfo |
+| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:568 | m_mapDailyInfo (0x004D4710) |
+| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:616 | mapInfo (0x004D4710) |
+| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:655 | mapReward (0x00532F50) |
+| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:662 | mapReward (0x00532F50) |
+| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:686 | mapReward (0x00532F50) |
+| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:700 | 0x00A51060 |
+| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:701 | 0x00A3EA40 |
 
 ## events (8 of 35 fields)
 
@@ -216,7 +224,7 @@
 | `5051 PartyInviteNot` | `u8` | party.jsch:73 |  |
 | `PartyMemberInfo` | `i32` | party.jsch:144 |  |
 
-## pets (10 of 101 fields)
+## pets (13 of 163 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -230,6 +238,9 @@
 | `2436 RidingChangeListNot` | `map<?>` | pets.jsch:177 | mapRidingInfo (40-byte entries) |
 | `2516 PetDyeingNot` | `vector<?>` | pets.jsch:260 | 0x0076E600 pet skills |
 | `2647 RidingExpireUpdateAck` | `map<?>` | pets.jsch:274 | mapRidinglist (0x007656E0) |
+| `MonsterCardInfo` | `vector<?>` | pets.jsch:305 | 0x004B0BB0 card options |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:444 | m_mapWinCardDeck (0x005F6640) |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:445 | m_mapWinCnt (0x005F6730) |
 
 ## quests (1 of 104 fields)
 

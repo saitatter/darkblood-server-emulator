@@ -78,6 +78,33 @@ __all__ = [
     'FailDungeonHackDoubtNot',
     'TreasureFindReq',
     'TreasureFindAck',
+    'CronosRewardReq',
+    'CronosRewardAck',
+    'CronosCalendarNot',
+    'CronosInfoReq',
+    'CronosInfoAck',
+    'CronosDateReq',
+    'CronosDateAck',
+    'CronosTodayTimeReq',
+    'CronosTodayTimeAck',
+    'CronosDailyUpdateNot',
+    'CronosStampReq',
+    'CronosStampAck',
+    'ExploreInfo',
+    'ExploreStartReq',
+    'ExploreStartAck',
+    'ExploreCancelReq',
+    'ExploreCancelAck',
+    'ExploreCompleteNot',
+    'ExploreGetRewardReq',
+    'ExploreGetRewardAck',
+    'ExploreCancelByUserUidReq',
+    'ExploreCancelByUserUidAck',
+    'DungeonClearRankInfo',
+    'ClearRankHistoryInfoReq',
+    'ClearRankHistoryInfoAck',
+    'ClearRankInfoReq',
+    'ClearRankInfoAck',
 ]
 
 
@@ -1077,3 +1104,384 @@ class TreasureFindAck(WireMessage):
     result: u32 = 0
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
     success: bool = True
+
+
+@dataclass
+class CronosRewardReq(WireMessage):
+    """Opcode 2289: eEGS_CRONOS_TAKE_REWARD_REQ (request).
+
+    Attendance (Cronos) reward request -> 2290.
+    """
+    OPCODE: ClassVar[int] = 2289
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    index: i32 = 0
+    reward_select: i32 = 0
+
+
+@dataclass
+class CronosRewardAck(WireMessage):
+    """Opcode 2290: eEGS_CRONOS_TAKE_REWARD_ACK (reply).
+
+    Handler 0x004E4A30 (assert: jInfo >> vecItem >> iIndex >> iRewardSelect).
+    """
+    OPCODE: ClassVar[int] = 2290
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    info: Raw[28] = bytes(28)  # 0x00A48CD0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    index: i32 = 0
+    reward_select: i32 = 0
+
+
+@dataclass
+class CronosCalendarNot(WireMessage):
+    """Opcode 2291: eEGS_CRONOS_UPDATE_DATA_NOT (reply).
+
+    Handler 0x004D9ED0 (assert: m_jToday >> m_mapDailyInfo >> m_jDataLimit >> m_iCountFrom >> nGMTMinute).
+    """
+    OPCODE: ClassVar[int] = 2291
+    today: Raw[12] = bytes(12)  # 0x00AC82A0
+    data_limit: Raw[12] = bytes(12)  # 0x00AC82A0
+    count_from: i32 = 0
+    gmt_minute: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'today',
+        Const(EmptyMap),
+        'data_limit',
+        'count_from',
+        'gmt_minute',
+    )
+
+
+@dataclass
+class CronosInfoReq(WireMessage):
+    """Opcode 2292: eEGS_CHEAT_CRONOS_INSERT_REQ (request).
+
+    Attendance info request -> 2293.
+    """
+    OPCODE: ClassVar[int] = 2292
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CronosInfoAck(WireMessage):
+    """Opcode 2293: eEGS_CHEAT_CRONOS_INSERT_ACK (reply).
+
+    Handler 0x004D7CE0 (assert: jInfo).
+    """
+    OPCODE: ClassVar[int] = 2293
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    info: Raw[28] = bytes(28)  # 0x00A48CD0
+
+
+@dataclass
+class CronosDateReq(WireMessage):
+    """Opcode 2294: eEGS_CHEAT_CRONOS_DELETE_REQ (request).
+
+    Attendance date request -> 2295.
+    """
+    OPCODE: ClassVar[int] = 2294
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CronosDateAck(WireMessage):
+    """Opcode 2295: eEGS_CHEAT_CRONOS_DELETE_ACK (reply).
+
+    Handler 0x004D7F60 (assert: jDate).
+    """
+    OPCODE: ClassVar[int] = 2295
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    date: Raw[12] = bytes(12)  # 0x00AC82A0
+
+
+@dataclass
+class CronosTodayTimeReq(WireMessage):
+    """Opcode 2296: eEGS_CRONOS_TODAY_TIME_REQ (request).
+
+    Attendance today login time request -> 2297.
+    """
+    OPCODE: ClassVar[int] = 2296
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CronosTodayTimeAck(WireMessage):
+    """Opcode 2297: eEGS_CRONOS_TODAY_TIME_ACK (reply).
+
+    Handler 0x004CBDE0 (assert: m_nTodayLoginSecond).
+    """
+    OPCODE: ClassVar[int] = 2297
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    today_login_second: i32 = 0
+
+
+@dataclass
+class CronosDailyUpdateNot(WireMessage):
+    """Opcode 2298: eEGS_CRONOS_UPDATE_TODAY_NOT (reply).
+
+    Handler 0x004D81E0 (assert: jInfo).
+    """
+    OPCODE: ClassVar[int] = 2298
+    info: Raw[28] = bytes(28)  # 0x00A48CD0
+
+
+@dataclass
+class CronosStampReq(WireMessage):
+    """Opcode 2299: eEGS_CRONOS_STAMP_REQ (request).
+
+    Attendance stamp request -> 2300.
+    """
+    OPCODE: ClassVar[int] = 2299
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CronosStampAck(WireMessage):
+    """Opcode 2300: eEGS_CRONOS_STAMP_ACK (reply).
+
+    Handler 0x004E3BA0 (assert: mapInfo >> vecItem >> nItemID).
+    """
+    OPCODE: ClassVar[int] = 2300
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    item_id: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+        'items',
+        'item_id',
+    )
+
+
+@dataclass
+class ExploreInfo(WireMessage):
+    """Explore status record, reader 0x00A4AEF0 (2655)."""
+    explore_time: i16 = 0
+    state: u8 = 0
+    complete_date: Raw[12] = bytes(12)
+    rewarded: bool = False
+    area_id: i32 = 0
+
+
+@dataclass
+class ExploreStartReq(WireMessage):
+    """Opcode 2651: eEGS_EXPLORE_START_REQ (request).
+
+    Start explore request -> 2652.
+    """
+    OPCODE: ClassVar[int] = 2651
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+    explore_time: i16 = 0
+
+
+@dataclass
+class ExploreStartAck(WireMessage):
+    """Opcode 2652: eEGS_EXPLORE_START_ACK (reply).
+
+    Handler 0x00540B00 (assert: nExploreCharUID >> tExploreCompleteDate >> sExploreTime >> vecItemOut >> sStress).
+    """
+    OPCODE: ClassVar[int] = 2652
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    explore_char_uid: i64 = 0
+    complete_date: Raw[12] = bytes(12)
+    explore_time: i16 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    stress: i16 = 0
+
+
+@dataclass
+class ExploreCancelReq(WireMessage):
+    """Opcode 2653: eEGS_EXPLORE_CANCEL_REQ (request).
+
+    Cancel explore request -> 2654.
+    """
+    OPCODE: ClassVar[int] = 2653
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    explore_char_uid: i64 = 0
+
+
+@dataclass
+class ExploreCancelAck(WireMessage):
+    """Opcode 2654: eEGS_EXPLORE_CANCEL_ACK (reply).
+
+    Handler 0x00540F90 (assert: nExploreCharUID >> mapReward).
+    """
+    OPCODE: ClassVar[int] = 2654
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    explore_char_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'explore_char_uid',
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class ExploreCompleteNot(WireMessage):
+    """Opcode 2655: eEGS_EXPLORE_COMPLETE_NOT (reply).
+
+    Handler 0x0053C470 (assert: nCompleteCharUID >> jExplore >> mapReward).
+    """
+    OPCODE: ClassVar[int] = 2655
+    complete_char_uid: i64 = 0
+    explore: ExploreInfo = field(default_factory=ExploreInfo)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'complete_char_uid',
+        'explore',
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class ExploreGetRewardReq(WireMessage):
+    """Opcode 2656: eEGS_EXPLORE_GET_REWARD_REQ (request).
+
+    Claim explore reward request -> 2657.
+    """
+    OPCODE: ClassVar[int] = 2656
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    reward_uid: i64 = 0
+
+
+@dataclass
+class ExploreGetRewardAck(WireMessage):
+    """Opcode 2657: eEGS_EXPLORE_GET_REWARD_ACK (reply).
+
+    Handler 0x00541190 (assert: nRewardUID >> vecItemOut).
+    """
+    OPCODE: ClassVar[int] = 2657
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    reward_uid: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class ExploreCancelByUserUidReq(WireMessage):
+    """Opcode 2662: eEGS_EXPLORE_CANCEL_BY_USERUID_REQ (request).
+
+    Cancel explore by user UID -> 2663.
+    """
+    OPCODE: ClassVar[int] = 2662
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    explore_char_uid: i64 = 0
+
+
+@dataclass
+class ExploreCancelByUserUidAck(WireMessage):
+    """Opcode 2663: eEGS_EXPLORE_CANCEL_BY_USERUID_ACK (reply).
+
+    Handler 0x00541960 (assert: nExploreCharUID >> mapReward).
+    """
+    OPCODE: ClassVar[int] = 2663
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    explore_char_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'explore_char_uid',
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class DungeonClearRankInfo(WireMessage):
+    """Dungeon clear rank record, reader 0x00A51AC0 (2540 / 5229)."""
+    rank_uid: i64 = 0
+    map_id: i32 = 0
+    clear_time: i32 = 0
+    rank: i32 = 0
+    score: i32 = 0
+    leader_uid: i64 = 0
+    party_count: i32 = 0
+    comment: wstr = ''
+    param: i32 = 0
+    clear_date: Raw[12] = bytes(12)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'rank_uid',
+        'map_id',
+        'clear_time',
+        'rank',
+        'score',
+        'leader_uid',
+        'party_count',
+        'comment',
+        'param',
+        Const(EmptyMap),
+        Const(EmptyVector),
+        'clear_date',
+    )
+
+
+@dataclass
+class ClearRankHistoryInfoReq(WireMessage):
+    """Opcode 2539: eEGS_CLEAR_RANK_HISTORY_INFO_REQ (request).
+
+    Clear rank history request -> 2540.
+    """
+    OPCODE: ClassVar[int] = 2539
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    map_id: i32 = 0
+    page: i32 = 0
+
+
+@dataclass
+class ClearRankHistoryInfoAck(WireMessage):
+    """Opcode 2540: eEGS_CLEAR_RANK_HISTORY_INFO_ACK (reply).
+
+    Handler 0x00518630 (assert: tStartTime >> m_nCurPage >> nMapID >> vecClearRankInfo >> jDungeonClearRankInfo).
+    """
+    OPCODE: ClassVar[int] = 2540
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    start_time: i64 = 0
+    cur_page: i32 = 0
+    map_id: i32 = 0
+    rank_infos: Vector[DungeonClearRankInfo] = field(default_factory=list)
+    my_rank_info: DungeonClearRankInfo = field(default_factory=DungeonClearRankInfo)
+
+
+@dataclass
+class ClearRankInfoReq(WireMessage):
+    """Opcode 5228: eERC_CLEAR_RANK_INFO_REQ (request).
+
+    Clear rank info request -> 5229.
+    """
+    OPCODE: ClassVar[int] = 5228
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    map_id: i32 = 0
+    page: i32 = 0
+
+
+@dataclass
+class ClearRankInfoAck(WireMessage):
+    """Opcode 5229: eERC_CLEAR_RANK_INFO_ACK (reply).
+
+    Handler 0x00518A20 (assert: m_nCurPage >> nMapID >> vecClearRankInfo >> jDungeonClearRankInfo).
+    """
+    OPCODE: ClassVar[int] = 5229
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cur_page: i32 = 0
+    map_id: i32 = 0
+    rank_infos: Vector[DungeonClearRankInfo] = field(default_factory=list)
+    my_rank_info: DungeonClearRankInfo = field(default_factory=DungeonClearRankInfo)

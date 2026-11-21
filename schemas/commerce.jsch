@@ -331,3 +331,59 @@ message 6010 TradeResultNot ok_only
   vector<Item> items
   i64 cur_ar
 end
+
+message 2386 RouletteRollDiceReq header?
+  ## Roll roulette dice request.
+  i32 count = 1
+end
+
+message 2387 RouletteRollDiceAck ok_only
+  ## Handler 0x0062C850 (struct reader 0x00A3EC60).
+  u32 result
+  i32 dice_value
+  i32 position
+  f32 rate
+  i64 reward_ar
+  i32 roulette_points
+  i64 param64
+  vector<?> _                # 0x00A3EA40
+  bool is_bonus
+  i64 timestamp
+end
+
+message 2388 RouletteNoticeReq header?
+  ## Roulette notice request.
+end
+
+message 2389 RoulettePointInsertNot
+  ## Handler 0x0063C390 (assert: jRouletteCharInfo, reader 0x00A48B60: 4 raw bytes).
+  i32 roulette_points
+end
+
+message 2463 DepotSlotExtendExpireNot
+  ## Handler 0x00646380 (assert: nCharUID >> sDepotIndex).
+  i64 char_uid
+  i16 depot_index
+end
+
+message 2530 StorageShareReq header?
+  ## Share storage request.
+  i64 item_uid
+end
+
+message 2531 StorageShareAck ok_only
+  ## Handler 0x0064EFB0 (assert: vecItem).
+  u32 result
+  vector<Item> items
+end
+
+message 2622 CashPaintExpireNot bare
+  ## Handler 0x005E4710 (empty body).
+end
+
+message 2623 CashPaintActiveNot
+  ## Handler 0x005DFE50 (assert: nExtendTime >> sAddDay >> nItemID).
+  i64 extend_time
+  i16 add_day
+  i32 item_id
+end

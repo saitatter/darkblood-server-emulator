@@ -546,3 +546,189 @@ message 5343 TreasureFindAck ok_only
   vector<Item> items
   bool success = true
 end
+
+message 2289 CronosRewardReq header?
+  ## Attendance (Cronos) reward request -> 2290.
+  i32 index
+  i32 reward_select
+end
+
+message 2290 CronosRewardAck ok_only
+  ## Handler 0x004E4A30 (assert: jInfo >> vecItem >> iIndex >> iRewardSelect).
+  u32 result
+  raw[28] info               # 0x00A48CD0
+  vector<Item> items
+  i32 index
+  i32 reward_select
+end
+
+message 2291 CronosCalendarNot
+  ## Handler 0x004D9ED0 (assert: m_jToday >> m_mapDailyInfo >> m_jDataLimit >> m_iCountFrom >> nGMTMinute).
+  raw[12] today              # 0x00AC82A0
+  map<?> _                   # m_mapDailyInfo (0x004D4710)
+  raw[12] data_limit         # 0x00AC82A0
+  i32 count_from
+  i32 gmt_minute
+end
+
+message 2292 CronosInfoReq header?
+  ## Attendance info request -> 2293.
+end
+
+message 2293 CronosInfoAck ok_only
+  ## Handler 0x004D7CE0 (assert: jInfo).
+  u32 result
+  raw[28] info               # 0x00A48CD0
+end
+
+message 2294 CronosDateReq header?
+  ## Attendance date request -> 2295.
+end
+
+message 2295 CronosDateAck ok_only
+  ## Handler 0x004D7F60 (assert: jDate).
+  u32 result
+  raw[12] date               # 0x00AC82A0
+end
+
+message 2296 CronosTodayTimeReq header?
+  ## Attendance today login time request -> 2297.
+end
+
+message 2297 CronosTodayTimeAck ok_only
+  ## Handler 0x004CBDE0 (assert: m_nTodayLoginSecond).
+  u32 result
+  i32 today_login_second
+end
+
+message 2298 CronosDailyUpdateNot
+  ## Handler 0x004D81E0 (assert: jInfo).
+  raw[28] info               # 0x00A48CD0
+end
+
+message 2299 CronosStampReq header?
+  ## Attendance stamp request -> 2300.
+end
+
+message 2300 CronosStampAck ok_only
+  ## Handler 0x004E3BA0 (assert: mapInfo >> vecItem >> nItemID).
+  u32 result
+  map<?> _                   # mapInfo (0x004D4710)
+  vector<Item> items
+  i32 item_id
+end
+
+struct ExploreInfo
+  ## Explore status record, reader 0x00A4AEF0 (2655).
+  i16 explore_time
+  u8 state
+  raw[12] complete_date
+  bool rewarded
+  i32 area_id
+end
+
+message 2651 ExploreStartReq header?
+  ## Start explore request -> 2652.
+  i64 char_uid
+  i16 explore_time
+end
+
+message 2652 ExploreStartAck ok_only
+  ## Handler 0x00540B00 (assert: nExploreCharUID >> tExploreCompleteDate >> sExploreTime >> vecItemOut >> sStress).
+  u32 result
+  i64 explore_char_uid
+  raw[12] complete_date
+  i16 explore_time
+  vector<Item> items
+  i16 stress
+end
+
+message 2653 ExploreCancelReq header?
+  ## Cancel explore request -> 2654.
+  i64 explore_char_uid
+end
+
+message 2654 ExploreCancelAck ok_only
+  ## Handler 0x00540F90 (assert: nExploreCharUID >> mapReward).
+  u32 result
+  i64 explore_char_uid
+  map<?> _                   # mapReward (0x00532F50)
+end
+
+message 2655 ExploreCompleteNot
+  ## Handler 0x0053C470 (assert: nCompleteCharUID >> jExplore >> mapReward).
+  i64 complete_char_uid
+  ExploreInfo explore = ExploreInfo()
+  map<?> _                   # mapReward (0x00532F50)
+end
+
+message 2656 ExploreGetRewardReq header?
+  ## Claim explore reward request -> 2657.
+  i64 reward_uid
+end
+
+message 2657 ExploreGetRewardAck ok_only
+  ## Handler 0x00541190 (assert: nRewardUID >> vecItemOut).
+  u32 result
+  i64 reward_uid
+  vector<Item> items
+end
+
+message 2662 ExploreCancelByUserUidReq header?
+  ## Cancel explore by user UID -> 2663.
+  i64 explore_char_uid
+end
+
+message 2663 ExploreCancelByUserUidAck ok_only
+  ## Handler 0x00541960 (assert: nExploreCharUID >> mapReward).
+  u32 result
+  i64 explore_char_uid
+  map<?> _                   # mapReward (0x00532F50)
+end
+
+struct DungeonClearRankInfo
+  ## Dungeon clear rank record, reader 0x00A51AC0 (2540 / 5229).
+  i64 rank_uid
+  i32 map_id
+  i32 clear_time
+  i32 rank
+  i32 score
+  i64 leader_uid
+  i32 party_count
+  wstr comment
+  i32 param
+  map<?> _                   # 0x00A51060
+  vector<?> _                # 0x00A3EA40
+  raw[12] clear_date
+end
+
+message 2539 ClearRankHistoryInfoReq header?
+  ## Clear rank history request -> 2540.
+  i32 map_id
+  i32 page
+end
+
+message 2540 ClearRankHistoryInfoAck ok_only
+  ## Handler 0x00518630 (assert: tStartTime >> m_nCurPage >> nMapID >> vecClearRankInfo >> jDungeonClearRankInfo).
+  u32 result
+  i64 start_time
+  i32 cur_page
+  i32 map_id
+  vector<DungeonClearRankInfo> rank_infos
+  DungeonClearRankInfo my_rank_info = DungeonClearRankInfo()
+end
+
+message 5228 ClearRankInfoReq header?
+  ## Clear rank info request -> 5229.
+  i32 map_id
+  i32 page
+end
+
+message 5229 ClearRankInfoAck ok_only
+  ## Handler 0x00518A20 (assert: m_nCurPage >> nMapID >> vecClearRankInfo >> jDungeonClearRankInfo).
+  u32 result
+  i32 cur_page
+  i32 map_id
+  vector<DungeonClearRankInfo> rank_infos
+  DungeonClearRankInfo my_rank_info = DungeonClearRankInfo()
+end

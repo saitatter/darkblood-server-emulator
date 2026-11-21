@@ -353,6 +353,133 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_monster_card_roulette_cronos_explore_clear_rank(self):
+        """Test MonsterCard, Roulette, StorageShare, Cronos, Explore, and ClearRank opcodes."""
+        from darkblood.games.network.messages.pets import (
+            MonsterCardExtendSlotAck, MonsterCardExtendSlotReq,
+            MonsterCardGetRewardLottoReq, MonsterCardGetRewardPointArrivalReq,
+            MonsterCardInsertAck, MonsterCardInsertReq,
+            MonsterCardLottoRegAck, MonsterCardLottoRegReq,
+            MonsterCardMergeAck, MonsterCardMergeReq,
+            MonsterCardReleaseAllCharAck, MonsterCardReleaseAllCharReq,
+            MonsterCardSetCharDeckAck, MonsterCardSetCharDeckReq,
+        )
+        from darkblood.games.network.messages.commerce import (
+            RouletteNoticeReq, RoulettePointInsertNot, RouletteRollDiceAck, RouletteRollDiceReq,
+            StorageShareReq,
+        )
+        from darkblood.games.network.messages.dungeon import (
+            ClearRankHistoryInfoAck, ClearRankHistoryInfoReq,
+            ClearRankInfoAck, ClearRankInfoReq,
+            CronosDateAck, CronosDateReq, CronosInfoAck, CronosInfoReq,
+            CronosRewardReq, CronosStampReq, CronosTodayTimeAck, CronosTodayTimeReq,
+            ExploreCancelAck, ExploreCancelByUserUidAck, ExploreCancelByUserUidReq,
+            ExploreCancelReq, ExploreGetRewardReq, ExploreStartReq,
+        )
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('CardMaster', char_class=1))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            # Monster Card
+            client.send_event(2604, MonsterCardInsertReq(item_uid=10).encode())
+            _, r = await client.expect_event(2605)
+            self.assertEqual(MonsterCardInsertAck.decode(r).result, 0)
+
+            client.send_event(2606, MonsterCardMergeReq(card_uids=[1, 2]).encode())
+            _, r = await client.expect_event(2607)
+            self.assertEqual(MonsterCardMergeAck.decode(r).result, 0)
+
+            client.send_event(2610, MonsterCardSetCharDeckReq(deck_uids=[1, 2, 3]).encode())
+            _, r = await client.expect_event(2611)
+            self.assertEqual(MonsterCardSetCharDeckAck.decode(r).deck_uids, [1, 2, 3])
+
+            client.send_event(2613, MonsterCardReleaseAllCharReq(card_uid=1).encode())
+            _, r = await client.expect_event(2614)
+            self.assertEqual(MonsterCardReleaseAllCharAck.decode(r).result, 0)
+
+            client.send_event(2615, MonsterCardExtendSlotReq(count=1).encode())
+            _, r = await client.expect_event(2616)
+            self.assertEqual(MonsterCardExtendSlotAck.decode(r).max_inven_cnt, 60)
+
+            client.send_event(2633, MonsterCardLottoRegReq(numbers=[1, 2, 3]).encode())
+            _, r = await client.expect_event(2634)
+            self.assertEqual(MonsterCardLottoRegAck.decode(r).result, 0)
+
+            client.send_event(2636, MonsterCardGetRewardLottoReq(lotto_reg_uid=1).encode())
+            _, r = await client.expect_event(2637)
+            self.assertEqual(struct.unpack_from('<Iq', r), (0, 1))
+
+            client.send_event(2638, MonsterCardGetRewardPointArrivalReq(choice_point=100).encode())
+            _, r = await client.expect_event(2639)
+            self.assertEqual(struct.unpack_from('<Ii', r), (0, 100))
+
+            # Roulette & StorageShare
+            client.send_event(2386, RouletteRollDiceReq(count=1).encode())
+            _, r = await client.expect_event(2387)
+            self.assertEqual(RouletteRollDiceAck.decode(r).result, 0)
+
+            client.send_event(2388, RouletteNoticeReq().encode())
+            _, r = await client.expect_event(2389)
+            self.assertEqual(RoulettePointInsertNot.decode(r).roulette_points, 0)
+
+            client.send_event(2530, StorageShareReq(item_uid=5).encode())
+            _, r = await client.expect_event(2531)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+            # Cronos (Attendance)
+            client.send_event(2289, CronosRewardReq(index=1, reward_select=0).encode())
+            _, r = await client.expect_event(2290)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+            client.send_event(2292, CronosInfoReq().encode())
+            _, r = await client.expect_event(2293)
+            self.assertEqual(CronosInfoAck.decode(r).result, 0)
+
+            client.send_event(2294, CronosDateReq().encode())
+            _, r = await client.expect_event(2295)
+            self.assertEqual(CronosDateAck.decode(r).result, 0)
+
+            client.send_event(2296, CronosTodayTimeReq().encode())
+            _, r = await client.expect_event(2297)
+            self.assertEqual(CronosTodayTimeAck.decode(r).today_login_second, 60)
+
+            client.send_event(2299, CronosStampReq().encode())
+            _, r = await client.expect_event(2300)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+            # Explore
+            client.send_event(2651, ExploreStartReq(char_uid=char_id, explore_time=60).encode())
+            _, r = await client.expect_event(2652)
+            self.assertEqual(struct.unpack_from('<Iq', r), (0, char_id))
+
+            client.send_event(2653, ExploreCancelReq(explore_char_uid=char_id).encode())
+            _, r = await client.expect_event(2654)
+            self.assertEqual(ExploreCancelAck.decode(r).explore_char_uid, char_id)
+
+            client.send_event(2656, ExploreGetRewardReq(reward_uid=9).encode())
+            _, r = await client.expect_event(2657)
+            self.assertEqual(struct.unpack_from('<Iq', r), (0, 9))
+
+            client.send_event(2662, ExploreCancelByUserUidReq(explore_char_uid=char_id).encode())
+            _, r = await client.expect_event(2663)
+            self.assertEqual(ExploreCancelByUserUidAck.decode(r).explore_char_uid, char_id)
+
+            # Clear Rank
+            client.send_event(2539, ClearRankHistoryInfoReq(map_id=100, page=1).encode())
+            _, r = await client.expect_event(2540)
+            self.assertEqual(ClearRankHistoryInfoAck.decode(r).map_id, 100)
+
+            client.send_event(5228, ClearRankInfoReq(map_id=100, page=1).encode())
+            _, r = await client.expect_event(5229)
+            self.assertEqual(ClearRankInfoAck.decode(r).map_id, 100)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

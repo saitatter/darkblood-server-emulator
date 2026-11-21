@@ -707,3 +707,38 @@ class CommerceHandlers(BaseDomainService):
         self.transport.record('steam-buy-package-req', body, package_id=req.package_id)
         await self.reply(SteamBuyPackageAck(result=0), correlation,
                          note=f'steam buy package ack (pkg={req.package_id})')
+
+    @packet_handler(2386)
+    async def handle_roulette_roll_dice(self, correlation, body):
+        # eEGS_ROULETTE_ROLL_DICE_REQ -> 2387 eEGS_ROULETTE_ROLL_DICE_ACK (0x0062C850).
+        import random
+        import time
+        from darkblood.games.network.messages.commerce import RouletteRollDiceAck, RouletteRollDiceReq
+        req = RouletteRollDiceReq.decode(body)
+        dice = random.randint(1, 6)
+        char = self.current_char()
+        pos = (int((char or {}).get('roulette_pos', 0)) + dice) % 24
+        if char is not None:
+            char['roulette_pos'] = pos
+            self.save_char()
+        await self.reply(
+            RouletteRollDiceAck(result=0, dice_value=dice, position=pos, rate=1.0,
+                                reward_ar=0, roulette_points=0, timestamp=int(time.time())),
+            correlation, note=f'roulette roll dice ack (dice={dice} pos={pos})',
+        )
+
+    @packet_handler(2388)
+    async def handle_roulette_notice(self, correlation, body):
+        # eEGS_ROULETTE_NOTICE_REQ -> 2389 eEGS_ROULETTE_POINT_INSERT_NOT (0x0063C390).
+        from darkblood.games.network.messages.commerce import RoulettePointInsertNot
+        char = self.current_char()
+        pts = int((char or {}).get('roulette_points', 0))
+        await self.send_msg(RoulettePointInsertNot(roulette_points=pts), note=f'roulette point not (pts={pts})')
+
+    @packet_handler(2530)
+    async def handle_storage_share(self, correlation, body):
+        # eEGS_STORAGE_SHARE_REQ -> 2531 eEGS_STORAGE_SHARE_ACK (0x0064EFB0).
+        from darkblood.games.network.messages.commerce import StorageShareAck, StorageShareReq
+        req = StorageShareReq.decode(body)
+        await self.reply(StorageShareAck(result=0, items=[]), correlation,
+                         note=f'storage share ack (item={req.item_uid})')

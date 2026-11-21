@@ -1,5 +1,12 @@
 # Session handoff — 2026-11-21
 
+## Monster Card, Roulette, Cronos, Explore & Clear Rank sweep — saita machine, 2026-11-21
+
+- **Monster Card (`schemas/pets.jsch`, `src/darkblood/games/handlers/pets.py`)**: recovered all 23 Monster Card & Card Lotto opcodes from `JAppPageMonsterCard` (`0x0060B500`), including `MonsterCardInfo` (`0x00A52DB0`) and `MonsterCardLottoEntry` (`0x00A51C20`), and wired `2604`, `2606`, `2610`, `2613`, `2615`, `2633`, `2636`, `2638`. Pets reached **72/74 (97%)**.
+- **Commerce (`schemas/commerce.jsch`, `src/darkblood/games/handlers/commerce.py`)**: recovered and wired Roulette (`2386-2389`, `0x0063FB10`), Storage Share (`2530/2531`, `0x00655350`), `2463 DepotSlotExtendExpireNot`, and Cash Paint (`2622/2623`, `0x005E6BA0`). Commerce reached **56/59 (95%)**.
+- **Dungeon (`schemas/dungeon.jsch`, `src/darkblood/games/handlers/dungeon.py`)**: recovered and wired Cronos attendance (`2289-2300`, `0x004EE850`), Explore (`2651-2657`, `2662/2663`, `0x00546490`), and Clear Rank (`2539/2540`, `5228/5229`, `0x0051B740`, `DungeonClearRankInfo` `0x00A51AC0`).
+- **Verification**: 195/195 headless tests pass (`test_monster_card_roulette_cronos_explore_clear_rank`), `gen_messages.py --check` and `gen_progress.py --check` pass.
+
 ## Lobby, Dungeon & Arena live opcode sweep — saita machine, 2026-11-21
 
 - **Lobby (`schemas/lobby.jsch`, `src/darkblood/games/handlers/frontend.py`)**: recovered and implemented `2323/2324 CharNickChangeByIntegrate`, `2404/2405 EventDeleteCharacter`, `2441/2442 CharSlotExtend`, `5128 ImpliedJoinLayerReq` (delegates to `handle_join_layer`), plus schema definitions for `5033 LeaveSquareAck`, `5038 LeaveLayerAck`, `5039 LeaveLayerNot`.

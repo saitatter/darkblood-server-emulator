@@ -59,6 +59,15 @@ __all__ = [
     'SteamBuyPackageAck',
     'CancelAcceptTradeNot',
     'TradeResultNot',
+    'RouletteRollDiceReq',
+    'RouletteRollDiceAck',
+    'RouletteNoticeReq',
+    'RoulettePointInsertNot',
+    'DepotSlotExtendExpireNot',
+    'StorageShareReq',
+    'StorageShareAck',
+    'CashPaintExpireNot',
+    'CashPaintActiveNot',
 ]
 
 
@@ -703,3 +712,123 @@ class TradeResultNot(WireMessage):
     result: i32 = 0
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
     cur_ar: i64 = 0
+
+
+@dataclass
+class RouletteRollDiceReq(WireMessage):
+    """Opcode 2386: eEGS_ROULETTE_ROLL_DICE_REQ (request).
+
+    Roll roulette dice request.
+    """
+    OPCODE: ClassVar[int] = 2386
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    count: i32 = 1
+
+
+@dataclass
+class RouletteRollDiceAck(WireMessage):
+    """Opcode 2387: eEGS_ROULETTE_ROLL_DICE_ACK (reply).
+
+    Handler 0x0062C850 (struct reader 0x00A3EC60).
+    """
+    OPCODE: ClassVar[int] = 2387
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    dice_value: i32 = 0
+    position: i32 = 0
+    rate: f32 = 0.0
+    reward_ar: i64 = 0
+    roulette_points: i32 = 0
+    param64: i64 = 0
+    is_bonus: bool = False
+    timestamp: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'dice_value',
+        'position',
+        'rate',
+        'reward_ar',
+        'roulette_points',
+        'param64',
+        Const(EmptyVector),
+        'is_bonus',
+        'timestamp',
+    )
+
+
+@dataclass
+class RouletteNoticeReq(WireMessage):
+    """Opcode 2388: eEGS_ROULETTE_NOTICE_REQ (request).
+
+    Roulette notice request.
+    """
+    OPCODE: ClassVar[int] = 2388
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class RoulettePointInsertNot(WireMessage):
+    """Opcode 2389: eEGS_ROULETTE_POINT_INSERT_NOT (reply).
+
+    Handler 0x0063C390 (assert: jRouletteCharInfo, reader 0x00A48B60: 4 raw bytes).
+    """
+    OPCODE: ClassVar[int] = 2389
+    roulette_points: i32 = 0
+
+
+@dataclass
+class DepotSlotExtendExpireNot(WireMessage):
+    """Opcode 2463: eEGS_DEPOT_SLOT_EXTEND_EXPIRE_NOT (reply).
+
+    Handler 0x00646380 (assert: nCharUID >> sDepotIndex).
+    """
+    OPCODE: ClassVar[int] = 2463
+    char_uid: i64 = 0
+    depot_index: i16 = 0
+
+
+@dataclass
+class StorageShareReq(WireMessage):
+    """Opcode 2530: eEGS_STORAGE_SHARE_REQ (request).
+
+    Share storage request.
+    """
+    OPCODE: ClassVar[int] = 2530
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+
+
+@dataclass
+class StorageShareAck(WireMessage):
+    """Opcode 2531: eEGS_STORAGE_SHARE_ACK (reply).
+
+    Handler 0x0064EFB0 (assert: vecItem).
+    """
+    OPCODE: ClassVar[int] = 2531
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class CashPaintExpireNot(WireMessage):
+    """Opcode 2622: eEGS_CASH_PAINT_EXPIRE_NOT (reply).
+
+    Handler 0x005E4710 (empty body).
+    """
+    OPCODE: ClassVar[int] = 2622
+
+
+@dataclass
+class CashPaintActiveNot(WireMessage):
+    """Opcode 2623: eEGS_CASH_PAINT_ACTIVE_NOT (reply).
+
+    Handler 0x005DFE50 (assert: nExtendTime >> sAddDay >> nItemID).
+    """
+    OPCODE: ClassVar[int] = 2623
+    extend_time: i64 = 0
+    add_day: i16 = 0
+    item_id: i32 = 0

@@ -294,3 +294,165 @@ message 5324 PetChangeExpNot
   i32 gain_7
   wstr text
 end
+
+struct MonsterCardInfo
+  ## Monster card record, reader 0x00A52DB0 (2614).
+  i64 card_uid
+  i32 card_id
+  i16 level = 1
+  i64 owner_uid
+  raw[12] expire_time
+  vector<?> _                # 0x004B0BB0 card options
+end
+
+struct MonsterCardLottoEntry
+  ## Monster card lotto entry, reader 0x00A51C20 (2634).
+  i64 reg_uid
+  i64 char_uid
+  i32 lotto_key
+  vector<i32> numbers        # 0x004D9610
+  bool rewarded
+end
+
+message 2603 MonsterCardChangeListNot
+  ## Handler 0x00607BB0 (assert: vecNewCard >> vecDelCard >> bFromRandomCard).
+  vector<MonsterCardInfo> new_cards
+  vector<i64> del_cards
+  bool from_random_card
+end
+
+message 2604 MonsterCardInsertReq header?
+  ## Insert monster card request.
+  i64 item_uid
+end
+
+message 2605 MonsterCardInsertAck
+  ## Reply to 2604.
+  u32 result
+end
+
+message 2606 MonsterCardMergeReq header?
+  ## Merge monster cards request.
+  vector<i64> card_uids
+end
+
+message 2607 MonsterCardMergeAck ok_only
+  ## Handler 0x00603610 (assert: vecNewCard >> vecDelCard >> nCurAr).
+  u32 result
+  vector<MonsterCardInfo> new_cards
+  vector<i64> del_cards
+  i64 cur_ar
+end
+
+message 2610 MonsterCardSetCharDeckReq header?
+  ## Equip monster card deck request.
+  vector<i64> deck_uids
+end
+
+message 2611 MonsterCardSetCharDeckAck ok_only
+  ## Handler 0x00604100.
+  u32 result
+  vector<i64> deck_uids
+  vector<MonsterCardInfo> updated_cards
+end
+
+message 2613 MonsterCardReleaseAllCharReq header?
+  ## Release all equipped monster cards request.
+  i64 card_uid
+end
+
+message 2614 MonsterCardReleaseAllCharAck ok_only
+  ## Handler 0x006043F0 (assert: vecDeck >> jCard).
+  u32 result
+  vector<i64> deck_uids
+  MonsterCardInfo card = MonsterCardInfo()
+end
+
+message 2615 MonsterCardExtendSlotReq header?
+  ## Extend monster card inventory slot request.
+  i16 count = 1
+end
+
+message 2616 MonsterCardExtendSlotAck ok_only
+  ## Handler 0x00604990 (assert: m_sMaxInvenCnt >> nCurAr).
+  u32 result
+  i16 max_inven_cnt = 50
+  i64 cur_ar
+end
+
+message 2619 MonsterCardInsertAlbumNot
+  ## Handler 0x00604850 (assert: nAlbumCardID).
+  i32 album_card_id
+end
+
+message 2632 MonsterCardChangeEventCardListNot
+  ## Handler 0x00604CA0 (assert: mapNewEventCard >> m_nEventPoint).
+  map<i32,i32> new_event_cards
+  i32 event_point
+end
+
+message 2633 MonsterCardLottoRegReq header?
+  ## Register monster card lotto numbers.
+  vector<i32> numbers
+end
+
+message 2634 MonsterCardLottoRegAck ok_only
+  ## Handler 0x00604E90 (assert: jLottoEntry >> mapEventCardOut >> nCurAr).
+  u32 result
+  MonsterCardLottoEntry entry = MonsterCardLottoEntry()
+  map<i32,i32> event_cards_out
+  i64 cur_ar
+end
+
+message 2635 MonsterCardLottoNumberNot
+  ## Monster card lotto number notice.
+  i32 lotto_key
+  vector<i32> win_numbers
+end
+
+message 2636 MonsterCardGetRewardLottoReq header?
+  ## Claim monster card lotto reward.
+  i64 lotto_reg_uid
+end
+
+message 2637 MonsterCardGetRewardLottoAck ok_only
+  ## Handler 0x006052C0 (assert: nLottoRegUID >> nRank >> vecItemOut).
+  u32 result
+  i64 lotto_reg_uid
+  i32 rank
+  vector<Item> items
+end
+
+message 2638 MonsterCardGetRewardPointArrivalReq header?
+  ## Claim monster card event point reward.
+  i32 choice_point
+end
+
+message 2639 MonsterCardGetRewardPointArrivalAck ok_only
+  ## Handler 0x005FB240 (assert: nChoicePoint >> vecOut).
+  u32 result
+  i32 choice_point
+  vector<Item> items
+end
+
+message 2643 MonsterCardLottoInfoNot
+  ## Handler 0x005F9310 (assert: m_nCurLottoKey >> m_tEventStartDate >> m_tEventEndDate >> m_tLottoStartDate >> m_mapWinCardDeck >> m_mapWinCnt).
+  i32 cur_lotto_key
+  raw[12] event_start_date
+  raw[12] event_end_date
+  raw[12] lotto_start_date
+  map<?> _                   # m_mapWinCardDeck (0x005F6640)
+  map<?> _                   # m_mapWinCnt (0x005F6730)
+end
+
+message 2644 MonsterCardLottoNotifyNot
+  ## Monster card lotto notification.
+  i32 lotto_key
+end
+
+message 2645 MonsterCardLottoInfoUpdateNot
+  ## Handler 0x006059C0 (assert: nNewLottoEntryTime >> setWinNum >> vecWinCount).
+  i32 new_lotto_entry_time
+  set<i32> win_nums
+  vector<i32> win_counts
+end

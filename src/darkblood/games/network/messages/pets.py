@@ -56,6 +56,31 @@ __all__ = [
     'RidingExpireUpdateAck',
     'PetLevelUpNot',
     'PetChangeExpNot',
+    'MonsterCardInfo',
+    'MonsterCardLottoEntry',
+    'MonsterCardChangeListNot',
+    'MonsterCardInsertReq',
+    'MonsterCardInsertAck',
+    'MonsterCardMergeReq',
+    'MonsterCardMergeAck',
+    'MonsterCardSetCharDeckReq',
+    'MonsterCardSetCharDeckAck',
+    'MonsterCardReleaseAllCharReq',
+    'MonsterCardReleaseAllCharAck',
+    'MonsterCardExtendSlotReq',
+    'MonsterCardExtendSlotAck',
+    'MonsterCardInsertAlbumNot',
+    'MonsterCardChangeEventCardListNot',
+    'MonsterCardLottoRegReq',
+    'MonsterCardLottoRegAck',
+    'MonsterCardLottoNumberNot',
+    'MonsterCardGetRewardLottoReq',
+    'MonsterCardGetRewardLottoAck',
+    'MonsterCardGetRewardPointArrivalReq',
+    'MonsterCardGetRewardPointArrivalAck',
+    'MonsterCardLottoInfoNot',
+    'MonsterCardLottoNotifyNot',
+    'MonsterCardLottoInfoUpdateNot',
 ]
 
 
@@ -672,3 +697,318 @@ class PetChangeExpNot(WireMessage):
     gain_6: i32 = 0
     gain_7: i32 = 0
     text: wstr = ''
+
+
+@dataclass
+class MonsterCardInfo(WireMessage):
+    """Monster card record, reader 0x00A52DB0 (2614)."""
+    card_uid: i64 = 0
+    card_id: i32 = 0
+    level: i16 = 1
+    owner_uid: i64 = 0
+    expire_time: Raw[12] = bytes(12)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'card_uid',
+        'card_id',
+        'level',
+        'owner_uid',
+        'expire_time',
+        Const(EmptyVector),
+    )
+
+
+@dataclass
+class MonsterCardLottoEntry(WireMessage):
+    """Monster card lotto entry, reader 0x00A51C20 (2634)."""
+    reg_uid: i64 = 0
+    char_uid: i64 = 0
+    lotto_key: i32 = 0
+    numbers: Vector[i32] = field(default_factory=list)  # 0x004D9610
+    rewarded: bool = False
+
+
+@dataclass
+class MonsterCardChangeListNot(WireMessage):
+    """Opcode 2603: eEGS_MONSTERCARD_CHANGE_LIST_NOT (reply).
+
+    Handler 0x00607BB0 (assert: vecNewCard >> vecDelCard >> bFromRandomCard).
+    """
+    OPCODE: ClassVar[int] = 2603
+    new_cards: Vector[MonsterCardInfo] = field(default_factory=list)
+    del_cards: Vector[i64] = field(default_factory=list)
+    from_random_card: bool = False
+
+
+@dataclass
+class MonsterCardInsertReq(WireMessage):
+    """Opcode 2604: eEGS_MONSTERCARD_INSERT_REQ (request).
+
+    Insert monster card request.
+    """
+    OPCODE: ClassVar[int] = 2604
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+
+
+@dataclass
+class MonsterCardInsertAck(WireMessage):
+    """Opcode 2605: eEGS_MONSTERCARD_INSERT_ACK (reply).
+
+    Reply to 2604.
+    """
+    OPCODE: ClassVar[int] = 2605
+    result: u32 = 0
+
+
+@dataclass
+class MonsterCardMergeReq(WireMessage):
+    """Opcode 2606: eEGS_MONSTERCARD_MERGE_REQ (request).
+
+    Merge monster cards request.
+    """
+    OPCODE: ClassVar[int] = 2606
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    card_uids: Vector[i64] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardMergeAck(WireMessage):
+    """Opcode 2607: eEGS_MONSTERCARD_MERGE_ACK (reply).
+
+    Handler 0x00603610 (assert: vecNewCard >> vecDelCard >> nCurAr).
+    """
+    OPCODE: ClassVar[int] = 2607
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    new_cards: Vector[MonsterCardInfo] = field(default_factory=list)
+    del_cards: Vector[i64] = field(default_factory=list)
+    cur_ar: i64 = 0
+
+
+@dataclass
+class MonsterCardSetCharDeckReq(WireMessage):
+    """Opcode 2610: eEGS_MONSTERCARD_SET_CHAR_DECK_REQ (request).
+
+    Equip monster card deck request.
+    """
+    OPCODE: ClassVar[int] = 2610
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    deck_uids: Vector[i64] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardSetCharDeckAck(WireMessage):
+    """Opcode 2611: eEGS_MONSTERCARD_SET_CHAR_DECK_ACK (reply).
+
+    Handler 0x00604100.
+    """
+    OPCODE: ClassVar[int] = 2611
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    deck_uids: Vector[i64] = field(default_factory=list)
+    updated_cards: Vector[MonsterCardInfo] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardReleaseAllCharReq(WireMessage):
+    """Opcode 2613: eEGS_MONSTERCARD_RELEASE_ALL_CHAR_REQ (request).
+
+    Release all equipped monster cards request.
+    """
+    OPCODE: ClassVar[int] = 2613
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    card_uid: i64 = 0
+
+
+@dataclass
+class MonsterCardReleaseAllCharAck(WireMessage):
+    """Opcode 2614: eEGS_MONSTERCARD_RELEASE_ALL_CHAR_ACK (reply).
+
+    Handler 0x006043F0 (assert: vecDeck >> jCard).
+    """
+    OPCODE: ClassVar[int] = 2614
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    deck_uids: Vector[i64] = field(default_factory=list)
+    card: MonsterCardInfo = field(default_factory=MonsterCardInfo)
+
+
+@dataclass
+class MonsterCardExtendSlotReq(WireMessage):
+    """Opcode 2615: eEGS_MONSTERCARD_EXTEND_SLOT_REQ (request).
+
+    Extend monster card inventory slot request.
+    """
+    OPCODE: ClassVar[int] = 2615
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    count: i16 = 1
+
+
+@dataclass
+class MonsterCardExtendSlotAck(WireMessage):
+    """Opcode 2616: eEGS_MONSTERCARD_EXTEND_SLOT_ACK (reply).
+
+    Handler 0x00604990 (assert: m_sMaxInvenCnt >> nCurAr).
+    """
+    OPCODE: ClassVar[int] = 2616
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    max_inven_cnt: i16 = 50
+    cur_ar: i64 = 0
+
+
+@dataclass
+class MonsterCardInsertAlbumNot(WireMessage):
+    """Opcode 2619: eEGS_MONSTERCARD_INSERT_ALBUM_NOT (reply).
+
+    Handler 0x00604850 (assert: nAlbumCardID).
+    """
+    OPCODE: ClassVar[int] = 2619
+    album_card_id: i32 = 0
+
+
+@dataclass
+class MonsterCardChangeEventCardListNot(WireMessage):
+    """Opcode 2632: eEGS_MONSTERCARD_CHANGE_EVENTCARD_LIST_NOT (reply).
+
+    Handler 0x00604CA0 (assert: mapNewEventCard >> m_nEventPoint).
+    """
+    OPCODE: ClassVar[int] = 2632
+    new_event_cards: Map[i32, i32] = field(default_factory=dict)
+    event_point: i32 = 0
+
+
+@dataclass
+class MonsterCardLottoRegReq(WireMessage):
+    """Opcode 2633: eEGS_MONSTERCARD_LOTTO_REG_REQ (request).
+
+    Register monster card lotto numbers.
+    """
+    OPCODE: ClassVar[int] = 2633
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    numbers: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardLottoRegAck(WireMessage):
+    """Opcode 2634: eEGS_MONSTERCARD_LOTTO_REG_ACK (reply).
+
+    Handler 0x00604E90 (assert: jLottoEntry >> mapEventCardOut >> nCurAr).
+    """
+    OPCODE: ClassVar[int] = 2634
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    entry: MonsterCardLottoEntry = field(default_factory=MonsterCardLottoEntry)
+    event_cards_out: Map[i32, i32] = field(default_factory=dict)
+    cur_ar: i64 = 0
+
+
+@dataclass
+class MonsterCardLottoNumberNot(WireMessage):
+    """Opcode 2635: eEGS_MONSTERCARD_LOTTO_NUMBER_NOT (reply).
+
+    Monster card lotto number notice.
+    """
+    OPCODE: ClassVar[int] = 2635
+    lotto_key: i32 = 0
+    win_numbers: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardGetRewardLottoReq(WireMessage):
+    """Opcode 2636: eEGS_MONSTERCARD_GET_REWARD_LOTTO_REQ (request).
+
+    Claim monster card lotto reward.
+    """
+    OPCODE: ClassVar[int] = 2636
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    lotto_reg_uid: i64 = 0
+
+
+@dataclass
+class MonsterCardGetRewardLottoAck(WireMessage):
+    """Opcode 2637: eEGS_MONSTERCARD_GET_REWARD_LOTTO_ACK (reply).
+
+    Handler 0x006052C0 (assert: nLottoRegUID >> nRank >> vecItemOut).
+    """
+    OPCODE: ClassVar[int] = 2637
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    lotto_reg_uid: i64 = 0
+    rank: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardGetRewardPointArrivalReq(WireMessage):
+    """Opcode 2638: eEGS_MONSTERCARD_GET_REWARD_POINT_ARRIVAL_REQ (request).
+
+    Claim monster card event point reward.
+    """
+    OPCODE: ClassVar[int] = 2638
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    choice_point: i32 = 0
+
+
+@dataclass
+class MonsterCardGetRewardPointArrivalAck(WireMessage):
+    """Opcode 2639: eEGS_MONSTERCARD_GET_REWARD_POINT_ARRIVAL_ACK (reply).
+
+    Handler 0x005FB240 (assert: nChoicePoint >> vecOut).
+    """
+    OPCODE: ClassVar[int] = 2639
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    choice_point: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class MonsterCardLottoInfoNot(WireMessage):
+    """Opcode 2643: eEGS_MONSTERCARD_LOTTO_INFO_NOT (reply).
+
+    Handler 0x005F9310 (assert: m_nCurLottoKey >> m_tEventStartDate >> m_tEventEndDate >> m_tLottoStartDate >> m_mapWinCardDeck >> m_mapWinCnt).
+    """
+    OPCODE: ClassVar[int] = 2643
+    cur_lotto_key: i32 = 0
+    event_start_date: Raw[12] = bytes(12)
+    event_end_date: Raw[12] = bytes(12)
+    lotto_start_date: Raw[12] = bytes(12)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'cur_lotto_key',
+        'event_start_date',
+        'event_end_date',
+        'lotto_start_date',
+        Const(EmptyMap),
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class MonsterCardLottoNotifyNot(WireMessage):
+    """Opcode 2644: eEGS_MONSTERCARD_LOTTO_NOTIFY_NOT (reply).
+
+    Monster card lotto notification.
+    """
+    OPCODE: ClassVar[int] = 2644
+    lotto_key: i32 = 0
+
+
+@dataclass
+class MonsterCardLottoInfoUpdateNot(WireMessage):
+    """Opcode 2645: eEGS_MONSTERCARD_LOTTO_INFO_UPDATE_NOT (reply).
+
+    Handler 0x006059C0 (assert: nNewLottoEntryTime >> setWinNum >> vecWinCount).
+    """
+    OPCODE: ClassVar[int] = 2645
+    new_lotto_entry_time: i32 = 0
+    win_nums: Set[i32] = field(default_factory=list)
+    win_counts: Vector[i32] = field(default_factory=list)
