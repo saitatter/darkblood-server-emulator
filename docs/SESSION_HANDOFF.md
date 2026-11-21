@@ -15,6 +15,7 @@
 - **Custom launcher (`tools/launcher.py`, `Launch_DarkBlood.bat`, `src/darkblood/core/options.py`)**:
   - Configures server IP/host, game port, relay port (`[network]`), account and client count (`[launcher]`), and toggles all client/server patches grouped by Improvements, Hacks, Server Behaviour, and Diagnostics (showing each patch's source file).
   - Includes TCP connection probe, local server start/stop button, one-click hook DLL rebuild & deploy, and direct 1–4 client launch (with multibox mutex release).
+  - Bifrost-inspired dark UI with two tabs (`NEWS & SERVER` and `PATCHES & HACKS`), scrollable repository commit news feed (local `git log` with GitHub API fallback and clickable commit links), always-visible bottom `PLAY` bar, and runtime extraction of the `DarkBlood.exe` client icon (`RT_GROUP_ICON`) for both the window taskbar and header banner.
   - `tools/patcher.py` now delegates to `tools/launcher.py`. `steam_api_hook.c` also reads `[launcher] account` when `DARKBLOOD_ACCOUNT` is unset.
   - 185 headless tests pass (`tests/test_options.py` expanded for network/launcher round-trip, validation, and patch metadata).
 
