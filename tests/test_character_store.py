@@ -46,6 +46,7 @@ class SqliteCharacterStoreTest(unittest.TestCase):
         self.store = SqliteCharacterStore(db_path=self.db_path)
 
     def tearDown(self):
+        self.store.close()
         self.tmp.cleanup()
 
     def test_sqlite_create_and_get_character(self):

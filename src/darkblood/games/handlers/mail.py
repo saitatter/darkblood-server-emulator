@@ -114,7 +114,7 @@ class MailHandlers(BaseDomainService):
             await self.transport.send_event(event(2222, ack, correlation), note='post send ack (default/empty)')
             return
 
-        recipient_char = next((c for _, c in self.store().all_characters() if c.get('name', '').lower() == req.recipient.lower()), None)
+        _, recipient_char = self.store().get_by_name(req.recipient)
         if not recipient_char:
             # 0xCE = player not found / offline
             ack = PostSendAck(result=0xCE, remain_gold=current_gold).encode()
@@ -141,7 +141,7 @@ class MailHandlers(BaseDomainService):
                     attached_items.append(dict(item_record))
 
         if char:
-            self.store().save()
+            self.save_char()
 
         # Insert mail
         self.store().send_mail(
@@ -225,7 +225,7 @@ class MailHandlers(BaseDomainService):
                     durability=it.get('durability')
                 ))
 
-        self.store().save()
+        self.save_char()
         ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=claimed_gold, items=new_items).encode()
         await self.transport.send_event(
             event(2226, ack, correlation),

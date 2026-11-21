@@ -9,7 +9,9 @@ Application messages from the client arrive AES-wrapped as type 0x26.
 import asyncio
 import json
 import logging
+import queue
 import struct
+import threading
 import time
 import uuid
 from itertools import count
@@ -21,6 +23,7 @@ from darkblood.core.network.proudnet import (
 )
 from darkblood.frontend.relay import RELAY_RMI, RELIABLE_RELAY1, UNRELIABLE_RELAY1, RelayGroups
 from darkblood.games.session import GameSession
+from darkblood.games.world import GameWorldManager
 
 
 ROOT = REPO_ROOT
@@ -202,25 +205,71 @@ class BootstrapServer:
         # 'relay': square relay endpoint announced by 5134; reached through
         # JP2PClient::Connect (0x956C80).
         self.role = role
-        self.relay_groups = RelayGroups() if role == 'relay' else None
+        self.relay_groups = (
+            RelayGroups(square_resolver=self._resolve_player_square)
+            if role == 'relay' else None
+        )
         self.dungeon_rooms = {}
         self.room_ids = count(1)
         self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
         self._log_stream = None
+        self._log_queue = None
+        self._log_thread = None
+        self.record_drops = 0
         self.guid = uuid.UUID('a1d7e8c2-5a20-44af-94e1-52424c4f4f44').bytes_le
         key_file = str(key_path) if key_path else str(ROOT / 'logs' / 'server_rsa.key')
         self.rsa = RSAKey.load_or_create(key_file)
         self.server = None
         self.next_host_id = 2
 
+    @staticmethod
+    def _resolve_player_square(char_id: int) -> int:
+        player = GameWorldManager.get().get_player(char_id)
+        return player.square_id if player else 1
+
+    def _log_worker(self, log_queue, stream):
+        try:
+            while True:
+                item = log_queue.get()
+                if item is None:
+                    break
+                try:
+                    stream.write(json.dumps(item) + '\n')
+                except OSError:
+                    pass
+        finally:
+            try:
+                stream.flush()
+                stream.close()
+            except OSError:
+                pass
+
     async def start(self):
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self._log_stream = self.log_path.open('a', encoding='utf-8', buffering=1)
+        self._log_queue = queue.Queue(maxsize=4096)
+        self._log_thread = threading.Thread(
+            target=self._log_worker,
+            args=(self._log_queue, self._log_stream),
+            name=f'wire-log-{self.role}',
+            daemon=True,
+        )
+        self._log_thread.start()
         self.server = await asyncio.start_server(self.handle_client, self.host, self.port)
         logger.info('Listening on %s:%s (%s)', self.host, self.port, self.role)
 
     def close_log(self):
-        if self._log_stream is not None:
+        if self._log_queue is not None:
+            try:
+                self._log_queue.put(None, timeout=1.0)
+            except queue.Full:
+                pass
+            if self._log_thread is not None:
+                self._log_thread.join(timeout=2.0)
+            self._log_queue = None
+            self._log_thread = None
+            self._log_stream = None
+        elif self._log_stream is not None:
             try:
                 self._log_stream.close()
             except OSError:
@@ -231,15 +280,22 @@ class BootstrapServer:
         entry = dict(time=time.time(), peer=peer, event=event, hex=data.hex())
         if self.role != 'game':
             entry['role'] = self.role
-        entry.update({k: v for k, v in extra.items() if v is not None})
-        line = json.dumps(entry) + '\n'
-        if self._log_stream is not None and not self._log_stream.closed:
-            self._log_stream.write(line)
+        for k, v in extra.items():
+            if v is not None:
+                entry[k] = v
+        if self._log_queue is not None:
+            try:
+                self._log_queue.put_nowait(entry)
+            except queue.Full:
+                self.record_drops += 1
+        elif self._log_stream is not None and not self._log_stream.closed:
+            self._log_stream.write(json.dumps(entry) + '\n')
         else:
             with self.log_path.open('a', encoding='utf-8') as stream:
-                stream.write(line)
-        logger.info('%s %s %s %s', peer, event, data.hex(' ')[:600],
-                    ' '.join('%s=%s' % kv for kv in extra.items() if kv[1] is not None))
+                stream.write(json.dumps(entry) + '\n')
+        if logger.isEnabledFor(logging.INFO):
+            logger.info('%s %s %s %s', peer, event, data.hex(' ')[:600],
+                        ' '.join('%s=%s' % kv for kv in extra.items() if kv[1] is not None))
 
     async def handle_client(self, reader, writer):
         host_id = self.next_host_id

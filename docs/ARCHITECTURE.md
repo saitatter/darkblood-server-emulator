@@ -35,8 +35,12 @@ src/darkblood/
     progression.py               levels and AP
     achievements.py              counter achievements from 2446 reports
     loot.py, stalls.py           drop rolls, personal shops
-    handlers/                    one domain service per file:
-      frontend social square commerce inventory skills quests dungeon arena pets mail
+    handlers/                    one domain service per file or package:
+      frontend square skills quests arena pets mail gm
+      inventory/ (bags, items, crafting, depot)
+      social/ (friends, chat, party, guild)
+      dungeon/ (rooms, combat, events)
+      commerce/ (stores, cash_shop, trade, stalls)
     network/messages/            generated from schemas/*.jsch, one class per message (encode/decode)
     network/results.py           client result codes
     entities/character.py        Character + lobby/world-detail encodings
@@ -59,9 +63,9 @@ tools/                           gamectl, MCP server, headless client, asset exp
   (see `schemas/README.md`). Every module in `games/network/messages/` except
   `__init__.py` is generated; never edit them by hand. Logic that builds
   message values from game state (store records, learned-skill maps, level-up
-  notices) lives next to the handler or domain module that owns it. Then add an
-  `on_<opcode>` method in the
-  matching `games/handlers/*.py` service, then a headless test. Regenerate
+  notices) lives next to the handler or domain module that owns it. Then add a
+  `@packet_handler(...)` `handle_<name>` method in the
+  matching `games/handlers/` service, then a headless test. Regenerate
   `docs/OPCODE_REGISTRY.md` with `python tools/gen_opcode_registry.py`.
 - Domain rules that are not wire handling (progression, achievements, loot)
   live in plain modules under `games/` so handlers stay thin.

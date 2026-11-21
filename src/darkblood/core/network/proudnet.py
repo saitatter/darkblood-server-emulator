@@ -74,3 +74,26 @@ def connection_success(host_id, server_guid, peer):
     # endpoint (UTF-16 address + little-endian u16 port).
     return (b'\x0b' + struct.pack('<I', host_id) + server_guid
             + blob(b'') + wide_string(peer[0]) + struct.pack('<H', peer[1]))
+
+
+# Square relay endpoint (opcode 5134). Reader 0xA48910 copies 6 raw bytes
+# into the buffer at [handler owner + 0x6C]; JP2PFactory::Connect (0x956A90)
+# uses them as IPv4 address bytes in network order + u16 little-endian port.
+RELAY_PORT = 9401
+
+
+def relay_address(port=RELAY_PORT):
+    return bytes([127, 0, 0, 1]) + struct.pack('<H', port)
+
+
+# Square UIDs carry the server-list key in bits 54-58 (0x00A614A0).
+# 0x0087DBB0 omits the "(server)" name suffix when peer and own square UIDs
+# share key 31.
+SQUARE_UID_KEY_BITS = 0x1F << 54
+SQUARE_UID_MASK = (1 << 54) - 1
+PEER_SERVER_BITS = SQUARE_UID_KEY_BITS
+
+
+def square_uid(square_id: int) -> int:
+    """Wire square UID: server key 31 in bits 54-58 plus the local square id."""
+    return SQUARE_UID_KEY_BITS | (int(square_id) & SQUARE_UID_MASK)

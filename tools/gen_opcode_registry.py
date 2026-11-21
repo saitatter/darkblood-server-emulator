@@ -91,7 +91,9 @@ def message_classes():
     return out
 
 
-def main():
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else argv
+    check = '--check' in args
     names, client, server, classes = client_names(), client_handlers(), server_handlers(), message_classes()
     tracked = sorted(set(client) | set(server) | set(classes))
     lines = [
@@ -120,9 +122,18 @@ def main():
             msg = ', '.join(f'`{c}`' for c in sorted(classes.get(op, []))) or '—'
             lines.append(f'| {op} | `{names.get(op, "?")}` | {client.get(op, "—")} | {module} | {msg} | {note} |')
         lines.append('')
-    OUTPUT.write_text('\n'.join(lines), encoding='utf-8')
+    rendered = '\n'.join(lines)
+    if check:
+        current = OUTPUT.read_text(encoding='utf-8') if OUTPUT.is_file() else ''
+        if current != rendered:
+            print(f'{OUTPUT.relative_to(ROOT)} is stale; run python tools/gen_opcode_registry.py', file=sys.stderr)
+            return 1
+        print(f'{OUTPUT.relative_to(ROOT)} is current ({len(tracked)} opcodes, {len(server)} server handlers)')
+        return 0
+    OUTPUT.write_text(rendered, encoding='utf-8')
     print(f'Wrote {OUTPUT.relative_to(ROOT)}: {len(tracked)} opcodes, {len(server)} server handlers')
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

@@ -7,6 +7,7 @@ client_hook/*.exp
 client_hook/patches/*.obj
 research/
 logs/
+*.log
 extracted_sample/
 *.exe
 *.dll

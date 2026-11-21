@@ -98,7 +98,7 @@ class GameSession:
         if refresh_depot_timers(char, now=now):
             dirty = True
         if dirty:
-            self.store().save()
+            self.store().save_char(self.account, self.active_char_id)
 
     async def _run_timer_loop(self, interval: float):
         try:
@@ -161,8 +161,9 @@ class GameSession:
     @classmethod
     def store(cls):
         if cls._store is None:
+            from darkblood.games.progression import refresh_character_timers
             from darkblood.player_management.store import SqliteCharacterStore
-            cls._store = SqliteCharacterStore()
+            cls._store = SqliteCharacterStore(timer_refresher=refresh_character_timers)
         return cls._store
 
 DISPATCHER = PacketDispatcher()

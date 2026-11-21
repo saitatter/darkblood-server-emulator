@@ -1,5 +1,21 @@
 # Session handoff — 2026-11-21
 
+## Project-wide audit refactors, performance & hygiene — saita machine, 2026-11-21
+
+- **Performance & Persistence (`src/darkblood/core/network/crypto.py`, `player_management/store.py`, `frontend/server.py`, `frontend/relay.py`)**:
+  - Precomputed GF(2^8) lookup tables (`_MUL2`..`_MUL14`) and fused ShiftRows/SubBytes in pure-Python `AES` (verified against FIPS-197 Appendix B KAT). Full headless suite runtime dropped from ~8.0s to ~3.0s.
+  - Switched `SqliteCharacterStore` to a persistent connection (WAL + `busy_timeout=5000`, `close()` / context manager / `weakref.finalize`), added indexed `get_by_id()` / `get_by_name()` and atomic `save_chars()`, and replaced linear `all_characters()` scans in `social/` and `mail.py` plus single-character `store().save()` calls across handlers and `GameSession.tick_timers()` with `save_char()`.
+  - Moved `BootstrapServer.record()` JSON serialization and disk writes off the asyncio loop onto a bounded daemon queue (`maxsize=4096`, `record_drops` counter, flushed on `close_log()`).
+  - Added relay backpressure guard (`MAX_RELAY_WRITE_BUFFER = 256 KiB`) in `RelayGroups.forward()` for unreliable `0x16 -> 0x1A` traffic.
+- **Architecture & Layering (`handlers/social/`, `handlers/dungeon/`, `handlers/commerce/`, `core/network/proudnet.py`)**:
+  - Split mega-handlers into responsibility-focused mixin packages matching `handlers/inventory/`: `handlers/social/` (`friends.py`, `chat.py`, `party.py`, `guild.py`), `handlers/dungeon/` (`rooms.py`, `combat.py`, `events.py`), and `handlers/commerce/` (`stores.py`, `cash_shop.py`, `trade.py`, `stalls.py`).
+  - Eliminated downward-layering violations: moved `RELAY_PORT`/`relay_address` and `SQUARE_UID_*`/`square_uid` to `core/network/proudnet.py`, injected `square_resolver` into `RelayGroups`, and injected `timer_refresher` into `SqliteCharacterStore` from `GameSession.store()`.
+  - Stopped broadcasting invented `5021`/`5022` on town join/leave (preventing `5022` collision with real `eERC_CHANGE_ROOMHOST_ACK`); town presence uses `5027`/`5096` and `5039` (`LeaveLayerNot`).
+- **Client Hook & CI/Tests (`client_hook/patches/network_redirect.c`, `tools/gen_opcode_registry.py`, `.github/workflows/ci.yml`)**:
+  - Replaced non-thread-safe `inet_ntoa()` in `RedirectSockAddr` with direct byte formatting (`FormatIpv4`); rebuilt `steam_api.dll` cleanly with MSVC x86.
+  - Added `--check` to `tools/gen_opcode_registry.py`, added `gen_progress.py --check` to CI, added `*.log` to `.gitignore`, and updated `docs/ARCHITECTURE.md` and `ROADMAP.md`.
+  - Added `tests/test_architecture.py` (layering rules, FIPS-197 AES KAT, indexed lookups / `save_chars`) and `tests/test_fuzz_and_load.py` (varuint/scalar/frame fuzzing, pre-auth packet resilience, and 10 simultaneous headless clients).
+
 ## Live 2-client social, party, inspect & stress fixes — saita machine, 2026-11-21
 
 - **Chat & Whisper (`5040 ChatReq` / `5041 ChatAck`, `schemas/social.jsch`, `src/darkblood/games/handlers/social.py`)**:

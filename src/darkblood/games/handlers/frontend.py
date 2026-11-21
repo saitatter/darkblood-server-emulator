@@ -3,12 +3,12 @@ import datetime
 import struct
 import time
 
+from darkblood.core.network.proudnet import RELAY_PORT
 from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character, delete_seconds_left
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.handlers.skills import learned_skill_map
-from darkblood.frontend.relay import RELAY_PORT
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
     DeleteCharacterAck,
@@ -206,7 +206,6 @@ class FrontendHandlers(BaseDomainService):
             player = world.register_player(self.session, previous.char_id, previous.char_data, square_id=square_id)
             await world.broadcast_player_departure(previous)
             await world.broadcast_player_spawn(player)
-            await world.broadcast_user_join(player)
 
     @packet_handler(2008)
     async def handle_get_char_list(self, correlation: int, body: bytes):
@@ -280,7 +279,6 @@ class FrontendHandlers(BaseDomainService):
             player = world.register_player(self.session, char_id, char, square_id=self.session.square_id)
             player.loading = True  # town load starts now; peers follow its 5124
             await world.broadcast_player_spawn(player)
-            await world.broadcast_user_join(player)
         except Exception:
             pass
 
@@ -321,7 +319,7 @@ class FrontendHandlers(BaseDomainService):
         if char:
             if not char.get('delete_time'):
                 char['delete_time'] = int(time.time()) + CHAR_DELETE_DELAY
-                self.store().save()
+                self.save_char()
             complete_time = delete_seconds_left(char['delete_time'])
         ack = DeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid,
                                  complete_time=complete_time).encode()
@@ -340,7 +338,7 @@ class FrontendHandlers(BaseDomainService):
         char = self.store().get(self.account, req.char_uid)
         if char:
             char.pop('delete_time', None)
-            self.store().save()
+            self.save_char()
         ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid).encode()
         await self.transport.send_event(event(2247, ack, correlation),
                                         note=f'undelete character ack ({req.char_uid})')

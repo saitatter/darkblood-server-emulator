@@ -5,19 +5,16 @@ import struct
 from dataclasses import dataclass, field
 from itertools import count
 
-from darkblood.core.network.proudnet import FAST_KEY_BITS, ProtocolError, frame, read_scalar, scalar
+from darkblood.core.network.proudnet import (
+    FAST_KEY_BITS, ProtocolError, RELAY_PORT, SQUARE_UID_MASK,
+    frame, read_scalar, relay_address, scalar,
+)
 from darkblood.core.serialization.jser import varuint
 
 
-# Square relay endpoint (opcode 5134). Reader 0xA48910 copies 6 raw bytes
-# into the buffer at [handler owner + 0x6C]; JP2PFactory::Connect (0x956A90)
-# uses them as IPv4 address bytes in network order + u16 little-endian port
-# (observed: shim logged connect() -> 127.0.0.1:9401 before redirection).
-RELAY_PORT = 9401
-
-
-def relay_address(port=RELAY_PORT):
-    return bytes([127, 0, 0, 1]) + struct.pack('<H', port)
+# Maximum queued write bytes on a target peer before dropping unreliable
+# relay traffic (0x16 -> 0x1A) to protect server memory under stalled clients.
+MAX_RELAY_WRITE_BUFFER = 256 * 1024
 
 
 # Relay PIDL (game-defined, not ProudNet internal). Proxy C2S vtable 0xD1CD80:
@@ -95,23 +92,23 @@ class RelayGroup:
 class RelayGroups:
     """Group membership and reliable forwarding for one relay listener."""
 
-    def __init__(self):
+    def __init__(self, square_resolver=None):
         self.groups = {}
         self.memberships = {}
         self.host_ids = count(RELAY_GROUP_HOST_ID)
         self.lock = asyncio.Lock()
+        self._square_resolver = square_resolver
 
-    @staticmethod
-    def group_key(kind, scope_uid, layer_uid, char_id):
+    def group_key(self, kind, scope_uid, layer_uid, char_id):
         if kind == 0 and scope_uid == -1:
             # The first town JoinGroup can precede the client learning the
-            # square UID. Use the game-world registration when it is available.
-            from darkblood.games.world import GameWorldManager
-            player = GameWorldManager.get().get_player(char_id)
-            scope_uid = player.square_id if player else 1
+            # square UID. Use the injected world resolver when available.
+            if self._square_resolver is not None:
+                scope_uid = self._square_resolver(char_id)
+            else:
+                scope_uid = 1
         elif kind == 0:
             # Square UIDs carry the server key in bits 54-58; group by the square.
-            from darkblood.games.world import SQUARE_UID_MASK
             scope_uid &= SQUARE_UID_MASK
         return kind, scope_uid, layer_uid
 
@@ -227,6 +224,11 @@ class RelayGroups:
                 if target is None or target.writer.is_closing():
                     transport.record('relay-drop', payload, dest=host_id)
                     continue
+                if not reliable:
+                    t_transport = getattr(target.writer, 'transport', None)
+                    if t_transport is not None and t_transport.get_write_buffer_size() > MAX_RELAY_WRITE_BUFFER:
+                        transport.record('relay-backpressure-drop', b'', dest=host_id)
+                        continue
                 if reliable:
                     out = bytes([RELIABLE_RELAY2]) + sender + struct.pack('<I', destination[1]) + body
                 else:

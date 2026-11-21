@@ -134,9 +134,12 @@ class HeadlessClient:
                 return correlation, body
 
     async def close(self):
-        self.writer.close()
+        writer = getattr(self, 'writer', None)
+        if writer is None:
+            return
+        writer.close()
         try:
-            await self.writer.wait_closed()
+            await writer.wait_closed()
         except (ConnectionError, OSError):
             pass
 

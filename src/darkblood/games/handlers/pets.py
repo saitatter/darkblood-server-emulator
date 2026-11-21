@@ -52,7 +52,7 @@ class PetHandlers(BaseDomainService):
         slot = req.slot if req.slot else len(tamed)
         m_entry = {'monster_id': req.monster_id, 'slot': slot}
         tamed.append(m_entry)
-        self.store().save()
+        self.save_char()
         ack = TamingMonsterInsertAck(result=0).encode()
         await self.transport.send_event(event(2349, ack, correlation),
                                         note=f'tame monster insert ack (monster={req.monster_id}, slot={slot})')
@@ -71,7 +71,7 @@ class PetHandlers(BaseDomainService):
             if m.get('slot') == req.slot or (req.monster_id and m.get('monster_id') == req.monster_id):
                 tamed.remove(m)
                 break
-        self.store().save()
+        self.save_char()
         ack = TamingMonsterDeleteAck(result=0, deleted_slot=req.slot).encode()
         await self.transport.send_event(event(2351, ack, correlation),
                                         note=f'tame monster delete ack (slot={req.slot})')
@@ -105,7 +105,7 @@ class PetHandlers(BaseDomainService):
             # Mount
             char['mounted_ride_id'] = req.ride_object_id
             new_state = req.ride_object_id
-        self.store().save()
+        self.save_char()
         ack = RidingRideObjectAck(result=0, ride_object_id=new_state).encode()
         await self.transport.send_event(event(2438, ack, correlation),
                                         note=f'riding ride object ack (ride_id={new_state})')
@@ -132,7 +132,7 @@ class PetHandlers(BaseDomainService):
             'slot': len(pets),
         }
         pets.append(new_pet)
-        self.store().save()
+        self.save_char()
         ack = PetCreateAck(result=0, slot=new_pet['slot']).encode()
         await self.transport.send_event(event(2465, ack, correlation),
                                         note=f'pet create ack (uid={new_uid})')
@@ -152,7 +152,7 @@ class PetHandlers(BaseDomainService):
             pets.remove(target)
         if char.get('summoned_pet') == req.pet_uid:
             char['summoned_pet'] = None
-        self.store().save()
+        self.save_char()
         ack = PetDeleteAck(result=0, pet_uid=req.pet_uid).encode()
         await self.transport.send_event(event(2467, ack, correlation),
                                         note=f'pet delete ack (uid={req.pet_uid})')
@@ -168,7 +168,7 @@ class PetHandlers(BaseDomainService):
                                             note='pet summon fail (no char)')
             return
         char['summoned_pet'] = pet_slot
-        self.store().save()
+        self.save_char()
         ack = PetSummonAck(result=0, pet_slot=pet_slot).encode()
         await self.transport.send_event(event(2469, ack, correlation),
                                         note=f'pet summon ack (slot={pet_slot})')
@@ -179,7 +179,7 @@ class PetHandlers(BaseDomainService):
         char = self.current_char()
         if char:
             char['summoned_pet'] = None
-            self.store().save()
+            self.save_char()
         ack = PetReleaseSummonAck(result=0).encode()
         await self.transport.send_event(event(2471, ack, correlation),
                                         note='pet release summon ack')
@@ -197,7 +197,7 @@ class PetHandlers(BaseDomainService):
         char = self.current_char()
         if char and req.pet_uid:
             char['summoned_pet'] = req.pet_uid
-            self.store().save()
+            self.save_char()
         ack = PetLoadAck(result=0, pet_uid=req.pet_uid).encode()
         await self.transport.send_event(event(2476, ack, correlation),
                                         note=f'pet load ack (uid={req.pet_uid})')
@@ -209,7 +209,7 @@ class PetHandlers(BaseDomainService):
         char = self.current_char()
         if char and req.pet_uid:
             char['summoned_pet'] = req.pet_uid
-            self.store().save()
+            self.save_char()
         ack = PetReplaceAck(result=0, pet_uid=req.pet_uid).encode()
         await self.transport.send_event(event(2478, ack, correlation),
                                         note=f'pet replace ack (uid={req.pet_uid})')
@@ -226,7 +226,7 @@ class PetHandlers(BaseDomainService):
                 active = next((p for p in pets if p.get('uid') == char.get('summoned_pet')), pets[0])
                 active['satiety'] = min(100, active.get('satiety', 50) + 30)
                 satiety = active['satiety']
-                self.store().save()
+                self.save_char()
         ack = PetEatNormalAck(result=0, satiety=satiety, status=1).encode()
         await self.transport.send_event(event(2481, ack, correlation),
                                         note=f'pet eat normal ack (satiety={satiety})')
@@ -247,7 +247,7 @@ class PetHandlers(BaseDomainService):
                 active['code'] = 'PetCall111' if active.get('code') == 'PetCall001' else 'PetCall121'
                 new_uid = old_uid
                 new_pet_id = 8001
-                self.store().save()
+                self.save_char()
         ack = PetEvolutionAck(result=0, old_pet_uid=old_uid, new_pet_id=new_pet_id, new_pet_uid=new_uid).encode()
         await self.transport.send_event(event(2485, ack, correlation),
                                         note=f'pet evolution ack (uid={new_uid})')
@@ -262,7 +262,7 @@ class PetHandlers(BaseDomainService):
             target = next((p for p in pets if p.get('uid') == req.pet_uid), None)
             if target:
                 target['name'] = req.new_name
-            self.store().save()
+            self.save_char()
         ack = PetNickChangeAck(result=0, pet_uid=req.pet_uid, new_name=req.new_name).encode()
         await self.transport.send_event(event(2511, ack, correlation),
                                         note=f'pet nick change ack (uid={req.pet_uid}, name={req.new_name})')
@@ -439,7 +439,7 @@ class PetHandlers(BaseDomainService):
                 'satiety': 100,
                 'slot': len(pets),
             })
-            self.store().save()
+            self.save_char()
         elif code.startswith('ridecall'):
             mounts = char.setdefault('mounts', [])
             try:
@@ -454,4 +454,4 @@ class PetHandlers(BaseDomainService):
                     'name': 'Mount',
                     'expire_time': 0,
                 })
-            self.store().save()
+            self.save_char()

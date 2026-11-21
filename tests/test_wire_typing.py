@@ -84,16 +84,18 @@ class WireTypingTest(unittest.TestCase):
 
     def test_sqlite_save_char_updates_single_character(self):
         with tempfile.TemporaryDirectory() as tmp:
-            store = SqliteCharacterStore(db_path=Path(tmp) / 'test.db')
-            c1 = store.create('Acc', {'name': 'HeroOne', 'char_class': 1})
-            c2 = store.create('Acc', {'name': 'HeroTwo', 'char_class': 2})
-            c1['level'] = 12
-            c2['level'] = 99  # unsaved in DB if we only call save_char for c1
-            store.save_char('Acc', c1['id'])
+            with SqliteCharacterStore(db_path=Path(tmp) / 'test.db') as store:
+                c1 = store.create('Acc', {'name': 'HeroOne', 'char_class': 1})
+                c2 = store.create('Acc', {'name': 'HeroTwo', 'char_class': 2})
+                c1['level'] = 12
+                c2['level'] = 99  # unsaved in DB if we only call save_char for c1
+                store.save_char('Acc', c1['id'])
 
-            reloaded = SqliteCharacterStore(db_path=Path(tmp) / 'test.db')
-            self.assertEqual(reloaded.get('Acc', c1['id'])['level'], 12)
-            self.assertEqual(reloaded.get('Acc', c2['id'])['level'], 1)
+            with SqliteCharacterStore(db_path=Path(tmp) / 'test.db') as reloaded:
+                self.assertEqual(reloaded.get('Acc', c1['id'])['level'], 12)
+                self.assertEqual(reloaded.get('Acc', c2['id'])['level'], 1)
+                self.assertEqual(reloaded.get_by_id(c1['id'])[1]['name'], 'HeroOne')
+                self.assertEqual(reloaded.get_by_name('heroone')[1]['id'], c1['id'])
 
 
 if __name__ == '__main__':

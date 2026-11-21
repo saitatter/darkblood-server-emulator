@@ -10,9 +10,12 @@ import struct
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
+from darkblood.core.network.proudnet import (
+    PEER_SERVER_BITS, SQUARE_UID_KEY_BITS, SQUARE_UID_MASK, square_uid,
+)
 from darkblood.core.serialization.jser import event, wide_string
 from darkblood.games.entities.character import Character, layer_net_id
-from darkblood.games.network.messages.lobby import JoinLayerNot, PageCharTemp
+from darkblood.games.network.messages.lobby import JoinLayerNot, LeaveLayerNot, PageCharTemp
 from darkblood.games.network.messages.system import UpdateCharInfoNot
 from darkblood.games.network.messages.party import (
     PartyAcceptInviteNot, PartyInfoNot, PartyInviteNot, PartyMemberInfo,
@@ -274,13 +277,16 @@ class GameWorldManager:
 
     async def broadcast_layer_leave(self, player: WorldPlayer, layer_id: int):
         """5039 removes the departed character from the old layer on the client."""
-        await self.broadcast_to_square(player.square_id, event(5039, struct.pack('<Iq', 0, player.char_id)),
-                                       exclude_char_id=player.char_id, layer_id=layer_id,
-                                       note=f"leave layer not ({player.char_id})")
+        await self.broadcast_to_square(
+            player.square_id,
+            event(5039, LeaveLayerNot(result=0, char_uid=player.char_id).encode()),
+            exclude_char_id=player.char_id,
+            layer_id=layer_id,
+            note=f"leave layer not ({player.char_id})",
+        )
 
     async def broadcast_player_departure(self, player: WorldPlayer):
         await self.broadcast_layer_leave(player, player.layer_id)
-        await self.broadcast_user_leave(player.char_id, player.square_id)
 
     async def remove_session_player(self, session):
         """Send departure once, for the session that owns the registration."""
@@ -499,24 +505,6 @@ class PartyManager:
                     await sess.transport.send_event(ev, note=note)
                 except Exception as e:
                     logger.debug("Failed party broadcast to char %d: %s", cid, e)
-
-
-# Square UIDs carry the server-list key in bits 54-58 (0x00A614A0).
-# 0x0087DBB0 omits the "(server)" name suffix only when the peer's square UID
-# (last field of its 5027 entry, copied to its JUser +0x100 by 0x00944510)
-# and the own JUser +0x100 have the same key. The own +0x100 is all ones
-# before the first layer change (key 31, live breakpoint at 0x0087DBF8) and
-# then the nJoinSquareUID of 5031 (0x00787A70 writes it to +0x100; live it
-# became 1 and peers showed "(Other server)"). So every square UID the
-# server sends uses key 31.
-SQUARE_UID_KEY_BITS = 0x1F << 54
-SQUARE_UID_MASK = (1 << 54) - 1
-PEER_SERVER_BITS = SQUARE_UID_KEY_BITS
-
-
-def square_uid(square_id: int) -> int:
-    """Wire square UID: server key 31 in bits 54-58 plus the local square id."""
-    return SQUARE_UID_KEY_BITS | (int(square_id) & SQUARE_UID_MASK)
 
 
 def _town_character(player: 'WorldPlayer') -> Character:

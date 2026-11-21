@@ -85,10 +85,10 @@ class WorldSessionTest(ServerTestCase):
             self.assertIsNone(self.world.get_player(101))
             self.assertIsNone(self.parties.get_player_party(101))
             self.assertNotIn(101, {player.char_id for player in self.world.get_players_in_square(7)})
-            # One departure: 5039 removes the peer from the layer, 5022 from the square.
+            # One departure: 5039 removes the peer from the layer (5022 is reserved for eERC_CHANGE_ROOMHOST_ACK).
             self.assertEqual(
                 [parse_event(call.args[0])[0] for call in observer.transport.send_event.await_args_list],
-                [5039, 5022],
+                [5039],
             )
 
         self.run_async(scenario())

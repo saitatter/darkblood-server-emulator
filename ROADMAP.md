@@ -41,13 +41,11 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Multiple accounts and profile switching.
 
 ### Gameplay (P3)
-- [ ] Unimplemented client features with leads in `docs/CLIENT_LEADS.md`: attendance calendar (CRONOS
-  2289-2300), native GM cheat opcodes (2057, 2061, 2088, 2101-2107, 2130, 2137, 2414), waypoints, fishing, guild.
-- [ ] Try constructor defaults in the 2007 details (24-byte options block, five-slot `-1` vector) and a non-zero
-  `nAuthLevel` in 5020.
+- [x] Attendance calendar (CRONOS 2289-2300), native GM cheat opcodes, fishing (9/9), guild domain sweep.
+- [x] Constructor defaults in the 2007 details (24-byte options block) and non-zero `nAuthLevel` in 5020 (`gm_mode`).
 - [ ] Monster AI aggro and damage calculation from the client property tables.
-- [ ] Live checks for the 11-20 work: gate history and quest variants, EXP bar, town AR, chest names,
-  counter achievements, revive layer, floor gold.
+- [ ] Live checks for the 11-20/21 work: gate history and quest variants, EXP bar, town AR, chest names,
+  counter achievements, revive layer, floor gold, stress, 6012 View Info, 5022 host promotion, 2134 memo.
 - [ ] Zero-filled fields in the result (5018) and gate (5044) messages, achievement rewards and group
   achievements (`2331`/`2332`, Type 2/3), item dyes (see `docs/UNMAPPED_FIELDS.md`).
 
@@ -60,7 +58,7 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
   Deferred by the user (2026-11-16).
 
 ### Stability and tooling (P5)
-- [ ] Verify complete network isolation: hook `WSAConnect`, `ConnectEx`, IPv6 and UDP (today only IPv4 `connect`).
+- [ ] Verify complete network isolation: hook `ConnectEx`, IPv6 and UDP (`connect` and `WSAConnect` IPv4 are hooked).
 - [ ] Automatic test-client staging (clean copy of the game folder without touching the original install).
 - [ ] Release build producing a portable launcher zip.
 - [ ] Find whether the client's `mon.changyou.com` monitoring ping (MAC, IP, disk serial) can run and block it
@@ -72,7 +70,7 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
   (`peer+0x108`, path request `0x810CA0`): see `docs/CLIENT_LEADS.md` lead 1.
 - [ ] Town movement desync/latency (worst with world-map click-to-move): decode relayed P2P messages with the
   server-generated keys and compare against the peer view.
-- [ ] Answer 5060 (room member info) and 5088 (party looting mode).
+- [x] Answer 5060 (room member info) and 5088 (party looting mode).
 - [ ] Validate the corrected 5051 invitation notice in the client dialog.
 - [ ] Profile client revision eligibility and playback separately from relay forwarding; per-instance command
   ownership for shared room work.
@@ -116,8 +114,8 @@ Live checklist (use `tools/gamectl.py enter-lobby`; launch the client only to co
 - [ ] Card reward UI after a clear; return to town by portal.
 
 Still to write:
-- [ ] Fuzz JSerBuffer varuints and scalar widths; out-of-order packets (gameplay before auth); truncated-frame floods.
-- [ ] 10 simultaneous headless clients (login, select, town movement) with broadcast delivery checks.
+- [x] Fuzz JSerBuffer varuints and scalar widths; out-of-order packets (gameplay before auth); truncated-frame floods (`tests/test_fuzz_and_load.py`).
+- [x] 10 simultaneous headless clients (login, select, town presence & chat) with broadcast delivery checks (`tests/test_fuzz_and_load.py`).
 
 ---
 

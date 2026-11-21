@@ -84,7 +84,7 @@ class QuestHandlers(BaseDomainService):
         if not offered:
             return
         stored = add_reward_items(char, offered)
-        self.store().save()
+        self.save_char()
         await self.transport.send_event(
             event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
             note='quest offer items (%s: %s)' % (group, ', '.join(c for c, _ in offered)))
@@ -136,7 +136,7 @@ class QuestHandlers(BaseDomainService):
                             updates.append(QuestObjective(qid, obj_idx, new_val))
 
         if updates:
-            self.store().save()
+            self.save_char()
             await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
                                             note=f'quest update not (item objectives: {updates})')
 
@@ -154,7 +154,7 @@ class QuestHandlers(BaseDomainService):
         counters = [0] * num_missions
         active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=counters)
         if char:
-            self.store().save()
+            self.save_char()
         return uid
 
     async def grant_exp(self, char, exp):
@@ -234,7 +234,7 @@ class QuestHandlers(BaseDomainService):
                         char['items'] = new_items
             from darkblood.player_management.characters import add_reward_items
             reward_items = [] if already else add_reward_items(char, items)
-            self.store().save()
+            self.save_char()
         else:
             reward_items = []
         self.transport.record('quest-rewards', b'', quest='%08x' % quest_id, exp=str(exp),
@@ -267,7 +267,7 @@ class QuestHandlers(BaseDomainService):
         record = char.get('quests_active', {}).get(str(quest_id)) if char else None
         if record and record.get('counters'):
             record['counters'] = [0] * len(record['counters'])
-            self.store().save()
+            self.save_char()
         ack = TutorialQuestStartAck().encode()
         await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
         start = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
@@ -306,7 +306,7 @@ class QuestHandlers(BaseDomainService):
             counters[idx] = target
             updates.append(QuestObjective(q_hash, idx, target))
         if updates:
-            self.store().save()
+            self.save_char()
             await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
                                             note='quest update not (mission %s: %s)' % (mission, updates))
         await self.transport.send_event(event(2114, struct.pack('<I', 0), correlation),
@@ -323,7 +323,7 @@ class QuestHandlers(BaseDomainService):
         char = self.current_char()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
-            self.store().save()
+            self.save_char()
         self.transport.record('quest-giveup', body, quest_id=req.quest_id)
         ack = QuestGiveupAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
@@ -339,7 +339,7 @@ class QuestHandlers(BaseDomainService):
         char = self.current_char()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
-            self.store().save()
+            self.save_char()
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
         ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')

@@ -136,12 +136,7 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 client2.send_event(5124, struct.pack('<i', 0x7fffffff))
                 await client2.expect_event(5125)
 
-                # Client 1 gets the join notification (5021) at Watcher2's 2006, then
-                # the layer spawn (5027, 5096) once Watcher2 is ready for town peers.
-                _, join_payload = await client1.expect_event(5021)
-                join_not = UserJoinSquareNot.decode(join_payload)
-                self.assertEqual(join_not.char_id, char_id2)
-                self.assertEqual(join_not.char_name, 'Watcher2')
+                # Client 1 gets the layer spawn (5027, 5096) once Watcher2 is ready for town peers.
                 await client1.expect_event(5027)
                 await client1.expect_event(5096)
 
@@ -149,10 +144,11 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 client2.send_event(5032, b'')
                 await client2.expect_event(5033)
 
-                # Client 1 should receive leave notification (Opcode 5022)
-                _, leave_payload = await client1.expect_event(5022)
-                leave_not = UserLeaveSquareNot.decode(leave_payload)
-                self.assertEqual(leave_not.char_id, char_id2)
+                # Client 1 should receive layer leave notification (Opcode 5039)
+                _, leave_payload = await client1.expect_event(5039)
+                leave_res, leave_uid = struct.unpack_from('<Iq', leave_payload, 0)
+                self.assertEqual(leave_res, 0)
+                self.assertEqual(leave_uid, char_id2)
             finally:
                 await client2.close()
 

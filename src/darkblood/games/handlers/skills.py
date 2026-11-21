@@ -75,7 +75,7 @@ class SkillHandlers(BaseDomainService):
                                                 note='learn skill fail (not enough SP/AR)')
                 return
             char.setdefault('skills', {})[str(req.skill_index)] = req.level
-            self.store().save()
+            self.save_char()
             remain_gold = char.get('gold', 0)
             remain_sp = char.get('sp', 0)
         ack = LearnSkillAck(result=0, skill_index=req.skill_index, level=req.level,
@@ -99,7 +99,7 @@ class SkillHandlers(BaseDomainService):
             for s in req.skills:
                 skills[str(s.skill_index)] = s.level
                 learned_skills[s.skill_index] = s.level
-            self.store().save()
+            self.save_char()
             remain_gold = char.get('gold', 0)
             remain_sp = char.get('sp', 0)
         else:
@@ -117,7 +117,7 @@ class SkillHandlers(BaseDomainService):
         if char:
             speeches = char.setdefault('skill_speeches', {})
             speeches[str(req.skill_index)] = req.speech
-            self.store().save()
+            self.save_char()
         ack = ModifySkillSpeechAck(result=0, skill_index=req.skill_index, speech=req.speech).encode()
         await self.transport.send_event(event(2054, ack, correlation),
                                         note=f'modify skill speech ack (skill={req.skill_index})')
@@ -130,7 +130,7 @@ class SkillHandlers(BaseDomainService):
         if char:
             speeches = char.setdefault('skill_speeches', {})
             speeches.pop(str(req.skill_index), None)
-            self.store().save()
+            self.save_char()
         ack = DeleteSkillSpeechAck(result=0, skill_index=req.skill_index).encode()
         await self.transport.send_event(event(2056, ack, correlation),
                                         note=f'delete skill speech ack (skill={req.skill_index})')
@@ -148,7 +148,7 @@ class SkillHandlers(BaseDomainService):
             else:
                 locked.discard(req.skill_index)
             char['locked_skills'] = sorted(list(locked))
-            self.store().save()
+            self.save_char()
         ack = UpdateSkillLockedAck(result=0, skill_index=req.skill_index, locked=req.locked).encode()
         await self.transport.send_event(event(2118, ack, correlation),
                                         note=f'update skill locked ack (skill={req.skill_index} locked={req.locked})')

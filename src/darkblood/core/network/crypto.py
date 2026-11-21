@@ -61,6 +61,14 @@ def _mul(a, b):
     return r
 
 
+_MUL2 = tuple(_mul(i, 2) for i in range(256))
+_MUL3 = tuple(_mul(i, 3) for i in range(256))
+_MUL9 = tuple(_mul(i, 9) for i in range(256))
+_MUL11 = tuple(_mul(i, 11) for i in range(256))
+_MUL13 = tuple(_mul(i, 13) for i in range(256))
+_MUL14 = tuple(_mul(i, 14) for i in range(256))
+
+
 class AES:
     def __init__(self, key):
         if len(key) not in (16, 24, 32):
@@ -78,40 +86,59 @@ class AES:
             elif nk > 6 and i % nk == 4:
                 t = [_SBOX[b] for b in t]
             words.append([a ^ b for a, b in zip(words[i - nk], t)])
-        self.keys = [sum(words[4 * r:4 * r + 4], []) for r in range(self.rounds + 1)]
+        self.keys = [tuple(sum(words[4 * r:4 * r + 4], [])) for r in range(self.rounds + 1)]
 
     def encrypt_block(self, block):
-        s = [b ^ k for b, k in zip(block, self.keys[0])]
-        for r in range(1, self.rounds + 1):
-            s = [_SBOX[b] for b in s]
-            s = [s[(i + 4 * (i % 4)) % 16] for i in range(16)]  # ShiftRows
-            if r != self.rounds:
-                t = []
-                for c in range(4):
-                    a = s[4 * c:4 * c + 4]
-                    t += [_xt(a[0]) ^ _xt(a[1]) ^ a[1] ^ a[2] ^ a[3],
-                          a[0] ^ _xt(a[1]) ^ _xt(a[2]) ^ a[2] ^ a[3],
-                          a[0] ^ a[1] ^ _xt(a[2]) ^ _xt(a[3]) ^ a[3],
-                          _xt(a[0]) ^ a[0] ^ a[1] ^ a[2] ^ _xt(a[3])]
-                s = t
-            s = [b ^ k for b, k in zip(s, self.keys[r])]
+        sbox, m2, m3 = _SBOX, _MUL2, _MUL3
+        keys = self.keys
+        k0 = keys[0]
+        s = [block[i] ^ k0[i] for i in range(16)]
+        last = self.rounds
+        for r in range(1, last + 1):
+            # SubBytes + ShiftRows fused
+            s = [
+                sbox[s[0]], sbox[s[5]], sbox[s[10]], sbox[s[15]],
+                sbox[s[4]], sbox[s[9]], sbox[s[14]], sbox[s[3]],
+                sbox[s[8]], sbox[s[13]], sbox[s[2]], sbox[s[7]],
+                sbox[s[12]], sbox[s[1]], sbox[s[6]], sbox[s[11]],
+            ]
+            kr = keys[r]
+            if r != last:
+                out = [0] * 16
+                for c in (0, 4, 8, 12):
+                    a0, a1, a2, a3 = s[c], s[c + 1], s[c + 2], s[c + 3]
+                    out[c] = (m2[a0] ^ m3[a1] ^ a2 ^ a3) ^ kr[c]
+                    out[c + 1] = (a0 ^ m2[a1] ^ m3[a2] ^ a3) ^ kr[c + 1]
+                    out[c + 2] = (a0 ^ a1 ^ m2[a2] ^ m3[a3]) ^ kr[c + 2]
+                    out[c + 3] = (m3[a0] ^ a1 ^ a2 ^ m2[a3]) ^ kr[c + 3]
+                s = out
+            else:
+                s = [s[i] ^ kr[i] for i in range(16)]
         return bytes(s)
 
     def decrypt_block(self, block):
-        s = [b ^ k for b, k in zip(block, self.keys[self.rounds])]
+        inv, m9, m11, m13, m14 = _INV, _MUL9, _MUL11, _MUL13, _MUL14
+        keys = self.keys
+        kl = keys[self.rounds]
+        s = [block[i] ^ kl[i] for i in range(16)]
         for r in range(self.rounds - 1, -1, -1):
-            s = [s[(i - 4 * (i % 4)) % 16] for i in range(16)]  # InvShiftRows
-            s = [_INV[b] for b in s]
-            s = [b ^ k for b, k in zip(s, self.keys[r])]
+            kr = keys[r]
+            # InvShiftRows + InvSubBytes + AddRoundKey fused
+            s = [
+                inv[s[0]] ^ kr[0], inv[s[13]] ^ kr[1], inv[s[10]] ^ kr[2], inv[s[7]] ^ kr[3],
+                inv[s[4]] ^ kr[4], inv[s[1]] ^ kr[5], inv[s[14]] ^ kr[6], inv[s[11]] ^ kr[7],
+                inv[s[8]] ^ kr[8], inv[s[5]] ^ kr[9], inv[s[2]] ^ kr[10], inv[s[15]] ^ kr[11],
+                inv[s[12]] ^ kr[12], inv[s[9]] ^ kr[13], inv[s[6]] ^ kr[14], inv[s[3]] ^ kr[15],
+            ]
             if r:
-                t = []
-                for c in range(4):
-                    a = s[4 * c:4 * c + 4]
-                    t += [_mul(a[0], 14) ^ _mul(a[1], 11) ^ _mul(a[2], 13) ^ _mul(a[3], 9),
-                          _mul(a[0], 9) ^ _mul(a[1], 14) ^ _mul(a[2], 11) ^ _mul(a[3], 13),
-                          _mul(a[0], 13) ^ _mul(a[1], 9) ^ _mul(a[2], 14) ^ _mul(a[3], 11),
-                          _mul(a[0], 11) ^ _mul(a[1], 13) ^ _mul(a[2], 9) ^ _mul(a[3], 14)]
-                s = t
+                out = [0] * 16
+                for c in (0, 4, 8, 12):
+                    a0, a1, a2, a3 = s[c], s[c + 1], s[c + 2], s[c + 3]
+                    out[c] = m14[a0] ^ m11[a1] ^ m13[a2] ^ m9[a3]
+                    out[c + 1] = m9[a0] ^ m14[a1] ^ m11[a2] ^ m13[a3]
+                    out[c + 2] = m13[a0] ^ m9[a1] ^ m14[a2] ^ m11[a3]
+                    out[c + 3] = m11[a0] ^ m13[a1] ^ m9[a2] ^ m14[a3]
+                s = out
         return bytes(s)
 
 

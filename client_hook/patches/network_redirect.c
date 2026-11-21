@@ -40,10 +40,15 @@ static ULONG ResolveTargetHost(const char* host) {
     return inet_addr("127.0.0.1");
 }
 
+static void FormatIpv4(ULONG addr, char* out, size_t outSize) {
+    const unsigned char* b = (const unsigned char*)&addr;
+    if (!out || outSize < 16) return;
+    wsprintfA(out, "%u.%u.%u.%u", (unsigned)b[0], (unsigned)b[1], (unsigned)b[2], (unsigned)b[3]);
+}
+
 static int RedirectSockAddr(const char* apiName, const struct sockaddr* name, int namelen,
                             struct sockaddr_in* out) {
     char origIp[32], dstIp[32];
-    struct in_addr dstIn;
     int origPort, dstPort;
 
     if (namelen < (int)sizeof(struct sockaddr_in)) {
@@ -51,7 +56,7 @@ static int RedirectSockAddr(const char* apiName, const struct sockaddr* name, in
         return -1;
     }
     *out = *(const struct sockaddr_in*)name;
-    lstrcpynA(origIp, inet_ntoa(out->sin_addr), sizeof(origIp));
+    FormatIpv4(out->sin_addr.s_addr, origIp, sizeof(origIp));
     origPort = ntohs(out->sin_port);
 
     if (g_targetAddr == 0) {
@@ -67,8 +72,7 @@ static int RedirectSockAddr(const char* apiName, const struct sockaddr* name, in
     out->sin_addr.s_addr = g_targetAddr;
     out->sin_port = htons((u_short)dstPort);
 
-    dstIn.s_addr = g_targetAddr;
-    lstrcpynA(dstIp, inet_ntoa(dstIn), sizeof(dstIp));
+    FormatIpv4(g_targetAddr, dstIp, sizeof(dstIp));
     RawLogFmt("[NET] %s() -> %s:%d ==> %s:%d", apiName, origIp, origPort, dstIp, dstPort);
     return 1;
 }

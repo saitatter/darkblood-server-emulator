@@ -59,7 +59,7 @@ class SquareHandlers(BaseDomainService):
                 rewards = tutorial_rewards()['complete' if completed else 'skip']
                 granted = len(add_reward_items(char, rewards))
             char['tutorial_cleared'] = True
-            self.store().save()
+            self.save_char()
             # 0x0077EEB0 applies this vector with 0x007FEC40 and switches
             # straight to town without a new 2007. Live: a knight that skipped
             # the tutorial showed no armour until relogging, so the whole
@@ -113,7 +113,7 @@ class SquareHandlers(BaseDomainService):
         target = 2
         if counters[obj_idx] < target:
             counters[obj_idx] += 1
-            self.store().save()
+            self.save_char()
 
             update = QuestUpdateNot(updates=[QuestObjective(TUTORIAL_QUEST_ID, obj_idx, counters[obj_idx])]).encode()
             await self.transport.send_event(
@@ -199,7 +199,7 @@ class SquareHandlers(BaseDomainService):
         if char is None or not _is_town_layer(layer_id) or char.get('join_layer_net_id') == layer_id:
             return
         char['join_layer_net_id'] = layer_id
-        self.store().save()
+        self.save_char()
 
     def _current_gold(self):
         char = self.current_char()
