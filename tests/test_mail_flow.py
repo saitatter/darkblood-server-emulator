@@ -251,6 +251,55 @@ class MailFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_mail_claim_ar_and_save(self):
+        """Test claiming attached AR only (2248 -> 2249) and saving/protecting mail (2252 -> 2253)."""
+        from darkblood.games.network.messages.mail import (
+            PostGetAppendArAck, PostGetAppendArReq, PostSaveAck, PostSaveReq,
+        )
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('GoldSender'))
+            _, c1 = await client.expect_event(2013)
+            sender_id = struct.unpack_from('<Q', c1, 10)[0]
+
+            client.send_event(2012, create_request('GoldReceiver'))
+            _, c2 = await client.expect_event(2013)
+            recv_id = struct.unpack_from('<Q', c2, 10)[0]
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, recv_id))
+            await client.expect_event(2007)
+
+            from darkblood.games.session import GameSession
+            mail_uid = GameSession.store().send_mail(
+                sender_char_id=sender_id,
+                sender_name='GoldSender',
+                recipient_char_id=recv_id,
+                title='AR Only',
+                gold=12345,
+            )
+
+            # Claim AR only (2248 -> 2249)
+            client.send_event(2248, PostGetAppendArReq(mail_uid=mail_uid).encode())
+            _, raw2249 = await client.expect_event(2249)
+            ack2249 = PostGetAppendArAck.decode(raw2249)
+            self.assertEqual(ack2249.result, 0)
+            self.assertEqual(ack2249.mail_uid, mail_uid)
+            self.assertEqual(ack2249.current_ar, 12345)
+
+            # Save mail (2252 -> 2253)
+            client.send_event(2252, PostSaveReq(mail_uid=mail_uid).encode())
+            _, raw2253 = await client.expect_event(2253)
+            ack2253 = PostSaveAck.decode(raw2253)
+            self.assertEqual(ack2253.result, 0)
+            self.assertEqual(ack2253.mail_uid, mail_uid)
+
+            inbox = GameSession.store().get_mail_inbox(recv_id)
+            self.assertEqual(inbox[0]['gold'], 0)
+            self.assertEqual(inbox[0]['remain_days'], 90)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

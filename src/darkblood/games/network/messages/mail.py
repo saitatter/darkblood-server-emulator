@@ -24,6 +24,11 @@ __all__ = [
     'PostReturnAck',
     'PostDeleteReq',
     'PostDeleteAck',
+    'PostGetAppendArReq',
+    'PostGetAppendArAck',
+    'PostSaveReq',
+    'PostSaveAck',
+    'PostDailySendRecoverNot',
 ]
 
 
@@ -212,3 +217,63 @@ class PostDeleteAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     mail_uids: Vector[i64] = field(default_factory=list)
+
+
+@dataclass
+class PostGetAppendArReq(WireMessage):
+    """Opcode 2248: eEGS_POST_GET_APPEND_AR_REQ (request).
+
+    Sender 0x00796700.
+    """
+    OPCODE: ClassVar[int] = 2248
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mail_uid: i64 = 0
+
+
+@dataclass
+class PostGetAppendArAck(WireMessage):
+    """Opcode 2249: eEGS_POST_GET_APPEND_AR_ACK (reply).
+
+    Handler 0x007967E0 (assert: nPostUID >> nCurrentAr). Updates player +0x70 gold.
+    """
+    OPCODE: ClassVar[int] = 2249
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    mail_uid: i64 = 0
+    current_ar: i64 = 0
+
+
+@dataclass
+class PostSaveReq(WireMessage):
+    """Opcode 2252: eEGS_POST_SAVE_REQ (request).
+
+    Sender 0x007969D0.
+    """
+    OPCODE: ClassVar[int] = 2252
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mail_uid: i64 = 0
+
+
+@dataclass
+class PostSaveAck(WireMessage):
+    """Opcode 2253: eEGS_POST_SAVE_ACK (reply).
+
+    Handler 0x0075A780 (assert: nPostUID).
+    """
+    OPCODE: ClassVar[int] = 2253
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    mail_uid: i64 = 0
+
+
+@dataclass
+class PostDailySendRecoverNot(WireMessage):
+    """Opcode 2399: eEGS_POST_DAILY_SEND_RECOVER_NOT (reply).
+
+    Handler 0x0079A880: writes player +0x32C and +0x32E.
+    """
+    OPCODE: ClassVar[int] = 2399
+    daily_send_count: i16 = 0
+    max_daily_send_count: i16 = 30

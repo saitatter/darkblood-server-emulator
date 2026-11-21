@@ -103,14 +103,13 @@
 | `5366 GoldGoblinDeadAck` | `i16` | events.jsch:93 | meaning unknown |
 | `5366 GoldGoblinDeadAck` | `i16` | events.jsch:94 | meaning unknown |
 
-## guild (4 of 41 fields)
+## guild (3 of 153 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2570 GuildOrAttendanceAck` | `map<?>` | guild.jsch:12 | 0x0076AE20 |
-| `2157 GuildInfoNot` | `raw[64]` | guild.jsch:144 |  |
-| `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:149 | guild members |
-| `2205 GuildSkillNot` | `vector<?>` | guild.jsch:168 |  |
+| `2570 GuildOrAttendanceAck` | `map<?>` | guild.jsch:13 | 0x0076AE20 |
+| `2157 GuildInfoNot` | `raw[64]` | guild.jsch:145 |  |
+| `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:150 | guild members |
 
 ## inventory (3 of 233 fields)
 
@@ -194,7 +193,7 @@
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:162 | RMI id |
 | `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:183 | vecDuel |
 
-## party (9 of 62 fields)
+## party (9 of 104 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -234,7 +233,7 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (23 of 81 fields)
+## social (23 of 113 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

@@ -106,3 +106,32 @@ message 2237 PostDeleteAck ok_only
   i32 result
   vector<i64> mail_uids
 end
+
+message 2248 PostGetAppendArReq header?
+  ## Sender 0x00796700.
+  i64 mail_uid
+end
+
+message 2249 PostGetAppendArAck ok_only
+  ## Handler 0x007967E0 (assert: nPostUID >> nCurrentAr). Updates player +0x70 gold.
+  i32 result
+  i64 mail_uid
+  i64 current_ar
+end
+
+message 2252 PostSaveReq header?
+  ## Sender 0x007969D0.
+  i64 mail_uid
+end
+
+message 2253 PostSaveAck ok_only
+  ## Handler 0x0075A780 (assert: nPostUID).
+  i32 result
+  i64 mail_uid
+end
+
+message 2399 PostDailySendRecoverNot
+  ## Handler 0x0079A880: writes player +0x32C and +0x32E.
+  i16 daily_send_count
+  i16 max_daily_send_count = 30
+end

@@ -190,13 +190,34 @@ class SocialHandlers(BaseDomainService):
 
     @packet_handler(2160)
     async def handle_guild_invite(self, correlation, body):
-        # eEGS_GUILD_INVITE_REQ -> 2161 eEGS_GUILD_INVITE_ACK (0x00759870).
-        from darkblood.games.network.messages import GuildInviteAck, GuildInviteReq
+        # eEGS_GUILD_INVITE_REQ -> 2161 eEGS_GUILD_INVITE_ACK (0x00759870)
+        # + 6015 eERT_GUILD_INVITE_REQ (0x00759AB0) delivered to online invitee.
+        from darkblood.games.network.messages import GuildInviteAck, GuildInviteNot, GuildInviteReq
+        from darkblood.games.world import GameWorldManager
         req = GuildInviteReq.decode(body)
         self.transport.record('guild-invite-req', body, target=req.char_name)
+        char = self.current_char()
+        target_name = req.char_name.strip('\x00').strip()
+        target = next((p for p in GameWorldManager.get().players.values()
+                       if p.char_data.get('name', '').lower() == target_name.lower()), None)
+        if target and target.session and getattr(target.session, 'transport', None) and char:
+            inviter_name = char.get('name', '')
+            guild_uid = int(char.get('guild_uid', 1001) or 1001)
+            guild_name = char.get('guild_name', '')
+            guild_lv = int(char.get('guild_level', 1) or 1)
+            notice = GuildInviteNot(
+                recv_char_nick=target.char_data.get('name', target_name),
+                guild_uid=guild_uid,
+                guild_name=guild_name,
+                invite_name=inviter_name,
+                master_name=inviter_name,
+                guild_lv=guild_lv,
+                member_count=1,
+            ).encode()
+            await target.session.transport.send_event(event(6015, notice), note=f'guild invite not to {target_name}')
         ack = GuildInviteAck(result=0).encode()
         await self.transport.send_event(event(2161, ack, correlation),
-                                        note=f'guild invite ack (target={req.char_name})')
+                                        note=f'guild invite ack (target={target_name})')
 
     @packet_handler(2162)
     async def handle_guild_person_leave(self, correlation, body):
@@ -794,6 +815,466 @@ class SocialHandlers(BaseDomainService):
                     event(2105, PartyLeaveAck(result=0).encode()),
                     note=f'kicked from party {party.party_id if party else 0}'
                 )
+
+    # =========================================================================
+    # Extended Social Handlers (Block list, Banish, Chat Notify, Char Inspect)
+    # =========================================================================
+
+    @packet_handler(2354)
+    async def handle_chat_notify(self, correlation, body):
+        # eEGS_CHAT_NOTIFY_REQ (0x004E6D30) -> 2355 eEGS_CHAT_NOTIFY_ACK.
+        from darkblood.games.network.messages.social import ChatNotifyAck, ChatNotifyReq
+        req = ChatNotifyReq.decode(body)
+        self.transport.record('chat-notify-req', body, target=req.target_name, category=req.category)
+        await self.reply(ChatNotifyAck(result=0), correlation, note='chat notify ack')
+
+    @packet_handler(2565)
+    async def handle_friend_block_list_add(self, correlation, body):
+        # eEGS_FRIEND_BLOCK_LIST_ADD_REQ (0x007A2930) -> 2566 eEGS_FRIEND_BLOCK_LIST_ADD_ACK (0x0075B640).
+        from darkblood.games.network.messages.social import (
+            FriendBlockEntry, FriendBlockListAddAck, FriendBlockListAddReq,
+        )
+        req = FriendBlockListAddReq.decode(body)
+        self.transport.record('friend-block-add', body, name=req.char_name)
+        char = self.current_char()
+        target = next((c for _, c in self.store().all_characters()
+                       if c.get('name', '').lower() == req.char_name.lower()), None)
+        if not char or not target or target.get('id') == char.get('id'):
+            await self.reply(FriendBlockListAddAck(result=0xCF), correlation,
+                             note=f'friend block add fail ({req.char_name} not found)')
+            return
+        blocked = char.setdefault('blocked_friends', {})
+        uid_key = str(target['id'])
+        if uid_key not in blocked:
+            blocked[uid_key] = ''
+            self.save_char()
+        entry = FriendBlockEntry(
+            uid=target['id'],
+            name=target.get('name', ''),
+            char_class=int(target.get('char_class', 0)) & 0xFF,
+            level=min(int(target.get('level', 1)), 0xFF),
+            memo=blocked.get(uid_key, ''),
+        )
+        await self.reply(FriendBlockListAddAck(result=0, block=entry), correlation,
+                         note=f'friend block add ack ({req.char_name})')
+
+    @packet_handler(2567)
+    async def handle_friend_block_list_delete(self, correlation, body):
+        # eEGS_FRIEND_BLOCK_LIST_DELETE_REQ (0x007A2C70) -> 2568 eEGS_FRIEND_BLOCK_LIST_DELETE_ACK (0x0075B9B0).
+        from darkblood.games.network.messages.social import FriendBlockListDeleteAck, FriendBlockListDeleteReq
+        req = FriendBlockListDeleteReq.decode(body)
+        self.transport.record('friend-block-delete', body, char_uid=req.char_uid)
+        char = self.current_char()
+        if char and str(req.char_uid) in char.get('blocked_friends', {}):
+            del char['blocked_friends'][str(req.char_uid)]
+            self.save_char()
+        await self.reply(FriendBlockListDeleteAck(result=0, char_uid=req.char_uid), correlation,
+                         note=f'friend block delete ack ({req.char_uid})')
+
+    @packet_handler(2571)
+    async def handle_friend_block_list_update(self, correlation, body):
+        # eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ (0x007A2F20) -> 2572 eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK (0x00753C80).
+        from darkblood.games.network.messages.social import FriendBlockListUpdateAck, FriendBlockListUpdateReq
+        req = FriendBlockListUpdateReq.decode(body)
+        self.transport.record('friend-block-update', body, char_uid=req.char_uid, memo=req.memo)
+        char = self.current_char()
+        if char is not None:
+            char.setdefault('blocked_friends', {})[str(req.char_uid)] = req.memo
+            self.save_char()
+        await self.reply(FriendBlockListUpdateAck(result=0, char_uid=req.char_uid, memo=req.memo), correlation,
+                         note=f'friend block update ack ({req.char_uid})')
+
+    @packet_handler(2693)
+    async def handle_watch_event_seen(self, correlation, body):
+        # eEGS_WATCH_EVENTSEEN_REQ -> 2694 eEGS_WATCH_EVENTSEEN_ACK (0x00655800).
+        from darkblood.games.network.messages.social import WatchEventSeenAck
+        self.transport.record('watch-event-seen-req', body)
+        await self.reply(WatchEventSeenAck(result=0), correlation, note='watch event seen ack')
+
+    @packet_handler(5007)
+    async def handle_banish_user(self, correlation, body):
+        # eERC_BANISH_USER_REQ (0x005975D0) -> 5008 eERC_BANISH_USER_ACK (0x005999A0).
+        from darkblood.games.network.messages.social import BanishUserAck, BanishUserReq
+        req = BanishUserReq.decode(body)
+        target_id = self._char_id(req.target_uid)
+        self.transport.record('banish-user-req', body, target_uid=target_id)
+        room = getattr(getattr(self.session, 'dungeon', None), 'room', None)
+        if room is None or room.host is not self.session:
+            await self.reply(BanishUserAck(result=1), correlation, note='banish user fail (not host)')
+            return
+        kicked = next((m for m in list(room.members) if m.active_char_id == target_id and m is not self.session), None)
+        if kicked is None:
+            await self.reply(BanishUserAck(result=1), correlation, note=f'banish user fail ({target_id} not in room)')
+            return
+        recipients = list(room.members)
+        room.members.remove(kicked)
+        kicked.dungeon.room = None
+        ack_msg = BanishUserAck(result=0, leave_user_uid=target_id)
+        ack_bytes = ack_msg.encode()
+        await self.transport.send_event(event(5008, ack_bytes, correlation),
+                                        note=f'banish user ack (kicked={target_id})')
+        unsolicited = event(5008, ack_bytes)
+        for member in recipients:
+            if member is self.session or not getattr(member, 'transport', None):
+                continue
+            try:
+                await member.transport.send_event(unsolicited, note=f'banish user broadcast (kicked={target_id})')
+            except (ConnectionError, OSError):
+                pass
+
+    @packet_handler(6018)
+    async def handle_request_char_info_by_nick(self, correlation, body):
+        # eERT_REQUEST_CHAR_INFO_BY_NICK_REQ (0x00790E10) -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0).
+        from darkblood.games.network.messages.social import RequestCharInfoAck, RequestCharInfoByNickReq
+        req = RequestCharInfoByNickReq.decode(body)
+        self.transport.record('request-char-info-by-nick', body, target_nick=req.target_nick)
+        target = next((c for _, c in self.store().all_characters()
+                       if c.get('name', '').lower() == req.target_nick.lower()), None)
+        res = 0 if target else 0xCE
+        await self.reply(RequestCharInfoAck(result=res), correlation,
+                         note=f'request char info by nick ack ({req.target_nick}, res={res})')
+
+    # =========================================================================
+    # Extended Party / Teaching / Guide Handlers
+    # =========================================================================
+
+    @packet_handler(2356)
+    async def handle_guide_waitlist_update(self, correlation, body):
+        # eEGS_GUIDE_WAITLIST_UPDATE_REQ (0x0079A260) -> 2357 eEGS_GUIDE_WAITLIST_UPDATE_ACK.
+        from darkblood.games.network.messages.party import GuideWaitlistUpdateAck, GuideWaitlistUpdateReq
+        req = GuideWaitlistUpdateReq.decode(body)
+        char = self.current_char()
+        if char is not None:
+            char['guide_waitlist'] = list(req.guide_ids)
+            self.save_char()
+        await self.reply(GuideWaitlistUpdateAck(result=0), correlation,
+                         note=f'guide waitlist update ack ({len(req.guide_ids)})')
+
+    @packet_handler(2360)
+    async def handle_guide_donelist_update(self, correlation, body):
+        # eEGS_GUIDE_DONELIST_UPDATE_REQ (0x0079A110) -> 2361 eEGS_GUIDE_DONELIST_UPDATE_ACK.
+        from darkblood.games.network.messages.party import GuideDonelistUpdateAck, GuideDonelistUpdateReq
+        req = GuideDonelistUpdateReq.decode(body)
+        char = self.current_char()
+        if char is not None:
+            char['guide_donelist'] = list(req.guide_ids)
+            self.save_char()
+        await self.reply(GuideDonelistUpdateAck(result=0), correlation,
+                         note=f'guide donelist update ack ({len(req.guide_ids)})')
+
+    @packet_handler(2648)
+    async def handle_teaching_stress_reward(self, correlation, body):
+        # eEGS_TEACHING_STRESS_REWARD_REQ (0x007A60E0) -> 2649 eEGS_TEACHING_STRESS_REWARD_ACK (0x0075C7B0).
+        from darkblood.games.network.messages.party import TeachingStressRewardAck, TeachingStressRewardReq
+        req = TeachingStressRewardReq.decode(body)
+        self.transport.record('teaching-stress-reward-req', body, reward_idx=req.reward_idx)
+        await self.reply(TeachingStressRewardAck(result=0), correlation,
+                         note=f'teaching stress reward ack (idx={req.reward_idx})')
+
+    @packet_handler(2658)
+    async def handle_teaching_graduation_reward(self, correlation, body):
+        # eEGS_TEACHING_GRADUATION_REWARD_REQ (0x007A6180) -> 2659 eEGS_TEACHING_GRADUATION_REWARD_ACK (0x0075C8E0).
+        from darkblood.games.network.messages.party import TeachingGraduationRewardAck, TeachingGraduationRewardReq
+        req = TeachingGraduationRewardReq.decode(body)
+        self.transport.record('teaching-graduation-reward-req', body, reward_idx=req.reward_idx)
+        await self.reply(TeachingGraduationRewardAck(result=0), correlation,
+                         note=f'teaching graduation reward ack (idx={req.reward_idx})')
+
+    @packet_handler(5130)
+    async def handle_summon_acknowledge(self, correlation, body):
+        # eERC_SUMMON_ACKNOWLEDGE_REQ (0x004D31D0) -> 5131 eERC_SUMMON_ACKNOWLEDGE_ACK.
+        from darkblood.games.network.messages.party import SummonAcknowledgeAck, SummonAcknowledgeReq
+        req = SummonAcknowledgeReq.decode(body)
+        self.transport.record('summon-acknowledge-req', body, accept=req.accept)
+        await self.reply(SummonAcknowledgeAck(result=0), correlation,
+                         note=f'summon acknowledge ack (accept={req.accept})')
+
+    @packet_handler(5356)
+    async def handle_teaching_summon_accept(self, correlation, body):
+        # eERC_TEACHING_SUMMON_ACCEPT_REQ (0x007A6490) -> 5357 eERC_TEACHING_SUMMON_ACCEPT_ACK (0x0077B780).
+        from darkblood.games.network.messages.party import TeachingSummonAcceptAck, TeachingSummonAcceptReq
+        req = TeachingSummonAcceptReq.decode(body)
+        char = self.current_char()
+        nick = char.get('name', '') if char else ''
+        await self.reply(TeachingSummonAcceptAck(result=0, answer=req.accept, nick=nick), correlation,
+                         note=f'teaching summon accept ack (accept={req.accept})')
+
+    @packet_handler(6030)
+    async def handle_teaching_delete(self, correlation, body):
+        # eERT_TEACHING_DELETE_REQ (0x007A5CB0) -> 6031 eERT_TEACHING_DELETE_ACK (0x007A5D60).
+        from darkblood.games.network.messages.party import TeachingDeleteAck, TeachingDeleteReq
+        req = TeachingDeleteReq.decode(body)
+        target_id = self._char_id(req.target_uid)
+        target = next((c for _, c in self.store().all_characters() if c.get('id') == target_id), None)
+        nick = target.get('name', '') if target else ''
+        await self.reply(TeachingDeleteAck(result=0, nick=nick, is_request=False), correlation,
+                         note=f'teaching delete ack (target={target_id})')
+
+    @packet_handler(6032)
+    async def handle_teaching_summon_request(self, correlation, body):
+        # eERT_TEACHING_SUMMON_REQUEST_REQ (0x007A6240) -> 6033 eERT_TEACHING_SUMMON_REQUEST_ACK (0x0075CA40).
+        from darkblood.games.entities.character import layer_net_id
+        from darkblood.games.network.messages.party import TeachingSummonRequestAck, TeachingSummonRequestReq
+        from darkblood.games.world import GameWorldManager
+        req = TeachingSummonRequestReq.decode(body)
+        char = self.current_char()
+        my_name = char.get('name', '') if char else ''
+        world = GameWorldManager.get()
+        me = world.get_player(self.char_id)
+        cur_layer = me.layer_id if me else layer_net_id()
+        channel = getattr(self.session, 'channel_id', 1) or 1
+        target = next((p for p in world.players.values()
+                       if p.char_data.get('name', '').lower() == req.target_nick.lower()), None)
+        if not target:
+            await self.reply(TeachingSummonRequestAck(result=0xCE), correlation,
+                             note=f'teaching summon fail ({req.target_nick} offline)')
+            return
+        ack = TeachingSummonRequestAck(
+            result=0, nick=my_name, pos_x=req.pos_x, pos_y=req.pos_y,
+            layer_net_id=cur_layer, channel=channel,
+        )
+        if target.session and getattr(target.session, 'transport', None):
+            await target.session.transport.send_event(event(6033, ack.encode()),
+                                                      note=f'teaching summon forward to {req.target_nick}')
+        await self.reply(ack, correlation, note=f'teaching summon request ack ({req.target_nick})')
+
+    # =========================================================================
+    # Extended Guild Management, Skills, Broker, Supply, Citadel & Siege
+    # =========================================================================
+
+    @packet_handler(2166)
+    async def handle_guild_fallout_start(self, correlation, body):
+        # eEGS_GUILD_FALLOUT_START_REQ (0x00793EA0) -> 2167 eEGS_GUILD_FALLOUT_START_ACK (0x00759D60).
+        from darkblood.games.network.messages.guild import GuildFalloutStartAck
+        char = self.current_char()
+        if char is not None:
+            char['guild_fallout'] = True
+            self.save_char()
+        await self.reply(GuildFalloutStartAck(result=0), correlation, note='guild fallout start ack')
+
+    @packet_handler(2168)
+    async def handle_guild_fallout_stop(self, correlation, body):
+        # eEGS_GUILD_FALLOUT_STOP_REQ (0x00793FA0) -> 2169 eEGS_GUILD_FALLOUT_STOP_ACK (0x0074B830).
+        from darkblood.games.network.messages.guild import GuildFalloutStopAck
+        char = self.current_char()
+        if char is not None:
+            char.pop('guild_fallout', None)
+            self.save_char()
+        await self.reply(GuildFalloutStopAck(result=0), correlation, note='guild fallout stop ack')
+
+    @packet_handler(2173)
+    async def handle_guild_grade_delegation(self, correlation, body):
+        # eEGS_GUILD_GRADE_DELEGATION_REQ (0x00794020) -> 2174 eEGS_GUILD_GRADE_DELEGATION_ACK (0x0074B830).
+        from darkblood.games.network.messages.guild import GuildGradeDelegationAck, GuildGradeDelegationReq
+        req = GuildGradeDelegationReq.decode(body)
+        self.transport.record('guild-grade-delegation-req', body, target_uid=req.target_uid)
+        await self.reply(GuildGradeDelegationAck(result=0), correlation,
+                         note=f'guild grade delegation ack (target={req.target_uid})')
+
+    @packet_handler(2175)
+    async def handle_guild_person_expulsion(self, correlation, body):
+        # eEGS_GUILD_PERSON_EXPULSION_REQ (0x007940D0) -> 2176 eEGS_GUILD_PERSON_EXPULSION_ACK (0x0074B830).
+        from darkblood.games.network.messages.guild import (
+            GuildPersonExpulsionAck, GuildPersonExpulsionCompleteNot, GuildPersonExpulsionReq,
+        )
+        from darkblood.games.world import GameWorldManager
+        req = GuildPersonExpulsionReq.decode(body)
+        self.transport.record('guild-person-expulsion-req', body, member_uids=req.member_uids)
+        world = GameWorldManager.get()
+        for uid in req.member_uids:
+            target = world.get_player(self._char_id(uid))
+            if target and target.session and getattr(target.session, 'transport', None):
+                target.char_data.pop('guild_uid', None)
+                target.char_data.pop('guild_name', None)
+                await target.session.transport.send_event(
+                    event(6017, GuildPersonExpulsionCompleteNot().encode()),
+                    note=f'guild expulsion complete not ({uid})',
+                )
+        await self.reply(GuildPersonExpulsionAck(result=0), correlation,
+                         note=f'guild person expulsion ack (count={len(req.member_uids)})')
+
+    @packet_handler(2187)
+    async def handle_guild_viewed_notice(self, correlation, body):
+        # eEGS_GUILD_VIEWED_NOTICE_NOT (0x00794700): fire-and-forget.
+        from darkblood.games.network.messages.guild import GuildViewedNoticeNot
+        req = GuildViewedNoticeNot.decode(body)
+        self.transport.record('guild-viewed-notice-not', body, notice_time=req.notice_time)
+
+    @packet_handler(2190)
+    async def handle_guild_dismissal_start(self, correlation, body):
+        # eEGS_GUILD_DISMISSAL_START_REQ (0x007947A0) -> 2191 eEGS_GUILD_DISMISSAL_START_ACK (0x0074B830).
+        from darkblood.games.network.messages.guild import GuildDismissalStartAck
+        char = self.current_char()
+        if char is not None:
+            char['guild_dismissal'] = True
+            self.save_char()
+        await self.reply(GuildDismissalStartAck(result=0), correlation, note='guild dismissal start ack')
+
+    @packet_handler(2192)
+    async def handle_guild_dismissal_stop(self, correlation, body):
+        # eEGS_GUILD_DISMISSAL_STOP_REQ (0x00794820) -> 2193 eEGS_GUILD_DISMISSAL_STOP_ACK (0x0074B830).
+        from darkblood.games.network.messages.guild import GuildDismissalStopAck
+        char = self.current_char()
+        if char is not None:
+            char.pop('guild_dismissal', None)
+            self.save_char()
+        await self.reply(GuildDismissalStopAck(result=0), correlation, note='guild dismissal stop ack')
+
+    @packet_handler(2206)
+    async def handle_guild_learn_skill(self, correlation, body):
+        # eEGS_GUILD_LEARN_SKILL_REQ (0x00794B10) -> 2207 eEGS_GUILD_LEARN_SKILL_ACK (0x0074B820).
+        from darkblood.games.network.messages.guild import (
+            GuildLearnSkillAck, GuildLearnSkillReq, GuildSkillEntry, GuildSkillNot,
+        )
+        req = GuildLearnSkillReq.decode(body)
+        char = self.current_char()
+        entries = []
+        if char is not None:
+            skills = char.setdefault('guild_skills', {})
+            skills[str(req.skill_id)] = {'level': req.skill_level, 'is_used': False}
+            self.save_char()
+            entries = [
+                GuildSkillEntry(skill_id=int(sid) & 0xFFFF, skill_level=int(info.get('level', 1)),
+                                is_used=bool(info.get('is_used', False)))
+                for sid, info in skills.items()
+            ]
+        await self.reply(GuildLearnSkillAck(result=0), correlation,
+                         note=f'guild learn skill ack (skill={req.skill_id} lv={req.skill_level})')
+        await self.send_msg(GuildSkillNot(flag=True, skills=entries), note='guild skill not')
+
+    @packet_handler(2208)
+    async def handle_guild_skill_change_use_state(self, correlation, body):
+        # eEGS_GUILD_SKILL_CHANGE_USE_STATE_REQ (0x00794BC0) -> 2209 eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK (0x0074B820).
+        from darkblood.games.network.messages.guild import (
+            CurrentGuildSkillNot, GuildSkillChangeUseStateAck, GuildSkillChangeUseStateReq, GuildSkillEntry,
+        )
+        req = GuildSkillChangeUseStateReq.decode(body)
+        char = self.current_char()
+        active = []
+        guild_uid = 0
+        if char is not None:
+            guild_uid = int(char.get('guild_uid', 1001) or 1001)
+            skills = char.setdefault('guild_skills', {})
+            entry = skills.setdefault(str(req.skill_id), {'level': 1, 'is_used': False})
+            entry['is_used'] = not bool(entry.get('is_used', False))
+            self.save_char()
+            active = [
+                GuildSkillEntry(skill_id=int(sid) & 0xFFFF, skill_level=int(info.get('level', 1)), is_used=True)
+                for sid, info in skills.items() if info.get('is_used')
+            ]
+        await self.reply(GuildSkillChangeUseStateAck(result=0), correlation,
+                         note=f'guild skill use state ack (skill={req.skill_id})')
+        await self.send_msg(
+            CurrentGuildSkillNot(guild_uid=guild_uid, send_char_uid=self.char_id or 0, use_skills=active),
+            note='current guild skill not',
+        )
+
+    @packet_handler(2218)
+    async def handle_refuse_guild_invite(self, correlation, body):
+        # eEGS_REFUSE_GUILD_INVITE_NOT (0x00795000) -> forwards 6019 to online inviter.
+        from darkblood.games.network.messages.guild import RefuseGuildInviteForwardNot, RefuseGuildInviteNot
+        from darkblood.games.world import GameWorldManager
+        req = RefuseGuildInviteNot.decode(body)
+        char = self.current_char()
+        my_nick = char.get('name', '') if char else ''
+        inviter = next((p for p in GameWorldManager.get().players.values()
+                        if p.char_data.get('name', '').lower() == req.inviter_name.lower()), None)
+        if inviter and inviter.session and getattr(inviter.session, 'transport', None):
+            fwd = RefuseGuildInviteForwardNot(my_nick=req.inviter_name, refuser_nick=my_nick).encode()
+            await inviter.session.transport.send_event(event(6019, fwd),
+                                                       note=f'refuse guild invite forward to {req.inviter_name}')
+
+    @packet_handler(2674)
+    async def handle_guild_person_introduction(self, correlation, body):
+        # eEGS_GUILD_PERSON_INTRODUTION_REQ (0x007A67D0) -> 2675 eEGS_GUILD_PERSON_INTRODUTION_ACK (0x0075CCA0).
+        from darkblood.games.network.messages.guild import GuildPersonIntroductionAck, GuildPersonIntroductionReq
+        req = GuildPersonIntroductionReq.decode(body)
+        char = self.current_char()
+        if char is not None:
+            char['guild_greeting'] = req.greeting
+            char['guild_memo'] = req.memo
+            self.save_char()
+        await self.reply(GuildPersonIntroductionAck(result=0, greeting=req.greeting, memo=req.memo), correlation,
+                         note='guild person introduction ack')
+
+    @packet_handler(2678)
+    async def handle_guild_broker_list(self, correlation, body):
+        # eEGS_GUILD_BROKER_LIST_REQ (0x007A6880) -> 2679 eEGS_GUILD_BROKER_LIST_ACK (0x00776950).
+        from darkblood.games.network.messages.guild import GuildBrokerListAck
+        await self.reply(GuildBrokerListAck(result=0, brokers={}, remain_second=3600), correlation,
+                         note='guild broker list ack')
+
+    @packet_handler(2680)
+    async def handle_guild_broker_bid(self, correlation, body):
+        # eEGS_GUILD_BROKER_BID_REQ (0x007A6900) -> 2681 eEGS_GUILD_BROKER_BID_ACK (0x0075D040).
+        from darkblood.games.network.messages.guild import GuildBrokerBidAck, GuildBrokerBidReq
+        req = GuildBrokerBidReq.decode(body)
+        await self.reply(GuildBrokerBidAck(result=0, broker_id=req.broker_id, bid_point=req.bid_point), correlation,
+                         note=f'guild broker bid ack (id={req.broker_id} pts={req.bid_point})')
+
+    @packet_handler(2682)
+    async def handle_guild_broker_return_point(self, correlation, body):
+        # eEGS_GUILD_BROKER_RETURN_POINT_REQ (0x007A6A50) -> 2683 eEGS_GUILD_BROKER_RETURN_POINT_ACK (0x0075D180).
+        from darkblood.games.network.messages.guild import GuildBrokerReturnPointAck, GuildBrokerReturnPointReq
+        req = GuildBrokerReturnPointReq.decode(body)
+        await self.reply(GuildBrokerReturnPointAck(result=0, broker_id=req.broker_id, return_point=0), correlation,
+                         note=f'guild broker return point ack (id={req.broker_id})')
+
+    @packet_handler(2684)
+    async def handle_guild_supply_get_reward(self, correlation, body):
+        # eEGS_GUILD_SUPPLY_GET_REWARD_REQ (0x007A6AF0) -> 2685 eEGS_GUILD_SUPPLY_GET_REWARD_ACK (0x00783F70).
+        from darkblood.games.network.messages.guild import GuildSupplyGetRewardAck, GuildSupplyGetRewardReq
+        req = GuildSupplyGetRewardReq.decode(body)
+        await self.reply(GuildSupplyGetRewardAck(result=0, supply_reward_uid=req.supply_reward_uid, items=[]),
+                         correlation, note=f'guild supply get reward ack (uid={req.supply_reward_uid})')
+
+    @packet_handler(2426)
+    async def handle_guild_person_arena_grade_modify(self, correlation, body):
+        # eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_REQ -> 2427 eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK (0x00771D70).
+        from darkblood.games.network.messages.guild import (
+            GuildPersonArenaGradeModifyAck, GuildPersonArenaGradeModifyReq,
+        )
+        req = GuildPersonArenaGradeModifyReq.decode(body)
+        await self.reply(
+            GuildPersonArenaGradeModifyAck(result=0, char_uids=req.char_uids, arena_permission=req.arena_permission),
+            correlation, note=f'guild arena grade modify ack (count={len(req.char_uids)})',
+        )
+
+    @packet_handler(2450)
+    async def handle_guild_siege_change_officer(self, correlation, body):
+        # eEGS_GUILD_SIEGE_CHANGE_OFFICER_REQ -> 2451 eEGS_GUILD_SIEGE_CHANGE_OFFICER_ACK (0x0076CA40).
+        from darkblood.games.network.messages.guild import GuildSiegeChangeOfficerAck, GuildSiegeChangeOfficerReq
+        req = GuildSiegeChangeOfficerReq.decode(body)
+        await self.reply(
+            GuildSiegeChangeOfficerAck(result=0, change_char_uid=req.change_char_uid, changed_chars={}),
+            correlation, note=f'guild siege change officer ack (uid={req.change_char_uid})',
+        )
+
+    @packet_handler(2453)
+    async def handle_guild_person_siege_team_idx_modify(self, correlation, body):
+        # eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_REQ (0x0079DE80) -> 2454 ACK (0x0077C550).
+        from darkblood.games.network.messages.guild import (
+            GuildPersonSiegeTeamIdxModifyAck, GuildPersonSiegeTeamIdxModifyReq, SiegeTeamMembers,
+        )
+        req = GuildPersonSiegeTeamIdxModifyReq.decode(body)
+        teams = {}
+        for char_uid, team_idx in req.team_changes.items():
+            teams.setdefault(team_idx, []).append(char_uid)
+        team_map = {idx: SiegeTeamMembers(member_uids=uids) for idx, uids in teams.items()}
+        await self.reply(
+            GuildPersonSiegeTeamIdxModifyAck(result=0, team_char_list=team_map),
+            correlation, note=f'guild siege team modify ack ({len(req.team_changes)} changes)',
+        )
+
+    @packet_handler(2599)
+    async def handle_citadel_round_clear(self, correlation, body):
+        # eEGS_CITADEL_ROUND_CLEAR_REQ (0x007A4D80) -> 2600 eEGS_CITADEL_ROUND_CLEAR_ACK (0x0075BF20).
+        from darkblood.games.network.messages.guild import CitadelRoundClearAck, CitadelRoundClearReq
+        req = CitadelRoundClearReq.decode(body)
+        await self.reply(
+            CitadelRoundClearAck(result=0, next_round=req.cur_round + 1),
+            correlation, note=f'citadel round clear ack (next={req.cur_round + 1})',
+        )
 
 
 

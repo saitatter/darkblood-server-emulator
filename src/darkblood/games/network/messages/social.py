@@ -34,6 +34,21 @@ __all__ = [
     'RequestItemInfoAck',
     'GetInviteListReq',
     'GetInviteListAck',
+    'AlarmUpdateAck',
+    'ChatNotifyReq',
+    'ChatNotifyAck',
+    'FriendBlockEntry',
+    'FriendBlockListAddReq',
+    'FriendBlockListAddAck',
+    'FriendBlockListDeleteReq',
+    'FriendBlockListDeleteAck',
+    'FriendBlockListUpdateReq',
+    'FriendBlockListUpdateAck',
+    'WatchEventSeenReq',
+    'WatchEventSeenAck',
+    'BanishUserReq',
+    'BanishUserAck',
+    'RequestCharInfoByNickReq',
 ]
 
 
@@ -382,3 +397,185 @@ class GetInviteListAck(WireMessage):
     OPCODE: ClassVar[int] = 2025
     result: i32 = 0
     users: Vector[RoomMemberInfo] = field(default_factory=list)
+
+
+@dataclass
+class AlarmUpdateAck(WireMessage):
+    """Opcode 2120: eEGS_ALARM_UPDATE_ACK (reply).
+
+    Handler 0x00771150 (assert: sType >> vecValue; vector reader 0x004D6E60).
+    """
+    OPCODE: ClassVar[int] = 2120
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    alarm_type: i16 = 0
+    values: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class ChatNotifyReq(WireMessage):
+    """Opcode 2354: eEGS_CHAT_NOTIFY_REQ (request).
+
+    Sender 0x004E6D30 (struct writer 0x00A1EDD0): chat report/notification.
+    """
+    OPCODE: ClassVar[int] = 2354
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+    category: i32 = 0
+    target_name: wstr = ''
+    message: wstr = ''
+    timestamp: i64 = 0
+
+
+@dataclass
+class ChatNotifyAck(WireMessage):
+    """Opcode 2355: eEGS_CHAT_NOTIFY_ACK (reply).
+
+    Reply to 2354 (no dedicated client handler in handler_map.txt).
+    """
+    OPCODE: ClassVar[int] = 2355
+    result: i32 = 0
+
+
+@dataclass
+class FriendBlockEntry(WireMessage):
+    """Block list entry, reader 0x00A4A1A0 (2566)."""
+    uid: i64 = 0  # +0x00 char uid
+    name: wstr = ''  # +0x08
+    char_class: u8 = 0  # +0x24
+    level: u8 = 1  # +0x25
+    memo: wstr = ''  # +0x26
+
+
+@dataclass
+class FriendBlockListAddReq(WireMessage):
+    """Opcode 2565: eEGS_FRIEND_BLOCK_LIST_ADD_REQ (request).
+
+    Sender 0x007A2930 (assert: strFriendBlockNick).
+    """
+    OPCODE: ClassVar[int] = 2565
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_name: wstr = ''
+
+
+@dataclass
+class FriendBlockListAddAck(WireMessage):
+    """Opcode 2566: eEGS_FRIEND_BLOCK_LIST_ADD_ACK (reply).
+
+    Handler 0x0075B640 (assert: jFriendBlockInfo, reader 0x00A4A1A0).
+    """
+    OPCODE: ClassVar[int] = 2566
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0xCF
+    block: FriendBlockEntry = field(default_factory=FriendBlockEntry)
+
+
+@dataclass
+class FriendBlockListDeleteReq(WireMessage):
+    """Opcode 2567: eEGS_FRIEND_BLOCK_LIST_DELETE_REQ (request).
+
+    Sender 0x007A2C70 (assert: nFriendBlockUID).
+    """
+    OPCODE: ClassVar[int] = 2567
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+
+
+@dataclass
+class FriendBlockListDeleteAck(WireMessage):
+    """Opcode 2568: eEGS_FRIEND_BLOCK_LIST_DELETE_ACK (reply).
+
+    Handler 0x0075B9B0 (assert: nFriendBlockUID).
+    """
+    OPCODE: ClassVar[int] = 2568
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    char_uid: i64 = 0
+
+
+@dataclass
+class FriendBlockListUpdateReq(WireMessage):
+    """Opcode 2571: eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ (request).
+
+    Sender 0x007A2F20 (assert: pjBlockInfo->m_nCharUID << strBlockMemo).
+    """
+    OPCODE: ClassVar[int] = 2571
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+    memo: wstr = ''
+
+
+@dataclass
+class FriendBlockListUpdateAck(WireMessage):
+    """Opcode 2572: eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK (reply).
+
+    Handler 0x00753C80 (assert: nFriendBlockUID >> strBlockMemo).
+    """
+    OPCODE: ClassVar[int] = 2572
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    char_uid: i64 = 0
+    memo: wstr = ''
+
+
+@dataclass
+class WatchEventSeenReq(WireMessage):
+    """Opcode 2693: eEGS_WATCH_EVENTSEEN_REQ (request).
+
+    Request for 2694 (no sender recovered in build).
+    """
+    OPCODE: ClassVar[int] = 2693
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class WatchEventSeenAck(WireMessage):
+    """Opcode 2694: eEGS_WATCH_EVENTSEEN_ACK (reply).
+
+    Handler 0x00655800 -> 0x00759D60 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2694
+    result: i32 = 0
+
+
+@dataclass
+class BanishUserReq(WireMessage):
+    """Opcode 5007: eERC_BANISH_USER_REQ (request).
+
+    Sender 0x005975D0 (assert: nForceLeaveUser). Room host kicks a member.
+    """
+    OPCODE: ClassVar[int] = 5007
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0
+
+
+@dataclass
+class BanishUserAck(WireMessage):
+    """Opcode 5008: eERC_BANISH_USER_ACK (reply).
+
+    Handler 0x005999A0 (assert: nLeaveUserUID). Broadcast to room and kicked user.
+    """
+    OPCODE: ClassVar[int] = 5008
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    leave_user_uid: i64 = 0
+
+
+@dataclass
+class RequestCharInfoByNickReq(WireMessage):
+    """Opcode 6018: eERT_REQUEST_CHAR_INFO_BY_NICK_REQ (request).
+
+    Sender 0x00790E10 (assert: strTargetNick << GetMyCharUID() << nDBUID).
+    """
+    OPCODE: ClassVar[int] = 6018
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_nick: wstr = ''
+    my_char_uid: i64 = 0
+    db_uid: i64 = 0

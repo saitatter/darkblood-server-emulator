@@ -154,3 +154,121 @@ struct PartyInfoNot
   i64 leader_uid
   vector<PartyMemberInfo> members
 end
+
+message 2356 GuideWaitlistUpdateReq header?
+  ## Sender 0x0079A260 (vector<i32> writer 0x004C9FB0).
+  vector<i32> guide_ids
+end
+
+message 2357 GuideWaitlistUpdateAck
+  ## Reply to 2356.
+  i32 result
+end
+
+message 2359 GuideBeginnerUpdateAck
+  ## Reply to beginner guide update.
+  i32 result
+end
+
+message 2360 GuideDonelistUpdateReq header?
+  ## Sender 0x0079A110 (vector<i32> writer 0x004C9FB0).
+  vector<i32> guide_ids
+end
+
+message 2361 GuideDonelistUpdateAck
+  ## Reply to 2360.
+  i32 result
+end
+
+message 2648 TeachingStressRewardReq header?
+  ## Sender 0x007A60E0.
+  i16 reward_idx
+end
+
+message 2649 TeachingStressRewardAck
+  ## Handler 0x0075C7B0 (reads u32 result only).
+  i32 result
+end
+
+struct TeachingHistoryEntry
+  ## Mentor/student history entry, reader 0x00A4AF60 (2650).
+  i64 char_uid               # +0x00
+  wstr name                  # +0x08
+  u8 char_class              # +0x24
+  bool is_mentor             # +0x25
+  u8 level = 1               # +0x28
+  raw[12] start_time         # +0x47 (0x00A49110: 6x u16 Y/M/D/H/M/S)
+  raw[12] end_time           # +0x53 (0x00A49110: 6x u16 Y/M/D/H/M/S)
+  u8 state                   # +0x26
+  u8 grad_flag               # +0x27
+  i16 stress_point           # +0x29
+  wstr memo                  # +0x2B
+end
+
+message 2650 TeachingGetHistoryNot
+  ## Handler 0x0077B5D0 (assert: vecTeachHistory, vector reader 0x00773CB0).
+  vector<TeachingHistoryEntry> history
+end
+
+message 2658 TeachingGraduationRewardReq header?
+  ## Sender 0x007A6180.
+  i16 reward_idx
+  wstr mentor_name
+  wstr student_name
+end
+
+message 2659 TeachingGraduationRewardAck
+  ## Handler 0x0075C8E0 (reads u32 result only).
+  i32 result
+end
+
+message 5130 SummonAcknowledgeReq header?
+  ## Sender 0x004D31D0.
+  bool accept
+end
+
+message 5131 SummonAcknowledgeAck
+  ## Reply to 5130.
+  i32 result
+end
+
+message 5356 TeachingSummonAcceptReq header?
+  ## Sender 0x007A6490.
+  bool accept
+end
+
+message 5357 TeachingSummonAcceptAck ok_only
+  ## Handler 0x0077B780 (assert: bAnswer >> strNick).
+  i32 result
+  bool answer
+  wstr nick
+end
+
+message 6030 TeachingDeleteReq header?
+  ## Sender 0x007A5CB0.
+  i64 target_uid
+end
+
+message 6031 TeachingDeleteAck ok_only
+  ## Handler 0x007A5D60 (assert: strNick >> bRequest).
+  i32 result
+  wstr nick
+  bool is_request
+end
+
+message 6032 TeachingSummonRequestReq header?
+  ## Sender 0x007A6240.
+  wstr target_nick
+  f32 pos_x
+  f32 pos_y
+end
+
+message 6033 TeachingSummonRequestAck ok_only
+  ## Handler 0x0075CA40 (assert: strNick >> fPosX >> fPosY >> nLayerNetID >> nChannel).
+  i32 result
+  wstr nick
+  f32 pos_x
+  f32 pos_y
+  i64 layer_net_id
+  i64 channel = 1
+end

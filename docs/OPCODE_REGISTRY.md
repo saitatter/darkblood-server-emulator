@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 607  
+**Tracked opcodes**: 650  
 **Client handlers mapped**: 298  
-**Server handlers**: 227  
+**Server handlers**: 263  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -116,7 +116,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2117 | `eEGS_UPDATE_SKILL_LOCKED_REQ` | — | `skills.py` (`handle_update_skill_locked`) | `UpdateSkillLockedReq` | eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390) -> 2118 eEGS_UPDATE_SKILL_LOCKED_ACK (0x00752C70). |
 | 2118 | `eEGS_UPDATE_SKILL_LOCKED_ACK` | 0x00752C70 | — | `UpdateSkillLockedAck` |  |
 | 2119 | `eEGS_ALARM_UPDATE_REQ` | — | `inventory/items.py` (`handle_alarm_update`) | — | Opcode 2119 (eEGS_ALARM_UPDATE_REQ) -> 2120 (eEGS_ALARM_UPDATE_ACK): acknowledge alarm flags. |
-| 2120 | `eEGS_ALARM_UPDATE_ACK` | 0x00771150 | — | — |  |
+| 2120 | `eEGS_ALARM_UPDATE_ACK` | 0x00771150 | — | `AlarmUpdateAck` |  |
 | 2121 | `eEGS_CONTRACT_UPDATE_REQ` | — | `commerce.py` (`handle_contract_update`) | `ContractUpdateReq` | eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80). |
 | 2122 | `eEGS_CONTRACT_UPDATE_ACK` | 0x00752D80 | — | `ContractUpdateAck` |  |
 | 2126 | `eEGS_GET_QUEST_TAG_REQ` | — | `quests.py` (`handle_get_quest_tag`) | `GetQuestTagReq` | Opcode 2126 (eEGS_GET_QUEST_TAG_REQ) -> 2127 (eEGS_GET_QUEST_TAG_ACK): return quest tag string. |
@@ -145,18 +145,22 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2156 | `eEGS_GUILD_PERSON_JOIN_ACK` | 0x0075A220 | — | `GuildPersonJoinAck` |  |
 | 2157 | `eEGS_GUILD_INFO_NOT` | 0x00752FF0 | — | `GuildInfoNot` |  |
 | 2158 | `eEGS_GUILD_PERSON_LIST_NOT` | 0x0077ABA0 | — | `GuildPersonListNot` |  |
-| 2159 | `eEGS_GUILD_HISTORY_NOT` | 0x0077AD40 | — | — |  |
-| 2160 | `eEGS_GUILD_INVITE_REQ` | — | `social.py` (`handle_guild_invite`) | `GuildInviteReq` | eEGS_GUILD_INVITE_REQ -> 2161 eEGS_GUILD_INVITE_ACK (0x00759870). |
+| 2159 | `eEGS_GUILD_HISTORY_NOT` | 0x0077AD40 | — | `GuildHistoryNot` |  |
+| 2160 | `eEGS_GUILD_INVITE_REQ` | — | `social.py` (`handle_guild_invite`) | `GuildInviteReq` | eEGS_GUILD_INVITE_REQ -> 2161 eEGS_GUILD_INVITE_ACK (0x00759870) |
 | 2161 | `eEGS_GUILD_INVITE_ACK` | 0x00759870 | — | `GuildInviteAck` |  |
 | 2162 | `eEGS_GUILD_PERSON_LEAVE_REQ` | — | `social.py` (`handle_guild_person_leave`) | `GuildPersonLeaveReq` | eEGS_GUILD_PERSON_LEAVE_REQ (0x00790000.c:2761) -> 2163 eEGS_GUILD_PERSON_LEAVE_ACK (0x00759CA0). |
 | 2163 | `eEGS_GUILD_PERSON_LEAVE_ACK` | 0x00759CA0 | — | `GuildPersonLeaveAck` |  |
 | 2164 | `eEGS_GUILD_PERSON_GRADE_MODIFY_REQ` | — | `social.py` (`handle_guild_person_grade_modify`) | `GuildPersonGradeModifyReq` | eEGS_GUILD_PERSON_GRADE_MODIFY_REQ -> 2165 eEGS_GUILD_PERSON_GRADE_MODIFY_ACK (0x00753170). |
 | 2165 | `eEGS_GUILD_PERSON_GRADE_MODIFY_ACK` | 0x00753170 | — | `GuildPersonGradeModifyAck` |  |
-| 2167 | `eEGS_GUILD_FALLOUT_START_ACK` | 0x00759D60 | — | — |  |
-| 2169 | `eEGS_GUILD_FALLOUT_STOP_ACK` | 0x0074B830 | — | — |  |
-| 2172 | `eEGS_GUILD_FALLOUT_COMPLETE_NOT` | 0x00753280 | — | — |  |
-| 2174 | `eEGS_GUILD_GRADE_DELEGATION_ACK` | 0x0074B830 | — | — |  |
-| 2176 | `eEGS_GUILD_PERSON_EXPULSION_ACK` | 0x0074B830 | — | — |  |
+| 2166 | `eEGS_GUILD_FALLOUT_START_REQ` | — | `social.py` (`handle_guild_fallout_start`) | `GuildFalloutStartReq` | eEGS_GUILD_FALLOUT_START_REQ (0x00793EA0) -> 2167 eEGS_GUILD_FALLOUT_START_ACK (0x00759D60). |
+| 2167 | `eEGS_GUILD_FALLOUT_START_ACK` | 0x00759D60 | — | `GuildFalloutStartAck` |  |
+| 2168 | `eEGS_GUILD_FALLOUT_STOP_REQ` | — | `social.py` (`handle_guild_fallout_stop`) | `GuildFalloutStopReq` | eEGS_GUILD_FALLOUT_STOP_REQ (0x00793FA0) -> 2169 eEGS_GUILD_FALLOUT_STOP_ACK (0x0074B830). |
+| 2169 | `eEGS_GUILD_FALLOUT_STOP_ACK` | 0x0074B830 | — | `GuildFalloutStopAck` |  |
+| 2172 | `eEGS_GUILD_FALLOUT_COMPLETE_NOT` | 0x00753280 | — | `GuildFalloutCompleteNot` |  |
+| 2173 | `eEGS_GUILD_GRADE_DELEGATION_REQ` | — | `social.py` (`handle_guild_grade_delegation`) | `GuildGradeDelegationReq` | eEGS_GUILD_GRADE_DELEGATION_REQ (0x00794020) -> 2174 eEGS_GUILD_GRADE_DELEGATION_ACK (0x0074B830). |
+| 2174 | `eEGS_GUILD_GRADE_DELEGATION_ACK` | 0x0074B830 | — | `GuildGradeDelegationAck` |  |
+| 2175 | `eEGS_GUILD_PERSON_EXPULSION_REQ` | — | `social.py` (`handle_guild_person_expulsion`) | `GuildPersonExpulsionReq` | eEGS_GUILD_PERSON_EXPULSION_REQ (0x007940D0) -> 2176 eEGS_GUILD_PERSON_EXPULSION_ACK (0x0074B830). |
+| 2176 | `eEGS_GUILD_PERSON_EXPULSION_ACK` | 0x0074B830 | — | `GuildPersonExpulsionAck` |  |
 | 2177 | `eEGS_ACT_KAIRO_REQ` | — | `quests.py` (`handle_act_kairo`) | `ActKairoReq` | Opcode 2177 (eEGS_ACT_KAIRO_REQ) -> 2178 (eEGS_ACT_KAIRO_ACK): execute Kairo box/action. |
 | 2178 | `eEGS_ACT_KAIRO_ACK` | — | — | `ActKairoAck` |  |
 | 2179 | `eEGS_GUILD_MONEY_IN_REQ` | — | `social.py` (`handle_guild_money_in`) | `GuildMoneyInReq` | eEGS_GUILD_MONEY_IN_REQ (0x00790000.c:3031) -> 2180 eEGS_GUILD_MONEY_IN_ACK (0x00794250). |
@@ -167,23 +171,29 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2184 | `eEGS_GUILD_LEVEL_UP_ACK` | 0x00753380 | — | `GuildLevelUpAck` |  |
 | 2185 | `eEGS_GUILD_NOTICE_MODIFY_REQ` | — | `social.py` (`handle_guild_notice_modify`) | `GuildNoticeModifyReq` | eEGS_GUILD_NOTICE_MODIFY_REQ (0x00790000.c:3278) -> 2186 eEGS_GUILD_NOTICE_MODIFY_ACK (0x0075A120). |
 | 2186 | `eEGS_GUILD_NOTICE_MODIFY_ACK` | 0x0075A120 | — | `GuildNoticeModifyAck` |  |
+| 2187 | `eEGS_GUILD_VIEWED_NOTICE_NOT` | — | `social.py` (`handle_guild_viewed_notice`) | `GuildViewedNoticeNot` | eEGS_GUILD_VIEWED_NOTICE_NOT (0x00794700): fire-and-forget. |
 | 2188 | `eEGS_GUILD_NOTICE_DELETE_REQ` | — | `social.py` (`handle_guild_notice_delete`) | `GuildNoticeDeleteReq` | eEGS_GUILD_NOTICE_DELETE_REQ (0x00790000.c:3388) -> 2189 eEGS_GUILD_NOTICE_DELETE_ACK (0x0074B830). |
 | 2189 | `eEGS_GUILD_NOTICE_DELETE_ACK` | 0x0074B830 | — | `GuildNoticeDeleteAck` |  |
-| 2191 | `eEGS_GUILD_DISMISSAL_START_ACK` | 0x0074B830 | — | — |  |
-| 2193 | `eEGS_GUILD_DISMISSAL_STOP_ACK` | 0x0074B830 | — | — |  |
+| 2190 | `eEGS_GUILD_DISMISSAL_START_REQ` | — | `social.py` (`handle_guild_dismissal_start`) | `GuildDismissalStartReq` | eEGS_GUILD_DISMISSAL_START_REQ (0x007947A0) -> 2191 eEGS_GUILD_DISMISSAL_START_ACK (0x0074B830). |
+| 2191 | `eEGS_GUILD_DISMISSAL_START_ACK` | 0x0074B830 | — | `GuildDismissalStartAck` |  |
+| 2192 | `eEGS_GUILD_DISMISSAL_STOP_REQ` | — | `social.py` (`handle_guild_dismissal_stop`) | `GuildDismissalStopReq` | eEGS_GUILD_DISMISSAL_STOP_REQ (0x00794820) -> 2193 eEGS_GUILD_DISMISSAL_STOP_ACK (0x0074B830). |
+| 2193 | `eEGS_GUILD_DISMISSAL_STOP_ACK` | 0x0074B830 | — | `GuildDismissalStopAck` |  |
 | 2196 | `eEGS_RANDOMBOX_RESULT_ITEM_NOT` | 0x0075A2E0 | — | `RandomboxResultItemNot` |  |
 | 2198 | `eEGS_CHEAT_GUILD_ADD_POINT_ACK` | 0x0074B820 | — | — |  |
 | 2200 | `eEGS_CHEAT_GUILD_LEVEL_ACK` | 0x00753490 | — | — |  |
 | 2203 | `eEGS_COMPUTER_STAT_NOT` | — | `social.py` (`handle_computer_stat`) | — | eEGS_COMPUTER_STAT_NOT: client hardware report; notification only. |
 | 2204 | `eEGS_FRAME_STAT_NOT` | — | `dungeon.py` (`handle_frame_stat`) | — | eEGS_FRAME_STAT_NOT: client frame-rate telemetry sent after dungeon |
 | 2205 | `eEGS_GUILD_SKILL_NOT` | 0x00779390 | — | `GuildSkillNot` |  |
-| 2207 | `eEGS_GUILD_LEARN_SKILL_ACK` | 0x0074B820 | — | — |  |
-| 2209 | `eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK` | 0x0074B820 | — | — |  |
+| 2206 | `eEGS_GUILD_LEARN_SKILL_REQ` | — | `social.py` (`handle_guild_learn_skill`) | `GuildLearnSkillReq` | eEGS_GUILD_LEARN_SKILL_REQ (0x00794B10) -> 2207 eEGS_GUILD_LEARN_SKILL_ACK (0x0074B820). |
+| 2207 | `eEGS_GUILD_LEARN_SKILL_ACK` | 0x0074B820 | — | `GuildLearnSkillAck` |  |
+| 2208 | `eEGS_GUILD_SKILL_CHANGE_USE_STATE_REQ` | — | `social.py` (`handle_guild_skill_change_use_state`) | `GuildSkillChangeUseStateReq` | eEGS_GUILD_SKILL_CHANGE_USE_STATE_REQ (0x00794BC0) -> 2209 eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK (0x0074B820). |
+| 2209 | `eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK` | 0x0074B820 | — | `GuildSkillChangeUseStateAck` |  |
 | 2210 | `eEGS_USE_DYEING_ITEM_REQ` | — | `inventory/items.py` (`handle_use_dyeing_item`) | `UseDyeingItemReq` | Opcode 2210 (eEGS_USE_DYEING_ITEM_REQ) -> 2211 (eEGS_USE_DYEING_ITEM_ACK): apply hair/skin/item dye and consume it. |
 | 2211 | `eEGS_USE_DYEING_ITEM_ACK` | — | — | `UseDyeingItemAck` |  |
 | 2214 | `eEGS_GUILD_ALL_SKILL_INIT_REQ` | — | `social.py` (`handle_guild_all_skill_init`) | `GuildAllSkillInitReq` | eEGS_GUILD_ALL_SKILL_INIT_REQ -> 2215 eEGS_GUILD_ALL_SKILL_INIT_ACK (0x00752D80). |
 | 2215 | `eEGS_GUILD_ALL_SKILL_INIT_ACK` | — | — | `GuildAllSkillInitAck` |  |
 | 2216 | `eEGS_PLAY_OPTION_UPDATE_REQ` | — | `commerce.py` (`handle_play_option_update`) | `PlayOptionUpdateReq` | eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729) - fire and forget. |
+| 2218 | `eEGS_REFUSE_GUILD_INVITE_NOT` | — | `social.py` (`handle_refuse_guild_invite`) | `RefuseGuildInviteNot` | eEGS_REFUSE_GUILD_INVITE_NOT (0x00795000) -> forwards 6019 to online inviter. |
 | 2219 | `eEGS_POST_REQUEST_LIST_REQ` | — | `mail.py` (`handle_post_list`) | `PostListReq` | eEGS_POST_REQUEST_LIST_REQ (0x007962F0) -> 2220 eEGS_POST_REQUEST_LIST_ACK (0x007AEF70). |
 | 2220 | `eEGS_POST_REQUEST_LIST_ACK` | 0x007AEF70 | — | `PostListAck` |  |
 | 2221 | `eEGS_POST_SEND_REQ` | — | `mail.py` (`handle_post_send`) | `PostSendReq` | eEGS_POST_SEND_REQ (0x00795D70) -> 2222 eEGS_POST_SEND_ACK (0x00795F40). |
@@ -206,10 +216,12 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2245 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_ACK` | 0x0075A9C0 | — | — |  |
 | 2246 | `eEGS_UNDELETE_CHARACTER_REQ` | — | `frontend.py` (`handle_undelete_character`) | — | Opcode 2246 (eEGS_UNDELETE_CHARACTER_REQ) -> 2247 (eEGS_UNDELETE_CHARACTER_ACK). |
 | 2247 | `eEGS_UNDELETE_CHARACTER_ACK` | 0x0075A8A0 | — | `UndeleteCharacterAck` |  |
-| 2249 | `eEGS_POST_GET_APPEND_AR_ACK` | 0x007967E0 | — | — |  |
+| 2248 | `eEGS_POST_GET_APPEND_AR_REQ` | — | `mail.py` (`handle_post_get_append_ar`) | `PostGetAppendArReq` | eEGS_POST_GET_APPEND_AR_REQ (0x00796700) -> 2249 eEGS_POST_GET_APPEND_AR_ACK (0x007967E0). |
+| 2249 | `eEGS_POST_GET_APPEND_AR_ACK` | 0x007967E0 | — | `PostGetAppendArAck` |  |
 | 2250 | `eEGS_DIVIDE_ITEM_REQ` | — | `inventory/items.py` (`handle_divide_item`) | `DivideItemReq` | Opcode 2250 (eEGS_DIVIDE_ITEM_REQ) -> 2251 (eEGS_DIVIDE_ITEM_ACK): split a stacked item. |
 | 2251 | `eEGS_DIVIDE_ITEM_ACK` | 0x0077F570 | — | `DivideItemAck` |  |
-| 2253 | `eEGS_POST_SAVE_ACK` | 0x0075A780 | — | — |  |
+| 2252 | `eEGS_POST_SAVE_REQ` | — | `mail.py` (`handle_post_save`) | `PostSaveReq` | eEGS_POST_SAVE_REQ (0x007969D0) -> 2253 eEGS_POST_SAVE_ACK (0x0075A780). |
+| 2253 | `eEGS_POST_SAVE_ACK` | 0x0075A780 | — | `PostSaveAck` |  |
 | 2254 | `eEGS_MAGICENCHANT_ENCHANT_REQ` | — | `inventory/crafting.py` (`handle_magic_enchant`) | `MagicEnchantEnchantReq` | Opcode 2254 (eEGS_MAGICENCHANT_ENCHANT_REQ) -> 2255 (eEGS_MAGICENCHANT_ENCHANT_ACK): apply magic enchant. |
 | 2255 | `eEGS_MAGICENCHANT_ENCHANT_ACK` | 0x00796DC0 | — | `MagicEnchantEnchantAck` |  |
 | 2256 | `eEGS_MAGICENCHANT_ERASE_OPTION_REQ` | — | `inventory/crafting.py` (`handle_magic_enchant_erase_option`) | `MagicEnchantEraseOptionReq` | Opcode 2256 (eEGS_MAGICENCHANT_ERASE_OPTION_REQ) -> 2257: erase an enchant option from an item. |
@@ -276,7 +288,14 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2351 | `eEGS_TAMEING_MONSTER_DELETE_ACK` | 0x00771BB0 | — | `TamingMonsterDeleteAck` |  |
 | 2352 | `eEGS_IP_ADDRESS_NOT` | — | `social.py` (`handle_ip_address`) | — | eEGS_IP_ADDRESS_NOT: client LAN/WAN IP notification only. |
 | 2353 | `eEGS_TUTORIAL_MONSTER_DEAD_NOT` | — | `square.py` (`handle_tutorial_monster_dead`) | `TutorialMonsterDeadNot` | Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT). |
+| 2354 | `eEGS_CHAT_NOTIFY_REQ` | — | `social.py` (`handle_chat_notify`) | `ChatNotifyReq` | eEGS_CHAT_NOTIFY_REQ (0x004E6D30) -> 2355 eEGS_CHAT_NOTIFY_ACK. |
+| 2355 | `eEGS_CHAT_NOTIFY_ACK` | — | — | `ChatNotifyAck` |  |
+| 2356 | `eEGS_GUIDE_WAITLIST_UPDATE_REQ` | — | `social.py` (`handle_guide_waitlist_update`) | `GuideWaitlistUpdateReq` | eEGS_GUIDE_WAITLIST_UPDATE_REQ (0x0079A260) -> 2357 eEGS_GUIDE_WAITLIST_UPDATE_ACK. |
+| 2357 | `eEGS_GUIDE_WAITLIST_UPDATE_ACK` | — | — | `GuideWaitlistUpdateAck` |  |
 | 2358 | `eEGS_GUIDE_BEGINNER_UPDATE_REQ` | — | `dungeon.py` (`handle_guide_beginner_update`) | `GuideBeginnerUpdateReq` | eEGS_GUIDE_BEGINNER_UPDATE_REQ (sender 0x79A3B0): ffffff7f + vector<u32> guide_ids. |
+| 2359 | `eEGS_GUIDE_BEGINNER_UPDATE_ACK` | — | — | `GuideBeginnerUpdateAck` |  |
+| 2360 | `eEGS_GUIDE_DONELIST_UPDATE_REQ` | — | `social.py` (`handle_guide_donelist_update`) | `GuideDonelistUpdateReq` | eEGS_GUIDE_DONELIST_UPDATE_REQ (0x0079A110) -> 2361 eEGS_GUIDE_DONELIST_UPDATE_ACK. |
+| 2361 | `eEGS_GUIDE_DONELIST_UPDATE_ACK` | — | — | `GuideDonelistUpdateAck` |  |
 | 2362 | `eEGS_AVATAR_ZAM_INSERT_REQ` | — | `inventory/crafting.py` (`handle_avatar_zam_insert`) | `AvatarZamInsertReq` | Opcode 2362 (eEGS_AVATAR_ZAM_INSERT_REQ) -> 2363: socket an Avatar Zam gem. |
 | 2363 | `eEGS_AVATAR_ZAM_INSERT_ACK` | 0x00782D00 | — | `AvatarZamInsertAck` |  |
 | 2364 | `eEGS_AVATAR_ZAM_ERASE_REQ` | — | `inventory/crafting.py` (`handle_avatar_zam_erase`) | `AvatarZamEraseReq` | Opcode 2364 (eEGS_AVATAR_ZAM_ERASE_REQ) -> 2365: destroy a socketed Avatar Zam gem. |
@@ -288,7 +307,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2390 | `eEGS_ROULETTE_MANAGER_INFO_REQ` | — | `commerce.py` (`handle_roulette_manager_info`) | — | eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0. |
 | 2391 | `eEGS_ROULETTE_MANAGER_INFO_ACK` | — | — | `RouletteManagerInfoAck` |  |
 | 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | — |  |
-| 2399 | `eEGS_POST_DAILY_SEND_RECOVER_NOT` | 0x0079A880 | — | — |  |
+| 2399 | `eEGS_POST_DAILY_SEND_RECOVER_NOT` | 0x0079A880 | — | `PostDailySendRecoverNot` |  |
 | 2400 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_ADD_NOT` | 0x0076BE80 | — | — |  |
 | 2401 | `eEGS_DEPOT_SIZE_INCREASE_NOT` | 0x007535A0 | — | — |  |
 | 2402 | `eEGS_DB_LIST_GET_REQ` | — | `frontend.py` (`handle_get_server_list`) | — | Opcode 2402 (eEGS_DB_LIST_GET_REQ) -> 2403 (eEGS_DB_LIST_GET_ACK). |
@@ -305,7 +324,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2419 | `eEGS_SERVERBUFF_DELETE_NOT` | 0x0079BD10 | — | — |  |
 | 2421 | `eEGS_MONSTER_DEAD_NOT` | 0x0076A000 | — | — |  |
 | 2422 | `eEGS_ACTIVE_WARFLAG_REQ` | — | `dungeon.py` (`handle_active_war_flag`) | `ActiveWarFlagReq` | eEGS_ACTIVE_WARFLAG_REQ (sender 0x79C300): ffffff7f + u32 war_flag_id. |
-| 2427 | `eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK` | 0x00771D70 | — | — |  |
+| 2426 | `eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_REQ` | — | `social.py` (`handle_guild_person_arena_grade_modify`) | `GuildPersonArenaGradeModifyReq` | eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_REQ -> 2427 eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK (0x00771D70). |
+| 2427 | `eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK` | 0x00771D70 | — | `GuildPersonArenaGradeModifyAck` |  |
 | 2428 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ` | — | `inventory/items.py` (`handle_use_selected_skill_change_item`) | `UseSelectedSkillChangeItemReq` | Opcode 2428 (eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ) -> 2429: reset/change a selected skill via item. |
 | 2429 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_ACK` | 0x0079C5E0 | — | `UseSelectedSkillChangeItemAck` |  |
 | 2432 | `eEGS_AVATAR_MERGE_REQ` | — | `inventory/crafting.py` (`handle_avatar_merge`) | `AvatarMergeReq` | Opcode 2432 (eEGS_AVATAR_MERGE_REQ) -> 2433: combine two avatar pieces. |
@@ -323,11 +343,13 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2447 | `eEGS_ACHIEVE_DIV_UPDATE_ACK` | 0x0074B830 | — | `AchieveDivUpdateAck` |  |
 | 2448 | `eEGS_DAILY_REBIRTH_COIN_USE_REQ` | — | `dungeon.py` (`handle_daily_rebirth_coin_use`) | `DailyRebirthCoinUseReq` | eEGS_DAILY_REBIRTH_COIN_USE_REQ -> 2449 (0x0079DC70) + 2286 (0x007983B0). |
 | 2449 | `eEGS_DAILY_REBIRTH_COIN_USE_ACK` | 0x0079DC70 | — | `DailyRebirthCoinUseAck` |  |
-| 2451 | `eEGS_GUILD_SIEGE_CHANGE_OFFICER_ACK` | 0x0076CA40 | — | — |  |
-| 2452 | `eEGS_GUILD_SIEGE_CHANGE_OFFICER_NOT` | 0x00753B90 | — | — |  |
-| 2454 | `eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_ACK` | 0x0077C550 | — | — |  |
-| 2455 | `eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_NOT` | 0x0077C860 | — | — |  |
-| 2456 | `eEGS_GUILD_UPDATE_SIEGEINFO_NOT` | 0x0077C370 | — | — |  |
+| 2450 | `eEGS_GUILD_SIEGE_CHANGE_OFFICER_REQ` | — | `social.py` (`handle_guild_siege_change_officer`) | `GuildSiegeChangeOfficerReq` | eEGS_GUILD_SIEGE_CHANGE_OFFICER_REQ -> 2451 eEGS_GUILD_SIEGE_CHANGE_OFFICER_ACK (0x0076CA40). |
+| 2451 | `eEGS_GUILD_SIEGE_CHANGE_OFFICER_ACK` | 0x0076CA40 | — | `GuildSiegeChangeOfficerAck` |  |
+| 2452 | `eEGS_GUILD_SIEGE_CHANGE_OFFICER_NOT` | 0x00753B90 | — | `GuildSiegeChangeOfficerNot` |  |
+| 2453 | `eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_REQ` | — | `social.py` (`handle_guild_person_siege_team_idx_modify`) | `GuildPersonSiegeTeamIdxModifyReq` | eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_REQ (0x0079DE80) -> 2454 ACK (0x0077C550). |
+| 2454 | `eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_ACK` | 0x0077C550 | — | `GuildPersonSiegeTeamIdxModifyAck` |  |
+| 2455 | `eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_NOT` | 0x0077C860 | — | `GuildPersonSiegeTeamIdxModifyNot` |  |
+| 2456 | `eEGS_GUILD_UPDATE_SIEGEINFO_NOT` | 0x0077C370 | — | `GuildUpdateSiegeInfoNot` |  |
 | 2461 | `eEGS_DEPOT_SLOT_EXTEND_REQ` | — | `inventory/depot.py` (`handle_depot_slot_extend`) | `DepotSlotExtendReq` | Opcode 2461 (eEGS_DEPOT_SLOT_EXTEND_REQ) -> 2462 (eEGS_DEPOT_SLOT_EXTEND_ACK): expand depot storage slots. |
 | 2462 | `eEGS_DEPOT_SLOT_EXTEND_ACK` | — | — | `DepotSlotExtendAck` |  |
 | 2464 | `eEGS_PET_CREATE_REQ` | — | `pets.py` (`handle_pet_create`) | `PetCreateReq` | eEGS_PET_CREATE_REQ (0x0079E0B0) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620) |
@@ -388,11 +410,14 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2551 | `eEGS_LEAGUE_SEASON_ARENA_GET_RANK_ACK` | — | — | `LeagueSeasonArenaGetRankAck` |  |
 | 2552 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_REQ` | — | `arena.py` (`handle_league_season_arena_get_my_rank`) | `LeagueSeasonArenaGetMyRankReq` | Opcode 2552 / 2477 -> 2553 / 2478. |
 | 2553 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_ACK` | — | — | `LeagueSeasonArenaGetMyRankAck` |  |
-| 2566 | `eEGS_FRIEND_BLOCK_LIST_ADD_ACK` | 0x0075B640 | — | — |  |
-| 2568 | `eEGS_FRIEND_BLOCK_LIST_DELETE_ACK` | 0x0075B9B0 | — | — |  |
+| 2565 | `eEGS_FRIEND_BLOCK_LIST_ADD_REQ` | — | `social.py` (`handle_friend_block_list_add`) | `FriendBlockListAddReq` | eEGS_FRIEND_BLOCK_LIST_ADD_REQ (0x007A2930) -> 2566 eEGS_FRIEND_BLOCK_LIST_ADD_ACK (0x0075B640). |
+| 2566 | `eEGS_FRIEND_BLOCK_LIST_ADD_ACK` | 0x0075B640 | — | `FriendBlockListAddAck` |  |
+| 2567 | `eEGS_FRIEND_BLOCK_LIST_DELETE_REQ` | — | `social.py` (`handle_friend_block_list_delete`) | `FriendBlockListDeleteReq` | eEGS_FRIEND_BLOCK_LIST_DELETE_REQ (0x007A2C70) -> 2568 eEGS_FRIEND_BLOCK_LIST_DELETE_ACK (0x0075B9B0). |
+| 2568 | `eEGS_FRIEND_BLOCK_LIST_DELETE_ACK` | 0x0075B9B0 | — | `FriendBlockListDeleteAck` |  |
 | 2569 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_REQ` | — | `social.py` (`handle_guild_or_attendance`) | — | Opcode 2569 -> 2570 ACK, handler 0x772160: |
 | 2570 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK` | 0x00772160 | — | `GuildOrAttendanceAck` |  |
-| 2572 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK` | 0x00753C80 | — | — |  |
+| 2571 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ` | — | `social.py` (`handle_friend_block_list_update`) | `FriendBlockListUpdateReq` | eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ (0x007A2F20) -> 2572 eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK (0x00753C80). |
+| 2572 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK` | 0x00753C80 | — | `FriendBlockListUpdateAck` |  |
 | 2573 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ` | — | `inventory/items.py` (`handle_use_league_point_item`) | `UseItemLeaguePointAddReq` | Opcode 2573 (eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ) -> 2574: consume an item that awards league points. |
 | 2574 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_ACK` | 0x007A3140 | — | `UseItemLeaguePointAddAck` |  |
 | 2577 | `eEGS_DUALSKILL_EXPIRE_NOT` | 0x007A3530 | — | `DualSkillExpireNot` |  |
@@ -412,7 +437,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2595 | `eEGS_HTTPNOTICE_CHECK_ACK` | — | — | `HttpNoticeCheckAck` |  |
 | 2597 | `eEGS_AVATAR_ZAM_SEPARATE_REQ` | — | `inventory/crafting.py` (`handle_avatar_zam_separate`) | `AvatarZamSeparateReq` | Opcode 2597 (eEGS_AVATAR_ZAM_SEPARATE_REQ) -> 2598: safely extract a socketed Avatar Zam gem. |
 | 2598 | `eEGS_AVATAR_ZAM_SEPARATE_ACK` | 0x00783190 | — | `AvatarZamSeparateAck` |  |
-| 2600 | `eEGS_CITADEL_ROUND_CLEAR_ACK` | 0x0075BF20 | — | — |  |
+| 2599 | `eEGS_CITADEL_ROUND_CLEAR_REQ` | — | `social.py` (`handle_citadel_round_clear`) | `CitadelRoundClearReq` | eEGS_CITADEL_ROUND_CLEAR_REQ (0x007A4D80) -> 2600 eEGS_CITADEL_ROUND_CLEAR_ACK (0x0075BF20). |
+| 2600 | `eEGS_CITADEL_ROUND_CLEAR_ACK` | 0x0075BF20 | — | `CitadelRoundClearAck` |  |
 | 2601 | `eEGS_MONSTERCARD_GET_LIST_REQ` | — | `commerce.py` (`handle_monster_card_list`) | — | eEGS_MONSTERCARD_GET_LIST_REQ -> 2602. |
 | 2602 | `eEGS_MONSTERCARD_GET_LIST_ACK` | — | — | `MonsterCardListAck` |  |
 | 2608 | `eEGS_MONSTERCARD_GET_CHAR_DECK_REQ` | — | `commerce.py` (`handle_monster_card_deck`) | — | eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609. |
@@ -424,25 +450,34 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2626 | `eEGS_INDULGENCE_NOT` | 0x0075C090 | — | — |  |
 | 2629 | `eEGS_ITEM_CLASS_SMELTING_REQ` | — | `inventory/crafting.py` (`handle_item_class_smelting`) | `ItemClassSmeltingReq` | Opcode 2629 (eEGS_ITEM_CLASS_SMELTING_REQ) -> 2630: smelt an item into a target class item. |
 | 2630 | `eEGS_ITEM_CLASS_SMELTING_ACK` | 0x00783790 | — | `ItemClassSmeltingAck` |  |
-| 2631 | `eEGS_CIDADEL_PLAY_COUNT_UPDATE_NOT` | 0x007A5580 | — | — |  |
+| 2631 | `eEGS_CIDADEL_PLAY_COUNT_UPDATE_NOT` | 0x007A5580 | — | `CitadelPlayCountUpdateNot` |  |
 | 2641 | `eEGS_SERVERBUFF_ADDITION_FISHING_NOT` | 0x00779500 | — | — |  |
 | 2647 | `eEGS_RIDING_EXPIRE_UPDATE_ACK` | 0x007839F0 | — | — |  |
-| 2649 | `eEGS_TEACHING_STRESS_REWARD_ACK` | 0x0075C7B0 | — | — |  |
-| 2650 | `eEGS_TEACHING_GET_HISTORY_NOT` | 0x0077B5D0 | — | — |  |
-| 2659 | `eEGS_TEACHING_GRADUATION_REWARD_ACK` | 0x0075C8E0 | — | — |  |
+| 2648 | `eEGS_TEACHING_STRESS_REWARD_REQ` | — | `social.py` (`handle_teaching_stress_reward`) | `TeachingStressRewardReq` | eEGS_TEACHING_STRESS_REWARD_REQ (0x007A60E0) -> 2649 eEGS_TEACHING_STRESS_REWARD_ACK (0x0075C7B0). |
+| 2649 | `eEGS_TEACHING_STRESS_REWARD_ACK` | 0x0075C7B0 | — | `TeachingStressRewardAck` |  |
+| 2650 | `eEGS_TEACHING_GET_HISTORY_NOT` | 0x0077B5D0 | — | `TeachingGetHistoryNot` |  |
+| 2658 | `eEGS_TEACHING_GRADUATION_REWARD_REQ` | — | `social.py` (`handle_teaching_graduation_reward`) | `TeachingGraduationRewardReq` | eEGS_TEACHING_GRADUATION_REWARD_REQ (0x007A6180) -> 2659 eEGS_TEACHING_GRADUATION_REWARD_ACK (0x0075C8E0). |
+| 2659 | `eEGS_TEACHING_GRADUATION_REWARD_ACK` | 0x0075C8E0 | — | `TeachingGraduationRewardAck` |  |
 | 2672 | `eEGS_FIX_ITEM_UPGRADE_REQ` | — | `inventory/crafting.py` (`handle_fix_item_upgrade`) | `FixItemUpgradeReq` | Opcode 2672 (eEGS_FIX_ITEM_UPGRADE_REQ) -> 2673: perform a guaranteed fixed-tier upgrade. |
 | 2673 | `eEGS_FIX_ITEM_UPGRADE_ACK` | 0x00783C40 | — | `FixItemUpgradeAck` |  |
-| 2675 | `eEGS_GUILD_PERSON_INTRODUTION_ACK` | 0x0075CCA0 | — | — |  |
-| 2676 | `eEGS_UPDATE_CITADEL_HISTORY_NOT` | 0x0075CEF0 | — | — |  |
-| 2677 | `eEGS_GUILD_MISSION_NOT` | 0x00753DF0 | — | — |  |
-| 2679 | `eEGS_GUILD_BROKER_LIST_ACK` | 0x00776950 | — | — |  |
-| 2681 | `eEGS_GUILD_BROKER_BID_ACK` | 0x0075D040 | — | — |  |
-| 2683 | `eEGS_GUILD_BROKER_RETURN_POINT_ACK` | 0x0075D180 | — | — |  |
-| 2685 | `eEGS_GUILD_SUPPLY_GET_REWARD_ACK` | 0x00783F70 | — | — |  |
-| 2686 | `eEGS_GUILD_SUPPLY_LIST_NOT` | 0x00772920 | — | — |  |
+| 2674 | `eEGS_GUILD_PERSON_INTRODUTION_REQ` | — | `social.py` (`handle_guild_person_introduction`) | `GuildPersonIntroductionReq` | eEGS_GUILD_PERSON_INTRODUTION_REQ (0x007A67D0) -> 2675 eEGS_GUILD_PERSON_INTRODUTION_ACK (0x0075CCA0). |
+| 2675 | `eEGS_GUILD_PERSON_INTRODUTION_ACK` | 0x0075CCA0 | — | `GuildPersonIntroductionAck` |  |
+| 2676 | `eEGS_UPDATE_CITADEL_HISTORY_NOT` | 0x0075CEF0 | — | `UpdateCitadelHistoryNot` |  |
+| 2677 | `eEGS_GUILD_MISSION_NOT` | 0x00753DF0 | — | `GuildMissionNot` |  |
+| 2678 | `eEGS_GUILD_BROKER_LIST_REQ` | — | `social.py` (`handle_guild_broker_list`) | `GuildBrokerListReq` | eEGS_GUILD_BROKER_LIST_REQ (0x007A6880) -> 2679 eEGS_GUILD_BROKER_LIST_ACK (0x00776950). |
+| 2679 | `eEGS_GUILD_BROKER_LIST_ACK` | 0x00776950 | — | `GuildBrokerListAck` |  |
+| 2680 | `eEGS_GUILD_BROKER_BID_REQ` | — | `social.py` (`handle_guild_broker_bid`) | `GuildBrokerBidReq` | eEGS_GUILD_BROKER_BID_REQ (0x007A6900) -> 2681 eEGS_GUILD_BROKER_BID_ACK (0x0075D040). |
+| 2681 | `eEGS_GUILD_BROKER_BID_ACK` | 0x0075D040 | — | `GuildBrokerBidAck` |  |
+| 2682 | `eEGS_GUILD_BROKER_RETURN_POINT_REQ` | — | `social.py` (`handle_guild_broker_return_point`) | `GuildBrokerReturnPointReq` | eEGS_GUILD_BROKER_RETURN_POINT_REQ (0x007A6A50) -> 2683 eEGS_GUILD_BROKER_RETURN_POINT_ACK (0x0075D180). |
+| 2683 | `eEGS_GUILD_BROKER_RETURN_POINT_ACK` | 0x0075D180 | — | `GuildBrokerReturnPointAck` |  |
+| 2684 | `eEGS_GUILD_SUPPLY_GET_REWARD_REQ` | — | `social.py` (`handle_guild_supply_get_reward`) | `GuildSupplyGetRewardReq` | eEGS_GUILD_SUPPLY_GET_REWARD_REQ (0x007A6AF0) -> 2685 eEGS_GUILD_SUPPLY_GET_REWARD_ACK (0x00783F70). |
+| 2685 | `eEGS_GUILD_SUPPLY_GET_REWARD_ACK` | 0x00783F70 | — | `GuildSupplyGetRewardAck` |  |
+| 2686 | `eEGS_GUILD_SUPPLY_LIST_NOT` | 0x00772920 | — | `GuildSupplyListNot` |  |
 | 2688 | `eEGS_CHEAT_GUILD_BROKER_EXIT_ACK` | 0x00759D60 | — | — |  |
 | 2690 | `eEGS_CHEAT_GUILD_BROKER_REWARD_ACK` | 0x00759D60 | — | — |  |
 | 2692 | `eEGS_CHEAT_CHANGE_VALIDGUILD_COUNT_ACK` | 0x00759D60 | — | — |  |
+| 2693 | `eEGS_WATCH_EVENTSEEN_REQ` | — | `social.py` (`handle_watch_event_seen`) | `WatchEventSeenReq` | eEGS_WATCH_EVENTSEEN_REQ -> 2694 eEGS_WATCH_EVENTSEEN_ACK (0x00655800). |
+| 2694 | `eEGS_WATCH_EVENTSEEN_ACK` | — | — | `WatchEventSeenAck` |  |
 | 2697 | `eEGS_LEARN_SKILL_LIST_REQ` | — | `skills.py` (`handle_learn_skill_list`) | `LearnSkillListReq` | eEGS_LEARN_SKILL_LIST_REQ (0x007A73D0) -> 2698 eEGS_LEARN_SKILL_LIST_ACK (0x007A74A0). |
 | 2698 | `eEGS_LEARN_SKILL_LIST_ACK` | 0x007A74A0 | — | `LearnSkillListAck` |  |
 | 2701 | `eEGS_MARK_OPTION_CHANGE_REQ` | — | `inventory/crafting.py` (`handle_mark_option_change`) | `MarkOptionChangeReq` | Opcode 2701 (eEGS_MARK_OPTION_CHANGE_REQ) -> 2702 (eEGS_MARK_OPTION_CHANGE_ACK): reroll mark item options. |
@@ -476,6 +511,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5004 | `eERC_JOIN_ROOM_ACK` | — | — | `JoinRoomAck` |  |
 | 5005 | `eERC_LEAVE_ROOM_REQ` | — | `dungeon.py` (`handle_leave_room`) | `LeaveRoomReq` | eERC_LEAVE_ROOM_REQ (0x0058B240) -> 5006 eERC_LEAVE_ROOM_ACK (0x00598A00). |
 | 5006 | `eERC_LEAVE_ROOM_ACK` | — | — | `LeaveRoomAck` |  |
+| 5007 | `eERC_BANISH_USER_REQ` | — | `social.py` (`handle_banish_user`) | `BanishUserReq` | eERC_BANISH_USER_REQ (0x005975D0) -> 5008 eERC_BANISH_USER_ACK (0x005999A0). |
+| 5008 | `eERC_BANISH_USER_ACK` | — | — | `BanishUserAck` |  |
 | 5009 | `eERC_CHANGE_MAPCODE_REQ` | — | `dungeon.py` (`handle_change_map_code`) | — | eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f |
 | 5010 | `eERC_CHANGE_MAPCODE_ACK` | — | — | `ChangeMapCodeAck` |  |
 | 5011 | `eERC_CHANGE_ROOMINFO_REQ` | — | `dungeon.py` (`handle_change_room_info`) | `ChangeRoomInfoReq` | eERC_CHANGE_ROOMINFO_REQ (Party info OK) -> 5012. The request is a whole |
@@ -564,10 +601,12 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5119 | `eERC_FRIEND_MY_DISCONNECTION_NOT` | 0x00758FA0 | — | `FriendMyDisconnectionNot` |  |
 | 5121 | `eERC_GUILD_CREATE_PROPOSAL_REQ` | — | `social.py` (`handle_guild_create_proposal`) | `GuildCreateProposalReq` | eERC_GUILD_CREATE_PROPOSAL_REQ (0x00790000.c:2514) -> 5122 eERC_GUILD_CREATE_PROPOSAL_ACK (0x00759750). |
 | 5122 | `eERC_GUILD_CREATE_PROPOSAL_ACK` | 0x00759750 | — | `GuildCreateProposalAck` |  |
-| 5123 | `eERC_GUILD_CREATE_COMPLETE_NOT` | 0x00759E10 | — | — |  |
+| 5123 | `eERC_GUILD_CREATE_COMPLETE_NOT` | 0x00759E10 | — | `GuildCreateCompleteNot` |  |
 | 5124 | `eERC_GTARGET_LIST_REQ` | — | `square.py` (`handle_get_gtarget_list`) | — | Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK). |
 | 5125 | `eERC_GTARGET_LIST_ACK` | — | — | `GTargetListAck` |  |
-| 5127 | `eERC_CURRENT_GUILD_SKILL_NOT` | 0x00794CE0 | — | — |  |
+| 5127 | `eERC_CURRENT_GUILD_SKILL_NOT` | 0x00794CE0 | — | `CurrentGuildSkillNot` |  |
+| 5130 | `eERC_SUMMON_ACKNOWLEDGE_REQ` | — | `social.py` (`handle_summon_acknowledge`) | `SummonAcknowledgeReq` | eERC_SUMMON_ACKNOWLEDGE_REQ (0x004D31D0) -> 5131 eERC_SUMMON_ACKNOWLEDGE_ACK. |
+| 5131 | `eERC_SUMMON_ACKNOWLEDGE_ACK` | — | — | `SummonAcknowledgeAck` |  |
 | 5134 | `eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT` | 0x0075AAE0 | — | `RelayAddressNot` |  |
 | 5135 | `eERC_ARENA_SQUARE_CHANGE_RELAY_ADDRESS_NOT` | 0x0075AC00 | — | — |  |
 | 5136 | `eERC_FAIL_DUNGEON_ENTER_ITEM_NOT` | 0x00797550 | — | — |  |
@@ -613,7 +652,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5353 | `eERC_ACCEPT_REQUEST_TEACHING_REQ` | — | `social.py` (`handle_accept_request_teaching`) | `AcceptRequestTeachingReq` | eERC_ACCEPT_REQUEST_TEACHING_REQ -> 5354 eERC_ACCEPT_REQUEST_TEACHING_ACK (0x0075C430). |
 | 5354 | `eERC_ACCEPT_REQUEST_TEACHING_ACK` | 0x0075C430 | — | `AcceptRequestTeachingAck` |  |
 | 5355 | `eERC_TEACHING_GET_INFO_NOT` | 0x007A5890 | — | `TeachingGetInfoNot` |  |
-| 5357 | `eERC_TEACHING_SUMMON_ACCEPT_ACK` | 0x0077B780 | — | — |  |
+| 5356 | `eERC_TEACHING_SUMMON_ACCEPT_REQ` | — | `social.py` (`handle_teaching_summon_accept`) | `TeachingSummonAcceptReq` | eERC_TEACHING_SUMMON_ACCEPT_REQ (0x007A6490) -> 5357 eERC_TEACHING_SUMMON_ACCEPT_ACK (0x0077B780). |
+| 5357 | `eERC_TEACHING_SUMMON_ACCEPT_ACK` | 0x0077B780 | — | `TeachingSummonAcceptAck` |  |
 | 5362 | `eERC_GOLDGOBLIEN_APPEAR_NOT` | 0x007A6D10 | — | `GoldGoblinAppearNot` |  |
 | 5363 | `eERC_GOLDGOBLIEN_ATTACK_REQ` | — | `dungeon.py` (`handle_gold_goblin_attack`) | `GoldGoblinAttackReq` | eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10). |
 | 5364 | `eERC_GOLDGOBLIEN_ATTACK_ACK` | 0x00784A10 | — | `GoldGoblinAttackAck` |  |
@@ -631,13 +671,16 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 6010 | `eERT_TRADE_RESULT_NOT` | 0x0077E090 | — | — |  |
 | 6011 | `eERT_REQUEST_CHAR_INFO_REQ` | — | `social.py` (`handle_request_char_info`) | `RequestCharInfoReq` | eERT_REQUEST_CHAR_INFO_REQ -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0). |
 | 6012 | `eERT_REQUEST_CHAR_INFO_ACK` | 0x00790FA0 | — | `RequestCharInfoAck` |  |
-| 6015 | `eERT_GUILD_INVITE_REQ` | 0x00759AB0 | — | — |  |
-| 6016 | `eERT_GUILD_INVITE_ACK` | 0x00759990 | — | — |  |
-| 6017 | `eERT_GUILD_PERSON_EXPULSION_COMPLETE_NOT` | 0x0075A000 | — | — |  |
-| 6019 | `eERT_REFUSE_GUILD_INVITE_NOT` | 0x0075A420 | — | — |  |
+| 6015 | `eERT_GUILD_INVITE_REQ` | 0x00759AB0 | — | `GuildInviteNot` |  |
+| 6016 | `eERT_GUILD_INVITE_ACK` | 0x00759990 | — | `GuildInviteResultAck` |  |
+| 6017 | `eERT_GUILD_PERSON_EXPULSION_COMPLETE_NOT` | 0x0075A000 | — | `GuildPersonExpulsionCompleteNot` |  |
+| 6018 | `eERT_REQUEST_CHAR_INFO_BY_NICK_REQ` | — | `social.py` (`handle_request_char_info_by_nick`) | `RequestCharInfoByNickReq` | eERT_REQUEST_CHAR_INFO_BY_NICK_REQ (0x00790E10) -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0). |
+| 6019 | `eERT_REFUSE_GUILD_INVITE_NOT` | 0x0075A420 | — | `RefuseGuildInviteForwardNot` |  |
 | 6021 | `eERT_PERSONALSHOP_GET_PRODUCTS_REQ` | — | `commerce.py` (`handle_personal_shop_get_products`) | `PersonalShopGetProductsReq` | eERT_PERSONALSHOP_GET_PRODUCTS_REQ -> 6022 eERT_PERSONALSHOP_GET_PRODUCTS_ACK (0x006029D6) |
 | 6022 | `eERT_PERSONALSHOP_GET_PRODUCTS_ACK` | — | — | `PersonalShopGetProductsAck` |  |
 | 6028 | `eERT_REQUEST_ITEM_INFO_REQ` | — | `social.py` (`handle_request_item_info`) | `RequestItemInfoReq` | eERT_REQUEST_ITEM_INFO_REQ -> 6029 eERT_REQUEST_ITEM_INFO_ACK (0x00766C20). |
 | 6029 | `eERT_REQUEST_ITEM_INFO_ACK` | 0x00766C20 | — | `RequestItemInfoAck` |  |
-| 6031 | `eERT_TEACHING_DELETE_ACK` | 0x007A5D60 | — | — |  |
-| 6033 | `eERT_TEACHING_SUMMON_REQUEST_ACK` | 0x0075CA40 | — | — |  |
+| 6030 | `eERT_TEACHING_DELETE_REQ` | — | `social.py` (`handle_teaching_delete`) | `TeachingDeleteReq` | eERT_TEACHING_DELETE_REQ (0x007A5CB0) -> 6031 eERT_TEACHING_DELETE_ACK (0x007A5D60). |
+| 6031 | `eERT_TEACHING_DELETE_ACK` | 0x007A5D60 | — | `TeachingDeleteAck` |  |
+| 6032 | `eERT_TEACHING_SUMMON_REQUEST_REQ` | — | `social.py` (`handle_teaching_summon_request`) | `TeachingSummonRequestReq` | eERT_TEACHING_SUMMON_REQUEST_REQ (0x007A6240) -> 6033 eERT_TEACHING_SUMMON_REQUEST_ACK (0x0075CA40). |
+| 6033 | `eERT_TEACHING_SUMMON_REQUEST_ACK` | 0x0075CA40 | — | `TeachingSummonRequestAck` |  |

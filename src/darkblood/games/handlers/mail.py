@@ -17,6 +17,8 @@ from darkblood.games.network.messages.mail import (
     PostDeleteAck,
     PostDeleteReq,
     PostEntry,
+    PostGetAppendArAck,
+    PostGetAppendArReq,
     PostGetAppendItemAck,
     PostGetAppendItemReq,
     PostListAck,
@@ -26,6 +28,8 @@ from darkblood.games.network.messages.mail import (
     PostReadReq,
     PostReturnAck,
     PostReturnReq,
+    PostSaveAck,
+    PostSaveReq,
     PostSendAck,
     PostSendReq,
 )
@@ -245,3 +249,36 @@ class MailHandlers(BaseDomainService):
         self.store().delete_mail(req.mail_uids)
         ack = PostDeleteAck(result=0, mail_uids=req.mail_uids).encode()
         await self.transport.send_event(event(2237, ack, correlation), note=f'post delete ack (count={len(req.mail_uids)})')
+
+    @packet_handler(PostGetAppendArReq)
+    async def handle_post_get_append_ar(self, correlation, body):
+        # eEGS_POST_GET_APPEND_AR_REQ (0x00796700) -> 2249 eEGS_POST_GET_APPEND_AR_ACK (0x007967E0).
+        req = PostGetAppendArReq.decode(body)
+        self.transport.record('post-get-append-ar-req', body, mail_uid=req.mail_uid)
+        char = self.current_char()
+        if not char:
+            await self.reply(PostGetAppendArAck(result=1), correlation, note='post get append ar fail (no char)')
+            return
+        claimed_gold = self.store().claim_mail_gold(req.mail_uid)
+        if claimed_gold > 0:
+            char['gold'] = int(char.get('gold', 0)) + claimed_gold
+            char['u66'] = char['gold']
+            self.save_char()
+        cur_ar = int(char.get('gold', 0))
+        await self.reply(
+            PostGetAppendArAck(result=0, mail_uid=req.mail_uid, current_ar=cur_ar),
+            correlation,
+            note=f'post get append ar ack (uid={req.mail_uid}, claimed={claimed_gold}, ar={cur_ar})',
+        )
+
+    @packet_handler(PostSaveReq)
+    async def handle_post_save(self, correlation, body):
+        # eEGS_POST_SAVE_REQ (0x007969D0) -> 2253 eEGS_POST_SAVE_ACK (0x0075A780).
+        req = PostSaveReq.decode(body)
+        self.transport.record('post-save-req', body, mail_uid=req.mail_uid)
+        self.store().save_mail(req.mail_uid)
+        await self.reply(
+            PostSaveAck(result=0, mail_uid=req.mail_uid),
+            correlation,
+            note=f'post save ack (uid={req.mail_uid})',
+        )

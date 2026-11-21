@@ -5,6 +5,7 @@
 domain guild Dark Blood protocol wire messages - Guild domain.
 
 extern Item from darkblood.games.entities.items
+extern AddedItemNotice from darkblood.games.network.messages.inventory readable
 
 message 2570 GuildOrAttendanceAck
   ## Reply to 2569, reader 0x00772160.
@@ -162,8 +163,342 @@ message 2165 GuildPersonGradeModifyAck ok_only
   i16 new_grade = 1
 end
 
+struct GuildSkillEntry
+  ## Guild skill record, reader 0x00A48890 (16 raw bytes; ctor in 0x0076E9B0).
+  u16 skill_id = 0xFFFF
+  u8 skill_level
+  bool is_used
+  u32 remain_time
+  u32 cool_time
+  u32 param
+end
+
 message 2205 GuildSkillNot
   ## Handler 0x00779390.
   bool flag
-  vector<?> _
+  vector<GuildSkillEntry> skills
+end
+
+struct GuildHistoryEntry
+  ## Guild history log entry, reader 0x00A49AE0 (2159).
+  i64 history_uid            # +0x00
+  i64 guild_uid              # +0x08
+  i16 history_type           # +0x10
+  i64 actor_uid              # +0x12
+  i64 target_uid             # +0x1A
+  wstr actor_name            # +0x22
+  wstr target_name           # +0x3E
+  wstr detail                # +0x5A
+  i64 timestamp              # +0x76
+end
+
+message 2159 GuildHistoryNot
+  ## Handler 0x0077AD40 (assert: bFullHistory >> vecNewHistory, reader 0x00773BC0).
+  bool full_history
+  vector<GuildHistoryEntry> entries
+end
+
+message 2166 GuildFalloutStartReq header?
+  ## Sender 0x00793EA0 writes no fields.
+end
+
+message 2167 GuildFalloutStartAck
+  ## Handler 0x00759D60 (reads u32 result only).
+  i32 result
+end
+
+message 2168 GuildFalloutStopReq header?
+  ## Sender 0x00793FA0 writes no fields.
+end
+
+message 2169 GuildFalloutStopAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  i32 result
+end
+
+message 2172 GuildFalloutCompleteNot
+  ## Handler 0x00753280 (assert: nDelGuildUID).
+  i64 del_guild_uid
+end
+
+message 2173 GuildGradeDelegationReq header?
+  ## Sender 0x00794020.
+  i64 target_uid
+end
+
+message 2174 GuildGradeDelegationAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  i32 result
+end
+
+message 2175 GuildPersonExpulsionReq header?
+  ## Sender 0x007940D0: tag 0x10 vector<i64> (0x004CB5E0).
+  vector<i64> member_uids
+end
+
+message 2176 GuildPersonExpulsionAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  i32 result
+end
+
+message 2187 GuildViewedNoticeNot header?
+  ## Sender 0x00794700: i64 timestamp (fire-and-forget).
+  i64 notice_time
+end
+
+message 2190 GuildDismissalStartReq header?
+  ## Sender 0x007947A0 writes no fields.
+end
+
+message 2191 GuildDismissalStartAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  i32 result
+end
+
+message 2192 GuildDismissalStopReq header?
+  ## Sender 0x00794820 writes no fields.
+end
+
+message 2193 GuildDismissalStopAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  i32 result
+end
+
+message 2206 GuildLearnSkillReq header?
+  ## Sender 0x00794B10.
+  i16 skill_id
+  u8 skill_level
+end
+
+message 2207 GuildLearnSkillAck
+  ## Handler 0x0074B820 (reads u32 result only).
+  i32 result
+end
+
+message 2208 GuildSkillChangeUseStateReq header?
+  ## Sender 0x00794BC0.
+  i16 skill_id
+end
+
+message 2209 GuildSkillChangeUseStateAck
+  ## Handler 0x0074B820 (reads u32 result only).
+  i32 result
+end
+
+message 2218 RefuseGuildInviteNot header?
+  ## Sender 0x00795000.
+  wstr inviter_name
+end
+
+message 5123 GuildCreateCompleteNot
+  ## Handler 0x00759E10 (assert: nNewGuildUID >> strGuildName).
+  i64 new_guild_uid
+  wstr guild_name
+end
+
+message 5127 CurrentGuildSkillNot
+  ## Handler 0x00794CE0 (assert: nGuildUID >> nSendCharUID >> vecUseSkill).
+  i64 guild_uid
+  i64 send_char_uid
+  vector<GuildSkillEntry> use_skills
+end
+
+message 6015 GuildInviteNot
+  ## Handler 0x00759AB0 (eERT_GUILD_INVITE_REQ delivered to invitee).
+  ## Assert: strRecvCharNick >> jInfo.m_uidGuild >> jInfo.m_strGuildName >>
+  ## jInfo.m_strInviteName >> jInfo.m_strMasterName >> jInfo.m_sGuildLv >> jInfo.m_sMemberCount.
+  wstr recv_char_nick
+  i64 guild_uid
+  wstr guild_name
+  wstr invite_name
+  wstr master_name
+  i16 guild_lv = 1
+  i16 member_count = 1
+end
+
+message 6016 GuildInviteResultAck
+  ## Handler 0x00759990 (eERT_GUILD_INVITE_ACK; reads u32 result only).
+  i32 result
+end
+
+message 6017 GuildPersonExpulsionCompleteNot bare
+  ## Handler 0x0075A000 (empty body; clears client guild state and shows GAME_281).
+end
+
+message 6019 RefuseGuildInviteForwardNot
+  ## Handler 0x0075A420 (assert: strMyNick >> strRefuserNick).
+  wstr my_nick
+  wstr refuser_nick
+end
+
+message 2674 GuildPersonIntroductionReq header?
+  ## Sender 0x007A67D0.
+  wstr greeting
+  wstr memo
+end
+
+message 2675 GuildPersonIntroductionAck ok_only
+  ## Handler 0x0075CCA0 (assert: strGreeting >> strMemo).
+  i32 result
+  wstr greeting
+  wstr memo
+end
+
+message 2677 GuildMissionNot
+  ## Handler 0x00753DF0 (assert: jGuildMission, reader 0x00A4A330).
+  i64 guild_uid              # +0x00
+  i64 mission_uid            # +0x08
+  wstr mission_name          # +0x10
+  i32 mission_id             # +0x2C
+  i32 cur_count              # +0x30
+  i32 max_count              # +0x34
+  i32 reward_point           # +0x38
+  i64 expire_time            # +0x3C
+  i64 update_time            # +0x44
+end
+
+struct GuildBrokerEntry
+  ## Guild auction/broker item entry, reader 0x00A4A3A0 (2679).
+  i32 broker_id              # +0x00
+  u8 state                   # +0x04
+  i32 item_id                # +0x05
+  i16 item_count             # +0x09
+  i64 bid_guild_uid          # +0x0B
+  wstr bid_guild_name        # +0x13
+  i32 bid_point              # +0x2F
+  i32 min_point              # +0x33
+end
+
+message 2678 GuildBrokerListReq header?
+  ## Sender 0x007A6880 writes no fields.
+end
+
+message 2679 GuildBrokerListAck ok_only
+  ## Handler 0x00776950 (assert: mapGuildBroker >> nRemainSecond).
+  i32 result
+  map<i32,GuildBrokerEntry> brokers
+  i64 remain_second
+end
+
+message 2680 GuildBrokerBidReq header?
+  ## Sender 0x007A6900.
+  i32 broker_id
+  i32 bid_point
+end
+
+message 2681 GuildBrokerBidAck ok_only
+  ## Handler 0x0075D040 (assert: nID >> nBidPoint).
+  i32 result
+  i32 broker_id
+  i32 bid_point
+end
+
+message 2682 GuildBrokerReturnPointReq header?
+  ## Sender 0x007A6A50.
+  i32 broker_id
+end
+
+message 2683 GuildBrokerReturnPointAck ok_only
+  ## Handler 0x0075D180 (assert: nID >> nReturnPoint).
+  i32 result
+  i32 broker_id
+  i32 return_point
+end
+
+message 2684 GuildSupplyGetRewardReq header?
+  ## Sender 0x007A6AF0.
+  i64 supply_reward_uid
+end
+
+message 2685 GuildSupplyGetRewardAck ok_only
+  ## Handler 0x00783F70 (assert: nSupplyRewardUID >> vecItemOut).
+  i32 result
+  i64 supply_reward_uid
+  vector<Item> items
+end
+
+message 2686 GuildSupplyListNot
+  ## Handler 0x00772920 (assert: mapRewardItem >> vecRewardBuff).
+  map<i64,AddedItemNotice> reward_items
+  vector<i32> reward_buffs
+end
+
+message 2426 GuildPersonArenaGradeModifyReq header?
+  ## Request for 2427.
+  vector<i64> char_uids
+  i16 arena_permission
+end
+
+message 2427 GuildPersonArenaGradeModifyAck ok_only
+  ## Handler 0x00771D70 (assert: vecChangeCharUID >> sChangeArenaPermission).
+  i32 result
+  vector<i64> char_uids
+  i16 arena_permission
+end
+
+struct SiegeTeamMembers
+  ## Value for map<i16, set<i64>> in 2454/2455/2456 (0x006BB6B0).
+  set<i64> member_uids
+end
+
+message 2450 GuildSiegeChangeOfficerReq header?
+  ## Request for 2451.
+  i64 change_char_uid
+end
+
+message 2451 GuildSiegeChangeOfficerAck ok_only
+  ## Handler 0x0076CA40 (assert: nChangeCharUID >> mapChangeCharUID).
+  i32 result
+  i64 change_char_uid
+  map<i64,i16> changed_chars
+end
+
+message 2452 GuildSiegeChangeOfficerNot
+  ## Handler 0x00753B90 (assert: nNewOfficerUID).
+  i64 new_officer_uid
+end
+
+message 2453 GuildPersonSiegeTeamIdxModifyReq header?
+  ## Sender 0x0079DE80 (writer 0x00760AF0: map<i64, i16>).
+  map<i64,i16> team_changes
+end
+
+message 2454 GuildPersonSiegeTeamIdxModifyAck ok_only
+  ## Handler 0x0077C550 (assert: mapTeamCharList, reader 0x0077BEC0).
+  i32 result
+  map<i16,SiegeTeamMembers> team_char_list
+end
+
+message 2455 GuildPersonSiegeTeamIdxModifyNot
+  ## Handler 0x0077C860 (assert: mapTeamCharList, reader 0x0077BEC0).
+  map<i16,SiegeTeamMembers> team_char_list
+end
+
+message 2456 GuildUpdateSiegeInfoNot
+  ## Handler 0x0077C370 (assert: jNewGuildSiegeinfo, reader 0x00A54CC0).
+  i64 guild_uid
+  i64 siege_officer_uid
+  map<i16,SiegeTeamMembers> team_char_list
+end
+
+message 2599 CitadelRoundClearReq header?
+  ## Sender 0x007A4D80 (assert: nCurRound).
+  i32 cur_round
+end
+
+message 2600 CitadelRoundClearAck ok_only
+  ## Handler 0x0075BF20 (assert: nNextRound).
+  i32 result
+  i32 next_round
+end
+
+message 2631 CitadelPlayCountUpdateNot
+  ## Handler 0x007A5580 (assert: sRemainCitadelPlayCount; writes player +0x304).
+  i16 remain_play_count
+end
+
+message 2676 UpdateCitadelHistoryNot ok_only
+  ## Handler 0x0075CEF0 (assert: strDunID).
+  i32 result
+  wstr dun_id
 end

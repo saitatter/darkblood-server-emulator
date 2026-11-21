@@ -27,6 +27,25 @@ __all__ = [
     'PartyAcceptInviteNot',
     'PartyMemberInfo',
     'PartyInfoNot',
+    'GuideWaitlistUpdateReq',
+    'GuideWaitlistUpdateAck',
+    'GuideBeginnerUpdateAck',
+    'GuideDonelistUpdateReq',
+    'GuideDonelistUpdateAck',
+    'TeachingStressRewardReq',
+    'TeachingStressRewardAck',
+    'TeachingHistoryEntry',
+    'TeachingGetHistoryNot',
+    'TeachingGraduationRewardReq',
+    'TeachingGraduationRewardAck',
+    'SummonAcknowledgeReq',
+    'SummonAcknowledgeAck',
+    'TeachingSummonAcceptReq',
+    'TeachingSummonAcceptAck',
+    'TeachingDeleteReq',
+    'TeachingDeleteAck',
+    'TeachingSummonRequestReq',
+    'TeachingSummonRequestAck',
 ]
 
 
@@ -254,3 +273,231 @@ class PartyInfoNot(WireMessage):
     party_id: i32 = 0
     leader_uid: i64 = 0
     members: Vector[PartyMemberInfo] = field(default_factory=list)
+
+
+@dataclass
+class GuideWaitlistUpdateReq(WireMessage):
+    """Opcode 2356: eEGS_GUIDE_WAITLIST_UPDATE_REQ (request).
+
+    Sender 0x0079A260 (vector<i32> writer 0x004C9FB0).
+    """
+    OPCODE: ClassVar[int] = 2356
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    guide_ids: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class GuideWaitlistUpdateAck(WireMessage):
+    """Opcode 2357: eEGS_GUIDE_WAITLIST_UPDATE_ACK (reply).
+
+    Reply to 2356.
+    """
+    OPCODE: ClassVar[int] = 2357
+    result: i32 = 0
+
+
+@dataclass
+class GuideBeginnerUpdateAck(WireMessage):
+    """Opcode 2359: eEGS_GUIDE_BEGINNER_UPDATE_ACK (reply).
+
+    Reply to beginner guide update.
+    """
+    OPCODE: ClassVar[int] = 2359
+    result: i32 = 0
+
+
+@dataclass
+class GuideDonelistUpdateReq(WireMessage):
+    """Opcode 2360: eEGS_GUIDE_DONELIST_UPDATE_REQ (request).
+
+    Sender 0x0079A110 (vector<i32> writer 0x004C9FB0).
+    """
+    OPCODE: ClassVar[int] = 2360
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    guide_ids: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class GuideDonelistUpdateAck(WireMessage):
+    """Opcode 2361: eEGS_GUIDE_DONELIST_UPDATE_ACK (reply).
+
+    Reply to 2360.
+    """
+    OPCODE: ClassVar[int] = 2361
+    result: i32 = 0
+
+
+@dataclass
+class TeachingStressRewardReq(WireMessage):
+    """Opcode 2648: eEGS_TEACHING_STRESS_REWARD_REQ (request).
+
+    Sender 0x007A60E0.
+    """
+    OPCODE: ClassVar[int] = 2648
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    reward_idx: i16 = 0
+
+
+@dataclass
+class TeachingStressRewardAck(WireMessage):
+    """Opcode 2649: eEGS_TEACHING_STRESS_REWARD_ACK (reply).
+
+    Handler 0x0075C7B0 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2649
+    result: i32 = 0
+
+
+@dataclass
+class TeachingHistoryEntry(WireMessage):
+    """Mentor/student history entry, reader 0x00A4AF60 (2650)."""
+    char_uid: i64 = 0  # +0x00
+    name: wstr = ''  # +0x08
+    char_class: u8 = 0  # +0x24
+    is_mentor: bool = False  # +0x25
+    level: u8 = 1  # +0x28
+    start_time: Raw[12] = bytes(12)  # +0x47 (0x00A49110: 6x u16 Y/M/D/H/M/S)
+    end_time: Raw[12] = bytes(12)  # +0x53 (0x00A49110: 6x u16 Y/M/D/H/M/S)
+    state: u8 = 0  # +0x26
+    grad_flag: u8 = 0  # +0x27
+    stress_point: i16 = 0  # +0x29
+    memo: wstr = ''  # +0x2B
+
+
+@dataclass
+class TeachingGetHistoryNot(WireMessage):
+    """Opcode 2650: eEGS_TEACHING_GET_HISTORY_NOT (reply).
+
+    Handler 0x0077B5D0 (assert: vecTeachHistory, vector reader 0x00773CB0).
+    """
+    OPCODE: ClassVar[int] = 2650
+    history: Vector[TeachingHistoryEntry] = field(default_factory=list)
+
+
+@dataclass
+class TeachingGraduationRewardReq(WireMessage):
+    """Opcode 2658: eEGS_TEACHING_GRADUATION_REWARD_REQ (request).
+
+    Sender 0x007A6180.
+    """
+    OPCODE: ClassVar[int] = 2658
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    reward_idx: i16 = 0
+    mentor_name: wstr = ''
+    student_name: wstr = ''
+
+
+@dataclass
+class TeachingGraduationRewardAck(WireMessage):
+    """Opcode 2659: eEGS_TEACHING_GRADUATION_REWARD_ACK (reply).
+
+    Handler 0x0075C8E0 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2659
+    result: i32 = 0
+
+
+@dataclass
+class SummonAcknowledgeReq(WireMessage):
+    """Opcode 5130: eERC_SUMMON_ACKNOWLEDGE_REQ (request).
+
+    Sender 0x004D31D0.
+    """
+    OPCODE: ClassVar[int] = 5130
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    accept: bool = False
+
+
+@dataclass
+class SummonAcknowledgeAck(WireMessage):
+    """Opcode 5131: eERC_SUMMON_ACKNOWLEDGE_ACK (reply).
+
+    Reply to 5130.
+    """
+    OPCODE: ClassVar[int] = 5131
+    result: i32 = 0
+
+
+@dataclass
+class TeachingSummonAcceptReq(WireMessage):
+    """Opcode 5356: eERC_TEACHING_SUMMON_ACCEPT_REQ (request).
+
+    Sender 0x007A6490.
+    """
+    OPCODE: ClassVar[int] = 5356
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    accept: bool = False
+
+
+@dataclass
+class TeachingSummonAcceptAck(WireMessage):
+    """Opcode 5357: eERC_TEACHING_SUMMON_ACCEPT_ACK (reply).
+
+    Handler 0x0077B780 (assert: bAnswer >> strNick).
+    """
+    OPCODE: ClassVar[int] = 5357
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    answer: bool = False
+    nick: wstr = ''
+
+
+@dataclass
+class TeachingDeleteReq(WireMessage):
+    """Opcode 6030: eERT_TEACHING_DELETE_REQ (request).
+
+    Sender 0x007A5CB0.
+    """
+    OPCODE: ClassVar[int] = 6030
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0
+
+
+@dataclass
+class TeachingDeleteAck(WireMessage):
+    """Opcode 6031: eERT_TEACHING_DELETE_ACK (reply).
+
+    Handler 0x007A5D60 (assert: strNick >> bRequest).
+    """
+    OPCODE: ClassVar[int] = 6031
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    nick: wstr = ''
+    is_request: bool = False
+
+
+@dataclass
+class TeachingSummonRequestReq(WireMessage):
+    """Opcode 6032: eERT_TEACHING_SUMMON_REQUEST_REQ (request).
+
+    Sender 0x007A6240.
+    """
+    OPCODE: ClassVar[int] = 6032
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_nick: wstr = ''
+    pos_x: f32 = 0.0
+    pos_y: f32 = 0.0
+
+
+@dataclass
+class TeachingSummonRequestAck(WireMessage):
+    """Opcode 6033: eERT_TEACHING_SUMMON_REQUEST_ACK (reply).
+
+    Handler 0x0075CA40 (assert: strNick >> fPosX >> fPosY >> nLayerNetID >> nChannel).
+    """
+    OPCODE: ClassVar[int] = 6033
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    nick: wstr = ''
+    pos_x: f32 = 0.0
+    pos_y: f32 = 0.0
+    layer_net_id: i64 = 0
+    channel: i64 = 1

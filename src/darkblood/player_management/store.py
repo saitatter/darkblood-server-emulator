@@ -331,6 +331,27 @@ class SqliteCharacterStore(ICharacterStore):
             conn.commit()
             return gold, items
 
+    def claim_mail_gold(self, mail_uid: int) -> int:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT gold, items_json FROM mailbox WHERE uid = ? AND is_deleted = 0', (mail_uid,))
+            row = cur.fetchone()
+            if not row:
+                return 0
+            gold = int(row['gold'])
+            items = json.loads(row['items_json'])
+            has_item = 1 if items else 0
+            cur.execute('UPDATE mailbox SET gold = 0, has_item = ? WHERE uid = ?', (has_item, mail_uid))
+            conn.commit()
+            return gold
+
+    def save_mail(self, mail_uid: int) -> bool:
+        with self.lock, self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute('UPDATE mailbox SET remain_days = 90, is_read = 1 WHERE uid = ? AND is_deleted = 0', (mail_uid,))
+            conn.commit()
+            return cur.rowcount > 0
+
     def delete_mail(self, mail_uids: list) -> list:
         if not mail_uids:
             return []

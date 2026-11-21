@@ -271,6 +271,208 @@ class SocialFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_extended_social_party_guild_opcodes(self):
+        """Test newly recovered Social, Party/Teaching/Guide, and Guild opcodes."""
+        from darkblood.games.network.messages.social import (
+            BanishUserAck, BanishUserReq, ChatNotifyAck, ChatNotifyReq,
+            FriendBlockListAddAck, FriendBlockListAddReq,
+            FriendBlockListDeleteAck, FriendBlockListDeleteReq,
+            FriendBlockListUpdateAck, FriendBlockListUpdateReq,
+            RequestCharInfoByNickReq, WatchEventSeenAck, WatchEventSeenReq,
+        )
+        from darkblood.games.network.messages.party import (
+            GuideDonelistUpdateAck, GuideDonelistUpdateReq,
+            GuideWaitlistUpdateAck, GuideWaitlistUpdateReq,
+            SummonAcknowledgeAck, SummonAcknowledgeReq,
+            TeachingDeleteAck, TeachingDeleteReq,
+            TeachingGraduationRewardAck, TeachingGraduationRewardReq,
+            TeachingStressRewardAck, TeachingStressRewardReq,
+            TeachingSummonAcceptAck, TeachingSummonAcceptReq,
+            TeachingSummonRequestAck, TeachingSummonRequestReq,
+        )
+        from darkblood.games.network.messages.guild import (
+            CitadelRoundClearAck, CitadelRoundClearReq,
+            GuildBrokerBidAck, GuildBrokerBidReq,
+            GuildBrokerListAck, GuildBrokerListReq,
+            GuildBrokerReturnPointAck, GuildBrokerReturnPointReq,
+            GuildDismissalStartAck, GuildDismissalStartReq,
+            GuildDismissalStopAck, GuildDismissalStopReq,
+            GuildFalloutStartAck, GuildFalloutStartReq,
+            GuildFalloutStopAck, GuildFalloutStopReq,
+            GuildGradeDelegationAck, GuildGradeDelegationReq,
+            GuildLearnSkillAck, GuildLearnSkillReq,
+            GuildPersonArenaGradeModifyAck, GuildPersonArenaGradeModifyReq,
+            GuildPersonExpulsionAck, GuildPersonExpulsionReq,
+            GuildPersonIntroductionAck, GuildPersonIntroductionReq,
+            GuildPersonSiegeTeamIdxModifyAck, GuildPersonSiegeTeamIdxModifyReq,
+            GuildSiegeChangeOfficerAck, GuildSiegeChangeOfficerReq,
+            GuildSkillChangeUseStateAck, GuildSkillChangeUseStateReq,
+            GuildSupplyGetRewardAck, GuildSupplyGetRewardReq,
+            GuildViewedNoticeNot, RefuseGuildInviteNot,
+        )
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('GuildHero'))
+            _, c1 = await client.expect_event(2013)
+            char1_id = struct.unpack_from('<Q', c1, 10)[0]
+
+            client.send_event(2012, create_request('BlockTarget'))
+            _, c2 = await client.expect_event(2013)
+            char2_id = struct.unpack_from('<Q', c2, 10)[0]
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char1_id))
+            await client.expect_event(2007)
+
+            # --- Social ---
+            client.send_event(2354, ChatNotifyReq(char_uid=char1_id, category=1, target_name='BlockTarget', message='spam').encode())
+            _, r = await client.expect_event(2355)
+            self.assertEqual(ChatNotifyAck.decode(r).result, 0)
+
+            client.send_event(2565, FriendBlockListAddReq(char_name='BlockTarget').encode())
+            _, r = await client.expect_event(2566)
+            ack = FriendBlockListAddAck.decode(r)
+            self.assertEqual(ack.result, 0)
+            self.assertEqual(ack.block.uid, char2_id)
+
+            client.send_event(2571, FriendBlockListUpdateReq(char_uid=char2_id, memo='noisy').encode())
+            _, r = await client.expect_event(2572)
+            ack = FriendBlockListUpdateAck.decode(r)
+            self.assertEqual((ack.result, ack.char_uid, ack.memo), (0, char2_id, 'noisy'))
+
+            client.send_event(2567, FriendBlockListDeleteReq(char_uid=char2_id).encode())
+            _, r = await client.expect_event(2568)
+            ack = FriendBlockListDeleteAck.decode(r)
+            self.assertEqual((ack.result, ack.char_uid), (0, char2_id))
+
+            client.send_event(2693, WatchEventSeenReq().encode())
+            _, r = await client.expect_event(2694)
+            self.assertEqual(WatchEventSeenAck.decode(r).result, 0)
+
+            client.send_event(5007, BanishUserReq(target_uid=char2_id).encode())
+            _, r = await client.expect_event(5008)
+            self.assertEqual(BanishUserAck.decode(r).result, 1)  # not in a room
+
+            client.send_event(6018, RequestCharInfoByNickReq(target_nick='BlockTarget', my_char_uid=char1_id).encode())
+            _, r = await client.expect_event(6012)
+            self.assertEqual(struct.unpack_from('<i', r)[0], 0)
+
+            # --- Party / Guide / Teaching ---
+            client.send_event(2356, GuideWaitlistUpdateReq(guide_ids=[1, 2]).encode())
+            _, r = await client.expect_event(2357)
+            self.assertEqual(GuideWaitlistUpdateAck.decode(r).result, 0)
+
+            client.send_event(2360, GuideDonelistUpdateReq(guide_ids=[1]).encode())
+            _, r = await client.expect_event(2361)
+            self.assertEqual(GuideDonelistUpdateAck.decode(r).result, 0)
+
+            client.send_event(2648, TeachingStressRewardReq(reward_idx=1).encode())
+            _, r = await client.expect_event(2649)
+            self.assertEqual(TeachingStressRewardAck.decode(r).result, 0)
+
+            client.send_event(2658, TeachingGraduationRewardReq(reward_idx=1, mentor_name='GuildHero', student_name='BlockTarget').encode())
+            _, r = await client.expect_event(2659)
+            self.assertEqual(TeachingGraduationRewardAck.decode(r).result, 0)
+
+            client.send_event(5130, SummonAcknowledgeReq(accept=True).encode())
+            _, r = await client.expect_event(5131)
+            self.assertEqual(SummonAcknowledgeAck.decode(r).result, 0)
+
+            client.send_event(5356, TeachingSummonAcceptReq(accept=True).encode())
+            _, r = await client.expect_event(5357)
+            ack = TeachingSummonAcceptAck.decode(r)
+            self.assertEqual((ack.result, ack.answer, ack.nick), (0, True, 'GuildHero'))
+
+            client.send_event(6030, TeachingDeleteReq(target_uid=char2_id).encode())
+            _, r = await client.expect_event(6031)
+            ack = TeachingDeleteAck.decode(r)
+            self.assertEqual((ack.result, ack.nick), (0, 'BlockTarget'))
+
+            client.send_event(6032, TeachingSummonRequestReq(target_nick='BlockTarget', pos_x=1.0, pos_y=2.0).encode())
+            _, r = await client.expect_event(6033)
+            self.assertEqual(TeachingSummonRequestAck.decode(r).result, 0xCE)  # target offline
+
+            # --- Guild ---
+            client.send_event(2166, GuildFalloutStartReq().encode())
+            _, r = await client.expect_event(2167)
+            self.assertEqual(GuildFalloutStartAck.decode(r).result, 0)
+
+            client.send_event(2168, GuildFalloutStopReq().encode())
+            _, r = await client.expect_event(2169)
+            self.assertEqual(GuildFalloutStopAck.decode(r).result, 0)
+
+            client.send_event(2173, GuildGradeDelegationReq(target_uid=char2_id).encode())
+            _, r = await client.expect_event(2174)
+            self.assertEqual(GuildGradeDelegationAck.decode(r).result, 0)
+
+            client.send_event(2175, GuildPersonExpulsionReq(member_uids=[char2_id]).encode())
+            _, r = await client.expect_event(2176)
+            self.assertEqual(GuildPersonExpulsionAck.decode(r).result, 0)
+
+            client.send_event(2187, GuildViewedNoticeNot(notice_time=123456).encode())
+            client.send_event(2218, RefuseGuildInviteNot(inviter_name='BlockTarget').encode())
+
+            client.send_event(2190, GuildDismissalStartReq().encode())
+            _, r = await client.expect_event(2191)
+            self.assertEqual(GuildDismissalStartAck.decode(r).result, 0)
+
+            client.send_event(2192, GuildDismissalStopReq().encode())
+            _, r = await client.expect_event(2193)
+            self.assertEqual(GuildDismissalStopAck.decode(r).result, 0)
+
+            client.send_event(2206, GuildLearnSkillReq(skill_id=10, skill_level=1).encode())
+            _, r = await client.expect_event(2207)
+            self.assertEqual(GuildLearnSkillAck.decode(r).result, 0)
+            await client.expect_event(2205)
+
+            client.send_event(2208, GuildSkillChangeUseStateReq(skill_id=10).encode())
+            _, r = await client.expect_event(2209)
+            self.assertEqual(GuildSkillChangeUseStateAck.decode(r).result, 0)
+            await client.expect_event(5127)
+
+            client.send_event(2674, GuildPersonIntroductionReq(greeting='Hi!', memo='Tank').encode())
+            _, r = await client.expect_event(2675)
+            ack = GuildPersonIntroductionAck.decode(r)
+            self.assertEqual((ack.result, ack.greeting, ack.memo), (0, 'Hi!', 'Tank'))
+
+            client.send_event(2678, GuildBrokerListReq().encode())
+            _, r = await client.expect_event(2679)
+            self.assertEqual(GuildBrokerListAck.decode(r).result, 0)
+
+            client.send_event(2680, GuildBrokerBidReq(broker_id=5, bid_point=100).encode())
+            _, r = await client.expect_event(2681)
+            ack = GuildBrokerBidAck.decode(r)
+            self.assertEqual((ack.result, ack.broker_id, ack.bid_point), (0, 5, 100))
+
+            client.send_event(2682, GuildBrokerReturnPointReq(broker_id=5).encode())
+            _, r = await client.expect_event(2683)
+            self.assertEqual(GuildBrokerReturnPointAck.decode(r).result, 0)
+
+            client.send_event(2684, GuildSupplyGetRewardReq(supply_reward_uid=77).encode())
+            _, r = await client.expect_event(2685)
+            self.assertEqual(struct.unpack_from('<iq', r), (0, 77))
+
+            client.send_event(2426, GuildPersonArenaGradeModifyReq(char_uids=[char2_id], arena_permission=1).encode())
+            _, r = await client.expect_event(2427)
+            self.assertEqual(GuildPersonArenaGradeModifyAck.decode(r).arena_permission, 1)
+
+            client.send_event(2450, GuildSiegeChangeOfficerReq(change_char_uid=char2_id).encode())
+            _, r = await client.expect_event(2451)
+            self.assertEqual(GuildSiegeChangeOfficerAck.decode(r).change_char_uid, char2_id)
+
+            client.send_event(2453, GuildPersonSiegeTeamIdxModifyReq(team_changes={char2_id: 2}).encode())
+            _, r = await client.expect_event(2454)
+            ack = GuildPersonSiegeTeamIdxModifyAck.decode(r)
+            self.assertEqual(ack.result, 0)
+            self.assertIn(2, ack.team_char_list)
+
+            client.send_event(2599, CitadelRoundClearReq(cur_round=3).encode())
+            _, r = await client.expect_event(2600)
+            ack = CitadelRoundClearAck.decode(r)
+            self.assertEqual((ack.result, ack.next_round), (0, 4))
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

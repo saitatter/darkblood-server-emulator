@@ -1,5 +1,21 @@
 # Session handoff — 2026-11-21
 
+## Mail, Social, Party & Guild domain sweep — saita machine, 2026-11-21
+
+- **Mail (`schemas/mail.jsch`, `src/darkblood/games/handlers/mail.py`, `src/darkblood/player_management/store.py`)**:
+  - Recovered and implemented all 5 remaining mail opcodes from `unpacked.analysis.exe`: `2248/2249 PostGetAppendAr` (`0x00796700` / `0x007967E0`, asserts `nPostUID >> nCurrentAr`, updates player `+0x70`), `2252/2253 PostSave` (`0x007969D0` / `0x0075A780`, extends mail `remain_days=90`), and `2399 PostDailySendRecoverNot` (`0x0079A880`, writes `player+0x32C`/`+0x32E`).
+  - Mail reached **100% (18/18 opcodes, 54/54 fields)**.
+- **Social (`schemas/social.jsch`, `src/darkblood/games/handlers/social.py`)**:
+  - Recovered and implemented all live missing social opcodes: `2120 AlarmUpdateAck` (`0x00771150`), `2354/2355 ChatNotify` (`0x004E6D30` / `0x00A1EDD0`), `2565-2568` & `2571-2572 FriendBlockList` (`Add`/`Delete`/`Update`, `FriendBlockEntry` `0x00A4A1A0`, persisted per character in `blocked_friends`), `2693/2694 WatchEventSeen`, `5007/5008 BanishUser` (`0x005975D0` / `0x005999A0`, room host kicks member and broadcasts `5008`), and `6018 RequestCharInfoByNickReq` (`0x00790E10` -> `6012`).
+  - Social jumped from 35% (26/53) to **60% (40/53 opcodes, 80% fields)**.
+- **Party / Teaching / Guide (`schemas/party.jsch`, `src/darkblood/games/handlers/social.py`)**:
+  - Recovered and implemented 18 opcodes: `2356/2357 GuideWaitlistUpdate`, `2359 GuideBeginnerUpdateAck`, `2360/2361 GuideDonelistUpdate`, `2648/2649 TeachingStressReward`, `2650 TeachingGetHistoryNot` (`TeachingHistoryEntry` `0x00A4AF60`), `2658/2659 TeachingGraduationReward`, `5130/5131 SummonAcknowledge`, `5356/5357 TeachingSummonAccept`, `6030/6031 TeachingDelete`, `6032/6033 TeachingSummonRequest`.
+  - Party jumped from 23% (7/26) to **88% (25/26 opcodes, 91% fields)**.
+- **Guild (`schemas/guild.jsch`, `src/darkblood/games/handlers/social.py`)**:
+  - Recovered and implemented 51 opcodes + `GuildSkillEntry` (`0x00A48890`, also resolving `2205 GuildSkillNot`'s unmapped vector): `2159 GuildHistoryNot`, `2166-2169` & `2172 GuildFallout`, `2173/2174 GuildGradeDelegation`, `2175/2176` & `6017 GuildPersonExpulsion`, `2187 GuildViewedNoticeNot`, `2190-2193 GuildDismissal`, `2206-2209` & `5127 GuildSkill`, `2218` & `6019 RefuseGuildInvite`, `5123 GuildCreateCompleteNot`, `6015/6016 GuildInvite` (live-forwarded from `2160`), `2674/2675 GuildPersonIntroduction`, `2677 GuildMissionNot`, `2678-2683 GuildBroker`, `2684-2686 GuildSupply`, `2426/2427 GuildPersonArenaGradeModify`, `2450-2456 GuildSiege` (`Officer` / `TeamIdx` / `UpdateSiegeInfo`), `2599/2600` & `2631` & `2676 Citadel`.
+  - Guild jumped from 28% (30/98) to **81% (81/98 opcodes, 98% fields)**.
+- **Verification**: 192/192 headless tests pass (`test_mail_claim_ar_and_save`, `test_extended_social_party_guild_opcodes`), `gen_messages.py --check` and `gen_progress.py --check` pass. Live client retest pending.
+
 ## Storage / Depot & NPC Shop Buy Crash fixes — saita machine, 2026-11-21
 
 - **NPC Shop Buy Crash (`2067 -> 2068`, `schemas/commerce.jsch`, `src/darkblood/games/handlers/commerce.py`)**:

@@ -184,3 +184,95 @@ message 2025 GetInviteListAck
   i32 result
   vector<RoomMemberInfo> users
 end
+
+message 2120 AlarmUpdateAck ok_only
+  ## Handler 0x00771150 (assert: sType >> vecValue; vector reader 0x004D6E60).
+  i32 result
+  i16 alarm_type
+  vector<i32> values
+end
+
+message 2354 ChatNotifyReq header?
+  ## Sender 0x004E6D30 (struct writer 0x00A1EDD0): chat report/notification.
+  i64 char_uid
+  i32 category
+  wstr target_name
+  wstr message
+  i64 timestamp
+end
+
+message 2355 ChatNotifyAck
+  ## Reply to 2354 (no dedicated client handler in handler_map.txt).
+  i32 result
+end
+
+struct FriendBlockEntry
+  ## Block list entry, reader 0x00A4A1A0 (2566).
+  i64 uid                    # +0x00 char uid
+  wstr name                  # +0x08
+  u8 char_class              # +0x24
+  u8 level = 1               # +0x25
+  wstr memo                  # +0x26
+end
+
+message 2565 FriendBlockListAddReq header?
+  ## Sender 0x007A2930 (assert: strFriendBlockNick).
+  wstr char_name
+end
+
+message 2566 FriendBlockListAddAck ok_only
+  ## Handler 0x0075B640 (assert: jFriendBlockInfo, reader 0x00A4A1A0).
+  i32 result = 0xCF
+  FriendBlockEntry block = FriendBlockEntry()
+end
+
+message 2567 FriendBlockListDeleteReq header?
+  ## Sender 0x007A2C70 (assert: nFriendBlockUID).
+  i64 char_uid
+end
+
+message 2568 FriendBlockListDeleteAck ok_only
+  ## Handler 0x0075B9B0 (assert: nFriendBlockUID).
+  i32 result
+  i64 char_uid
+end
+
+message 2571 FriendBlockListUpdateReq header?
+  ## Sender 0x007A2F20 (assert: pjBlockInfo->m_nCharUID << strBlockMemo).
+  i64 char_uid
+  wstr memo
+end
+
+message 2572 FriendBlockListUpdateAck ok_only
+  ## Handler 0x00753C80 (assert: nFriendBlockUID >> strBlockMemo).
+  i32 result
+  i64 char_uid
+  wstr memo
+end
+
+message 2693 WatchEventSeenReq header?
+  ## Request for 2694 (no sender recovered in build).
+end
+
+message 2694 WatchEventSeenAck
+  ## Handler 0x00655800 -> 0x00759D60 (reads u32 result only).
+  i32 result
+end
+
+message 5007 BanishUserReq header?
+  ## Sender 0x005975D0 (assert: nForceLeaveUser). Room host kicks a member.
+  i64 target_uid
+end
+
+message 5008 BanishUserAck ok_only
+  ## Handler 0x005999A0 (assert: nLeaveUserUID). Broadcast to room and kicked user.
+  i32 result
+  i64 leave_user_uid
+end
+
+message 6018 RequestCharInfoByNickReq header?
+  ## Sender 0x00790E10 (assert: strTargetNick << GetMyCharUID() << nDBUID).
+  wstr target_nick
+  i64 my_char_uid
+  i64 db_uid
+end

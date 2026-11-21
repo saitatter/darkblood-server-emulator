@@ -8,6 +8,7 @@ from typing import ClassVar
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.inventory import AddedItemNotice
 
 __all__ = [
     'GuildOrAttendanceAck',
@@ -39,7 +40,62 @@ __all__ = [
     'GuildPersonListNot',
     'GuildPersonGradeModifyReq',
     'GuildPersonGradeModifyAck',
+    'GuildSkillEntry',
     'GuildSkillNot',
+    'GuildHistoryEntry',
+    'GuildHistoryNot',
+    'GuildFalloutStartReq',
+    'GuildFalloutStartAck',
+    'GuildFalloutStopReq',
+    'GuildFalloutStopAck',
+    'GuildFalloutCompleteNot',
+    'GuildGradeDelegationReq',
+    'GuildGradeDelegationAck',
+    'GuildPersonExpulsionReq',
+    'GuildPersonExpulsionAck',
+    'GuildViewedNoticeNot',
+    'GuildDismissalStartReq',
+    'GuildDismissalStartAck',
+    'GuildDismissalStopReq',
+    'GuildDismissalStopAck',
+    'GuildLearnSkillReq',
+    'GuildLearnSkillAck',
+    'GuildSkillChangeUseStateReq',
+    'GuildSkillChangeUseStateAck',
+    'RefuseGuildInviteNot',
+    'GuildCreateCompleteNot',
+    'CurrentGuildSkillNot',
+    'GuildInviteNot',
+    'GuildInviteResultAck',
+    'GuildPersonExpulsionCompleteNot',
+    'RefuseGuildInviteForwardNot',
+    'GuildPersonIntroductionReq',
+    'GuildPersonIntroductionAck',
+    'GuildMissionNot',
+    'GuildBrokerEntry',
+    'GuildBrokerListReq',
+    'GuildBrokerListAck',
+    'GuildBrokerBidReq',
+    'GuildBrokerBidAck',
+    'GuildBrokerReturnPointReq',
+    'GuildBrokerReturnPointAck',
+    'GuildSupplyGetRewardReq',
+    'GuildSupplyGetRewardAck',
+    'GuildSupplyListNot',
+    'GuildPersonArenaGradeModifyReq',
+    'GuildPersonArenaGradeModifyAck',
+    'SiegeTeamMembers',
+    'GuildSiegeChangeOfficerReq',
+    'GuildSiegeChangeOfficerAck',
+    'GuildSiegeChangeOfficerNot',
+    'GuildPersonSiegeTeamIdxModifyReq',
+    'GuildPersonSiegeTeamIdxModifyAck',
+    'GuildPersonSiegeTeamIdxModifyNot',
+    'GuildUpdateSiegeInfoNot',
+    'CitadelRoundClearReq',
+    'CitadelRoundClearAck',
+    'CitadelPlayCountUpdateNot',
+    'UpdateCitadelHistoryNot',
 ]
 
 
@@ -384,6 +440,17 @@ class GuildPersonGradeModifyAck(WireMessage):
 
 
 @dataclass
+class GuildSkillEntry(WireMessage):
+    """Guild skill record, reader 0x00A48890 (16 raw bytes; ctor in 0x0076E9B0)."""
+    skill_id: u16 = 0xFFFF
+    skill_level: u8 = 0
+    is_used: bool = False
+    remain_time: u32 = 0
+    cool_time: u32 = 0
+    param: u32 = 0
+
+
+@dataclass
 class GuildSkillNot(WireMessage):
     """Opcode 2205: eEGS_GUILD_SKILL_NOT (reply).
 
@@ -391,7 +458,634 @@ class GuildSkillNot(WireMessage):
     """
     OPCODE: ClassVar[int] = 2205
     flag: bool = False
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'flag',
-        Const(EmptyVector),
-    )
+    skills: Vector[GuildSkillEntry] = field(default_factory=list)
+
+
+@dataclass
+class GuildHistoryEntry(WireMessage):
+    """Guild history log entry, reader 0x00A49AE0 (2159)."""
+    history_uid: i64 = 0  # +0x00
+    guild_uid: i64 = 0  # +0x08
+    history_type: i16 = 0  # +0x10
+    actor_uid: i64 = 0  # +0x12
+    target_uid: i64 = 0  # +0x1A
+    actor_name: wstr = ''  # +0x22
+    target_name: wstr = ''  # +0x3E
+    detail: wstr = ''  # +0x5A
+    timestamp: i64 = 0  # +0x76
+
+
+@dataclass
+class GuildHistoryNot(WireMessage):
+    """Opcode 2159: eEGS_GUILD_HISTORY_NOT (reply).
+
+    Handler 0x0077AD40 (assert: bFullHistory >> vecNewHistory, reader 0x00773BC0).
+    """
+    OPCODE: ClassVar[int] = 2159
+    full_history: bool = False
+    entries: Vector[GuildHistoryEntry] = field(default_factory=list)
+
+
+@dataclass
+class GuildFalloutStartReq(WireMessage):
+    """Opcode 2166: eEGS_GUILD_FALLOUT_START_REQ (request).
+
+    Sender 0x00793EA0 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2166
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class GuildFalloutStartAck(WireMessage):
+    """Opcode 2167: eEGS_GUILD_FALLOUT_START_ACK (reply).
+
+    Handler 0x00759D60 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2167
+    result: i32 = 0
+
+
+@dataclass
+class GuildFalloutStopReq(WireMessage):
+    """Opcode 2168: eEGS_GUILD_FALLOUT_STOP_REQ (request).
+
+    Sender 0x00793FA0 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2168
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class GuildFalloutStopAck(WireMessage):
+    """Opcode 2169: eEGS_GUILD_FALLOUT_STOP_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2169
+    result: i32 = 0
+
+
+@dataclass
+class GuildFalloutCompleteNot(WireMessage):
+    """Opcode 2172: eEGS_GUILD_FALLOUT_COMPLETE_NOT (reply).
+
+    Handler 0x00753280 (assert: nDelGuildUID).
+    """
+    OPCODE: ClassVar[int] = 2172
+    del_guild_uid: i64 = 0
+
+
+@dataclass
+class GuildGradeDelegationReq(WireMessage):
+    """Opcode 2173: eEGS_GUILD_GRADE_DELEGATION_REQ (request).
+
+    Sender 0x00794020.
+    """
+    OPCODE: ClassVar[int] = 2173
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0
+
+
+@dataclass
+class GuildGradeDelegationAck(WireMessage):
+    """Opcode 2174: eEGS_GUILD_GRADE_DELEGATION_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2174
+    result: i32 = 0
+
+
+@dataclass
+class GuildPersonExpulsionReq(WireMessage):
+    """Opcode 2175: eEGS_GUILD_PERSON_EXPULSION_REQ (request).
+
+    Sender 0x007940D0: tag 0x10 vector<i64> (0x004CB5E0).
+    """
+    OPCODE: ClassVar[int] = 2175
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    member_uids: Vector[i64] = field(default_factory=list)
+
+
+@dataclass
+class GuildPersonExpulsionAck(WireMessage):
+    """Opcode 2176: eEGS_GUILD_PERSON_EXPULSION_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2176
+    result: i32 = 0
+
+
+@dataclass
+class GuildViewedNoticeNot(WireMessage):
+    """Opcode 2187: eEGS_GUILD_VIEWED_NOTICE_NOT (reply).
+
+    Sender 0x00794700: i64 timestamp (fire-and-forget).
+    """
+    OPCODE: ClassVar[int] = 2187
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    notice_time: i64 = 0
+
+
+@dataclass
+class GuildDismissalStartReq(WireMessage):
+    """Opcode 2190: eEGS_GUILD_DISMISSAL_START_REQ (request).
+
+    Sender 0x007947A0 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2190
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class GuildDismissalStartAck(WireMessage):
+    """Opcode 2191: eEGS_GUILD_DISMISSAL_START_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2191
+    result: i32 = 0
+
+
+@dataclass
+class GuildDismissalStopReq(WireMessage):
+    """Opcode 2192: eEGS_GUILD_DISMISSAL_STOP_REQ (request).
+
+    Sender 0x00794820 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2192
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class GuildDismissalStopAck(WireMessage):
+    """Opcode 2193: eEGS_GUILD_DISMISSAL_STOP_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2193
+    result: i32 = 0
+
+
+@dataclass
+class GuildLearnSkillReq(WireMessage):
+    """Opcode 2206: eEGS_GUILD_LEARN_SKILL_REQ (request).
+
+    Sender 0x00794B10.
+    """
+    OPCODE: ClassVar[int] = 2206
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_id: i16 = 0
+    skill_level: u8 = 0
+
+
+@dataclass
+class GuildLearnSkillAck(WireMessage):
+    """Opcode 2207: eEGS_GUILD_LEARN_SKILL_ACK (reply).
+
+    Handler 0x0074B820 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2207
+    result: i32 = 0
+
+
+@dataclass
+class GuildSkillChangeUseStateReq(WireMessage):
+    """Opcode 2208: eEGS_GUILD_SKILL_CHANGE_USE_STATE_REQ (request).
+
+    Sender 0x00794BC0.
+    """
+    OPCODE: ClassVar[int] = 2208
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_id: i16 = 0
+
+
+@dataclass
+class GuildSkillChangeUseStateAck(WireMessage):
+    """Opcode 2209: eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK (reply).
+
+    Handler 0x0074B820 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2209
+    result: i32 = 0
+
+
+@dataclass
+class RefuseGuildInviteNot(WireMessage):
+    """Opcode 2218: eEGS_REFUSE_GUILD_INVITE_NOT (reply).
+
+    Sender 0x00795000.
+    """
+    OPCODE: ClassVar[int] = 2218
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    inviter_name: wstr = ''
+
+
+@dataclass
+class GuildCreateCompleteNot(WireMessage):
+    """Opcode 5123: eERC_GUILD_CREATE_COMPLETE_NOT (reply).
+
+    Handler 0x00759E10 (assert: nNewGuildUID >> strGuildName).
+    """
+    OPCODE: ClassVar[int] = 5123
+    new_guild_uid: i64 = 0
+    guild_name: wstr = ''
+
+
+@dataclass
+class CurrentGuildSkillNot(WireMessage):
+    """Opcode 5127: eERC_CURRENT_GUILD_SKILL_NOT (reply).
+
+    Handler 0x00794CE0 (assert: nGuildUID >> nSendCharUID >> vecUseSkill).
+    """
+    OPCODE: ClassVar[int] = 5127
+    guild_uid: i64 = 0
+    send_char_uid: i64 = 0
+    use_skills: Vector[GuildSkillEntry] = field(default_factory=list)
+
+
+@dataclass
+class GuildInviteNot(WireMessage):
+    """Opcode 6015: eERT_GUILD_INVITE_REQ (request).
+
+    Handler 0x00759AB0 (eERT_GUILD_INVITE_REQ delivered to invitee).
+    Assert: strRecvCharNick >> jInfo.m_uidGuild >> jInfo.m_strGuildName >>
+    jInfo.m_strInviteName >> jInfo.m_strMasterName >> jInfo.m_sGuildLv >> jInfo.m_sMemberCount.
+    """
+    OPCODE: ClassVar[int] = 6015
+    recv_char_nick: wstr = ''
+    guild_uid: i64 = 0
+    guild_name: wstr = ''
+    invite_name: wstr = ''
+    master_name: wstr = ''
+    guild_lv: i16 = 1
+    member_count: i16 = 1
+
+
+@dataclass
+class GuildInviteResultAck(WireMessage):
+    """Opcode 6016: eERT_GUILD_INVITE_ACK (reply).
+
+    Handler 0x00759990 (eERT_GUILD_INVITE_ACK; reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 6016
+    result: i32 = 0
+
+
+@dataclass
+class GuildPersonExpulsionCompleteNot(WireMessage):
+    """Opcode 6017: eERT_GUILD_PERSON_EXPULSION_COMPLETE_NOT (reply).
+
+    Handler 0x0075A000 (empty body; clears client guild state and shows GAME_281).
+    """
+    OPCODE: ClassVar[int] = 6017
+
+
+@dataclass
+class RefuseGuildInviteForwardNot(WireMessage):
+    """Opcode 6019: eERT_REFUSE_GUILD_INVITE_NOT (reply).
+
+    Handler 0x0075A420 (assert: strMyNick >> strRefuserNick).
+    """
+    OPCODE: ClassVar[int] = 6019
+    my_nick: wstr = ''
+    refuser_nick: wstr = ''
+
+
+@dataclass
+class GuildPersonIntroductionReq(WireMessage):
+    """Opcode 2674: eEGS_GUILD_PERSON_INTRODUTION_REQ (request).
+
+    Sender 0x007A67D0.
+    """
+    OPCODE: ClassVar[int] = 2674
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    greeting: wstr = ''
+    memo: wstr = ''
+
+
+@dataclass
+class GuildPersonIntroductionAck(WireMessage):
+    """Opcode 2675: eEGS_GUILD_PERSON_INTRODUTION_ACK (reply).
+
+    Handler 0x0075CCA0 (assert: strGreeting >> strMemo).
+    """
+    OPCODE: ClassVar[int] = 2675
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    greeting: wstr = ''
+    memo: wstr = ''
+
+
+@dataclass
+class GuildMissionNot(WireMessage):
+    """Opcode 2677: eEGS_GUILD_MISSION_NOT (reply).
+
+    Handler 0x00753DF0 (assert: jGuildMission, reader 0x00A4A330).
+    """
+    OPCODE: ClassVar[int] = 2677
+    guild_uid: i64 = 0  # +0x00
+    mission_uid: i64 = 0  # +0x08
+    mission_name: wstr = ''  # +0x10
+    mission_id: i32 = 0  # +0x2C
+    cur_count: i32 = 0  # +0x30
+    max_count: i32 = 0  # +0x34
+    reward_point: i32 = 0  # +0x38
+    expire_time: i64 = 0  # +0x3C
+    update_time: i64 = 0  # +0x44
+
+
+@dataclass
+class GuildBrokerEntry(WireMessage):
+    """Guild auction/broker item entry, reader 0x00A4A3A0 (2679)."""
+    broker_id: i32 = 0  # +0x00
+    state: u8 = 0  # +0x04
+    item_id: i32 = 0  # +0x05
+    item_count: i16 = 0  # +0x09
+    bid_guild_uid: i64 = 0  # +0x0B
+    bid_guild_name: wstr = ''  # +0x13
+    bid_point: i32 = 0  # +0x2F
+    min_point: i32 = 0  # +0x33
+
+
+@dataclass
+class GuildBrokerListReq(WireMessage):
+    """Opcode 2678: eEGS_GUILD_BROKER_LIST_REQ (request).
+
+    Sender 0x007A6880 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2678
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class GuildBrokerListAck(WireMessage):
+    """Opcode 2679: eEGS_GUILD_BROKER_LIST_ACK (reply).
+
+    Handler 0x00776950 (assert: mapGuildBroker >> nRemainSecond).
+    """
+    OPCODE: ClassVar[int] = 2679
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    brokers: Map[i32, GuildBrokerEntry] = field(default_factory=dict)
+    remain_second: i64 = 0
+
+
+@dataclass
+class GuildBrokerBidReq(WireMessage):
+    """Opcode 2680: eEGS_GUILD_BROKER_BID_REQ (request).
+
+    Sender 0x007A6900.
+    """
+    OPCODE: ClassVar[int] = 2680
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    broker_id: i32 = 0
+    bid_point: i32 = 0
+
+
+@dataclass
+class GuildBrokerBidAck(WireMessage):
+    """Opcode 2681: eEGS_GUILD_BROKER_BID_ACK (reply).
+
+    Handler 0x0075D040 (assert: nID >> nBidPoint).
+    """
+    OPCODE: ClassVar[int] = 2681
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    broker_id: i32 = 0
+    bid_point: i32 = 0
+
+
+@dataclass
+class GuildBrokerReturnPointReq(WireMessage):
+    """Opcode 2682: eEGS_GUILD_BROKER_RETURN_POINT_REQ (request).
+
+    Sender 0x007A6A50.
+    """
+    OPCODE: ClassVar[int] = 2682
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    broker_id: i32 = 0
+
+
+@dataclass
+class GuildBrokerReturnPointAck(WireMessage):
+    """Opcode 2683: eEGS_GUILD_BROKER_RETURN_POINT_ACK (reply).
+
+    Handler 0x0075D180 (assert: nID >> nReturnPoint).
+    """
+    OPCODE: ClassVar[int] = 2683
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    broker_id: i32 = 0
+    return_point: i32 = 0
+
+
+@dataclass
+class GuildSupplyGetRewardReq(WireMessage):
+    """Opcode 2684: eEGS_GUILD_SUPPLY_GET_REWARD_REQ (request).
+
+    Sender 0x007A6AF0.
+    """
+    OPCODE: ClassVar[int] = 2684
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    supply_reward_uid: i64 = 0
+
+
+@dataclass
+class GuildSupplyGetRewardAck(WireMessage):
+    """Opcode 2685: eEGS_GUILD_SUPPLY_GET_REWARD_ACK (reply).
+
+    Handler 0x00783F70 (assert: nSupplyRewardUID >> vecItemOut).
+    """
+    OPCODE: ClassVar[int] = 2685
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    supply_reward_uid: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class GuildSupplyListNot(WireMessage):
+    """Opcode 2686: eEGS_GUILD_SUPPLY_LIST_NOT (reply).
+
+    Handler 0x00772920 (assert: mapRewardItem >> vecRewardBuff).
+    """
+    OPCODE: ClassVar[int] = 2686
+    reward_items: Map[i64, AddedItemNotice] = field(default_factory=dict)
+    reward_buffs: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class GuildPersonArenaGradeModifyReq(WireMessage):
+    """Opcode 2426: eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_REQ (request).
+
+    Request for 2427.
+    """
+    OPCODE: ClassVar[int] = 2426
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uids: Vector[i64] = field(default_factory=list)
+    arena_permission: i16 = 0
+
+
+@dataclass
+class GuildPersonArenaGradeModifyAck(WireMessage):
+    """Opcode 2427: eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK (reply).
+
+    Handler 0x00771D70 (assert: vecChangeCharUID >> sChangeArenaPermission).
+    """
+    OPCODE: ClassVar[int] = 2427
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    char_uids: Vector[i64] = field(default_factory=list)
+    arena_permission: i16 = 0
+
+
+@dataclass
+class SiegeTeamMembers(WireMessage):
+    """Value for map<i16, set<i64>> in 2454/2455/2456 (0x006BB6B0)."""
+    member_uids: Set[i64] = field(default_factory=list)
+
+
+@dataclass
+class GuildSiegeChangeOfficerReq(WireMessage):
+    """Opcode 2450: eEGS_GUILD_SIEGE_CHANGE_OFFICER_REQ (request).
+
+    Request for 2451.
+    """
+    OPCODE: ClassVar[int] = 2450
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    change_char_uid: i64 = 0
+
+
+@dataclass
+class GuildSiegeChangeOfficerAck(WireMessage):
+    """Opcode 2451: eEGS_GUILD_SIEGE_CHANGE_OFFICER_ACK (reply).
+
+    Handler 0x0076CA40 (assert: nChangeCharUID >> mapChangeCharUID).
+    """
+    OPCODE: ClassVar[int] = 2451
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    change_char_uid: i64 = 0
+    changed_chars: Map[i64, i16] = field(default_factory=dict)
+
+
+@dataclass
+class GuildSiegeChangeOfficerNot(WireMessage):
+    """Opcode 2452: eEGS_GUILD_SIEGE_CHANGE_OFFICER_NOT (reply).
+
+    Handler 0x00753B90 (assert: nNewOfficerUID).
+    """
+    OPCODE: ClassVar[int] = 2452
+    new_officer_uid: i64 = 0
+
+
+@dataclass
+class GuildPersonSiegeTeamIdxModifyReq(WireMessage):
+    """Opcode 2453: eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_REQ (request).
+
+    Sender 0x0079DE80 (writer 0x00760AF0: map<i64, i16>).
+    """
+    OPCODE: ClassVar[int] = 2453
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    team_changes: Map[i64, i16] = field(default_factory=dict)
+
+
+@dataclass
+class GuildPersonSiegeTeamIdxModifyAck(WireMessage):
+    """Opcode 2454: eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_ACK (reply).
+
+    Handler 0x0077C550 (assert: mapTeamCharList, reader 0x0077BEC0).
+    """
+    OPCODE: ClassVar[int] = 2454
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    team_char_list: Map[i16, SiegeTeamMembers] = field(default_factory=dict)
+
+
+@dataclass
+class GuildPersonSiegeTeamIdxModifyNot(WireMessage):
+    """Opcode 2455: eEGS_GUILD_PERSON_SIEGE_TEAMIDX_MODIFY_NOT (reply).
+
+    Handler 0x0077C860 (assert: mapTeamCharList, reader 0x0077BEC0).
+    """
+    OPCODE: ClassVar[int] = 2455
+    team_char_list: Map[i16, SiegeTeamMembers] = field(default_factory=dict)
+
+
+@dataclass
+class GuildUpdateSiegeInfoNot(WireMessage):
+    """Opcode 2456: eEGS_GUILD_UPDATE_SIEGEINFO_NOT (reply).
+
+    Handler 0x0077C370 (assert: jNewGuildSiegeinfo, reader 0x00A54CC0).
+    """
+    OPCODE: ClassVar[int] = 2456
+    guild_uid: i64 = 0
+    siege_officer_uid: i64 = 0
+    team_char_list: Map[i16, SiegeTeamMembers] = field(default_factory=dict)
+
+
+@dataclass
+class CitadelRoundClearReq(WireMessage):
+    """Opcode 2599: eEGS_CITADEL_ROUND_CLEAR_REQ (request).
+
+    Sender 0x007A4D80 (assert: nCurRound).
+    """
+    OPCODE: ClassVar[int] = 2599
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    cur_round: i32 = 0
+
+
+@dataclass
+class CitadelRoundClearAck(WireMessage):
+    """Opcode 2600: eEGS_CITADEL_ROUND_CLEAR_ACK (reply).
+
+    Handler 0x0075BF20 (assert: nNextRound).
+    """
+    OPCODE: ClassVar[int] = 2600
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    next_round: i32 = 0
+
+
+@dataclass
+class CitadelPlayCountUpdateNot(WireMessage):
+    """Opcode 2631: eEGS_CIDADEL_PLAY_COUNT_UPDATE_NOT (reply).
+
+    Handler 0x007A5580 (assert: sRemainCitadelPlayCount; writes player +0x304).
+    """
+    OPCODE: ClassVar[int] = 2631
+    remain_play_count: i16 = 0
+
+
+@dataclass
+class UpdateCitadelHistoryNot(WireMessage):
+    """Opcode 2676: eEGS_UPDATE_CITADEL_HISTORY_NOT (reply).
+
+    Handler 0x0075CEF0 (assert: strDunID).
+    """
+    OPCODE: ClassVar[int] = 2676
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    dun_id: wstr = ''
