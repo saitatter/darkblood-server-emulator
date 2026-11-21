@@ -175,23 +175,17 @@ class SellItemReq(WireMessage):
 class SellItemAck(WireMessage):
     """Opcode 2070: eEGS_SELL_ITEM_ACK (reply).
 
-    On_eEGS_SELL_ITEM_ACK 0x0077E8E0.
+    On_eEGS_SELL_ITEM_ACK 0x0077E8E0 -> 0x0059F370; RepurchaseItem reader 0x00A1ECA0.
     """
     OPCODE: ClassVar[int] = 2070
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
     gold: i64 = 0  # player gold, written to +0x70
-    repurchase_item: Extern[Item, 'encode', False] = field(default_factory=lambda: Item('', 0))  # repurchase record: Item 0x00A53F50 + i32 + i64
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'items',
-        'gold',
-        'repurchase_item',
-        Const(i32, 0),
-        Const(i64, 0),
-        Const(EmptySet),
-    )
+    repurchase_item: Extern[Item, 'encode', False] = field(default_factory=lambda: Item('', 0))  # RepurchaseItem 0x00A1ECA0 (+0x00..+0xE3)
+    repurchase_price: i32 = 0  # +0xE4: AR price displayed in Repurchase tab (0x0059AA20)
+    sell_time: i64 = 0  # +0xF0: sell timestamp
+    expired_uids: Set[i64] = field(default_factory=list)  # 0x006B9200: UIDs removed from Repurchase list
 
 
 @dataclass
@@ -210,13 +204,14 @@ class RepurchaseItemReq(WireMessage):
 class RepurchaseItemAck(WireMessage):
     """Opcode 2072: eEGS_REPURCHASE_ITEM_ACK (reply).
 
-    On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30.
+    On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30 -> 0x0059F7F0.
     """
     OPCODE: ClassVar[int] = 2072
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
-    gold: i64 = 0
+    item_uid: i64 = 0  # nRepurchaseItemUID removed from Repurchase list
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210: restored item(s)
+    gold: i64 = 0  # player gold after paying repurchase_price (+0x70)
 
 
 @dataclass

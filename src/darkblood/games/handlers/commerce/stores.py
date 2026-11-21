@@ -211,7 +211,16 @@ class StoreHandlers:
         sold_record = dict(target, count=del_cnt)
         if curr <= del_cnt:
             items.remove(target)
-            updated_item = Item(owner=UPDATE_OWNER, **{**target, 'count': 0})
+            # 0x008354D0 overwrites bag->slots[slot]; an empty cell (code='', uid=-1)
+            # clears the slot so the sold item disappears from the bag immediately.
+            updated_item = Item(
+                code='',
+                uid=-1,
+                owner=UPDATE_OWNER,
+                container=target.get('container', 3),
+                slot=target.get('slot', 0),
+                count=0,
+            )
         else:
             target['count'] = curr - del_cnt
             updated_item = Item(owner=UPDATE_OWNER, **target)
@@ -223,30 +232,76 @@ class StoreHandlers:
         char['u66'] = char_gold
         self.save_char()
 
+        import time
+        from darkblood.player_management.characters import next_item_uid
+        repurchase_uid = sold_record['uid'] if curr <= del_cnt else next_item_uid(char)
+        sold_record['uid'] = repurchase_uid
+        repurchase_map = getattr(self, '_repurchase_items', None)
+        if repurchase_map is None:
+            repurchase_map = {}
+            self._repurchase_items = repurchase_map
+        repurchase_map[repurchase_uid] = (sold_record, earned)
+
         # On_eEGS_SELL_ITEM_ACK (0x0077E8E0 -> 0x0059F370) looks up repurchase_item's
-        # item_id via 0x009E5440 and dereferences it unconditionally (0x0059F3B8);
-        # sending an empty Item('', 0) crashes the client with C0000005.
+        # item_id via 0x009E5440 and dereferences it unconditionally (0x0059F3B8).
         repurchase_wire = Item(owner=0, **sold_record)
         ack = SellItemAck(
             result=0,
             items=[updated_item],
             gold=char_gold,
             repurchase_item=repurchase_wire,
+            repurchase_price=earned,
+            sell_time=int(time.time()),
         ).encode()
         await self.transport.send_event(event(2070, ack, correlation),
-                                        note=f'sell item ack (uid={req.item_uid} code={target.get("code")} del={del_cnt} gold={char_gold})')
+                                        note=f'sell item ack (uid={req.item_uid} code={target.get("code")} del={del_cnt} price={earned} gold={char_gold})')
 
 
     @packet_handler(RepurchaseItemReq)
     async def handle_repurchase_item(self, correlation, body):
-        # eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30).
+        # eEGS_REPURCHASE_ITEM_REQ (0x0078F8A0) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30 -> 0x0059F7F0).
+        from darkblood.games.network import results
         req = RepurchaseItemReq.decode(body)
         self.transport.record('repurchase-item-req', body, item_uid=req.item_uid)
         char = self.current_char()
-        char_gold = char.get('gold', 0) if char else 0
-        ack = RepurchaseItemAck(result=0, gold=char_gold, items=[]).encode()
-        await self.transport.send_event(event(2072, ack, correlation),
-                                        note=f'repurchase item ack (item={req.item_uid})')
+        if not char:
+            await self.reply(RepurchaseItemAck(result=1), correlation, note='repurchase fail (no char)')
+            return
+        repurchase_map = getattr(self, '_repurchase_items', {})
+        entry = repurchase_map.get(req.item_uid)
+        if not entry:
+            await self.reply(RepurchaseItemAck(result=1), correlation, note=f'repurchase fail (unknown {req.item_uid})')
+            return
+        sold_record, price = entry
+        char_gold = char.get('gold', 0)
+        if char_gold < price:
+            await self.reply(RepurchaseItemAck(result=1), correlation,
+                             note=f'repurchase fail (need {price} AR, have {char_gold})')
+            return
+        if free_bag_slots(char) < 1:
+            await self.reply(RepurchaseItemAck(result=results.INVEN_FULL), correlation,
+                             note='repurchase fail (inventory full)')
+            return
+
+        added = add_reward_items(char, [(sold_record['code'], sold_record.get('count', 1))])
+        if not added:
+            await self.reply(RepurchaseItemAck(result=results.INVEN_FULL), correlation,
+                             note='repurchase fail (placement failed)')
+            return
+        if 'durability' in sold_record:
+            added[0]['durability'] = sold_record['durability']
+        repurchase_map.pop(req.item_uid, None)
+        char_gold -= price
+        char['gold'] = char_gold
+        char['u66'] = char_gold
+        self.save_char()
+
+        wire_items = [Item(owner=UPDATE_OWNER, **r) for r in added]
+        await self.reply(
+            RepurchaseItemAck(result=0, item_uid=req.item_uid, items=wire_items, gold=char_gold),
+            correlation,
+            note=f'repurchase item ack (item={req.item_uid} price={price} gold={char_gold})',
+        )
 
 
     @packet_handler(2601)

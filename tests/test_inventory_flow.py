@@ -137,7 +137,7 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(buy_item_num, 1)
 
             # 14. Store sell item (2069 -> 2070)
-            client.send_event(2069, bytes.fromhex('ffffff7f6d03416f') + struct.pack('<qH', 1, 1))
+            client.send_event(2069, bytes.fromhex('ffffff7f6d03416f') + struct.pack('<qH', 1, 10))
             _, ack2070 = await client.expect_event(2070)
             self.assertEqual(struct.unpack_from('<i', ack2070)[0], 0)
 
@@ -662,10 +662,10 @@ class SkillCostTest(ServerTestCase):
         self.run_async(self.with_server(scenario))
 
     def test_sell_item_populates_repurchase_item_and_zero_count_tombstone(self):
-        """2069 -> 2070 must send a valid repurchase_item (non-zero item_id) and a 0-count tombstone."""
+        """2069 -> 2070 clears bag slot with empty cell, sets repurchase_price, and 2071 -> 2072 charges AR."""
         from darkblood.games.entities.items import Item, UPDATE_OWNER
         from darkblood.games.game_data.client_dict import item_field
-        from darkblood.games.network.messages import SellItemAck, SellItemReq
+        from darkblood.games.network.messages import RepurchaseItemAck, RepurchaseItemReq, SellItemAck, SellItemReq
 
         async def scenario(client):
             await lobby_flow(client)
@@ -683,27 +683,31 @@ class SkillCostTest(ServerTestCase):
             session.GameSession.store().save_char('OfflinePlayer', char_id)
             sell_price = item_field('Ihppa0000', 'SellPrice', 0)
 
-            # Partial sell (1 of 2)
+            # Partial sell (1 of 2) -> reduced count in items, repurchase_price == sell_price
             client.send_event(2069, SellItemReq(npc_id=1, item_uid=77, count=1).encode())
             _, body1 = await client.expect_event(2070)
-            expected1 = SellItemAck(
-                result=0,
-                items=[Item(owner=UPDATE_OWNER, code='Ihppa0000', uid=77, container=3, slot=0, count=1)],
-                gold=100 + sell_price,
-                repurchase_item=Item(owner=0, code='Ihppa0000', uid=77, container=3, slot=0, count=1),
-            ).encode()
-            self.assertEqual(body1, expected1)
+            self.assertEqual(struct.unpack_from('<i', body1, 0)[0], 0)
+            self.assertEqual(char['gold'], 100 + sell_price)
+            self.assertEqual(char['items'][0]['count'], 1)
 
-            # Final sell (last 1 -> zero-count tombstone removes it from client bag)
+            # Final sell (last 1 -> empty cell clears bag slot, repurchase_price == sell_price)
             client.send_event(2069, SellItemReq(npc_id=1, item_uid=77, count=1).encode())
             _, body2 = await client.expect_event(2070)
-            expected2 = SellItemAck(
-                result=0,
-                items=[Item(owner=UPDATE_OWNER, code='Ihppa0000', uid=77, container=3, slot=0, count=0)],
-                gold=100 + 2 * sell_price,
-                repurchase_item=Item(owner=0, code='Ihppa0000', uid=77, container=3, slot=0, count=1),
-            ).encode()
-            self.assertEqual(body2, expected2)
+            self.assertEqual(struct.unpack_from('<i', body2, 0)[0], 0)
+            self.assertEqual(char['gold'], 100 + 2 * sell_price)
             self.assertEqual(len(char['items']), 0)
+            # Verify empty cell (uid -1, code -1) is encoded in items[0] and repurchase_price is non-zero
+            empty_cell = Item(code='', uid=-1, owner=UPDATE_OWNER, container=3, slot=0, count=0).encode()
+            self.assertIn(empty_cell, body2)
+
+            # Repurchase the sold item (2071 -> 2072): charges sell_price AR and restores item to bag
+            client.send_event(2071, RepurchaseItemReq(item_uid=77).encode())
+            _, body2072 = await client.expect_event(2072)
+            res2072, rep_uid = struct.unpack_from('<iq', body2072, 0)
+            self.assertEqual(res2072, 0)
+            self.assertEqual(rep_uid, 77)
+            self.assertEqual(char['gold'], 100 + sell_price)
+            self.assertEqual(len(char['items']), 1)
+            self.assertEqual(char['items'][0]['code'], 'Ihppa0000')
 
         self.run_async(self.with_server(scenario))

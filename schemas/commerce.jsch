@@ -64,14 +64,14 @@ message 2069 SellItemReq header?
 end
 
 message 2070 SellItemAck ok_only
-  ## On_eEGS_SELL_ITEM_ACK 0x0077E8E0.
+  ## On_eEGS_SELL_ITEM_ACK 0x0077E8E0 -> 0x0059F370; RepurchaseItem reader 0x00A1ECA0.
   i32 result
   vector<Item> items         # 0x004B9210
   i64 gold                   # player gold, written to +0x70
-  Item repurchase_item = Item('', 0)  # repurchase record: Item 0x00A53F50 + i32 + i64
-  i32 _
-  i64 _
-  set<?> _                   # 0x006B9200
+  Item repurchase_item = Item('', 0)  # RepurchaseItem 0x00A1ECA0 (+0x00..+0xE3)
+  i32 repurchase_price       # +0xE4: AR price displayed in Repurchase tab (0x0059AA20)
+  i64 sell_time              # +0xF0: sell timestamp
+  set<i64> expired_uids      # 0x006B9200: UIDs removed from Repurchase list
 end
 
 message 2071 RepurchaseItemReq header?
@@ -80,10 +80,11 @@ message 2071 RepurchaseItemReq header?
 end
 
 message 2072 RepurchaseItemAck ok_only
-  ## On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30.
+  ## On_eEGS_REPURCHASE_ITEM_ACK 0x0077EC30 -> 0x0059F7F0.
   i32 result
-  vector<Item> items         # 0x004B9210
-  i64 gold
+  i64 item_uid               # nRepurchaseItemUID removed from Repurchase list
+  vector<Item> items         # 0x004B9210: restored item(s)
+  i64 gold                   # player gold after paying repurchase_price (+0x70)
 end
 
 message 2086 BuyLifeWaterReq header?

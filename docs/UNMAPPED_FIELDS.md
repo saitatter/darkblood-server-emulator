@@ -33,7 +33,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:474 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:486 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (18 of 145 fields)
+## commerce (15 of 146 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -43,18 +43,15 @@
 | `StoreRecord` | `i16` | commerce.jsch:18 | +0x1A: -1 = max buy count is the item's stack size (dict +0x19E) |
 | `StoreRecord` | `raw[4]` | commerce.jsch:19 | +0x1C unknown |
 | `2066 StoreInfoAck` | `vector<?>` | commerce.jsch:27 | item structs (0x0077CEB0 -> 0x00A53F50) |
-| `2070 SellItemAck` | `i32` | commerce.jsch:72 |  |
-| `2070 SellItemAck` | `i64` | commerce.jsch:73 |  |
-| `2070 SellItemAck` | `set<?>` | commerce.jsch:74 | 0x006B9200 |
-| `5070 RequestTradeAck` | `u8` | commerce.jsch:111 |  |
 | `5070 RequestTradeAck` | `u8` | commerce.jsch:112 |  |
-| `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:152 | meaning unknown |
-| `2602 MonsterCardListAck` | `vector<?>` | commerce.jsch:238 | cards (0x004AFD30) |
-| `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:239 | 0x005F6540 |
-| `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:245 | cards (0x004AFD30) |
-| `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:251 | album (0x004D6E60) |
-| `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:302 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
-| `2387 RouletteRollDiceAck` | `vector<?>` | commerce.jsch:349 | 0x00A3EA40 |
+| `5070 RequestTradeAck` | `u8` | commerce.jsch:113 |  |
+| `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:153 | meaning unknown |
+| `2602 MonsterCardListAck` | `vector<?>` | commerce.jsch:239 | cards (0x004AFD30) |
+| `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:240 | 0x005F6540 |
+| `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:246 | cards (0x004AFD30) |
+| `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:252 | album (0x004D6E60) |
+| `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
+| `2387 RouletteRollDiceAck` | `vector<?>` | commerce.jsch:350 | 0x00A3EA40 |
 
 ## dungeon (54 of 280 fields)
 
