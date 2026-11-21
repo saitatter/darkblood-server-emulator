@@ -660,3 +660,50 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iq', ack2702), (0, 10))
 
         self.run_async(self.with_server(scenario))
+
+    def test_sell_item_populates_repurchase_item_and_zero_count_tombstone(self):
+        """2069 -> 2070 must send a valid repurchase_item (non-zero item_id) and a 0-count tombstone."""
+        from darkblood.games.entities.items import Item, UPDATE_OWNER
+        from darkblood.games.game_data.client_dict import item_field
+        from darkblood.games.network.messages import SellItemAck, SellItemReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('ShopSeller'))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['items'] = [
+                dict(code='Ihppa0000', uid=77, container=3, slot=0, count=2),
+            ]
+            char['gold'] = 100
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            sell_price = item_field('Ihppa0000', 'SellPrice', 0)
+
+            # Partial sell (1 of 2)
+            client.send_event(2069, SellItemReq(npc_id=1, item_uid=77, count=1).encode())
+            _, body1 = await client.expect_event(2070)
+            expected1 = SellItemAck(
+                result=0,
+                items=[Item(owner=UPDATE_OWNER, code='Ihppa0000', uid=77, container=3, slot=0, count=1)],
+                gold=100 + sell_price,
+                repurchase_item=Item(owner=0, code='Ihppa0000', uid=77, container=3, slot=0, count=1),
+            ).encode()
+            self.assertEqual(body1, expected1)
+
+            # Final sell (last 1 -> zero-count tombstone removes it from client bag)
+            client.send_event(2069, SellItemReq(npc_id=1, item_uid=77, count=1).encode())
+            _, body2 = await client.expect_event(2070)
+            expected2 = SellItemAck(
+                result=0,
+                items=[Item(owner=UPDATE_OWNER, code='Ihppa0000', uid=77, container=3, slot=0, count=0)],
+                gold=100 + 2 * sell_price,
+                repurchase_item=Item(owner=0, code='Ihppa0000', uid=77, container=3, slot=0, count=1),
+            ).encode()
+            self.assertEqual(body2, expected2)
+            self.assertEqual(len(char['items']), 0)
+
+        self.run_async(self.with_server(scenario))

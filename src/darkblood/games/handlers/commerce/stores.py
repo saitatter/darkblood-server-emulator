@@ -208,10 +208,13 @@ class StoreHandlers:
         cnt = max(1, req.count)
         curr = target.get('count', 1)
         del_cnt = min(cnt, curr)
+        sold_record = dict(target, count=del_cnt)
         if curr <= del_cnt:
             items.remove(target)
+            updated_item = Item(owner=UPDATE_OWNER, **{**target, 'count': 0})
         else:
             target['count'] = curr - del_cnt
+            updated_item = Item(owner=UPDATE_OWNER, **target)
 
         from darkblood.games.game_data.client_dict import item_field
         earned = item_field(target.get('code', ''), 'SellPrice', 0) * del_cnt
@@ -220,10 +223,18 @@ class StoreHandlers:
         char['u66'] = char_gold
         self.save_char()
 
-        wire_items = [Item(owner=UPDATE_OWNER, **i) for i in items]
-        ack = SellItemAck(result=0, gold=char_gold, items=wire_items).encode()
+        # On_eEGS_SELL_ITEM_ACK (0x0077E8E0 -> 0x0059F370) looks up repurchase_item's
+        # item_id via 0x009E5440 and dereferences it unconditionally (0x0059F3B8);
+        # sending an empty Item('', 0) crashes the client with C0000005.
+        repurchase_wire = Item(owner=0, **sold_record)
+        ack = SellItemAck(
+            result=0,
+            items=[updated_item],
+            gold=char_gold,
+            repurchase_item=repurchase_wire,
+        ).encode()
         await self.transport.send_event(event(2070, ack, correlation),
-                                        note=f'sell item ack (uid={req.item_uid} del={del_cnt} gold={char_gold})')
+                                        note=f'sell item ack (uid={req.item_uid} code={target.get("code")} del={del_cnt} gold={char_gold})')
 
 
     @packet_handler(RepurchaseItemReq)
