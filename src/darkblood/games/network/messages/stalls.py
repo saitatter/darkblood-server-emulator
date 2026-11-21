@@ -36,6 +36,11 @@ __all__ = [
     'BrokerCancelAck',
     'BrokerPriceReq',
     'BrokerPriceAck',
+    'BrokerChangeRegistCountNot',
+    'SaleByBulkOptionReq',
+    'SaleByBulkOptionAck',
+    'SaleByBulkRegistReq',
+    'SaleByBulkRegistAck',
 ]
 
 
@@ -334,3 +339,65 @@ class BrokerPriceAck(WireMessage):
     result: i32 = 0
     avg_price: i64 = 0
     min_price: i64 = 0
+
+
+@dataclass
+class BrokerChangeRegistCountNot(WireMessage):
+    """Opcode 2398: eEGS_BROKER_CHANGE_REGIST_COUNT (reply).
+
+    Handler 0x0077B2D0 (assert: sIncrBrokerCount >> nIncrBrokerRemainExpireTime >> tIncrBrokerExpireTime).
+    """
+    OPCODE: ClassVar[int] = 2398
+    incr_broker_count: i16 = 0
+    remain_expire_time: i64 = 0
+    expire_time: i64 = 0
+
+
+@dataclass
+class SaleByBulkOptionReq(WireMessage):
+    """Opcode 2586: eEGS_SALEBYBULK_OPTION_REQ (request).
+
+    Sender 0x007A4930 (assert: sEquipIdx << bEnable).
+    """
+    OPCODE: ClassVar[int] = 2586
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    equip_idx: i16 = 0
+    enable: bool = False
+
+
+@dataclass
+class SaleByBulkOptionAck(WireMessage):
+    """Opcode 2587: eEGS_SALEBYBULK_OPTION_ACK (reply).
+
+    Handler 0x0076CBD0 (assert: mapSellEquipinfo, map<i16, bool> reader 0x00765870).
+    """
+    OPCODE: ClassVar[int] = 2587
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    sell_equip_info: Map[i16, bool] = field(default_factory=dict)
+
+
+@dataclass
+class SaleByBulkRegistReq(WireMessage):
+    """Opcode 2588: eEGS_SALEBYBULK_REGIST_REQ (request).
+
+    Sender 0x007A4A70 (assert: nRegItemID << bIsAdd).
+    """
+    OPCODE: ClassVar[int] = 2588
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    reg_item_id: i32 = 0
+    is_add: bool = False
+
+
+@dataclass
+class SaleByBulkRegistAck(WireMessage):
+    """Opcode 2589: eEGS_SALEBYBULK_REGIST_ACK (reply).
+
+    Handler 0x007725D0 (assert: vecCustomItemList, vector<i32> reader 0x004D6E60).
+    """
+    OPCODE: ClassVar[int] = 2589
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    custom_item_list: Vector[i32] = field(default_factory=list)

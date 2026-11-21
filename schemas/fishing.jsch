@@ -1,0 +1,59 @@
+# Fishing system messages. Format: schemas/README.md.
+
+domain fishing Dark Blood protocol wire messages - Fishing domain.
+
+extern Item from darkblood.games.entities.items
+
+message 2523 FishingStartReq header?
+  ## Sender 0x007A1FF0 (struct writer 0x00A1EE20).
+  wstr fishing_hole_id
+  i32 rod_item_id
+  i32 bait_item_id
+  i32 param
+end
+
+message 2524 FishingStartAck
+  ## Handler 0x0075B0B0 (reads u32 result only).
+  i32 result
+end
+
+message 2525 FishingStopReq header?
+  ## Sender 0x007A21E0 writes no fields.
+end
+
+message 2526 FishingStopAck
+  ## Handler 0x0075B1C0 (reads u32 result only).
+  i32 result
+end
+
+message 2527 FishingResultNot ok_only
+  ## Handler 0x00782020 (assert: vecItemOut >> bLicenseTime).
+  i32 result
+  vector<Item> items
+  bool license_time
+end
+
+message 2528 FishingFailedNot
+  ## Handler 0x00776310 (reads u32 result only).
+  i32 result
+end
+
+message 2529 FishingProficiencyNot ok_only
+  ## Handler 0x00776400 (assert: fProficiency >> iProficiencyType).
+  i32 result
+  f32 proficiency
+  i32 proficiency_type
+end
+
+message 2541 FishingLicenseChangeNot ok_only
+  ## Handler 0x0075B2E0 (assert: nFishingHoleID >> nRemainTime >> nItemID).
+  i32 result
+  i32 fishing_hole_id
+  i64 remain_time
+  i32 item_id
+end
+
+message 2542 FishingLicenseExpireNot
+  ## Handler 0x0075B480 (assert: nExpireFishingHoleID).
+  i32 expire_fishing_hole_id
+end

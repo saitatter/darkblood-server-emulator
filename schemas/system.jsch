@@ -230,3 +230,26 @@ message 5096 UpdateCharInfoNot
   Character character = Character()
   wstr guild_name
 end
+
+message 2020 CloseConnectionNot
+  ## Handler 0x007536A0 (reads u32 result/reason only).
+  u32 reason
+end
+
+message 2023 StressChangedNot
+  ## Handler 0x00789E00 (assert: sStress >> sStressPcb >> sStressWeek >> nTodayCronosStress).
+  i16 stress
+  i16 stress_pcb
+  i16 stress_week
+  i32 today_cronos_stress
+end
+
+message 2582 ChangeMainSpiritNot
+  ## Handler 0x007A42F0 (assert: nMainSpiritStoneItemID).
+  i32 main_spirit_stone_item_id
+end
+
+message 2626 IndulgenceNot
+  ## Handler 0x0075C090 (assert: sAccrueStep).
+  i16 accrue_step
+end

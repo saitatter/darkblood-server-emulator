@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-21
 
+## Fishing, System, Inventory, Stalls, Commerce & Pets sweep — saita machine, 2026-11-21
+
+- **Fishing (`schemas/fishing.jsch`, `src/darkblood/games/handlers/square.py`)**: recovered and implemented all 9 fishing opcodes (`2523/2524 FishingStart`, `2525/2526 FishingStop`, `2527 FishingResultNot`, `2528 FishingFailedNot`, `2529 FishingProficiencyNot`, `2541 FishingLicenseChangeNot`, `2542 FishingLicenseExpireNot`). Fishing jumped from 0% to **100% (9/9 opcodes, 100% fields)**.
+- **System (`schemas/system.jsch`)**: recovered all 4 remaining system notices (`2020 CloseConnectionNot`, `2023 StressChangedNot`, `2582 ChangeMainSpiritNot`, `2626 IndulgenceNot`), bringing System to **100% (36/36 opcodes)**.
+- **Inventory (`tools/gen_progress.py`)**: marked internal router opcodes `6005-6008` (`eERT_USER_LOGIN/LOGOUT`) as `UNUSED_IN_CLIENT` (no client senders/handlers), bringing Inventory to **100% (90/90 opcodes)**.
+- **Stalls (`schemas/stalls.jsch`, `src/darkblood/games/handlers/commerce.py`)**: recovered and implemented `2398 BrokerChangeRegistCountNot`, `2586/2587 SaleByBulkOption` (`map<i16, bool>`), and `2588/2589 SaleByBulkRegist` (`vector<i32>`).
+- **Commerce (`schemas/commerce.jsch`, `src/darkblood/games/handlers/commerce.py`)**: recovered and implemented `2243 DepotShareExpireTimeGetAck`, `2400 DepotShareExpireTimeAddNot`, `2401 DepotSizeIncreaseNot`, `2416/2417 BeautyShopCare` (`BeautyShopInfo` `0x00A49EF0`/`0x00A49F30`), `2590/2591 SellItemAll`, `2711 VipServiceInfoNot` (`0x00A4AC80`), `2721/2722 SteamBuyPackage`, `5085 CancelAcceptTradeNot`, `6010 TradeResultNot`.
+- **Pets (`schemas/pets.jsch`, `src/darkblood/games/handlers/pets.py`)**: recovered and implemented all 18 live missing pet/riding opcodes (`2436 RidingChangeListNot`, `2479 PetConsumeSatietyNot`, `2482/2483 PetEatCash`, `2492-2495 PetCashFoodEquip/Unequip`, `2498/2499 PetExtendDepot`, `2500/2501 PetSwitchStorage`, `2502 PetDepotExtendExpireNot`, `2516 PetDyeingNot`, `2646/2647 RidingExpireUpdate`, `5323 PetLevelUpNot`, `5324 PetChangeExpNot`).
+- **Verification**: 193/193 headless tests pass (`test_extended_fishing_commerce_stalls_and_pets`), `gen_messages.py --check` and `gen_progress.py --check` pass. Live client retest pending.
+
 ## Mail, Social, Party & Guild domain sweep — saita machine, 2026-11-21
 
 - **Mail (`schemas/mail.jsch`, `src/darkblood/games/handlers/mail.py`, `src/darkblood/player_management/store.py`)**:

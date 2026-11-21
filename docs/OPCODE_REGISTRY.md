@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 650  
+**Tracked opcodes**: 664  
 **Client handlers mapped**: 298  
-**Server handlers**: 263  
+**Server handlers**: 276  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -38,10 +38,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2016 | `eEGS_ENTER_MAPTOOL_REQ` | — | `square.py` (`handle_enter_maptool`) | — | Opcode 2016 (eEGS_ENTER_MAPTOOL_REQ) -> 2017 (eEGS_ENTER_MAPTOOL_ACK). |
 | 2017 | `eEGS_ENTER_MAPTOOL_ACK` | 0x00757D20 | — | — |  |
 | 2019 | `eEGS_LEAVE_MAPTOOL_ACK` | 0x00757EC0 | — | — |  |
-| 2020 | `eEGS_CLOSE_CONNECTION_NOT` | 0x007536A0 | — | — |  |
+| 2020 | `eEGS_CLOSE_CONNECTION_NOT` | 0x007536A0 | — | `CloseConnectionNot` |  |
 | 2021 | `eEGS_SQUARELIST_REQ` | — | `frontend.py` (`handle_get_square_list`) | — | Opcode 2021 (eEGS_SQUARELIST_REQ) -> 2022 (eEGS_SQUARELIST_ACK). |
 | 2022 | `eEGS_SQUARELIST_ACK` | 0x0077A550 | — | — |  |
-| 2023 | `eEGS_STRESS_CHANGED_NOT` | 0x00789E00 | — | — |  |
+| 2023 | `eEGS_STRESS_CHANGED_NOT` | 0x00789E00 | — | `StressChangedNot` |  |
 | 2024 | `eEGS_GET_INVITELIST_REQ` | — | `social.py` (`handle_get_invite_list`) | `GetInviteListReq` | eEGS_GET_INVITELIST_REQ (Find user) -> 2025 eEGS_GET_INVITELIST_ACK |
 | 2025 | `eEGS_GET_INVITELIST_ACK` | — | — | `GetInviteListAck` |  |
 | 2026 | `eEGS_OPEN_BAG_REQ` | — | `inventory/bags.py` (`handle_open_bag`) | `OpenBagReq` | Opcode 2026 (eEGS_OPEN_BAG_REQ) -> 2027 (eEGS_OPEN_BAG_ACK): equip a bag item into a free UI slot. |
@@ -212,7 +212,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2236 | `eEGS_POST_DELETE_REQ` | — | `mail.py` (`handle_post_delete`) | `PostDeleteReq` | eEGS_POST_DELETE_REQ (0x007964EC) -> 2237 eEGS_POST_DELETE_ACK (0x007715F0). |
 | 2237 | `eEGS_POST_DELETE_ACK` | 0x007715F0 | — | `PostDeleteAck` |  |
 | 2242 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ` | — | `inventory/depot.py` (`handle_depot_share_expire_time`) | — | Opcode 2242 (eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ) -> 2243: return shared depot expiration map. |
-| 2243 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_ACK` | 0x0076C040 | — | — |  |
+| 2243 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_ACK` | 0x0076C040 | — | `DepotShareExpireTimeGetAck` |  |
 | 2245 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_ACK` | 0x0075A9C0 | — | — |  |
 | 2246 | `eEGS_UNDELETE_CHARACTER_REQ` | — | `frontend.py` (`handle_undelete_character`) | — | Opcode 2246 (eEGS_UNDELETE_CHARACTER_REQ) -> 2247 (eEGS_UNDELETE_CHARACTER_ACK). |
 | 2247 | `eEGS_UNDELETE_CHARACTER_ACK` | 0x0075A8A0 | — | `UndeleteCharacterAck` |  |
@@ -306,10 +306,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2385 | `eEGS_INIT_PROFICIENCY_ACK` | 0x00797B10 | — | `InitProficiencyAck` |  |
 | 2390 | `eEGS_ROULETTE_MANAGER_INFO_REQ` | — | `commerce.py` (`handle_roulette_manager_info`) | — | eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0. |
 | 2391 | `eEGS_ROULETTE_MANAGER_INFO_ACK` | — | — | `RouletteManagerInfoAck` |  |
-| 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | — |  |
+| 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | `BrokerChangeRegistCountNot` |  |
 | 2399 | `eEGS_POST_DAILY_SEND_RECOVER_NOT` | 0x0079A880 | — | `PostDailySendRecoverNot` |  |
-| 2400 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_ADD_NOT` | 0x0076BE80 | — | — |  |
-| 2401 | `eEGS_DEPOT_SIZE_INCREASE_NOT` | 0x007535A0 | — | — |  |
+| 2400 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_ADD_NOT` | 0x0076BE80 | — | `DepotShareExpireTimeAddNot` |  |
+| 2401 | `eEGS_DEPOT_SIZE_INCREASE_NOT` | 0x007535A0 | — | `DepotSizeIncreaseNot` |  |
 | 2402 | `eEGS_DB_LIST_GET_REQ` | — | `frontend.py` (`handle_get_server_list`) | — | Opcode 2402 (eEGS_DB_LIST_GET_REQ) -> 2403 (eEGS_DB_LIST_GET_ACK). |
 | 2403 | `eEGS_DB_LIST_GET_ACK` | 0x00775340 | — | — |  |
 | 2405 | `eEGS_EVENT_DELETE_CHARACTER_ACK` | 0x0075AF00 | — | — |  |
@@ -319,7 +319,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2409 | `eEGS_AVATAR_ZAM_MERGE_ACK` | 0x00780AF0 | — | `AvatarZamMergeAck` |  |
 | 2410 | `eEGS_QUEST_HISTORY_REFRESH_NOT` | 0x0076C1E0 | — | `QuestHistoryNot` |  |
 | 2415 | `eEGS_CHEAT_FORCE_ITEM_UPGRADE_ACK` | 0x00780DD0 | — | — |  |
-| 2417 | `eEGS_BEAUTYSHOP_CARE_ACK` | 0x0079B3A0 | — | — |  |
+| 2416 | `eEGS_BEAUTYSHOP_CARE_REQ` | — | `commerce.py` (`handle_beauty_shop_care`) | `BeautyShopCareReq` | eEGS_BEAUTYSHOP_CARE_REQ (0x0079B730) -> 2417 eEGS_BEAUTYSHOP_CARE_ACK (0x0079B3A0). |
+| 2417 | `eEGS_BEAUTYSHOP_CARE_ACK` | 0x0079B3A0 | — | `BeautyShopCareAck` |  |
 | 2418 | `eEGS_SERVERBUFF_ADD_NOT` | 0x0079B880 | — | — |  |
 | 2419 | `eEGS_SERVERBUFF_DELETE_NOT` | 0x0079BD10 | — | — |  |
 | 2421 | `eEGS_MONSTER_DEAD_NOT` | 0x0076A000 | — | — |  |
@@ -332,7 +333,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2433 | `eEGS_AVATAR_MERGE_ACK` | — | — | `AvatarMergeAck` |  |
 | 2434 | `eEGS_RIDING_GET_LIST_REQ` | — | `pets.py` (`handle_riding_get_list`) | `RidingGetListReq` | eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0) |
 | 2435 | `eEGS_RIDING_GET_LIST_ACK` | 0x0076C5A0 | — | `RidingGetListAck` |  |
-| 2436 | `eEGS_RIDING_CHANGE_LIST_NOT` | 0x0079C9A0 | — | — |  |
+| 2436 | `eEGS_RIDING_CHANGE_LIST_NOT` | 0x0079C9A0 | — | `RidingChangeListNot` |  |
 | 2437 | `eEGS_RIDING_RIDE_OBJECT_REQ` | — | `pets.py` (`handle_riding_ride_object`) | `RidingRideObjectReq` | eEGS_RIDING_RIDE_OBJECT_REQ (0x0079CE00) -> 2438 eEGS_RIDING_RIDE_OBJECT_ACK (0x00753A90) |
 | 2438 | `eEGS_RIDING_RIDE_OBJECT_ACK` | 0x00753A90 | — | `RidingRideObjectAck` |  |
 | 2442 | `eEGS_CHARSLOT_EXTEND_ACK` | 0x00781000 | — | — |  |
@@ -366,40 +367,47 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2476 | `eEGS_PET_LOAD_ACK` | 0x0079F560 | — | `PetLoadAck` |  |
 | 2477 | `eEGS_PET_REPLACE_REQ` | — | `pets.py` (`handle_pet_replace`) | `PetReplaceReq` | eEGS_PET_REPLACE_REQ -> 2478 eEGS_PET_REPLACE_ACK (0x0079F770) |
 | 2478 | `eEGS_PET_REPLACE_ACK` | 0x0079F770 | — | `PetReplaceAck` |  |
-| 2479 | `eEGS_PET_CONSUME_SATIETY_NOT` | 0x0079F980 | — | — |  |
+| 2479 | `eEGS_PET_CONSUME_SATIETY_NOT` | 0x0079F980 | — | `PetConsumeSatietyNot` |  |
 | 2480 | `eEGS_PET_EAT_NORMAL_REQ` | — | `pets.py` (`handle_pet_eat_normal`) | `PetEatNormalReq` | eEGS_PET_EAT_NORMAL_REQ (0x0079FBA0) -> 2481 eEGS_PET_EAT_NORMAL_ACK (0x00781260) |
 | 2481 | `eEGS_PET_EAT_NORMAL_ACK` | 0x00781260 | — | `PetEatNormalAck` |  |
-| 2483 | `eEGS_PET_EAT_CASH_ACK` | 0x007815F0 | — | — |  |
+| 2482 | `eEGS_PET_EAT_CASH_REQ` | — | `pets.py` (`handle_pet_eat_cash`) | `PetEatCashReq` | eEGS_PET_EAT_CASH_REQ (0x0079FCC0) -> 2483 eEGS_PET_EAT_CASH_ACK (0x007815F0) |
+| 2483 | `eEGS_PET_EAT_CASH_ACK` | 0x007815F0 | — | `PetEatCashAck` |  |
 | 2484 | `eEGS_PET_EVOLUTION_REQ` | — | `pets.py` (`handle_pet_evolution`) | `PetEvolutionReq` | eEGS_PET_EVOLUTION_REQ (0x0079FE20) -> 2485 eEGS_PET_EVOLUTION_ACK (0x0079FEF0) |
 | 2485 | `eEGS_PET_EVOLUTION_ACK` | 0x0079FEF0 | — | `PetEvolutionAck` |  |
 | 2487 | `eEGS_CHEAT_PET_LEVEL_ACK` | 0x00775AA0 | — | — |  |
 | 2489 | `eEGS_CHEAT_PET_SATIETY_ACK` | 0x007A0280 | — | — |  |
 | 2491 | `eEGS_CHEAT_PET_EVOLUTION_ACK` | 0x007A0450 | — | — |  |
-| 2493 | `eEGS_PET_CASH_FOOD_EQUIP_ACK` | 0x007A0A20 | — | — |  |
-| 2495 | `eEGS_PET_CASH_FOOD_UNEQUIP_ACK` | 0x007A0C30 | — | — |  |
+| 2492 | `eEGS_PET_CASH_FOOD_EQUIP_REQ` | — | `pets.py` (`handle_pet_cash_food_equip`) | `PetCashFoodEquipReq` | eEGS_PET_CASH_FOOD_EQUIP_REQ (0x007A07C0) -> 2493 eEGS_PET_CASH_FOOD_EQUIP_ACK (0x007A0A20) |
+| 2493 | `eEGS_PET_CASH_FOOD_EQUIP_ACK` | 0x007A0A20 | — | `PetCashFoodEquipAck` |  |
+| 2494 | `eEGS_PET_CASH_FOOD_UNEQUIP_REQ` | — | `pets.py` (`handle_pet_cash_food_unequip`) | `PetCashFoodUnequipReq` | eEGS_PET_CASH_FOOD_UNEQUIP_REQ (0x007A0930) -> 2495 eEGS_PET_CASH_FOOD_UNEQUIP_ACK (0x007A0C30) |
+| 2495 | `eEGS_PET_CASH_FOOD_UNEQUIP_ACK` | 0x007A0C30 | — | `PetCashFoodUnequipAck` |  |
 | 2496 | `eEGS_NPC_MAKING_KAIRO_REQ` | — | `quests.py` (`handle_npc_making_kairo`) | `NpcMakingKairoReq` | Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting. |
 | 2497 | `eEGS_NPC_MAKING_KAIRO_ACK` | — | — | `NpcMakingKairoAck` |  |
-| 2499 | `eEGS_PET_EXTEND_DEPOT_ACK` | 0x00781990 | — | — |  |
-| 2501 | `eEGS_PET_SWITCH_STORAGE_ACK` | 0x007A0E30 | — | — |  |
-| 2502 | `eEGS_PET_DEPOT_EXTEND_EXPIRE_NOT` | 0x00775EA0 | — | — |  |
+| 2498 | `eEGS_PET_EXTEND_DEPOT_REQ` | — | `pets.py` (`handle_pet_extend_depot`) | `PetExtendDepotReq` | eEGS_PET_EXTEND_DEPOT_REQ (0x007A1030) -> 2499 eEGS_PET_EXTEND_DEPOT_ACK (0x00781990) |
+| 2499 | `eEGS_PET_EXTEND_DEPOT_ACK` | 0x00781990 | — | `PetExtendDepotAck` |  |
+| 2500 | `eEGS_PET_SWITCH_STORAGE_REQ` | — | `pets.py` (`handle_pet_switch_storage`) | `PetSwitchStorageReq` | eEGS_PET_SWITCH_STORAGE_REQ (0x007A0D00) -> 2501 eEGS_PET_SWITCH_STORAGE_ACK (0x007A0E30) |
+| 2501 | `eEGS_PET_SWITCH_STORAGE_ACK` | 0x007A0E30 | — | `PetSwitchStorageAck` |  |
+| 2502 | `eEGS_PET_DEPOT_EXTEND_EXPIRE_NOT` | 0x00775EA0 | — | `PetDepotExtendExpireNot` |  |
 | 2509 | `eEGS_MONSTER_LAYER_MOVE_NOT` | — | `dungeon.py` (`handle_monster_layer_move`) | — | eEGS_MONSTER_LAYER_MOVE_NOT: notification without an ACK opcode |
 | 2510 | `eEGS_PET_NICK_CHANGE_REQ` | — | `pets.py` (`handle_pet_nick_change`) | `PetNickChangeReq` | eEGS_PET_NICK_CHANGE_REQ (0x007A16DA) -> 2511 eEGS_PET_NICK_CHANGE_AKC (0x00781CD0) |
 | 2511 | `eEGS_PET_NICK_CHANGE_AKC` | 0x00781CD0 | — | `PetNickChangeAck` |  |
-| 2516 | `eEGS_PET_DYEING_NOT` | 0x00776080 | — | — |  |
+| 2516 | `eEGS_PET_DYEING_NOT` | 0x00776080 | — | `PetDyeingNot` |  |
 | 2517 | `eEGS_KEEP_BUFF_INSERT_NOT` | 0x007A17F0 | — | — |  |
 | 2518 | `eEGS_KEEP_BUFF_DELETE_NOT` | 0x007A1C20 | — | — |  |
 | 2519 | `eEGS_KEEP_BUFF_CLEAR_NOT` | 0x007A1EE0 | — | — |  |
 | 2520 | `eEGS_KEEP_COOLTIME_DELETE_NOT` | 0x00771FD0 | — | — |  |
 | 2521 | `eEGS_KEEP_COOLTIME_CLEAR_NOT` | 0x007641C0 | — | — |  |
-| 2524 | `eEGS_FISHING_START_ACK` | 0x0075B0B0 | — | — |  |
-| 2526 | `eEGS_FISHING_STOP_ACK` | 0x0075B1C0 | — | — |  |
-| 2527 | `eEGS_FISHING_RESULT_NOT` | 0x00782020 | — | — |  |
-| 2528 | `eEGS_FISHING_FAILED_NOT` | 0x00776310 | — | — |  |
-| 2529 | `eEGS_FISHING_PROFICIENCY_NOT` | 0x00776400 | — | — |  |
+| 2523 | `eEGS_FISHING_START_REQ` | — | `square.py` (`handle_fishing_start`) | `FishingStartReq` | Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0). |
+| 2524 | `eEGS_FISHING_START_ACK` | 0x0075B0B0 | — | `FishingStartAck` |  |
+| 2525 | `eEGS_FISHING_STOP_REQ` | — | `square.py` (`handle_fishing_stop`) | `FishingStopReq` | Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0). |
+| 2526 | `eEGS_FISHING_STOP_ACK` | 0x0075B1C0 | — | `FishingStopAck` |  |
+| 2527 | `eEGS_FISHING_RESULT_NOT` | 0x00782020 | — | `FishingResultNot` |  |
+| 2528 | `eEGS_FISHING_FAILED_NOT` | 0x00776310 | — | `FishingFailedNot` |  |
+| 2529 | `eEGS_FISHING_PROFICIENCY_NOT` | 0x00776400 | — | `FishingProficiencyNot` |  |
 | 2537 | `eEGS_LEAGUE_SEASON_CHAR_AWARD_NOT` | 0x007A22D0 | — | — |  |
 | 2538 | `eEGS_LEAGUE_SEASON_GUILD_AWARD_NOT` | 0x007A2560 | — | — |  |
-| 2541 | `eEGS_FISHING_LICENSE_CHANGE_NOT` | 0x0075B2E0 | — | — |  |
-| 2542 | `eEGS_FISHING_LICENSE_EXPIRE_NOT` | 0x0075B480 | — | — |  |
+| 2541 | `eEGS_FISHING_LICENSE_CHANGE_NOT` | 0x0075B2E0 | — | `FishingLicenseChangeNot` |  |
+| 2542 | `eEGS_FISHING_LICENSE_EXPIRE_NOT` | 0x0075B480 | — | `FishingLicenseExpireNot` |  |
 | 2543 | `eEGS_AVATAR_CHANGER_REQ` | — | `inventory/crafting.py` (`handle_avatar_changer`) | `AvatarChangerReq` | Opcode 2543 (eEGS_AVATAR_CHANGER_REQ) -> 2544: reroll an avatar item via changer. |
 | 2544 | `eEGS_AVATAR_CHANGER_ACK` | — | — | `AvatarChangerAck` |  |
 | 2545 | `eEGS_ITEM_DECOMPOSE_REQ` | — | `inventory/items.py` (`handle_item_decompose`) | `ItemDecomposeReq` | Opcode 2545 (eEGS_ITEM_DECOMPOSE_REQ) -> 2546 (eEGS_ITEM_DECOMPOSE_ACK): dismantle an item. |
@@ -424,13 +432,16 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2578 | `eEGS_DUALSKILL_ACTIVE_NOT` | 0x007A3990 | — | `DualSkillActiveNot` |  |
 | 2579 | `eEGS_DUALSKILL_CHANGE_INDEX_REQ` | — | `skills.py` (`handle_dual_skill_change_index`) | `DualSkillChangeIndexReq` | Opcode 2579 (eEGS_DUALSKILL_CHANGE_INDEX_REQ) -> 2580 (eEGS_DUALSKILL_CHANGE_INDEX_ACK): switch active skill set. |
 | 2580 | `eEGS_DUALSKILL_CHANGE_INDEX_ACK` | 0x007A3F00 | — | `DualSkillChangeIndexAck` |  |
-| 2582 | `eEGS_CHANGE_MAINSPIRIT_NOT` | 0x007A42F0 | — | — |  |
+| 2582 | `eEGS_CHANGE_MAINSPIRIT_NOT` | 0x007A42F0 | — | `ChangeMainSpiritNot` |  |
 | 2583 | `eEGS_RAREAVATAR_CHANGE_LOOK_REQ` | — | `inventory/crafting.py` (`handle_rare_avatar_change_look`) | `RareAvatarChangeLookReq` | Opcode 2583 (eEGS_RAREAVATAR_CHANGE_LOOK_REQ) -> 2584: transmog a rare avatar appearance. |
 | 2584 | `eEGS_RAREAVATAR_CHANGE_LOOK_ACK` | — | — | `RareAvatarChangeLookAck` |  |
 | 2585 | `eEGS_TREASURE_COUNT_CHANGE_NOT` | 0x0075BE20 | — | — |  |
-| 2587 | `eEGS_SALEBYBULK_OPTION_ACK` | 0x0076CBD0 | — | — |  |
-| 2589 | `eEGS_SALEBYBULK_REGIST_ACK` | 0x007725D0 | — | — |  |
-| 2591 | `eEGS_SELL_ITEM_ALL_ACK` | 0x007845B0 | — | — |  |
+| 2586 | `eEGS_SALEBYBULK_OPTION_REQ` | — | `commerce.py` (`handle_sale_by_bulk_option`) | `SaleByBulkOptionReq` | eEGS_SALEBYBULK_OPTION_REQ (0x007A4930) -> 2587 eEGS_SALEBYBULK_OPTION_ACK (0x0076CBD0). |
+| 2587 | `eEGS_SALEBYBULK_OPTION_ACK` | 0x0076CBD0 | — | `SaleByBulkOptionAck` |  |
+| 2588 | `eEGS_SALEBYBULK_REGIST_REQ` | — | `commerce.py` (`handle_sale_by_bulk_regist`) | `SaleByBulkRegistReq` | eEGS_SALEBYBULK_REGIST_REQ (0x007A4A70) -> 2589 eEGS_SALEBYBULK_REGIST_ACK (0x007725D0). |
+| 2589 | `eEGS_SALEBYBULK_REGIST_ACK` | 0x007725D0 | — | `SaleByBulkRegistAck` |  |
+| 2590 | `eEGS_SELL_ITEM_ALL_REQ` | — | `commerce.py` (`handle_sell_item_all`) | `SellItemAllReq` | eEGS_SELL_ITEM_ALL_REQ (0x007A4BB0) -> 2591 eEGS_SELL_ITEM_ALL_ACK (0x007845B0). |
+| 2591 | `eEGS_SELL_ITEM_ALL_ACK` | 0x007845B0 | — | `SellItemAllAck` |  |
 | 2592 | `eEGS_BAG_CHANGE_SELL_ENABLE_REQ` | — | `commerce.py` (`handle_bag_change_sell_enable`) | — | eEGS_BAG_CHANGE_SELL_ENABLE_REQ. |
 | 2593 | `eEGS_BAG_CHANGE_SELL_ENABLE_ACK` | — | — | `BagChangeSellEnableAck` |  |
 | 2594 | `eEGS_HTTPNOTICE_CHECK_REQ` | — | `commerce.py` (`handle_http_notice_check`) | `HttpNoticeCheckReq` | eEGS_HTTPNOTICE_CHECK_REQ -> 2595 eEGS_HTTPNOTICE_CHECK_ACK (0x005A5110). |
@@ -447,12 +458,13 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2618 | `eEGS_MONSTERCARD_GET_ALBUM_ACK` | — | — | `MonsterCardAlbumAck` |  |
 | 2620 | `eEGS_MARK_ITEM_ACTIVE_NOT` | 0x00776600 | — | `MarkItemActiveNot` |  |
 | 2621 | `eEGS_MARK_TAB_ACTIVE_NOT` | 0x007767E0 | — | `MarkTabActiveNot` |  |
-| 2626 | `eEGS_INDULGENCE_NOT` | 0x0075C090 | — | — |  |
+| 2626 | `eEGS_INDULGENCE_NOT` | 0x0075C090 | — | `IndulgenceNot` |  |
 | 2629 | `eEGS_ITEM_CLASS_SMELTING_REQ` | — | `inventory/crafting.py` (`handle_item_class_smelting`) | `ItemClassSmeltingReq` | Opcode 2629 (eEGS_ITEM_CLASS_SMELTING_REQ) -> 2630: smelt an item into a target class item. |
 | 2630 | `eEGS_ITEM_CLASS_SMELTING_ACK` | 0x00783790 | — | `ItemClassSmeltingAck` |  |
 | 2631 | `eEGS_CIDADEL_PLAY_COUNT_UPDATE_NOT` | 0x007A5580 | — | `CitadelPlayCountUpdateNot` |  |
 | 2641 | `eEGS_SERVERBUFF_ADDITION_FISHING_NOT` | 0x00779500 | — | — |  |
-| 2647 | `eEGS_RIDING_EXPIRE_UPDATE_ACK` | 0x007839F0 | — | — |  |
+| 2646 | `eEGS_RIDING_EXPIRE_UPDATE_REQ` | — | `pets.py` (`handle_riding_expire_update`) | `RidingExpireUpdateReq` | eEGS_RIDING_EXPIRE_UPDATE_REQ (0x007A6530) -> 2647 eEGS_RIDING_EXPIRE_UPDATE_ACK (0x007839F0) |
+| 2647 | `eEGS_RIDING_EXPIRE_UPDATE_ACK` | 0x007839F0 | — | `RidingExpireUpdateAck` |  |
 | 2648 | `eEGS_TEACHING_STRESS_REWARD_REQ` | — | `social.py` (`handle_teaching_stress_reward`) | `TeachingStressRewardReq` | eEGS_TEACHING_STRESS_REWARD_REQ (0x007A60E0) -> 2649 eEGS_TEACHING_STRESS_REWARD_ACK (0x0075C7B0). |
 | 2649 | `eEGS_TEACHING_STRESS_REWARD_ACK` | 0x0075C7B0 | — | `TeachingStressRewardAck` |  |
 | 2650 | `eEGS_TEACHING_GET_HISTORY_NOT` | 0x0077B5D0 | — | `TeachingGetHistoryNot` |  |
@@ -486,10 +498,12 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2704 | `eEGS_CLEAR_USAGELIMIT_NOT` | 0x0075FEA0 | — | — |  |
 | 2709 | `eEGS_USE_ARENA_SP_ITEM_REQ` | — | `inventory/items.py` (`handle_use_arena_sp_item`) | `UseArenaSpItemReq` | Opcode 2709 (eEGS_USE_ARENA_SP_ITEM_REQ) -> 2710 (eEGS_USE_ARENA_SP_ITEM_ACK): consume an arena SP item. |
 | 2710 | `eEGS_USE_ARENA_SP_ITEM_ACK` | 0x007A7CA0 | — | `UseArenaSpItemAck` |  |
-| 2711 | `eEGS_VIP_SERVICE_INFO_NOT` | 0x007A8040 | — | — |  |
+| 2711 | `eEGS_VIP_SERVICE_INFO_NOT` | 0x007A8040 | — | `VipServiceInfoNot` |  |
 | 2712 | `eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT` | — | `commerce.py` (`handle_steam_init_buy_item`) | `SteamInitBuyItemNot` | eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT. On Steam the overlay then |
 | 2713 | `eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ` | — | `commerce.py` (`handle_steam_finalize_buy_item`) | — | eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id, |
 | 2714 | `eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_ACK` | — | — | `SteamFinalizeBuyItemAck` |  |
+| 2721 | `eEGS_STEAM_BUY_PACKAGE_REQ` | — | `commerce.py` (`handle_steam_buy_package`) | `SteamBuyPackageReq` | eEGS_STEAM_BUY_PACKAGE_REQ (0x007A8420) -> 2722 eEGS_STEAM_BUY_PACKAGE_ACK. |
+| 2722 | `eEGS_STEAM_BUY_PACKAGE_ACK` | — | — | `SteamBuyPackageAck` |  |
 | 2728 | `eEGS_NPC_SEAL_ITEM_REQ` | — | `quests.py` (`handle_npc_seal_item`) | `NpcSealItemReq` | Opcode 2728 (eEGS_NPC_SEAL_ITEM_REQ) -> 2729 (eEGS_NPC_SEAL_ITEM_ACK): seal an equipment item at NPC. |
 | 2729 | `eEGS_NPC_SEAL_ITEM_ACK` | — | — | `NpcSealItemAck` |  |
 
@@ -573,7 +587,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5082 | `eERC_ACCEPT_TRADE_ACK` | 0x0078EB40 | — | `AcceptTradeAck` |  |
 | 5083 | `eERC_FINALLY_ACCEPT_TRADE_REQ` | — | `commerce.py` (`handle_finally_accept_trade`) | `FinallyAcceptTradeReq` | eERC_FINALLY_ACCEPT_TRADE_REQ -> 5084 eERC_FINALLY_ACCEPT_TRADE_ACK. |
 | 5084 | `eERC_FINALLY_ACCEPT_TRADE_ACK` | — | — | `FinallyAcceptTradeAck` |  |
-| 5085 | `eERC_CANCEL_ACCEPT_TRADE_NOT` | 0x00758A70 | — | — |  |
+| 5085 | `eERC_CANCEL_ACCEPT_TRADE_NOT` | 0x00758A70 | — | `CancelAcceptTradeNot` |  |
 | 5086 | `eERC_CHANGE_EXP_NOT` | 0x0078D170 | — | `ChangeExpNot` |  |
 | 5087 | `eERC_LEVEL_UP_NOT` | 0x0078CCF0 | — | `LevelUpNot` |  |
 | 5088 | `eERC_CHANGE_ITEM_OBTAIN_REQ` | — | `dungeon.py` (`handle_change_item_obtain`) | `ChangeItemObtainReq` | eERC_CHANGE_ITEM_OBTAIN_REQ (looting mode button) -> 5089 (i32 result, bool). |
@@ -640,8 +654,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5272 | `eERC_ARENA_TEAM_JOIN_ACK` | — | — | `ArenaTeamJoinAck` |  |
 | 5274 | `eERC_ARENA_TEAM_LEAVE_REQ` | — | `arena.py` (`handle_arena_team_leave`) | `ArenaTeamLeaveReq` | Opcode 5274 / 2456 -> 5275 / 2457. |
 | 5275 | `eERC_ARENA_TEAM_LEAVE_ACK` | — | — | `ArenaTeamLeaveAck` |  |
-| 5323 | `eERC_PET_LEVEL_UP_NOT` | 0x007754E0 | — | — |  |
-| 5324 | `eERC_PET_CHANGE_EXP_NOT` | 0x0079EFA0 | — | — |  |
+| 5323 | `eERC_PET_LEVEL_UP_NOT` | 0x007754E0 | — | `PetLevelUpNot` |  |
+| 5324 | `eERC_PET_CHANGE_EXP_NOT` | 0x0079EFA0 | — | `PetChangeExpNot` |  |
 | 5326 | `eERC_FAIL_DUNGEON_HACKDOUBT_NOT` | 0x007A1340 | — | — |  |
 | 5343 | `eERC_TREASURE_FIND_ACK` | 0x00782A80 | — | — |  |
 | 5344 | `eERC_TREASURE_START_NOT` | 0x007722F0 | — | `TreasureStartNot` |  |
@@ -668,7 +682,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 
 | Opcode | Enum name | Client handler | Server handler | Messages | Notes |
 | ---: | :--- | :--- | :--- | :--- | :--- |
-| 6010 | `eERT_TRADE_RESULT_NOT` | 0x0077E090 | — | — |  |
+| 6010 | `eERT_TRADE_RESULT_NOT` | 0x0077E090 | — | `TradeResultNot` |  |
 | 6011 | `eERT_REQUEST_CHAR_INFO_REQ` | — | `social.py` (`handle_request_char_info`) | `RequestCharInfoReq` | eERT_REQUEST_CHAR_INFO_REQ -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0). |
 | 6012 | `eERT_REQUEST_CHAR_INFO_ACK` | 0x00790FA0 | — | `RequestCharInfoAck` |  |
 | 6015 | `eERT_GUILD_INVITE_REQ` | 0x00759AB0 | — | `GuildInviteNot` |  |

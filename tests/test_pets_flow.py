@@ -264,6 +264,95 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_extended_fishing_commerce_stalls_and_pets(self):
+        """Test newly recovered Fishing, Commerce, Stalls, and Pets opcodes."""
+        from darkblood.games.network.messages.fishing import (
+            FishingStartAck, FishingStartReq, FishingStopAck, FishingStopReq,
+        )
+        from darkblood.games.network.messages.stalls import (
+            SaleByBulkOptionAck, SaleByBulkOptionReq, SaleByBulkRegistAck, SaleByBulkRegistReq,
+        )
+        from darkblood.games.network.messages.commerce import (
+            BeautyShopCareReq, BeautyShopInfo, SellItemAllReq, SteamBuyPackageAck, SteamBuyPackageReq,
+        )
+        from darkblood.games.network.messages.pets import (
+            PetCashFoodEquipAck, PetCashFoodEquipReq, PetCashFoodUnequipAck, PetCashFoodUnequipReq,
+            PetEatCashReq, PetExtendDepotReq, PetSwitchStorageAck, PetSwitchStorageReq,
+            RidingExpireUpdateReq,
+        )
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('AnglerHero', char_class=2))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            # Fishing (2523-2526)
+            client.send_event(2523, FishingStartReq(fishing_hole_id='Act1_Fish01', rod_item_id=1, bait_item_id=2).encode())
+            _, r = await client.expect_event(2524)
+            self.assertEqual(FishingStartAck.decode(r).result, 0)
+
+            client.send_event(2525, FishingStopReq().encode())
+            _, r = await client.expect_event(2526)
+            self.assertEqual(FishingStopAck.decode(r).result, 0)
+
+            # Stalls / SaleByBulk (2586-2589)
+            client.send_event(2586, SaleByBulkOptionReq(equip_idx=3, enable=True).encode())
+            _, r = await client.expect_event(2587)
+            ack = SaleByBulkOptionAck.decode(r)
+            self.assertEqual(ack.result, 0)
+            self.assertTrue(ack.sell_equip_info.get(3))
+
+            client.send_event(2588, SaleByBulkRegistReq(reg_item_id=555, is_add=True).encode())
+            _, r = await client.expect_event(2589)
+            ack = SaleByBulkRegistAck.decode(r)
+            self.assertEqual(ack.result, 0)
+            self.assertIn(555, ack.custom_item_list)
+
+            # Commerce: BeautyShop (2416), SellItemAll (2590), SteamBuyPackage (2721)
+            client.send_event(2416, BeautyShopCareReq(info=BeautyShopInfo(style_slots=[1, 2, 3], style_param1=0, style_param2=0)).encode())
+            _, r = await client.expect_event(2417)
+            self.assertEqual(struct.unpack_from('<i', r)[0], 0)
+
+            client.send_event(2590, SellItemAllReq().encode())
+            _, r = await client.expect_event(2591)
+            self.assertEqual(struct.unpack_from('<i', r)[0], 0)
+
+            client.send_event(2721, SteamBuyPackageReq(package_id=42).encode())
+            _, r = await client.expect_event(2722)
+            self.assertEqual(SteamBuyPackageAck.decode(r).result, 0)
+
+            # Pets (2482, 2492, 2494, 2498, 2500, 2646)
+            client.send_event(2482, PetEatCashReq(item_uid=700).encode())
+            _, r = await client.expect_event(2483)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+            client.send_event(2492, PetCashFoodEquipReq(cash_food_item_uid=701).encode())
+            _, r = await client.expect_event(2493)
+            ack = PetCashFoodEquipAck.decode(r)
+            self.assertEqual((ack.result, ack.cash_food_item_uid), (0, 701))
+
+            client.send_event(2494, PetCashFoodUnequipReq().encode())
+            _, r = await client.expect_event(2495)
+            self.assertEqual(PetCashFoodUnequipAck.decode(r).result, 0)
+
+            client.send_event(2498, PetExtendDepotReq(item_uid=702, depot_slot_index=1).encode())
+            _, r = await client.expect_event(2499)
+            self.assertEqual(struct.unpack_from('<Ih', r), (0, 1))
+
+            client.send_event(2500, PetSwitchStorageReq(move_slot_index=0, target_slot_index=1).encode())
+            _, r = await client.expect_event(2501)
+            ack = PetSwitchStorageAck.decode(r)
+            self.assertEqual((ack.result, ack.move_slot_index, ack.target_slot_index), (0, 0, 1))
+
+            client.send_event(2646, RidingExpireUpdateReq(item_uid=703, riding_id=5).encode())
+            _, r = await client.expect_event(2647)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

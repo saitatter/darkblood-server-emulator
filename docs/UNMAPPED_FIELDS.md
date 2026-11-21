@@ -22,7 +22,7 @@
 | `5275 ArenaTeamLeaveAck` | `raw[14]` | arena.jsch:240 |  |
 | `2551 LeagueSeasonArenaGetRankAck` | `raw[12]` | arena.jsch:267 | footer |
 
-## commerce (16 of 96 fields)
+## commerce (17 of 125 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -42,6 +42,7 @@
 | `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:239 | 0x005F6540 |
 | `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:245 | cards (0x004AFD30) |
 | `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:251 | album (0x004D6E60) |
+| `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:302 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
 
 ## dungeon (42 of 162 fields)
 
@@ -207,17 +208,20 @@
 | `5051 PartyInviteNot` | `u8` | party.jsch:73 |  |
 | `PartyMemberInfo` | `i32` | party.jsch:144 |  |
 
-## pets (7 of 50 fields)
+## pets (10 of 101 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2349 TamingMonsterInsertAck` | `vector<?>` | pets.jsch:19 | tamed monsters, element layout unknown |
-| `2351 TamingMonsterDeleteAck` | `vector<?>` | pets.jsch:31 | tamed monsters, element layout unknown |
-| `2435 RidingGetListAck` | `map<?>` | pets.jsch:42 | rides, element layout unknown |
-| `2465 PetCreateAck` | `vector<?>` | pets.jsch:65 | pets, element layout unknown |
-| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:141 | pets, element layout unknown |
-| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:155 |  |
-| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:168 |  |
+| `2349 TamingMonsterInsertAck` | `vector<?>` | pets.jsch:21 | tamed monsters, element layout unknown |
+| `2351 TamingMonsterDeleteAck` | `vector<?>` | pets.jsch:33 | tamed monsters, element layout unknown |
+| `2435 RidingGetListAck` | `map<?>` | pets.jsch:44 | rides, element layout unknown |
+| `2465 PetCreateAck` | `vector<?>` | pets.jsch:67 | pets, element layout unknown |
+| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:143 | pets, element layout unknown |
+| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:157 |  |
+| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:170 |  |
+| `2436 RidingChangeListNot` | `map<?>` | pets.jsch:177 | mapRidingInfo (40-byte entries) |
+| `2516 PetDyeingNot` | `vector<?>` | pets.jsch:260 | 0x0076E600 pet skills |
+| `2647 RidingExpireUpdateAck` | `map<?>` | pets.jsch:274 | mapRidinglist (0x007656E0) |
 
 ## quests (1 of 104 fields)
 
@@ -261,7 +265,7 @@
 | `6028 RequestItemInfoReq` | `i64` | social.jsch:158 |  |
 | `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:166 |  |
 
-## stalls (20 of 86 fields)
+## stalls (20 of 97 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -286,7 +290,7 @@
 | `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:78 |  |
 | `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:79 |  |
 
-## system (8 of 75 fields)
+## system (8 of 82 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

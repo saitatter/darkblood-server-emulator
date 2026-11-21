@@ -267,6 +267,75 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2511, ack, correlation),
                                         note=f'pet nick change ack (uid={req.pet_uid}, name={req.new_name})')
 
+    @packet_handler(2482)
+    async def handle_pet_eat_cash(self, correlation, body):
+        # eEGS_PET_EAT_CASH_REQ (0x0079FCC0) -> 2483 eEGS_PET_EAT_CASH_ACK (0x007815F0)
+        from darkblood.games.network.messages.pets import PetEatCashAck, PetEatCashReq
+        req = PetEatCashReq.decode(body)
+        char = self.current_char()
+        satiety = 100
+        if char:
+            pets = char.setdefault('pets', [])
+            if pets:
+                active = next((p for p in pets if p.get('uid') == char.get('summoned_pet')), pets[0])
+                active['satiety'] = 100
+                satiety = 100
+                self.save_char()
+        await self.reply(PetEatCashAck(result=0, items=[], satiety=satiety, is_cash_food=True),
+                         correlation, note=f'pet eat cash ack (item={req.item_uid} satiety={satiety})')
+
+    @packet_handler(2492)
+    async def handle_pet_cash_food_equip(self, correlation, body):
+        # eEGS_PET_CASH_FOOD_EQUIP_REQ (0x007A07C0) -> 2493 eEGS_PET_CASH_FOOD_EQUIP_ACK (0x007A0A20)
+        from darkblood.games.network.messages.pets import PetCashFoodEquipAck, PetCashFoodEquipReq
+        req = PetCashFoodEquipReq.decode(body)
+        char = self.current_char()
+        if char is not None:
+            char['pet_cash_food_uid'] = req.cash_food_item_uid
+            self.save_char()
+        await self.reply(PetCashFoodEquipAck(result=0, cash_food_item_uid=req.cash_food_item_uid),
+                         correlation, note=f'pet cash food equip ack (uid={req.cash_food_item_uid})')
+
+    @packet_handler(2494)
+    async def handle_pet_cash_food_unequip(self, correlation, body):
+        # eEGS_PET_CASH_FOOD_UNEQUIP_REQ (0x007A0930) -> 2495 eEGS_PET_CASH_FOOD_UNEQUIP_ACK (0x007A0C30)
+        from darkblood.games.network.messages.pets import PetCashFoodUnequipAck
+        char = self.current_char()
+        if char is not None:
+            char.pop('pet_cash_food_uid', None)
+            self.save_char()
+        await self.reply(PetCashFoodUnequipAck(result=0), correlation, note='pet cash food unequip ack')
+
+    @packet_handler(2498)
+    async def handle_pet_extend_depot(self, correlation, body):
+        # eEGS_PET_EXTEND_DEPOT_REQ (0x007A1030) -> 2499 eEGS_PET_EXTEND_DEPOT_ACK (0x00781990)
+        from darkblood.games.network.messages.pets import PetExtendDepotAck, PetExtendDepotReq
+        req = PetExtendDepotReq.decode(body)
+        extend_time = 30 * 86400
+        await self.reply(
+            PetExtendDepotAck(result=0, depot_slot_index=req.depot_slot_index, extend_time=extend_time, items=[]),
+            correlation, note=f'pet extend depot ack (slot={req.depot_slot_index})',
+        )
+
+    @packet_handler(2500)
+    async def handle_pet_switch_storage(self, correlation, body):
+        # eEGS_PET_SWITCH_STORAGE_REQ (0x007A0D00) -> 2501 eEGS_PET_SWITCH_STORAGE_ACK (0x007A0E30)
+        from darkblood.games.network.messages.pets import PetSwitchStorageAck, PetSwitchStorageReq
+        req = PetSwitchStorageReq.decode(body)
+        await self.reply(
+            PetSwitchStorageAck(result=0, move_slot_index=req.move_slot_index,
+                                target_slot_index=req.target_slot_index),
+            correlation, note=f'pet switch storage ack ({req.move_slot_index}->{req.target_slot_index})',
+        )
+
+    @packet_handler(2646)
+    async def handle_riding_expire_update(self, correlation, body):
+        # eEGS_RIDING_EXPIRE_UPDATE_REQ (0x007A6530) -> 2647 eEGS_RIDING_EXPIRE_UPDATE_ACK (0x007839F0)
+        from darkblood.games.network.messages.pets import RidingExpireUpdateAck, RidingExpireUpdateReq
+        req = RidingExpireUpdateReq.decode(body)
+        await self.reply(RidingExpireUpdateAck(result=0, items=[]), correlation,
+                         note=f'riding expire update ack (ride={req.riding_id})')
+
     # Helper for item use integration
     async def apply_pet_or_mount_item(self, char, code):
         """When an inventory item starting with PetCall or ridecall is consumed."""

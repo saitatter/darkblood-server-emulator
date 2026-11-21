@@ -179,3 +179,34 @@ message 2273 BrokerPriceAck
   i64 avg_price
   i64 min_price
 end
+
+message 2398 BrokerChangeRegistCountNot
+  ## Handler 0x0077B2D0 (assert: sIncrBrokerCount >> nIncrBrokerRemainExpireTime >> tIncrBrokerExpireTime).
+  i16 incr_broker_count
+  i64 remain_expire_time
+  i64 expire_time
+end
+
+message 2586 SaleByBulkOptionReq header?
+  ## Sender 0x007A4930 (assert: sEquipIdx << bEnable).
+  i16 equip_idx
+  bool enable
+end
+
+message 2587 SaleByBulkOptionAck ok_only
+  ## Handler 0x0076CBD0 (assert: mapSellEquipinfo, map<i16, bool> reader 0x00765870).
+  i32 result
+  map<i16,bool> sell_equip_info
+end
+
+message 2588 SaleByBulkRegistReq header?
+  ## Sender 0x007A4A70 (assert: nRegItemID << bIsAdd).
+  i32 reg_item_id
+  bool is_add
+end
+
+message 2589 SaleByBulkRegistAck ok_only
+  ## Handler 0x007725D0 (assert: vecCustomItemList, vector<i32> reader 0x004D6E60).
+  i32 result
+  vector<i32> custom_item_list
+end

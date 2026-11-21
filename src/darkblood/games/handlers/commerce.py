@@ -643,3 +643,67 @@ class CommerceHandlers(BaseDomainService):
         ack = BrokerPriceAck(result=0, avg_price=avg_price, min_price=min_price).encode()
         await self.transport.send_event(event(2273, ack, correlation),
                                         note=f'broker price ack (avg={avg_price} min={min_price})')
+
+    @packet_handler(2586)
+    async def handle_sale_by_bulk_option(self, correlation, body):
+        # eEGS_SALEBYBULK_OPTION_REQ (0x007A4930) -> 2587 eEGS_SALEBYBULK_OPTION_ACK (0x0076CBD0).
+        from darkblood.games.network.messages.stalls import SaleByBulkOptionAck, SaleByBulkOptionReq
+        req = SaleByBulkOptionReq.decode(body)
+        char = self.current_char()
+        opts = {}
+        if char is not None:
+            raw = char.setdefault('sale_by_bulk_options', {})
+            raw[str(req.equip_idx)] = bool(req.enable)
+            self.save_char()
+            opts = {int(k): bool(v) for k, v in raw.items()}
+        await self.reply(SaleByBulkOptionAck(result=0, sell_equip_info=opts), correlation,
+                         note=f'sale by bulk option ack (idx={req.equip_idx} enable={req.enable})')
+
+    @packet_handler(2588)
+    async def handle_sale_by_bulk_regist(self, correlation, body):
+        # eEGS_SALEBYBULK_REGIST_REQ (0x007A4A70) -> 2589 eEGS_SALEBYBULK_REGIST_ACK (0x007725D0).
+        from darkblood.games.network.messages.stalls import SaleByBulkRegistAck, SaleByBulkRegistReq
+        req = SaleByBulkRegistReq.decode(body)
+        char = self.current_char()
+        custom = []
+        if char is not None:
+            custom = list(char.setdefault('sale_by_bulk_custom', []))
+            if req.is_add and req.reg_item_id not in custom:
+                custom.append(req.reg_item_id)
+            elif not req.is_add and req.reg_item_id in custom:
+                custom.remove(req.reg_item_id)
+            char['sale_by_bulk_custom'] = custom
+            self.save_char()
+        await self.reply(SaleByBulkRegistAck(result=0, custom_item_list=custom), correlation,
+                         note=f'sale by bulk regist ack (item={req.reg_item_id} add={req.is_add})')
+
+    @packet_handler(2416)
+    async def handle_beauty_shop_care(self, correlation, body):
+        # eEGS_BEAUTYSHOP_CARE_REQ (0x0079B730) -> 2417 eEGS_BEAUTYSHOP_CARE_ACK (0x0079B3A0).
+        from darkblood.games.network.messages.commerce import BeautyShopCareAck, BeautyShopCareReq
+        req = BeautyShopCareReq.decode(body)
+        char = self.current_char()
+        cur_ar = int(char.get('gold', 0)) if char else 0
+        if char is not None:
+            char['beauty_style_slots'] = list(req.info.style_slots)
+            self.save_char()
+        await self.reply(BeautyShopCareAck(result=0, info=req.info, cur_ar=cur_ar, items=[]),
+                         correlation, note='beauty shop care ack')
+
+    @packet_handler(2590)
+    async def handle_sell_item_all(self, correlation, body):
+        # eEGS_SELL_ITEM_ALL_REQ (0x007A4BB0) -> 2591 eEGS_SELL_ITEM_ALL_ACK (0x007845B0).
+        from darkblood.games.network.messages.commerce import SellItemAllAck
+        char = self.current_char()
+        cur_ar = int(char.get('gold', 0)) if char else 0
+        await self.reply(SellItemAllAck(result=0, items=[], cur_ar=cur_ar, deleted_item_uids=[]),
+                         correlation, note=f'sell item all ack (ar={cur_ar})')
+
+    @packet_handler(2721)
+    async def handle_steam_buy_package(self, correlation, body):
+        # eEGS_STEAM_BUY_PACKAGE_REQ (0x007A8420) -> 2722 eEGS_STEAM_BUY_PACKAGE_ACK.
+        from darkblood.games.network.messages.commerce import SteamBuyPackageAck, SteamBuyPackageReq
+        req = SteamBuyPackageReq.decode(body)
+        self.transport.record('steam-buy-package-req', body, package_id=req.package_id)
+        await self.reply(SteamBuyPackageAck(result=0), correlation,
+                         note=f'steam buy package ack (pkg={req.package_id})')

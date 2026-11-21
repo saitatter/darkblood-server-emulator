@@ -44,8 +44,8 @@ OUT_OF_SCOPE = re.compile(
 # verified against unpacked.analysis.exe + handler_map.txt to have no sender or handler
 # in this client build (a82ae3d7...): replaced or removed features, or fire-and-forget ACKs.
 UNUSED_IN_CLIENT = frozenset({
-    # inventory (8): no senders or handlers in build
-    2034, 2035, 2382, 2383, 2705, 2706, 2707, 2708,
+    # inventory (12): no senders or handlers in build (6005-6008 are internal router login/logout)
+    2034, 2035, 2382, 2383, 2705, 2706, 2707, 2708, 6005, 6006, 6007, 6008,
     # skills (2): 2052 replaced by 2111/2112; 2153 unused (2152 is fire-and-forget)
     2052, 2153,
     # quests (7): old achieve reward/stat & title list opcodes replaced by 2330/2444/2446

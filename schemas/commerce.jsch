@@ -250,3 +250,84 @@ message 2618 MonsterCardAlbumAck
   u32 result
   vector<?> _                # album (0x004D6E60)
 end
+
+message 2243 DepotShareExpireTimeGetAck ok_only
+  ## Handler 0x0076C040 (assert: mapShareTime, map<i64, i64> reader 0x00765610).
+  u32 result
+  map<i64,i64> share_times
+end
+
+message 2400 DepotShareExpireTimeAddNot
+  ## Handler 0x0076BE80 (assert: tCurShareDepotExpireTime >> sAddDay >> mapShareExpireTime).
+  i64 cur_expire_time
+  i16 add_day
+  map<i64,i64> share_expire_times
+end
+
+message 2401 DepotSizeIncreaseNot ok_only
+  ## Handler 0x007535A0 (assert: ucCurDBAddDepotCount).
+  u32 result
+  u8 cur_db_add_depot_count
+end
+
+struct BeautyShopInfo
+  ## Struct 0x00A49EF0 (writer) / 0x00A49F30 (reader): up to 5 u8 style slots + 2 i32.
+  array<u8> style_slots
+  i32 style_param1
+  i32 style_param2
+end
+
+message 2416 BeautyShopCareReq header?
+  ## Sender 0x0079B730 (struct writer 0x00A49EF0).
+  BeautyShopInfo info = BeautyShopInfo()
+end
+
+message 2417 BeautyShopCareAck ok_only
+  ## Handler 0x0079B3A0 (assert: jBeautyshop >> nCurAr >> vecItemOut).
+  i32 result
+  BeautyShopInfo info = BeautyShopInfo()
+  i64 cur_ar
+  vector<Item> items
+end
+
+message 2590 SellItemAllReq header?
+  ## Sender 0x007A4BB0 writes no fields.
+end
+
+message 2591 SellItemAllAck ok_only
+  ## Handler 0x007845B0 (assert: vecItemOut >> nCurAr >> vecReItem >> setDelItem).
+  i32 result
+  vector<Item> items
+  i64 cur_ar
+  vector<?> _                # vecReItem (0x0077CEB0 -> 0x00A1ECA0)
+  set<i64> deleted_item_uids # setDelItem (0x006B9200)
+end
+
+message 2711 VipServiceInfoNot
+  ## Handler 0x007A8040 (struct reader 0x00A4AC80: 2x DateTime6 + i32 grade).
+  raw[12] start_time
+  raw[12] end_time
+  i32 vip_grade
+end
+
+message 2721 SteamBuyPackageReq header?
+  ## Sender 0x007A8420 (writer 0x00B35340).
+  u32 package_id
+end
+
+message 2722 SteamBuyPackageAck
+  ## Reply to 2721.
+  u32 result
+end
+
+message 5085 CancelAcceptTradeNot
+  ## Handler 0x00758A70 (assert: nCharUID).
+  i64 char_uid
+end
+
+message 6010 TradeResultNot ok_only
+  ## Handler 0x0077E090 (assert: vecItem >> nCurAr).
+  i32 result
+  vector<Item> items
+  i64 cur_ar
+end

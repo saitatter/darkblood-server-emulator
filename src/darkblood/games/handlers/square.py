@@ -281,6 +281,27 @@ class SquareHandlers(BaseDomainService):
         await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
                                         note='leave square ack')
 
+    # =========================================================================
+    # Fishing System Handlers (2523-2526)
+    # =========================================================================
+
+    @packet_handler(2523)
+    async def handle_fishing_start(self, correlation: int, body: bytes):
+        """Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0)."""
+        from darkblood.games.network.messages.fishing import FishingStartAck, FishingStartReq
+        req = FishingStartReq.decode(body)
+        self.transport.record('fishing-start-req', body, hole=req.fishing_hole_id,
+                              rod=req.rod_item_id, bait=req.bait_item_id)
+        await self.reply(FishingStartAck(result=0), correlation,
+                         note=f'fishing start ack ({req.fishing_hole_id})')
+
+    @packet_handler(2525)
+    async def handle_fishing_stop(self, correlation: int, body: bytes):
+        """Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0)."""
+        from darkblood.games.network.messages.fishing import FishingStopAck
+        self.transport.record('fishing-stop-req', body)
+        await self.reply(FishingStopAck(result=0), correlation, note='fishing stop ack')
+
 
 def _is_town_layer(layer_id: int) -> bool:
     """High dword must be a loaded SquareID hash (CanEnter 0x006FA540)."""

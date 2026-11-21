@@ -45,6 +45,10 @@ __all__ = [
     'TargetState',
     'GTargetListAck',
     'UpdateCharInfoNot',
+    'CloseConnectionNot',
+    'StressChangedNot',
+    'ChangeMainSpiritNot',
+    'IndulgenceNot',
 ]
 
 
@@ -470,3 +474,46 @@ class UpdateCharInfoNot(WireMessage):
     OPCODE: ClassVar[int] = 5096
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
     guild_name: wstr = ''
+
+
+@dataclass
+class CloseConnectionNot(WireMessage):
+    """Opcode 2020: eEGS_CLOSE_CONNECTION_NOT (reply).
+
+    Handler 0x007536A0 (reads u32 result/reason only).
+    """
+    OPCODE: ClassVar[int] = 2020
+    reason: u32 = 0
+
+
+@dataclass
+class StressChangedNot(WireMessage):
+    """Opcode 2023: eEGS_STRESS_CHANGED_NOT (reply).
+
+    Handler 0x00789E00 (assert: sStress >> sStressPcb >> sStressWeek >> nTodayCronosStress).
+    """
+    OPCODE: ClassVar[int] = 2023
+    stress: i16 = 0
+    stress_pcb: i16 = 0
+    stress_week: i16 = 0
+    today_cronos_stress: i32 = 0
+
+
+@dataclass
+class ChangeMainSpiritNot(WireMessage):
+    """Opcode 2582: eEGS_CHANGE_MAINSPIRIT_NOT (reply).
+
+    Handler 0x007A42F0 (assert: nMainSpiritStoneItemID).
+    """
+    OPCODE: ClassVar[int] = 2582
+    main_spirit_stone_item_id: i32 = 0
+
+
+@dataclass
+class IndulgenceNot(WireMessage):
+    """Opcode 2626: eEGS_INDULGENCE_NOT (reply).
+
+    Handler 0x0075C090 (assert: sAccrueStep).
+    """
+    OPCODE: ClassVar[int] = 2626
+    accrue_step: i16 = 0

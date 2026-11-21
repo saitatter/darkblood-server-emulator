@@ -46,6 +46,19 @@ __all__ = [
     'MonsterCardListAck',
     'MonsterCardDeckAck',
     'MonsterCardAlbumAck',
+    'DepotShareExpireTimeGetAck',
+    'DepotShareExpireTimeAddNot',
+    'DepotSizeIncreaseNot',
+    'BeautyShopInfo',
+    'BeautyShopCareReq',
+    'BeautyShopCareAck',
+    'SellItemAllReq',
+    'SellItemAllAck',
+    'VipServiceInfoNot',
+    'SteamBuyPackageReq',
+    'SteamBuyPackageAck',
+    'CancelAcceptTradeNot',
+    'TradeResultNot',
 ]
 
 
@@ -531,3 +544,162 @@ class MonsterCardAlbumAck(WireMessage):
         'result',
         Const(EmptyVector),
     )
+
+
+@dataclass
+class DepotShareExpireTimeGetAck(WireMessage):
+    """Opcode 2243: eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_ACK (reply).
+
+    Handler 0x0076C040 (assert: mapShareTime, map<i64, i64> reader 0x00765610).
+    """
+    OPCODE: ClassVar[int] = 2243
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    share_times: Map[i64, i64] = field(default_factory=dict)
+
+
+@dataclass
+class DepotShareExpireTimeAddNot(WireMessage):
+    """Opcode 2400: eEGS_DEPOT_SHARE_EXPIRE_TIME_ADD_NOT (reply).
+
+    Handler 0x0076BE80 (assert: tCurShareDepotExpireTime >> sAddDay >> mapShareExpireTime).
+    """
+    OPCODE: ClassVar[int] = 2400
+    cur_expire_time: i64 = 0
+    add_day: i16 = 0
+    share_expire_times: Map[i64, i64] = field(default_factory=dict)
+
+
+@dataclass
+class DepotSizeIncreaseNot(WireMessage):
+    """Opcode 2401: eEGS_DEPOT_SIZE_INCREASE_NOT (reply).
+
+    Handler 0x007535A0 (assert: ucCurDBAddDepotCount).
+    """
+    OPCODE: ClassVar[int] = 2401
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cur_db_add_depot_count: u8 = 0
+
+
+@dataclass
+class BeautyShopInfo(WireMessage):
+    """Struct 0x00A49EF0 (writer) / 0x00A49F30 (reader): up to 5 u8 style slots + 2 i32."""
+    style_slots: Array[u8] = field(default_factory=list)
+    style_param1: i32 = 0
+    style_param2: i32 = 0
+
+
+@dataclass
+class BeautyShopCareReq(WireMessage):
+    """Opcode 2416: eEGS_BEAUTYSHOP_CARE_REQ (request).
+
+    Sender 0x0079B730 (struct writer 0x00A49EF0).
+    """
+    OPCODE: ClassVar[int] = 2416
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    info: BeautyShopInfo = field(default_factory=BeautyShopInfo)
+
+
+@dataclass
+class BeautyShopCareAck(WireMessage):
+    """Opcode 2417: eEGS_BEAUTYSHOP_CARE_ACK (reply).
+
+    Handler 0x0079B3A0 (assert: jBeautyshop >> nCurAr >> vecItemOut).
+    """
+    OPCODE: ClassVar[int] = 2417
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    info: BeautyShopInfo = field(default_factory=BeautyShopInfo)
+    cur_ar: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class SellItemAllReq(WireMessage):
+    """Opcode 2590: eEGS_SELL_ITEM_ALL_REQ (request).
+
+    Sender 0x007A4BB0 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2590
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class SellItemAllAck(WireMessage):
+    """Opcode 2591: eEGS_SELL_ITEM_ALL_ACK (reply).
+
+    Handler 0x007845B0 (assert: vecItemOut >> nCurAr >> vecReItem >> setDelItem).
+    """
+    OPCODE: ClassVar[int] = 2591
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    cur_ar: i64 = 0
+    deleted_item_uids: Set[i64] = field(default_factory=list)  # setDelItem (0x006B9200)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'items',
+        'cur_ar',
+        Const(EmptyVector),
+        'deleted_item_uids',
+    )
+
+
+@dataclass
+class VipServiceInfoNot(WireMessage):
+    """Opcode 2711: eEGS_VIP_SERVICE_INFO_NOT (reply).
+
+    Handler 0x007A8040 (struct reader 0x00A4AC80: 2x DateTime6 + i32 grade).
+    """
+    OPCODE: ClassVar[int] = 2711
+    start_time: Raw[12] = bytes(12)
+    end_time: Raw[12] = bytes(12)
+    vip_grade: i32 = 0
+
+
+@dataclass
+class SteamBuyPackageReq(WireMessage):
+    """Opcode 2721: eEGS_STEAM_BUY_PACKAGE_REQ (request).
+
+    Sender 0x007A8420 (writer 0x00B35340).
+    """
+    OPCODE: ClassVar[int] = 2721
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    package_id: u32 = 0
+
+
+@dataclass
+class SteamBuyPackageAck(WireMessage):
+    """Opcode 2722: eEGS_STEAM_BUY_PACKAGE_ACK (reply).
+
+    Reply to 2721.
+    """
+    OPCODE: ClassVar[int] = 2722
+    result: u32 = 0
+
+
+@dataclass
+class CancelAcceptTradeNot(WireMessage):
+    """Opcode 5085: eERC_CANCEL_ACCEPT_TRADE_NOT (reply).
+
+    Handler 0x00758A70 (assert: nCharUID).
+    """
+    OPCODE: ClassVar[int] = 5085
+    char_uid: i64 = 0
+
+
+@dataclass
+class TradeResultNot(WireMessage):
+    """Opcode 6010: eERT_TRADE_RESULT_NOT (reply).
+
+    Handler 0x0077E090 (assert: vecItem >> nCurAr).
+    """
+    OPCODE: ClassVar[int] = 6010
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    cur_ar: i64 = 0

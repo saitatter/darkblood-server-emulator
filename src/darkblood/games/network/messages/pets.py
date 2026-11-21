@@ -2,11 +2,12 @@
 """Dark Blood protocol wire messages - Pet, Mount and Taming domain."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
+from darkblood.games.entities.items import Item
 
 __all__ = [
     'TameingMonsterInsertReq',
@@ -37,6 +38,24 @@ __all__ = [
     'PetEvolutionAck',
     'PetNickChangeReq',
     'PetNickChangeAck',
+    'RidingChangeListNot',
+    'PetConsumeSatietyNot',
+    'PetEatCashReq',
+    'PetEatCashAck',
+    'PetCashFoodEquipReq',
+    'PetCashFoodEquipAck',
+    'PetCashFoodUnequipReq',
+    'PetCashFoodUnequipAck',
+    'PetExtendDepotReq',
+    'PetExtendDepotAck',
+    'PetSwitchStorageReq',
+    'PetSwitchStorageAck',
+    'PetDepotExtendExpireNot',
+    'PetDyeingNot',
+    'RidingExpireUpdateReq',
+    'RidingExpireUpdateAck',
+    'PetLevelUpNot',
+    'PetChangeExpNot',
 ]
 
 
@@ -406,3 +425,250 @@ class PetNickChangeAck(WireMessage):
         'pet_uid',
         'new_name',
     )
+
+
+@dataclass
+class RidingChangeListNot(WireMessage):
+    """Opcode 2436: eEGS_RIDING_CHANGE_LIST_NOT (reply).
+
+    Handler 0x0079C9A0 (assert: mapRidingInfo, reader 0x007656E0).
+    """
+    OPCODE: ClassVar[int] = 2436
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class PetConsumeSatietyNot(WireMessage):
+    """Opcode 2479: eEGS_PET_CONSUME_SATIETY_NOT (reply).
+
+    Handler 0x0079F980 (assert: nPetUID >> sConsumeSatiety).
+    """
+    OPCODE: ClassVar[int] = 2479
+    pet_uid: i64 = 0
+    consume_satiety: i16 = 0
+
+
+@dataclass
+class PetEatCashReq(WireMessage):
+    """Opcode 2482: eEGS_PET_EAT_CASH_REQ (request).
+
+    Sender 0x0079FCC0.
+    """
+    OPCODE: ClassVar[int] = 2482
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+
+
+@dataclass
+class PetEatCashAck(WireMessage):
+    """Opcode 2483: eEGS_PET_EAT_CASH_ACK (reply).
+
+    Handler 0x007815F0 (assert: vecItem >> sNurturePetSatiety >> bCashFood).
+    """
+    OPCODE: ClassVar[int] = 2483
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    satiety: i16 = 100
+    is_cash_food: bool = True
+
+
+@dataclass
+class PetCashFoodEquipReq(WireMessage):
+    """Opcode 2492: eEGS_PET_CASH_FOOD_EQUIP_REQ (request).
+
+    Sender 0x007A07C0.
+    """
+    OPCODE: ClassVar[int] = 2492
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    cash_food_item_uid: i64 = 0
+
+
+@dataclass
+class PetCashFoodEquipAck(WireMessage):
+    """Opcode 2493: eEGS_PET_CASH_FOOD_EQUIP_ACK (reply).
+
+    Handler 0x007A0A20 (assert: nCashFoodItemUID).
+    """
+    OPCODE: ClassVar[int] = 2493
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cash_food_item_uid: i64 = 0
+
+
+@dataclass
+class PetCashFoodUnequipReq(WireMessage):
+    """Opcode 2494: eEGS_PET_CASH_FOOD_UNEQUIP_REQ (request).
+
+    Sender 0x007A0930 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2494
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class PetCashFoodUnequipAck(WireMessage):
+    """Opcode 2495: eEGS_PET_CASH_FOOD_UNEQUIP_ACK (reply).
+
+    Handler 0x007A0C30 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 2495
+    result: u32 = 0
+
+
+@dataclass
+class PetExtendDepotReq(WireMessage):
+    """Opcode 2498: eEGS_PET_EXTEND_DEPOT_REQ (request).
+
+    Sender 0x007A1030.
+    """
+    OPCODE: ClassVar[int] = 2498
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    depot_slot_index: i16 = 0
+
+
+@dataclass
+class PetExtendDepotAck(WireMessage):
+    """Opcode 2499: eEGS_PET_EXTEND_DEPOT_ACK (reply).
+
+    Handler 0x00781990 (assert: sDepotSlotIndex >> nExtendTime >> vecOutItem).
+    """
+    OPCODE: ClassVar[int] = 2499
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    depot_slot_index: i16 = 0
+    extend_time: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class PetSwitchStorageReq(WireMessage):
+    """Opcode 2500: eEGS_PET_SWITCH_STORAGE_REQ (request).
+
+    Sender 0x007A0D00.
+    """
+    OPCODE: ClassVar[int] = 2500
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    move_slot_index: i16 = 0
+    target_slot_index: i16 = 0
+
+
+@dataclass
+class PetSwitchStorageAck(WireMessage):
+    """Opcode 2501: eEGS_PET_SWITCH_STORAGE_ACK (reply).
+
+    Handler 0x007A0E30 (assert: sMoveSlotIndex >> sTargetSlotIndex).
+    """
+    OPCODE: ClassVar[int] = 2501
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    move_slot_index: i16 = 0
+    target_slot_index: i16 = 0
+
+
+@dataclass
+class PetDepotExtendExpireNot(WireMessage):
+    """Opcode 2502: eEGS_PET_DEPOT_EXTEND_EXPIRE_NOT (reply).
+
+    Handler 0x00775EA0 (assert: sPetDepotIndex).
+    """
+    OPCODE: ClassVar[int] = 2502
+    pet_depot_index: i16 = 0
+
+
+@dataclass
+class PetDyeingNot(WireMessage):
+    """Opcode 2516: eEGS_PET_DYEING_NOT (reply).
+
+    Handler 0x00776080 (assert: jResultPetInfo, reader 0x00A52CF0).
+    """
+    OPCODE: ClassVar[int] = 2516
+    dye_colors: Array[Raw[10]] = field(default_factory=list)  # 0x00A4B250 (up to 2 x 10-byte dye blocks)
+    pet_uid: i64 = 0
+    pet_id: i32 = 0
+    level: u8 = 1
+    exp: i32 = 0
+    satiety: i16 = 100
+    name: wstr = ''
+    is_summoned: bool = False
+    status: i16 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'dye_colors',
+        'pet_uid',
+        'pet_id',
+        'level',
+        'exp',
+        'satiety',
+        'name',
+        Const(EmptyVector),
+        'is_summoned',
+        'status',
+    )
+
+
+@dataclass
+class RidingExpireUpdateReq(WireMessage):
+    """Opcode 2646: eEGS_RIDING_EXPIRE_UPDATE_REQ (request).
+
+    Sender 0x007A6530 (assert: nItemUID << iRidingID).
+    """
+    OPCODE: ClassVar[int] = 2646
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    riding_id: i32 = 0
+
+
+@dataclass
+class RidingExpireUpdateAck(WireMessage):
+    """Opcode 2647: eEGS_RIDING_EXPIRE_UPDATE_ACK (reply).
+
+    Handler 0x007839F0 (assert: mapRidinglist >> vecOutItem).
+    """
+    OPCODE: ClassVar[int] = 2647
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+        'items',
+    )
+
+
+@dataclass
+class PetLevelUpNot(WireMessage):
+    """Opcode 5323: eERC_PET_LEVEL_UP_NOT (reply).
+
+    Handler 0x007754E0 (assert: jNot, reader 0x00A48B80: 21 raw bytes).
+    """
+    OPCODE: ClassVar[int] = 5323
+    level_up_info: Raw[21] = bytes(21)
+
+
+@dataclass
+class PetChangeExpNot(WireMessage):
+    """Opcode 5324: eERC_PET_CHANGE_EXP_NOT (reply).
+
+    Handler 0x0079EFA0 (assert: nPetUID >> nChangeExp >> jGainExp, 0x00A49E20).
+    """
+    OPCODE: ClassVar[int] = 5324
+    pet_uid: i64 = 0
+    change_exp: i32 = 0
+    gain_0: i32 = 0
+    gain_1: i32 = 0
+    gain_2: i32 = 0
+    gain_3: i32 = 0
+    gain_4: i32 = 0
+    gain_5: i32 = 0
+    gain_6: i32 = 0
+    gain_7: i32 = 0
+    text: wstr = ''
