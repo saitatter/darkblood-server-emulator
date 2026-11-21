@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Inventory domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, Extern, Map, Set, Vector, WireMessage, f32, h32, i16, i32, i64, rest, u16, u32, u8, wrest, wstrz
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.network.messages.lobby import QuickSlot
 from darkblood.games.network.messages.skills import LearnedSkill
@@ -108,91 +108,51 @@ __all__ = [
 
 
 @dataclass
-class ItemDropEntry:
+class ItemDropEntry(WireMessage):
     """Dropped item (0x1A bytes, ctor 0x00A4FBA0, reader 0x00A509E0). The element
     reader 0x004C7F80 checks tag 0x1E without a byte. The client places the drop
     at the source monster (5064 header id, 0x00859C60), so no position is sent.
     """
-    drop_uid: int = 0  # +0
-    item_id: int = 0  # +4 item code (jhash)
-    quality: int = 0  # +8 (ctor 0; passed to 0x009E5560 item name formatter in 0x008842C0)
-    count: int = 1  # +10 (ctor 0xFFFF; passed to 0x004C8CA0 as the amount)
-    owner_uids: list[int] = field(default_factory=list)  # +0xE (0x006B9F80 -> 0x006B9200; checked by 0x00A4C7A0 for loot rights)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IIHH', self.drop_uid, self.item_id & 0xFFFFFFFF, self.quality, self.count)
-        b += b'\x13' + varuint(len(self.owner_uids)) + struct.pack('<%dq' % len(self.owner_uids), *sorted(self.owner_uids))
-        b += struct.pack('<H', 0xFFFF)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'ItemDropEntry':
-        kw = {}
-        kw['drop_uid'] = r.read_u32()
-        kw['item_id'] = r.read_u32()
-        kw['quality'] = r.read_u16()
-        kw['count'] = r.read_u16()
-        kw['owner_uids'] = r.read_tagged_set(lambda r1: r1.read_i64())
-        r.read_u16()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemDropEntry':
-        return cls.read(JSerBufferReader(data))
+    drop_uid: u32 = 0  # +0
+    item_id: h32 = 0  # +4 item code (jhash)
+    quality: u16 = 0  # +8 (ctor 0; passed to 0x009E5560 item name formatter in 0x008842C0)
+    count: u16 = 1  # +10 (ctor 0xFFFF; passed to 0x004C8CA0 as the amount)
+    owner_uids: Set[i64] = field(default_factory=list)  # +0xE (0x006B9F80 -> 0x006B9200; checked by 0x00A4C7A0 for loot rights)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'drop_uid',
+        'item_id',
+        'quality',
+        'count',
+        'owner_uids',
+        Const(u16, 0xFFFF),
+    )
 
 
 @dataclass
-class DropItemNot:
+class DropItemNot(WireMessage):
     """Opcode 5064: eERC_DROP_ITEM_NOT (reply).
 
     JUserClient::On_eERC_DROP_ITEM_NOT 0x0078A870.
     """
     OPCODE: ClassVar[int] = 5064
-    source_id: int = 0  # 5063 instance id of the monster
-    drops: list[ItemDropEntry] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.source_id)
-        b += b'\x10' + varuint(len(self.drops)) + b''.join(e0.encode() for e0 in self.drops)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DropItemNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['source_id'] = r.read_u32()
-        kw['drops'] = r.read_tagged_vector(lambda r1: ItemDropEntry.read(r1))
-        return cls(**kw)
+    source_id: u32 = 0  # 5063 instance id of the monster
+    drops: Vector[ItemDropEntry] = field(default_factory=list)
 
 
 @dataclass
-class OpenBagReq:
+class OpenBagReq(WireMessage):
     """Opcode 2026: eEGS_OPEN_BAG_REQ (request).
 
     Sent from 0x0082D34E (sender 0x0082D1C0): uid of the bag item being equipped.
     """
     OPCODE: ClassVar[int] = 2026
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'OpenBagReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
 
 
 @dataclass
-class OpenBagAck:
+class OpenBagAck(WireMessage):
     """Opcode 2027: eEGS_OPEN_BAG_ACK (reply).
 
     Handler 0x00557860 (dispatch 0x0055883F): result (nonzero: error popup), then
@@ -201,1050 +161,539 @@ class OpenBagAck:
     equals the bag id, so the bag id is the bag item's uid.
     """
     OPCODE: ClassVar[int] = 2027
-    result: int = 0
-    bag: Bag = field(default_factory=Bag)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += self.bag.encode()
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    bag: Extern[Bag, 'encode', False] = field(default_factory=Bag)
 
 
 @dataclass
-class CloseBagReq:
+class CloseBagReq(WireMessage):
     """Opcode 2028: eEGS_CLOSE_BAG_REQ (request).
 
     Sender 0x005520B0.
     """
     OPCODE: ClassVar[int] = 2028
-    header: int = REQUEST_HEADER
-    bag_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.bag_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'CloseBagReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['bag_id'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    bag_id: i64 = 0
 
 
 @dataclass
-class CloseBagAck:
+class CloseBagAck(WireMessage):
     """Opcode 2029: eEGS_CLOSE_BAG_ACK (reply).
 
     Handler 0x00558050 (page dispatch 0x00558830): jInsertBagItem >> vecBagInfo.
     """
     OPCODE: ClassVar[int] = 2029
-    result: int = 0
-    bag_item: Item = field(default_factory=lambda: Item('', 0))
-    bags: list[Bag] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += self.bag_item.encode()
-        b += b'\x10' + varuint(len(self.bags)) + b''.join(e0.encode() for e0 in self.bags)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    bag_item: Extern[Item, 'encode', False] = field(default_factory=lambda: Item('', 0))
+    bags: Vector[Extern[Bag, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class DragItemReq:
+class DragItemReq(WireMessage):
     """Opcode 2036: eEGS_DRAG_ITEM_REQ (request).
 
     JUserClient::DragItemREQ (sender 0x00795700). Captures carry no header.
     """
     OPCODE: ClassVar[int] = 2036
-    item_uid: int = 0
-    to_container: int = 0
-    to_slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qqi', self.item_uid, self.to_container, self.to_slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DragItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['item_uid'] = r.read_i64()
-        kw['to_container'] = r.read_i64()
-        kw['to_slot'] = r.read_i32()
-        return cls(**kw)
+    item_uid: i64 = 0
+    to_container: i64 = 0
+    to_slot: i32 = 0
 
 
 @dataclass
-class DragItemAck:
+class DragItemAck(WireMessage):
     """Opcode 2037: eEGS_DRAG_ITEM_ACK (reply).
 
     On_eEGS_DRAG_ITEM_ACK 0x0077F570. Also sent unsolicited for inventory changes.
     """
     OPCODE: ClassVar[int] = 2037
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class UseItemReq:
+class UseItemReq(WireMessage):
     """Opcode 2038: eEGS_USE_ITEM_REQ (request).
 
     Senders 0x0078B910 and 0x007A36F0. Live (2026-11-17): ffffff7f, i64 uid, i32 count.
     """
     OPCODE: ClassVar[int] = 2038
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    use_count: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.header, self.item_uid, self.use_count)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        kw['use_count'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    use_count: i32 = 1
 
 
 @dataclass
-class UseItemAck:
+class UseItemAck(WireMessage):
     """Opcode 2039: eEGS_USE_ITEM_ACK (reply).
 
     On_opcode_2039 0x0077D4C0.
     """
     OPCODE: ClassVar[int] = 2039
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # vecItem
-    item_id: int = 0  # nItemID
-    use_count: int = 1  # nUseCount
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<Ii', self.item_id & 0xFFFFFFFF, self.use_count)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem
+    item_id: h32 = 0  # nItemID
+    use_count: i32 = 1  # nUseCount
 
 
 @dataclass
-class DyeInfo:
+class DyeInfo(WireMessage):
     """10-byte dye block shared by 2210 and 2211 (reader 0x00A49BB0). Live skin dye:
     part 0, option -1, color 0xFF945A4C (ARGB). The first two field meanings are
     inferred from the dye page (part / option steps) and not confirmed.
     """
-    part: int = 0
-    option: int = -1
-    color: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<HiI', self.part, self.option, self.color & 0xFFFFFFFF)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'DyeInfo':
-        kw = {}
-        kw['part'] = r.read_u16()
-        kw['option'] = r.read_i32()
-        kw['color'] = r.read_u32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DyeInfo':
-        return cls.read(JSerBufferReader(data))
+    part: u16 = 0
+    option: i32 = -1
+    color: h32 = 0
 
 
 @dataclass
-class UseDyeingItemReq:
+class UseDyeingItemReq(WireMessage):
     """Opcode 2210: eEGS_USE_DYEING_ITEM_REQ (request).
 
     Sent by 0x00505E30 from JAppPageColoring::DecideColor (0x00516590). Captures
     carry no header. Live: 2800000000000000 ffffffffffffffff 0000 ffffffff 4c5a94ff 00.
     """
     OPCODE: ClassVar[int] = 2210
-    dye_uid: int = 0  # nDyeingItemUID
-    target_uid: int = -1  # nTargetItemUID (-1 for skin)
+    dye_uid: i64 = 0  # nDyeingItemUID
+    target_uid: i64 = -1  # nTargetItemUID (-1 for skin)
     dye: DyeInfo = field(default_factory=DyeInfo)
     flag: bool = False  # meaning not recovered
 
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qq', self.dye_uid, self.target_uid)
-        b += self.dye.encode()
-        b += struct.pack('<?', self.flag)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseDyeingItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['dye_uid'] = r.read_i64()
-        kw['target_uid'] = r.read_i64()
-        kw['dye'] = DyeInfo.read(r)
-        kw['flag'] = r.read_bool()
-        return cls(**kw)
-
 
 @dataclass
-class UseDyeingItemAck:
+class UseDyeingItemAck(WireMessage):
     """Opcode 2211: eEGS_USE_DYEING_ITEM_ACK (reply).
 
     Coloring page dispatch 0x00511E50 -> 0x00511B70. Without this reply the client
     waits on 2211 and then drops the connection.
     """
     OPCODE: ClassVar[int] = 2211
-    result: int = 0
+    result: i32 = 0
     dye: DyeInfo = field(default_factory=DyeInfo)
-    items: list[Item] = field(default_factory=list)  # 0x004B94C0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += self.dye.encode()
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B94C0
 
 
 @dataclass
-class AssignQuickslotReq:
+class AssignQuickslotReq(WireMessage):
     """Opcode 2044: eEGS_ASSIGN_QUICKSLOT_REQ (request).
 
     Sender 0x0078C100. Live: ffffff7f 01 01 9a010000 ffff..ff. Reading from offset 0
     (without the header) stored type/slot 255.
     """
     OPCODE: ClassVar[int] = 2044
-    header: int = REQUEST_HEADER
-    slot_type: int = 0  # ucType
-    slot_num: int = 0  # ucSlotNum
-    ref_id: int = 0  # nRefID
-    ref_uid: int = 0  # nRefUID
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iBBiq', self.header, self.slot_type, self.slot_num, self.ref_id, self.ref_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AssignQuickslotReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['slot_type'] = r.read_u8()
-        kw['slot_num'] = r.read_u8()
-        kw['ref_id'] = r.read_i32()
-        kw['ref_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    slot_type: u8 = 0  # ucType
+    slot_num: u8 = 0  # ucSlotNum
+    ref_id: i32 = 0  # nRefID
+    ref_uid: i64 = 0  # nRefUID
 
 
 @dataclass
-class AssignQuickslotAck:
+class AssignQuickslotAck(WireMessage):
     """Opcode 2045: eEGS_ASSIGN_QUICKSLOT_ACK (reply).
 
     On_eEGS_ASSIGN_QUICKSLOT_ACK 0x0078C4A0.
     """
     OPCODE: ClassVar[int] = 2045
-    result: int = 0
-    slot_type: int = 0
-    slot_num: int = 0
-    ref_id: int = 0
-    ref_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iBBiq', self.result, self.slot_type, self.slot_num, self.ref_id, self.ref_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AssignQuickslotAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['slot_type'] = r.read_u8()
-        kw['slot_num'] = r.read_u8()
-        kw['ref_id'] = r.read_i32()
-        kw['ref_uid'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    slot_type: u8 = 0
+    slot_num: u8 = 0
+    ref_id: i32 = 0
+    ref_uid: i64 = 0
 
 
 @dataclass
-class EquipItemReq:
+class EquipItemReq(WireMessage):
     """Opcode 2042: eEGS_EQUIP_ITEM_REQ (request).
 
     Live (right-click equip, 2026-11-17): ffffff7f, i64 uid, i32 slot (-1 = pick by item).
     """
     OPCODE: ClassVar[int] = 2042
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    equip_slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.header, self.item_uid, self.equip_slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'EquipItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        kw['equip_slot'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    equip_slot: i32 = 0
 
 
 @dataclass
-class EquipItemAck:
+class EquipItemAck(WireMessage):
     """Opcode 2043: eEGS_EQUIP_ITEM_ACK (reply).
 
     On_eEGS_EQUIP_ITEM_ACK 0x007AE940.
     """
     OPCODE: ClassVar[int] = 2043
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class DeleteItemReq:
+class DeleteItemReq(WireMessage):
     """Opcode 2040: eEGS_DELETE_ITEM_REQ (request).
 
     Sender 0x00550D20: 0x00B353D0 uid, 0x00B352B0 amount.
     """
     OPCODE: ClassVar[int] = 2040
-    header: int = REQUEST_HEADER
-    item_uid: int = 0  # nItemUID
-    amount: int = 0  # nAmount
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.header, self.item_uid, self.amount)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DeleteItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        kw['amount'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0  # nItemUID
+    amount: i32 = 0  # nAmount
 
 
 @dataclass
-class DeleteItemAck:
+class DeleteItemAck(WireMessage):
     """Opcode 2041: eEGS_DELETE_ITEM_ACK (reply).
 
     Handler 0x00557420.
     """
     OPCODE: ClassVar[int] = 2041
-    result: int = 0
-    item_uid: int = 0  # nDeletedItemUID
-    del_amount: int = 0  # nDelAmount
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.result, self.item_uid, self.del_amount)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DeleteItemAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        kw['del_amount'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
+    item_uid: i64 = 0  # nDeletedItemUID
+    del_amount: i32 = 0  # nDelAmount
 
 
 @dataclass
-class SwitchBagReq:
+class SwitchBagReq(WireMessage):
     """Opcode 2030: eEGS_SWITCH_BAG_REQ (request).
 
     Sender 0x00550A70: two 0x00B35190 values.
     """
     OPCODE: ClassVar[int] = 2030
-    header: int = REQUEST_HEADER
-    from_index: int = 0  # sIndexFrom
-    to_index: int = 0  # sIndexTo
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iHH', self.header, self.from_index, self.to_index)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SwitchBagReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['from_index'] = r.read_u16()
-        kw['to_index'] = r.read_u16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    from_index: u16 = 0  # sIndexFrom
+    to_index: u16 = 0  # sIndexTo
 
 
 @dataclass
-class SwitchBagAck:
+class SwitchBagAck(WireMessage):
     """Opcode 2031: eEGS_SWITCH_BAG_ACK (reply).
 
     Handler 0x00557680.
     """
     OPCODE: ClassVar[int] = 2031
-    result: int = 0
-    from_index: int = 0
-    to_index: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iHH', self.result, self.from_index, self.to_index)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SwitchBagAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['from_index'] = r.read_u16()
-        kw['to_index'] = r.read_u16()
-        return cls(**kw)
+    result: i32 = 0
+    from_index: u16 = 0
+    to_index: u16 = 0
 
 
 @dataclass
-class SwitchQuickslotReq:
+class SwitchQuickslotReq(WireMessage):
     """Opcode 2046: eEGS_SWITCH_QUCIKSLOT_REQ (request).
 
     Sender 0x0078C2E0. Live: ffffff7f 01 02 02. Reading from offset 0 decoded
     255/255/255 and the dragged quickslots vanished.
     """
     OPCODE: ClassVar[int] = 2046
-    header: int = REQUEST_HEADER
-    slot_type: int = 0  # ucType
-    from_slot: int = 0  # ucSlotNumFrom
-    to_slot: int = 0  # ucSlotNumTo
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iBBB', self.header, self.slot_type, self.from_slot, self.to_slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SwitchQuickslotReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['slot_type'] = r.read_u8()
-        kw['from_slot'] = r.read_u8()
-        kw['to_slot'] = r.read_u8()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    slot_type: u8 = 0  # ucType
+    from_slot: u8 = 0  # ucSlotNumFrom
+    to_slot: u8 = 0  # ucSlotNumTo
 
 
 @dataclass
-class SwitchQuickslotAck:
+class SwitchQuickslotAck(WireMessage):
     """Opcode 2047: eEGS_SWITCH_QUCIKSLOT_ACK (reply).
 
     On_eEGS_SWITCH_QUCIKSLOT_ACK 0x0078C790.
     """
     OPCODE: ClassVar[int] = 2047
-    result: int = 0
-    slot_type: int = 0
-    from_slot: int = 0
-    to_slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iBBB', self.result, self.slot_type, self.from_slot, self.to_slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SwitchQuickslotAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['slot_type'] = r.read_u8()
-        kw['from_slot'] = r.read_u8()
-        kw['to_slot'] = r.read_u8()
-        return cls(**kw)
+    result: i32 = 0
+    slot_type: u8 = 0
+    from_slot: u8 = 0
+    to_slot: u8 = 0
 
 
 @dataclass
-class ChangeBagPropertyReq:
+class ChangeBagPropertyReq(WireMessage):
     """Opcode 2048: eEGS_CHANGE_BAG_PROPERTY_REQ (request).
 
     Sender 0x00550C60: 0x00B353D0 uid, 0x00B35100 property.
     """
     OPCODE: ClassVar[int] = 2048
-    header: int = REQUEST_HEADER
-    bag_uid: int = 0  # nBagUID
-    property: int = 0  # ucProperty
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqB', self.header, self.bag_uid, self.property)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeBagPropertyReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['bag_uid'] = r.read_i64()
-        kw['property'] = r.read_u8()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    bag_uid: i64 = 0  # nBagUID
+    property: u8 = 0  # ucProperty
 
 
 @dataclass
-class ChangeBagPropertyAck:
+class ChangeBagPropertyAck(WireMessage):
     """Opcode 2049: eEGS_CHANGE_BAG_PROPERTY_ACK (reply).
 
     On_eEGS_CHANGE_BAG_PROPERTY_ACK 0x00774040.
     """
     OPCODE: ClassVar[int] = 2049
-    result: int = 0
-    bag_uid: int = 0
-    property: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqB', self.result, self.bag_uid, self.property)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeBagPropertyAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['bag_uid'] = r.read_i64()
-        kw['property'] = r.read_u8()
-        return cls(**kw)
+    result: i32 = 0
+    bag_uid: i64 = 0
+    property: u8 = 0
 
 
 @dataclass
-class ChangeBagNameReq:
+class ChangeBagNameReq(WireMessage):
     """Opcode 2032: eEGS_CHANGE_BAG_NAME_REQ (request).
 
     No sender recovered; the name keeps the earlier raw UTF-16 form.
     """
     OPCODE: ClassVar[int] = 2032
-    header: int = REQUEST_HEADER
-    bag_uid: int = 0
-    name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.bag_uid)
-        b += self.name.encode('utf-16le')
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeBagNameReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['bag_uid'] = r.read_i64()
-        kw['name'] = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    bag_uid: i64 = 0
+    name: wrest = ''
 
 
 @dataclass
-class ChangeBagNameAck:
+class ChangeBagNameAck(WireMessage):
     """Opcode 2033: eEGS_CHANGE_BAG_NAME_ACK (reply).
 
     On_eEGS_CHANGE_BAG_NAME_ACK 0x007528B0.
     """
     OPCODE: ClassVar[int] = 2033
-    result: int = 0
-    bag_uid: int = 0
-    name: str = ''  # null-terminated UTF-16 as sent so far; reader not checked
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.bag_uid)
-        b += self.name.encode('utf-16le') + b'\x00\x00'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeBagNameAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['bag_uid'] = r.read_i64()
-        kw['name'] = r.read_wstring_z()
-        return cls(**kw)
+    result: i32 = 0
+    bag_uid: i64 = 0
+    name: wstrz = ''  # null-terminated UTF-16 as sent so far; reader not checked
 
 
 @dataclass
-class DurabilityRepairReq:
+class DurabilityRepairReq(WireMessage):
     """Opcode 2145: eEGS_DURABILITY_REPAIR_REQ (request).
 
     Sender 0x00792C80 writes a tag 0x17 map; kept raw.
     """
     OPCODE: ClassVar[int] = 2145
-    header: int = REQUEST_HEADER
-    raw_payload: bytes = b''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += bytes(self.raw_payload)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DurabilityRepairReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['raw_payload'] = r.read_rest()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    raw_payload: rest = b''
 
 
 @dataclass
-class DurabilityRepairAck:
+class DurabilityRepairAck(WireMessage):
     """Opcode 2146: eEGS_DURABILITY_REPAIR_ACK (reply).
 
     On_eEGS_DURABILITY_REPAIR_ACK 0x007930D0: mapRepairItem >> nCurAr.
     Map reader 0x00763A50 -> 0x00751DB0 -> 0x0074D5B0 reads (i64 item_uid, f32 durability).
     """
     OPCODE: ClassVar[int] = 2146
-    result: int = 0
-    repaired_items: dict[int, float] = field(default_factory=dict)
-    remain_gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x17' + varuint(len(self.repaired_items)) + b''.join(b'\x0f' + struct.pack('<q', k0) + struct.pack('<f', v0) for k0, v0 in sorted(self.repaired_items.items()))
-        b += struct.pack('<q', self.remain_gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DurabilityRepairAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['repaired_items'] = r.read_tagged_map(lambda r1: r1.read_i64(), lambda r1: r1.read_f32())
-        kw['remain_gold'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    repaired_items: Map[i64, f32] = field(default_factory=dict)
+    remain_gold: i64 = 0
 
 
 @dataclass
-class DurabilityRepairByItemReq:
+class DurabilityRepairByItemReq(WireMessage):
     """Opcode 2154: eEGS_DURABILITY_REPAIR_BY_ITEM_REQ (request).
 
     Sender 0x00792E40 writes map<i64,f32> + i64 repair_item_uid; kept raw like 2145.
     """
     OPCODE: ClassVar[int] = 2154
-    header: int = REQUEST_HEADER
-    raw_payload: bytes = b''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += bytes(self.raw_payload)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DurabilityRepairByItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['raw_payload'] = r.read_rest()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    raw_payload: rest = b''
 
 
 @dataclass
-class ItemUpgradeReq:
+class ItemUpgradeReq(WireMessage):
     """Opcode 2115: eEGS_ITEM_UPGRADE_REQ (request).
 
     Sender 0x00790700: three 0x00B353D0 values.
     """
     OPCODE: ClassVar[int] = 2115
-    header: int = REQUEST_HEADER
-    target_uid: int = 0  # nTargetItemUID
-    catalyst_uid: int = 0  # nCatalystItemUID
-    protect_uid: int = 0  # nProtectItemUID
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqqq', self.header, self.target_uid, self.catalyst_uid, self.protect_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemUpgradeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_uid'] = r.read_i64()
-        kw['catalyst_uid'] = r.read_i64()
-        kw['protect_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0  # nTargetItemUID
+    catalyst_uid: i64 = 0  # nCatalystItemUID
+    protect_uid: i64 = 0  # nProtectItemUID
 
 
 @dataclass
-class ItemUpgradeAck:
+class ItemUpgradeAck(WireMessage):
     """Opcode 2116: eEGS_ITEM_UPGRADE_ACK (reply).
 
     On_eEGS_ITEM_UPGRADE_ACK 0x007909C0. A nonzero result ends the flow without
     inventory structs.
     """
     OPCODE: ClassVar[int] = 2116
-    result: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemUpgradeAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 1
 
 
 @dataclass
-class DurabilityChangeReq:
+class DurabilityChangeReq(WireMessage):
     """Opcode 2143: eEGS_DURABILITY_CHANGE_REQ (request).
 
     Sender 0x00792AC0 writes a tag 0x17 map; captures have both forms. Kept raw.
     """
     OPCODE: ClassVar[int] = 2143
-    header: int = REQUEST_HEADER
-    raw_payload: bytes = b''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += bytes(self.raw_payload)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DurabilityChangeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['raw_payload'] = r.read_rest()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    raw_payload: rest = b''
 
 
 @dataclass
-class DurabilityChangeAck:
+class DurabilityChangeAck(WireMessage):
     """Opcode 2144: eEGS_DURABILITY_CHANGE_ACK (reply).
 
     On_eEGS_DURABILITY_CHANGE_ACK 0x00774AE0: vecChangeItem (0x004AFD30 vector<i64>).
     """
     OPCODE: ClassVar[int] = 2144
-    result: int = 0
-    changed_item_uids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.changed_item_uids)) + struct.pack('<%dq' % len(self.changed_item_uids), *self.changed_item_uids)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DurabilityChangeAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['changed_item_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(**kw)
+    result: i32 = 0
+    changed_item_uids: Vector[i64] = field(default_factory=list)
 
 
 @dataclass
-class MagicEnchantEnchantReq:
+class MagicEnchantEnchantReq(WireMessage):
     """Opcode 2254: eEGS_MAGICENCHANT_ENCHANT_REQ (request).
 
     Sender 0x00796D00 writes two 0x00B353D0 values (the earlier decoder read three).
     """
     OPCODE: ClassVar[int] = 2254
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    catalyst_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.item_uid, self.catalyst_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MagicEnchantEnchantReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['catalyst_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    catalyst_uid: i64 = 0
 
 
 @dataclass
-class MagicEnchantEnchantAck:
+class MagicEnchantEnchantAck(WireMessage):
     """Opcode 2255: eEGS_MAGICENCHANT_ENCHANT_ACK (reply).
 
     Handler 0x00796DC0.
     """
     OPCODE: ClassVar[int] = 2255
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-    gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.gold)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    gold: i64 = 0
 
 
 @dataclass
-class MagicEnchantEraseOptionReq:
+class MagicEnchantEraseOptionReq(WireMessage):
     """Opcode 2256: eEGS_MAGICENCHANT_ERASE_OPTION_REQ (request).
 
     Sender 0x00797060: 0x00B353D0 uid, 0x00B352B0 (4 bytes, meaning unknown).
     """
     OPCODE: ClassVar[int] = 2256
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.header, self.item_uid, 0)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MagicEnchantEraseOptionReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        'item_uid',
+        Const(i32, 0),
+    )
 
 
 @dataclass
-class MagicEnchantEraseOptionAck:
+class MagicEnchantEraseOptionAck(WireMessage):
     """Opcode 2257: eEGS_MAGICENCHANT_ERASE_OPTION_ACK (reply).
 
     Handler 0x00797120.
     """
     OPCODE: ClassVar[int] = 2257
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-    gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.gold)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    gold: i64 = 0
 
 
 @dataclass
-class MagicEnchantExpendSlotReq:
+class MagicEnchantExpendSlotReq(WireMessage):
     """Opcode 2258: eEGS_MAGICENCHANT_EXPEND_SLOT_REQ (request).
 
     Sender 0x007973C0.
     """
     OPCODE: ClassVar[int] = 2258
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    stone_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.item_uid, self.stone_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MagicEnchantExpendSlotReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['stone_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    stone_uid: i64 = 0
 
 
 @dataclass
-class MagicEnchantExpendSlotAck:
+class MagicEnchantExpendSlotAck(WireMessage):
     """Opcode 2259: eEGS_MAGICENCHANT_EXPEND_SLOT_ACK (reply).
 
     Handler 0x0077FC60.
     """
     OPCODE: ClassVar[int] = 2259
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class RandomItemUpgradeReq:
+class RandomItemUpgradeReq(WireMessage):
     """Opcode 2284: eEGS_RANDOM_ITEM_UPGRADE_REQ (request).
 
     Sender 0x00798630.
     """
     OPCODE: ClassVar[int] = 2284
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    stone_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.item_uid, self.stone_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RandomItemUpgradeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['stone_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    stone_uid: i64 = 0
 
 
 @dataclass
-class RandomItemUpgradeAck:
+class RandomItemUpgradeAck(WireMessage):
     """Opcode 2285: eEGS_RANDOM_ITEM_UPGRADE_ACK (reply).
 
     Handler 0x0077FED0.
     """
     OPCODE: ClassVar[int] = 2285
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class FixItemUpgradeReq:
+class FixItemUpgradeReq(WireMessage):
     """Opcode 2672: eEGS_FIX_ITEM_UPGRADE_REQ (request).
 
     Sender 0x007A6710.
     """
     OPCODE: ClassVar[int] = 2672
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    stone_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.item_uid, self.stone_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FixItemUpgradeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['stone_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    stone_uid: i64 = 0
 
 
 @dataclass
-class FixItemUpgradeAck:
+class FixItemUpgradeAck(WireMessage):
     """Opcode 2673: eEGS_FIX_ITEM_UPGRADE_ACK (reply).
 
     Handler 0x00783C40.
     """
     OPCODE: ClassVar[int] = 2673
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class PickUpItemReq:
+class PickUpItemReq(WireMessage):
     """Opcode 5065: eERC_PICK_UP_ITEM_REQ (request).
 
     JUserClient::PickUpItemREQ (sender 0x0078AB60, push at 0x0078AC3F): drop uid
     via 0x00B352B0. Captures always carry the header.
     """
     OPCODE: ClassVar[int] = 5065
-    header: int = REQUEST_HEADER
-    drop_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iI', self.header, self.drop_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PickUpItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['drop_uid'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    drop_uid: u32 = 0
 
 
 @dataclass
-class PickUpItemAck:
+class PickUpItemAck(WireMessage):
     """Opcode 5066: eERC_PICK_UP_ITEM_ACK (reply)."""
     OPCODE: ClassVar[int] = 5066
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PickUpItemAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class PickUpItemResultAck:
+class PickUpItemResultAck(WireMessage):
     """Opcode 5068: eERC_PICK_UP_ITEM_RESULT_ACK (reply).
 
     Global handler 0x0078AD80: result, picker character UID (0x00866CF0 lookup),
@@ -1253,970 +702,519 @@ class PickUpItemResultAck:
     separately (unsolicited 2037).
     """
     OPCODE: ClassVar[int] = 5068
-    result: int = 0
-    picker_uid: int = 0
+    result: i32 = 0
+    picker_uid: i64 = 0
     drop: ItemDropEntry = field(default_factory=lambda: ItemDropEntry(drop_uid=0, item_id=0xFFFFFFFF, count=0))
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.picker_uid)
-        b += self.drop.encode()
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PickUpItemResultAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['picker_uid'] = r.read_i64()
-        kw['drop'] = ItemDropEntry.read(r)
-        return cls(**kw)
 
 
 @dataclass
-class GetDropArNot:
+class GetDropArNot(WireMessage):
     """Opcode 5114: eERC_GET_DROP_AR_NOT (reply).
 
     Handler 0x00792700.
     """
     OPCODE: ClassVar[int] = 5114
-    result: int = 0
-    gold: int = 0
-    drop_id: int = 0
-    picker_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iiiq', self.result, self.gold, self.drop_id, self.picker_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GetDropArNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['gold'] = r.read_i32()
-        kw['drop_id'] = r.read_i32()
-        kw['picker_uid'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    gold: i32 = 0
+    drop_id: i32 = 0
+    picker_uid: i64 = 0
 
 
 @dataclass
-class ItemSpiritChangeReq:
+class ItemSpiritChangeReq(WireMessage):
     """Opcode 2338: eEGS_ITEM_SPIRIT_CHANGE_REQ (request).
 
     Sender 0x007998A0.
     """
     OPCODE: ClassVar[int] = 2338
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    spirit_item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.item_uid, self.spirit_item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemSpiritChangeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['spirit_item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    spirit_item_uid: i64 = 0
 
 
 @dataclass
-class ItemSpiritChangeAck:
+class ItemSpiritChangeAck(WireMessage):
     """Opcode 2339: eEGS_ITEM_SPIRIT_CHANGE_ACK (reply).
 
     Handler 0x00780860.
     """
     OPCODE: ClassVar[int] = 2339
-    result: int = 0
-    spirit_uid: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.spirit_uid)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    spirit_uid: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class AvatarZamInsertReq:
+class AvatarZamInsertReq(WireMessage):
     """Opcode 2362: eEGS_AVATAR_ZAM_INSERT_REQ (request).
 
     Sender 0x007A46A0.
     """
     OPCODE: ClassVar[int] = 2362
-    header: int = REQUEST_HEADER
-    avatar_item_uid: int = 0
-    zam_item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.avatar_item_uid, self.zam_item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AvatarZamInsertReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['avatar_item_uid'] = r.read_i64()
-        kw['zam_item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    avatar_item_uid: i64 = 0
+    zam_item_uid: i64 = 0
 
 
 @dataclass
-class AvatarZamInsertAck:
+class AvatarZamInsertAck(WireMessage):
     """Opcode 2363: eEGS_AVATAR_ZAM_INSERT_ACK (reply).
 
     Handler 0x00782D00.
     """
     OPCODE: ClassVar[int] = 2363
-    result: int = 0
-    updated_items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.updated_items)) + b''.join(e0.encode() for e0 in self.updated_items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    updated_items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class AvatarZamEraseReq:
+class AvatarZamEraseReq(WireMessage):
     """Opcode 2364: eEGS_AVATAR_ZAM_ERASE_REQ (request).
 
     Sender 0x007A47F0: nTargetItemUID << nZamItemID.
     """
     OPCODE: ClassVar[int] = 2364
-    header: int = REQUEST_HEADER
-    avatar_item_uid: int = 0
-    zam_item_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqI', self.header, self.avatar_item_uid, self.zam_item_id & 0xFFFFFFFF)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AvatarZamEraseReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['avatar_item_uid'] = r.read_i64()
-        kw['zam_item_id'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    avatar_item_uid: i64 = 0
+    zam_item_id: h32 = 0
 
 
 @dataclass
-class AvatarZamEraseAck:
+class AvatarZamEraseAck(WireMessage):
     """Opcode 2365: eEGS_AVATAR_ZAM_ERASE_ACK (reply).
 
     Handler 0x00782F40.
     """
     OPCODE: ClassVar[int] = 2365
-    result: int = 0
-    updated_items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.updated_items)) + b''.join(e0.encode() for e0 in self.updated_items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    updated_items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class DivideItemReq:
+class DivideItemReq(WireMessage):
     """Opcode 2250: eEGS_DIVIDE_ITEM_REQ (request).
 
     Sender 0x007959F0: two 0x00B353D0, 0x00B352B0, 0x00B35190.
     """
     OPCODE: ClassVar[int] = 2250
-    header: int = REQUEST_HEADER
-    source_item_uid: int = 0
-    dest_item_uid: int = 0
-    count: int = 1
-    slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqqih', self.header, self.source_item_uid, self.dest_item_uid, self.count, self.slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DivideItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['source_item_uid'] = r.read_i64()
-        kw['dest_item_uid'] = r.read_i64()
-        kw['count'] = r.read_i32()
-        kw['slot'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    source_item_uid: i64 = 0
+    dest_item_uid: i64 = 0
+    count: i32 = 1
+    slot: i16 = 0
 
 
 @dataclass
-class DivideItemAck:
+class DivideItemAck(WireMessage):
     """Opcode 2251: eEGS_DIVIDE_ITEM_ACK (reply).
 
     Handler 0x0077F570.
     """
     OPCODE: ClassVar[int] = 2251
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class AddedItemNotice:
+class AddedItemNotice(WireMessage):
     """12-byte element of 2092 vecItemAdd (ctor 0x00AC8250, reader 0x00AC82A0,
     consumer 0x0075FE60 -> 0x00758B80 chat obtain notice).
     """
-    item_id: int = 0  # +0
-    quality: int = 0  # +4 passed to 0x009E5560
-    count: int = 1  # +6 passed to 0x00758B80
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IHHI', self.item_id & 0xFFFFFFFF, self.quality, self.count, 0)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'AddedItemNotice':
-        kw = {}
-        kw['item_id'] = r.read_u32()
-        kw['quality'] = r.read_u16()
-        kw['count'] = r.read_u16()
-        r.read_u32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AddedItemNotice':
-        return cls.read(JSerBufferReader(data))
+    item_id: h32 = 0  # +0
+    quality: u16 = 0  # +4 passed to 0x009E5560
+    count: u16 = 1  # +6 passed to 0x00758B80
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'item_id',
+        'quality',
+        'count',
+        Const(u32, 0),
+    )
 
 
 @dataclass
-class InventoryUpdatedNot:
+class InventoryUpdatedNot(WireMessage):
     """Opcode 2092: eEGS_INVENTORY_UPDATED_NOT (reply).
 
     Handler 0x0077F070: vecItemAdd >> vecItemInfo (0x0076E900, 0x004B9210).
     """
     OPCODE: ClassVar[int] = 2092
-    added_notices: list[AddedItemNotice] = field(default_factory=list)
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x10' + varuint(len(self.added_notices)) + b''.join(e0.encode() for e0 in self.added_notices)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    added_notices: Vector[AddedItemNotice] = field(default_factory=list)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class ItemRemainTimeNot:
+class ItemRemainTimeNot(WireMessage):
     """Opcode 2321: eEGS_ITEM_REMAIN_TIME_NOT (reply).
 
     Handler 0x0077AED0.
     """
     OPCODE: ClassVar[int] = 2321
-    item_uid: int = 0
-    remain_seconds: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qq', self.item_uid, self.remain_seconds)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemRemainTimeNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['item_uid'] = r.read_i64()
-        kw['remain_seconds'] = r.read_i64()
-        return cls(**kw)
+    item_uid: i64 = 0
+    remain_seconds: i64 = 0
 
 
 @dataclass
-class ItemDeleteNot:
+class ItemDeleteNot(WireMessage):
     """Opcode 2322: eEGS_ITEM_DELETE_NOT (reply).
 
     Handler 0x00774DD0.
     """
     OPCODE: ClassVar[int] = 2322
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemDeleteNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    item_uid: i64 = 0
 
 
 @dataclass
-class RandomboxResultItemNot:
+class RandomboxResultItemNot(WireMessage):
     """Opcode 2196: eEGS_RANDOMBOX_RESULT_ITEM_NOT (reply).
 
     Handler 0x0075A2E0.
     """
     OPCODE: ClassVar[int] = 2196
-    result: int = 0
-    item_code: int = 0
-    count: int = 1
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    item_code: i32 = 0
+    count: i16 = 1
     is_jackpot: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<ih?', self.item_code, self.count, self.is_jackpot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RandomboxResultItemNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['item_code'] = r.read_i32()
-        kw['count'] = r.read_i16()
-        kw['is_jackpot'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class DepotSlotExtendReq:
+class DepotSlotExtendReq(WireMessage):
     """Opcode 2461: eEGS_DEPOT_SLOT_EXTEND_REQ (request).
 
     Sender near 0x00651718 (not in the xref table).
     """
     OPCODE: ClassVar[int] = 2461
-    header: int = REQUEST_HEADER
-    item_uid: int = 0  # nExtendItemUID
-    slot_index: int = 0  # sSlotIndex
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqh', self.header, self.item_uid, self.slot_index)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DepotSlotExtendReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['slot_index'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0  # nExtendItemUID
+    slot_index: i16 = 0  # sSlotIndex
 
 
 @dataclass
-class DepotSlotExtendAck:
+class DepotSlotExtendAck(WireMessage):
     """Opcode 2462: eEGS_DEPOT_SLOT_EXTEND_ACK (reply).
 
     Handler 0x00651B20.
     """
     OPCODE: ClassVar[int] = 2462
-    result: int = 0
-    slot_index: int = 0  # sSlotIndex
-    expire_time: int = 0  # tExtendExpireTime
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<hq', self.slot_index, self.expire_time)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    slot_index: i16 = 0  # sSlotIndex
+    expire_time: i64 = 0  # tExtendExpireTime
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
 
 
 @dataclass
-class SealItemReq:
+class SealItemReq(WireMessage):
     """Opcode 2147: eEGS_SEAL_ITEM_REQ (request).
 
     Sender 0x0062D1F0 (JAppPageSealing).
     """
     OPCODE: ClassVar[int] = 2147
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SealItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
 
 
 @dataclass
-class SealItemAck:
+class SealItemAck(WireMessage):
     """Opcode 2148: eEGS_SEAL_ITEM_ACK (reply).
 
     Handler 0x00639C90 (JAppPageSealing::OneEGS_SEAL_ITEM_ACK).
     """
     OPCODE: ClassVar[int] = 2148
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
 
 
 @dataclass
-class NotEnoughInvenSpaceNot:
+class NotEnoughInvenSpaceNot(WireMessage):
     """Opcode 2287: eEGS_NOT_ENOUGH_INVEN_SPACE_NOT (reply).
 
     Handler 0x00771790: vecNotEnoughInven (0x004D6E60 vector<h32>).
     """
     OPCODE: ClassVar[int] = 2287
-    item_ids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x10' + varuint(len(self.item_ids)) + b''.join(struct.pack('<I', e0 & 0xFFFFFFFF) for e0 in self.item_ids)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'NotEnoughInvenSpaceNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['item_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
-        return cls(**kw)
+    item_ids: Vector[h32] = field(default_factory=list)
 
 
 @dataclass
-class AvatarZamMergeReq:
+class AvatarZamMergeReq(WireMessage):
     """Opcode 2408: eEGS_AVATAR_ZAM_MERGE_REQ (request).
 
     Sender 0x0079B100: three 0x00B353D0 values.
     """
     OPCODE: ClassVar[int] = 2408
-    header: int = REQUEST_HEADER
-    zam1_uid: int = 0
-    zam2_uid: int = 0
-    catalyst_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqqq', self.header, self.zam1_uid, self.zam2_uid, self.catalyst_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AvatarZamMergeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['zam1_uid'] = r.read_i64()
-        kw['zam2_uid'] = r.read_i64()
-        kw['catalyst_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    zam1_uid: i64 = 0
+    zam2_uid: i64 = 0
+    catalyst_uid: i64 = 0
 
 
 @dataclass
-class AvatarZamMergeAck:
+class AvatarZamMergeAck(WireMessage):
     """Opcode 2409: eEGS_AVATAR_ZAM_MERGE_ACK (reply).
 
     Handler 0x00780AF0: vecItemOut >> nResultZamID.
     """
     OPCODE: ClassVar[int] = 2409
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    result_zam_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<I', self.result_zam_id & 0xFFFFFFFF)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    result_zam_id: h32 = 0
 
 
 @dataclass
-class UseSelectedSkillChangeItemReq:
+class UseSelectedSkillChangeItemReq(WireMessage):
     """Opcode 2428: eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ (request).
 
     Sender 0x0079C490: 0x00B353D0, 0x00B35190, 0x00B35100.
     """
     OPCODE: ClassVar[int] = 2428
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    skill_index: int = 0
-    skill_level: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqHB', self.header, self.item_uid, self.skill_index, self.skill_level)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseSelectedSkillChangeItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['skill_index'] = r.read_u16()
-        kw['skill_level'] = r.read_u8()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    skill_index: u16 = 0
+    skill_level: u8 = 0
 
 
 @dataclass
-class UseSelectedSkillChangeItemAck:
+class UseSelectedSkillChangeItemAck(WireMessage):
     """Opcode 2429: eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_ACK (reply).
 
     Handler 0x0079C5E0: nMarginAP >> mapLearnSkill >> vecItemOut >> vecQuickSlot.
     """
     OPCODE: ClassVar[int] = 2429
-    result: int = 0
-    margin_ap: int = 0
-    learned_skills: dict[int, LearnedSkill] = field(default_factory=dict)
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    quickslots: list[QuickSlot] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<i', self.margin_ap)
-        b += b'\x17' + varuint(len(self.learned_skills)) + b''.join(b'\x0f' + struct.pack('<H', k0) + v0.encode() for k0, v0 in sorted(self.learned_skills.items()))
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += b'\x10' + varuint(len(self.quickslots)) + b''.join(e0.encode() for e0 in self.quickslots)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    margin_ap: i32 = 0
+    learned_skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    quickslots: Vector[Extern[QuickSlot, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class AvatarMergeReq:
+class AvatarMergeReq(WireMessage):
     """Opcode 2432: eEGS_AVATAR_MERGE_REQ (request).
 
     Sender 0x004A6C10 (JAppPageAvatarMerge): three 0x00B353D0 + 0x00B352B0.
     """
     OPCODE: ClassVar[int] = 2432
-    header: int = REQUEST_HEADER
-    merge_item_uid: int = 0
-    avatar1_uid: int = 0
-    avatar2_uid: int = 0
-    merge_option: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqqqi', self.header, self.merge_item_uid, self.avatar1_uid, self.avatar2_uid, self.merge_option)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AvatarMergeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['merge_item_uid'] = r.read_i64()
-        kw['avatar1_uid'] = r.read_i64()
-        kw['avatar2_uid'] = r.read_i64()
-        kw['merge_option'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    merge_item_uid: i64 = 0
+    avatar1_uid: i64 = 0
+    avatar2_uid: i64 = 0
+    merge_option: i32 = 0
 
 
 @dataclass
-class AvatarMergeAck:
+class AvatarMergeAck(WireMessage):
     """Opcode 2433: eEGS_AVATAR_MERGE_ACK (reply).
 
     Handler 0x004B9DA0 (JAppPageAvatarMerge::OneEGS_AVATAR_MERGE_ACK):
     vecItemOut >> nResultAvatarUID >> vecZamID (0x004AFD30 vector<i64>).
     """
     OPCODE: ClassVar[int] = 2433
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    result_avatar_uid: int = 0
-    zam_uids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.result_avatar_uid)
-        b += b'\x10' + varuint(len(self.zam_uids)) + struct.pack('<%dq' % len(self.zam_uids), *self.zam_uids)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    result_avatar_uid: i64 = 0
+    zam_uids: Vector[i64] = field(default_factory=list)
 
 
 @dataclass
-class AvatarChangerReq:
+class AvatarChangerReq(WireMessage):
     """Opcode 2543: eEGS_AVATAR_CHANGER_REQ (request).
 
     Sender 0x004A5B90 (JAppPageAvatarChange): four 0x00B353D0 values.
     """
     OPCODE: ClassVar[int] = 2543
-    header: int = REQUEST_HEADER
-    changer_item_uid: int = 0
-    target_avatar_uid: int = 0
-    material_uid: int = 0
-    extra_uid: int = -1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqqqq', self.header, self.changer_item_uid, self.target_avatar_uid, self.material_uid, self.extra_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AvatarChangerReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['changer_item_uid'] = r.read_i64()
-        kw['target_avatar_uid'] = r.read_i64()
-        kw['material_uid'] = r.read_i64()
-        kw['extra_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    changer_item_uid: i64 = 0
+    target_avatar_uid: i64 = 0
+    material_uid: i64 = 0
+    extra_uid: i64 = -1
 
 
 @dataclass
-class AvatarChangerAck:
+class AvatarChangerAck(WireMessage):
     """Opcode 2544: eEGS_AVATAR_CHANGER_ACK (reply).
 
     Handler 0x004B99D0 (JAppPageAvatarChange::OneEGS_AVATAR_CHANGER_ACK):
     vecItemOut >> nTargetItemUID >> nResultItemID.
     """
     OPCODE: ClassVar[int] = 2544
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    target_item_uid: int = 0
-    result_item_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<qI', self.target_item_uid, self.result_item_id & 0xFFFFFFFF)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    target_item_uid: i64 = 0
+    result_item_id: h32 = 0
 
 
 @dataclass
-class ItemDecomposeReq:
+class ItemDecomposeReq(WireMessage):
     """Opcode 2545: eEGS_ITEM_DECOMPOSE_REQ (request).
 
     Sender 0x007A26D0.
     """
     OPCODE: ClassVar[int] = 2545
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemDecomposeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
 
 
 @dataclass
-class ItemDecomposeAck:
+class ItemDecomposeAck(WireMessage):
     """Opcode 2546: eEGS_ITEM_DECOMPOSE_ACK (reply).
 
     Handler 0x00782300 (OneEGS_ITEM_DECOMPOSE_ACK).
     """
     OPCODE: ClassVar[int] = 2546
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
 
 
 @dataclass
-class RandomOptionChangeReq:
+class RandomOptionChangeReq(WireMessage):
     """Opcode 2547: eEGS_RANDOM_OPTION_CHANGE_REQ (request).
 
     Sender 0x007A2800.
     """
     OPCODE: ClassVar[int] = 2547
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RandomOptionChangeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
 
 
 @dataclass
-class RandomOptionChangeAck:
+class RandomOptionChangeAck(WireMessage):
     """Opcode 2548: eEGS_RANDOM_OPTION_CHANGE_ACK (reply).
 
     Handler 0x00782830: nTargetItemUID >> vecOutItem >> nCurrentAr.
     """
     OPCODE: ClassVar[int] = 2548
-    result: int = 0
-    target_item_uid: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    current_gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.target_item_uid)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.current_gold)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    target_item_uid: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    current_gold: i64 = 0
 
 
 @dataclass
-class UseItemLeaguePointAddReq:
+class UseItemLeaguePointAddReq(WireMessage):
     """Opcode 2573: eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ (request).
 
     Sender at 0x0083DCC2.
     """
     OPCODE: ClassVar[int] = 2573
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseItemLeaguePointAddReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
 
 
 @dataclass
-class UseItemLeaguePointAddAck:
+class UseItemLeaguePointAddAck(WireMessage):
     """Opcode 2574: eEGS_USE_ITEM_LEAGUE_POINT_ADD_ACK (reply).
 
     Handler 0x007A3140: vecItem >> nLeaguePoint.
     """
     OPCODE: ClassVar[int] = 2574
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    league_point: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<i', self.league_point)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    league_point: i32 = 0
 
 
 @dataclass
-class RareAvatarChangeLookReq:
+class RareAvatarChangeLookReq(WireMessage):
     """Opcode 2583: eEGS_RAREAVATAR_CHANGE_LOOK_REQ (request).
 
     Sender 0x0063A120 (JAppPageRareAvatarChange): two 0x00B353D0 values.
     """
     OPCODE: ClassVar[int] = 2583
-    header: int = REQUEST_HEADER
-    target_avatar_uid: int = 0
-    look_item_uid: int = -1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.target_avatar_uid, self.look_item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RareAvatarChangeLookReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_avatar_uid'] = r.read_i64()
-        kw['look_item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_avatar_uid: i64 = 0
+    look_item_uid: i64 = -1
 
 
 @dataclass
-class RareAvatarChangeLookAck:
+class RareAvatarChangeLookAck(WireMessage):
     """Opcode 2584: eEGS_RAREAVATAR_CHANGE_LOOK_ACK (reply).
 
     Handler 0x006395D0 (JAppPageRareAvatarChange::OneEGS_RAREAVATAR_CHANGE_LOOK_ACK):
     nTargetItemUID >> vecItemOut.
     """
     OPCODE: ClassVar[int] = 2584
-    result: int = 0
-    target_item_uid: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.target_item_uid)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    target_item_uid: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
 
 
 @dataclass
-class BagChangeSellEnableAck:
+class BagChangeSellEnableAck(WireMessage):
     """Opcode 2593: eEGS_BAG_CHANGE_SELL_ENABLE_ACK (reply).
 
     Handler 0x00557DD0 (JAppPageGameMenuInventory): nBagUID >> bEnble.
     """
     OPCODE: ClassVar[int] = 2593
-    result: int = 0
-    bag_uid: int = 0
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    bag_uid: i64 = 0
     enabled: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q?', self.bag_uid, self.enabled)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BagChangeSellEnableAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['bag_uid'] = r.read_i64()
-        kw['enabled'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class AvatarZamSeparateReq:
+class AvatarZamSeparateReq(WireMessage):
     """Opcode 2597: eEGS_AVATAR_ZAM_SEPARATE_REQ (request).
 
     Sender 0x007A4C30: nTargetItemUID << nZamID << nUseItemID.
     """
     OPCODE: ClassVar[int] = 2597
-    header: int = REQUEST_HEADER
-    target_item_uid: int = 0
-    zam_id: int = 0
-    use_item_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqII', self.header, self.target_item_uid, self.zam_id & 0xFFFFFFFF, self.use_item_id & 0xFFFFFFFF)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AvatarZamSeparateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_item_uid'] = r.read_i64()
-        kw['zam_id'] = r.read_u32()
-        kw['use_item_id'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_item_uid: i64 = 0
+    zam_id: h32 = 0
+    use_item_id: h32 = 0
 
 
 @dataclass
-class AvatarZamSeparateAck:
+class AvatarZamSeparateAck(WireMessage):
     """Opcode 2598: eEGS_AVATAR_ZAM_SEPARATE_ACK (reply).
 
     Handler 0x00783190 (OneEGS_AVATAR_ZAM_SEPARATE_ACK).
     """
     OPCODE: ClassVar[int] = 2598
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
 
 
 @dataclass
-class MarkItemActiveNot:
+class MarkItemActiveNot(WireMessage):
     """Opcode 2620: eEGS_MARK_ITEM_ACTIVE_NOT (reply).
 
     Handler 0x00776600: sBaseCnt >> sBonusCnt.
     """
     OPCODE: ClassVar[int] = 2620
-    base_count: int = 0
-    bonus_count: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<HH', self.base_count, self.bonus_count)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MarkItemActiveNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['base_count'] = r.read_u16()
-        kw['bonus_count'] = r.read_u16()
-        return cls(**kw)
+    base_count: u16 = 0
+    bonus_count: u16 = 0
 
 
 @dataclass
-class MarkTabActiveNot:
+class MarkTabActiveNot(WireMessage):
     """Opcode 2621: eEGS_MARK_TAB_ACTIVE_NOT (reply).
 
     Handler 0x007767E0: bActiveMark.
@@ -2224,135 +1222,67 @@ class MarkTabActiveNot:
     OPCODE: ClassVar[int] = 2621
     active_mark: bool = False
 
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<?', self.active_mark)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MarkTabActiveNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['active_mark'] = r.read_bool()
-        return cls(**kw)
-
 
 @dataclass
-class ItemClassSmeltingReq:
+class ItemClassSmeltingReq(WireMessage):
     """Opcode 2629: eEGS_ITEM_CLASS_SMELTING_REQ (request).
 
     Sender 0x007A5440: nUseItemUID << nGetItemID.
     """
     OPCODE: ClassVar[int] = 2629
-    header: int = REQUEST_HEADER
-    use_item_uid: int = 0
-    get_item_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqI', self.header, self.use_item_uid, self.get_item_id & 0xFFFFFFFF)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ItemClassSmeltingReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['use_item_uid'] = r.read_i64()
-        kw['get_item_id'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    use_item_uid: i64 = 0
+    get_item_id: h32 = 0
 
 
 @dataclass
-class ItemClassSmeltingAck:
+class ItemClassSmeltingAck(WireMessage):
     """Opcode 2630: eEGS_ITEM_CLASS_SMELTING_ACK (reply).
 
     Handler 0x00783790: vecItemOut >> nCurrentAr.
     """
     OPCODE: ClassVar[int] = 2630
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    current_gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.current_gold)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    current_gold: i64 = 0
 
 
 @dataclass
-class MarkOptionChangeReq:
+class MarkOptionChangeReq(WireMessage):
     """Opcode 2701: eEGS_MARK_OPTION_CHANGE_REQ (request).
 
     Sender 0x005E1360 (JAppPageMarkOptionChange): two 0x00B353D0 values.
     """
     OPCODE: ClassVar[int] = 2701
-    header: int = REQUEST_HEADER
-    target_item_uid: int = 0
-    catalyst_item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.target_item_uid, self.catalyst_item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MarkOptionChangeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_item_uid'] = r.read_i64()
-        kw['catalyst_item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_item_uid: i64 = 0
+    catalyst_item_uid: i64 = 0
 
 
 @dataclass
-class MarkOptionChangeAck:
+class MarkOptionChangeAck(WireMessage):
     """Opcode 2702: eEGS_MARK_OPTION_CHANGE_ACK (reply).
 
     Handler 0x005FADE0 (JAppPageMarkOptionChange::OneEGS_MARK_OPTION_CHANGE_ACK):
     nTargetItemUID >> vecItemOut >> nCurAr.
     """
     OPCODE: ClassVar[int] = 2702
-    result: int = 0
-    target_item_uid: int = 0
-    items: list[Item] = field(default_factory=list)  # 0x004B9210
-    current_gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.target_item_uid)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.current_gold)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    target_item_uid: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210
+    current_gold: i64 = 0
 
 
 @dataclass
-class DecreaseUsageLimitNot:
+class DecreaseUsageLimitNot(WireMessage):
     """Opcode 2703: eEGS_DECREASE_USAGELIMIT_NOT (reply).
 
     Handler 0x00766EA0: nGroupID >> sUsageCount.
     """
     OPCODE: ClassVar[int] = 2703
-    group_id: int = 0
-    usage_count: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IH', self.group_id & 0xFFFFFFFF, self.usage_count)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DecreaseUsageLimitNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['group_id'] = r.read_u32()
-        kw['usage_count'] = r.read_u16()
-        return cls(**kw)
+    group_id: h32 = 0
+    usage_count: u16 = 0

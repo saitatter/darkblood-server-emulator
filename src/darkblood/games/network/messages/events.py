@@ -2,11 +2,10 @@
 """Dark Blood protocol wire messages - Events domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, varuint, wide_string
+from darkblood.core.serialization.wire import Const, EmptyMap, EmptyVector, Extern, Raw, Vector, WireMessage, i16, i32, i64, u32, u8, wstr
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -30,354 +29,181 @@ __all__ = [
 
 
 @dataclass
-class RouletteManagerInfoAck:
+class RouletteManagerInfoAck(WireMessage):
     """Opcode 2391: eEGS_ROULETTE_MANAGER_INFO_ACK (reply).
 
     Reader 0x006CC6B0: u32 result + untagged 21 bytes (0x00A48B80).
     """
     OPCODE: ClassVar[int] = 2391
-    result: int = 0
-    payload: bytes = bytes(21)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += bytes(self.payload).ljust(21, b'\x00')[:21]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RouletteManagerInfoAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['payload'] = r.read_bytes(21)
-        return cls(**kw)
+    result: u32 = 0
+    payload: Raw[21] = bytes(21)
 
 
 @dataclass
-class NpcFirstMeetAck:
+class NpcFirstMeetAck(WireMessage):
     """Opcode 2095: eEGS_NPC_FIRST_MEET_ACK (reply).
 
     Reader 0x00752B60.
     """
     OPCODE: ClassVar[int] = 2095
-    result: int = 0
-    npc_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<II', self.result, self.npc_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'NpcFirstMeetAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['npc_id'] = r.read_u32()
-        return cls(**kw)
+    result: u32 = 0
+    npc_id: u32 = 0
 
 
 @dataclass
-class RequestTeachingReq:
+class RequestTeachingReq(WireMessage):
     """Opcode 5351: eERC_REQUEST_TEACHING_REQ (request)."""
     OPCODE: ClassVar[int] = 5351
-    target_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.target_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestTeachingReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['target_uid'] = r.read_i64()
-        return cls(**kw)
+    target_uid: i64 = 0
 
 
 @dataclass
-class RequestTeachingAck:
+class RequestTeachingAck(WireMessage):
     """Opcode 5352: eERC_REQUEST_TEACHING_ACK (reply).
 
     Handler 0x0075C200.
     """
     OPCODE: ClassVar[int] = 5352
-    result: int = 0
-    target_uid: int = 0
-    target_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.target_uid)
-        b += wide_string(self.target_name)
-        b += struct.pack('<BBB', 0, 0, 1)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestTeachingAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['target_uid'] = r.read_i64()
-        kw['target_name'] = r.read_wstring()
-        r.read_u8()
-        r.read_u8()
-        r.read_u8()
-        return cls(**kw)
+    result: i32 = 0
+    target_uid: i64 = 0
+    target_name: wstr = ''
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'target_uid',
+        'target_name',
+        Const(u8, 0),
+        Const(u8, 0),
+        Const(u8, 1),
+    )
 
 
 @dataclass
-class AcceptRequestTeachingReq:
+class AcceptRequestTeachingReq(WireMessage):
     """Opcode 5353: eERC_ACCEPT_REQUEST_TEACHING_REQ (request)."""
     OPCODE: ClassVar[int] = 5353
-    mentor_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.mentor_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AcceptRequestTeachingReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['mentor_uid'] = r.read_i64()
-        return cls(**kw)
+    mentor_uid: i64 = 0
 
 
 @dataclass
-class AcceptRequestTeachingAck:
+class AcceptRequestTeachingAck(WireMessage):
     """Opcode 5354: eERC_ACCEPT_REQUEST_TEACHING_ACK (reply).
 
     Handler 0x0075C430.
     """
     OPCODE: ClassVar[int] = 5354
-    result: int = 0
+    result: i32 = 0
     accepted: bool = True
-    mentor_uid: int = 0
-    mentor_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i?q', self.result, self.accepted, self.mentor_uid)
-        b += wide_string(self.mentor_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'AcceptRequestTeachingAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['accepted'] = r.read_bool()
-        kw['mentor_uid'] = r.read_i64()
-        kw['mentor_name'] = r.read_wstring()
-        return cls(**kw)
+    mentor_uid: i64 = 0
+    mentor_name: wstr = ''
 
 
 @dataclass
-class TeachingGetInfoNot:
+class TeachingGetInfoNot(WireMessage):
     """Opcode 5355: eERC_TEACHING_GET_INFO_NOT (reply).
 
     Handler 0x007A5890. Layout not recovered; 32 zero bytes by default.
     """
     OPCODE: ClassVar[int] = 5355
-    info_payload: bytes = bytes(32)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += bytes(self.info_payload).ljust(32, b'\x00')[:32]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TeachingGetInfoNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['info_payload'] = r.read_bytes(32)
-        return cls(**kw)
+    info_payload: Raw[32] = bytes(32)
 
 
 @dataclass
-class TreasureStartNot:
+class TreasureStartNot(WireMessage):
     """Opcode 5344: eERC_TREASURE_START_NOT (reply).
 
     Handler 0x007722F0.
     """
     OPCODE: ClassVar[int] = 5344
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TreasureStartNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class TreasureEndNot:
+class TreasureEndNot(WireMessage):
     """Opcode 5345: eERC_TREASURE_END_NOT (reply).
 
     Handler 0x0075BC00.
     """
     OPCODE: ClassVar[int] = 5345
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TreasureEndNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class CitadelRewardNot:
+class CitadelRewardNot(WireMessage):
     """Opcode 5346: eERC_CITADEL_REWARD_NOT (reply).
 
     Handler 0x007833F0.
     """
     OPCODE: ClassVar[int] = 5346
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x17\x80'
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+        'items',
+    )
 
 
 @dataclass
-class GoldGoblinAppearNot:
+class GoldGoblinAppearNot(WireMessage):
     """Opcode 5362: eERC_GOLDGOBLIEN_APPEAR_NOT (reply).
 
     Handler 0x007A6D10.
     """
     OPCODE: ClassVar[int] = 5362
-    goblin_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.goblin_id)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GoldGoblinAppearNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['goblin_id'] = r.read_i32()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    goblin_id: i32 = 1
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'goblin_id',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class GoldGoblinAttackReq:
+class GoldGoblinAttackReq(WireMessage):
     """Opcode 5363: eERC_GOLDGOBLIEN_ATTACK_REQ (request)."""
     OPCODE: ClassVar[int] = 5363
-    goblin_id: int = 1
-    damage: int = 100
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.goblin_id, self.damage)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GoldGoblinAttackReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['goblin_id'] = r.read_i32()
-        kw['damage'] = r.read_i32()
-        return cls(**kw)
+    goblin_id: i32 = 1
+    damage: i32 = 100
 
 
 @dataclass
-class GoldGoblinAttackAck:
+class GoldGoblinAttackAck(WireMessage):
     """Opcode 5364: eERC_GOLDGOBLIEN_ATTACK_ACK (reply).
 
     Handler 0x00784A10.
     """
     OPCODE: ClassVar[int] = 5364
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GoldGoblinAttackAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GoldGoblinDeadReq:
+class GoldGoblinDeadReq(WireMessage):
     """Opcode 5365: eERC_GOLDGOBLIEN_DEAD_REQ (request)."""
     OPCODE: ClassVar[int] = 5365
-    goblin_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.goblin_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GoldGoblinDeadReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['goblin_id'] = r.read_i32()
-        return cls(**kw)
+    goblin_id: i32 = 1
 
 
 @dataclass
-class GoldGoblinDeadAck:
+class GoldGoblinDeadAck(WireMessage):
     """Opcode 5366: eERC_GOLDGOBLIEN_DEAD_ACK (reply).
 
     Handler 0x00784CA0.
     """
     OPCODE: ClassVar[int] = 5366
-    result: int = 0
-    goblin_id: int = 1
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iiihh', self.result, self.goblin_id, 0, 0, 0)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    result: i32 = 0
+    goblin_id: i32 = 1
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'goblin_id',
+        Const(i32, 0),
+        Const(i16, 0),
+        Const(i16, 0),
+        'items',
+    )
 
 
 @dataclass
-class GoldGoblinDisappearNot:
+class GoldGoblinDisappearNot(WireMessage):
     """Opcode 5367: eERC_GOLDGOBLIEN_DISAPPEAR_NOT (reply)."""
     OPCODE: ClassVar[int] = 5367
-    goblin_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.goblin_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GoldGoblinDisappearNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['goblin_id'] = r.read_i32()
-        return cls(**kw)
+    goblin_id: i32 = 1

@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Quests domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyMap, EmptyVector, Extern, Raw, Set, Vector, WireMessage, h32, i32, i64, u16, u32, wstr
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -26,32 +26,15 @@ __all__ = [
 
 
 @dataclass
-class QuestObjective:
+class QuestObjective(WireMessage):
     """Element of 2075 (reader 0x00529010). Its 0x1E check consumes no byte."""
-    quest_id: int = 0  # jhash, e.g. jhash('Q0882S01')
-    objective_index: int = 0  # 0-based
-    count: int = 0  # current progress / kill count
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iii', self.quest_id & 0xFFFFFFFF, self.objective_index, self.count)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'QuestObjective':
-        kw = {}
-        kw['quest_id'] = r.read_u32()
-        kw['objective_index'] = r.read_i32()
-        kw['count'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestObjective':
-        return cls.read(JSerBufferReader(data))
+    quest_id: h32 = 0  # jhash, e.g. jhash('Q0882S01')
+    objective_index: i32 = 0  # 0-based
+    count: i32 = 0  # current progress / kill count
 
 
 @dataclass
-class QuestStartAck:
+class QuestStartAck(WireMessage):
     """Opcode 2074: eEGS_QUEST_START_ACK (reply).
 
     JAppPageTalkBox, case 0x659F00 -> 0x659790. Field names from the read-failure
@@ -59,81 +42,45 @@ class QuestStartAck:
     counter. jInfo is 18 raw bytes (0x00A48A90), sent as the client's defaults.
     """
     OPCODE: ClassVar[int] = 2074
-    result: int = 0
-    quest_id: int = 0  # jhash of the quest key, e.g. 'Q0001S01'
-    quest_uid: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IIqiHiii', self.result, self.quest_id & 0xFFFFFFFF, self.quest_uid, -1, 0xFFFF, -1, -1, -1)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestStartAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['quest_id'] = r.read_u32()
-        kw['quest_uid'] = r.read_i64()
-        r.read_i32()
-        r.read_u16()
-        r.read_i32()
-        r.read_i32()
-        r.read_i32()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    result: u32 = 0
+    quest_id: h32 = 0  # jhash of the quest key, e.g. 'Q0001S01'
+    quest_uid: i64 = 1
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'quest_id',
+        'quest_uid',
+        Const(i32, -1),
+        Const(u16, 0xFFFF),
+        Const(i32, -1),
+        Const(i32, -1),
+        Const(i32, -1),
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class QuestUpdateNot:
+class QuestUpdateNot(WireMessage):
     """Opcode 2075: eEGS_QUEST_UPDATE_NOT (reply).
 
     JAppPageQuestDlg::On_eEGS_QUEST_UPDATE_NOT (0x0061C7E0).
     """
     OPCODE: ClassVar[int] = 2075
-    updates: list[QuestObjective] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x10' + varuint(len(self.updates)) + b''.join(e0.encode() for e0 in self.updates)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestUpdateNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['updates'] = r.read_tagged_vector(lambda r1: QuestObjective.read(r1))
-        return cls(**kw)
+    updates: Vector[QuestObjective] = field(default_factory=list)
 
 
 @dataclass
-class QuestHistoryNot:
+class QuestHistoryNot(WireMessage):
     """Opcode 2410: eEGS_QUEST_HISTORY_REFRESH_NOT (reply).
 
     Handler 0x0076C1E0; names from "setQuestHistory >> bWeekly".
     """
     OPCODE: ClassVar[int] = 2410
-    quest_ids: list[int] = field(default_factory=list)  # jhash of 'Q....S..'
+    quest_ids: Set[h32] = field(default_factory=list)  # jhash of 'Q....S..'
     weekly: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x13' + varuint(len(self.quest_ids)) + b''.join(struct.pack('<I', e0 & 0xFFFFFFFF) for e0 in sorted(self.quest_ids))
-        b += struct.pack('<?', self.weekly)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestHistoryNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['quest_ids'] = r.read_tagged_set(lambda r1: r1.read_u32())
-        kw['weekly'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class QuestCompleteAck:
+class QuestCompleteAck(WireMessage):
     """Opcode 2077: eEGS_QUEST_COMPLETE_ACK (reply).
 
     JAppPageTalkBox, case 0x659F00 -> 0x656870; implicit struct jAck (reader
@@ -141,201 +88,118 @@ class QuestCompleteAck:
     persists it and the client sees it at the next selection.
     """
     OPCODE: ClassVar[int] = 2077
-    result: int = 0
-    quest_id: int = 0  # +0x00, 0x00A7B390 lookup
-    total: int = 0  # +0x1E new gold total, diff with player +0x70 is announced
-    items: list[Item] = field(default_factory=list)  # +0x26 (0x004B94C0) -> inventory insert 0x007741D0
-    exp: int = 0  # +0x42 reward EXP (floating number type 0xC)
-    gp: int = 0  # +0x46 reward GP (floating number type 0xE)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IIiiHiiiiq', self.result, self.quest_id & 0xFFFFFFFF, 0, -1, 0xFFFF, -1, -1, -1, 0, self.total)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += b'\x17\x80'
-        b += struct.pack('<ii', self.exp, self.gp)
-        return bytes(b)
+    result: u32 = 0
+    quest_id: h32 = 0  # +0x00, 0x00A7B390 lookup
+    total: i64 = 0  # +0x1E new gold total, diff with player +0x70 is announced
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # +0x26 (0x004B94C0) -> inventory insert 0x007741D0
+    exp: i32 = 0  # +0x42 reward EXP (floating number type 0xC)
+    gp: i32 = 0  # +0x46 reward GP (floating number type 0xE)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'quest_id',
+        Const(i32, 0),
+        Const(i32, -1),
+        Const(u16, 0xFFFF),
+        Const(i32, -1),
+        Const(i32, -1),
+        Const(i32, -1),
+        Const(i32, 0),
+        'total',
+        'items',
+        Const(EmptyMap),
+        'exp',
+        'gp',
+    )
 
 
 @dataclass
-class TutorialQuestStartAck:
+class TutorialQuestStartAck(WireMessage):
     """Opcode 2347: eEGS_TUTORIAL_QUEST_START_ACK (reply).
 
     Reader 0x006481E0.
     """
     OPCODE: ClassVar[int] = 2347
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TutorialQuestStartAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        return cls(**kw)
+    result: u32 = 0
 
 
 @dataclass
-class QuestGiveupReq:
+class QuestGiveupReq(WireMessage):
     """Opcode 2078: eEGS_QUEST_GIVEUP_REQ (request).
 
     Observed body: J-wstring then u32 quest id (jhash), same shape as 2073. No header.
     """
     OPCODE: ClassVar[int] = 2078
-    timestamp: str = ''  # e.g. "2015-02-23 15:42:11, "; meaning unknown
-    quest_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += wide_string(self.timestamp)
-        b += struct.pack('<I', self.quest_id & 0xFFFFFFFF)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestGiveupReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['timestamp'] = r.read_wstring()
-        kw['quest_id'] = r.read_u32()
-        return cls(**kw)
+    timestamp: wstr = ''  # e.g. "2015-02-23 15:42:11, "; meaning unknown
+    quest_id: h32 = 0
 
 
 @dataclass
-class QuestGiveupAck:
+class QuestGiveupAck(WireMessage):
     """Opcode 2079: eEGS_QUEST_GIVEUP_ACK (reply).
 
     Handler 0x006223B0.
     """
     OPCODE: ClassVar[int] = 2079
-    result: int = 0
-    quest_ids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.quest_ids)) + b''.join(struct.pack('<I', e0 & 0xFFFFFFFF) for e0 in self.quest_ids)
-        b += bytes(bytes(18)).ljust(18, b'\x00')[:18]
-        b += b'\x10\x80'
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestGiveupAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['quest_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
-        r.read_bytes(18)
-        r.read_empty_container(0x10)
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    quest_ids: Vector[h32] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'quest_ids',
+        Const(Raw[18], bytes(18)),
+        Const(EmptyVector),
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class QuestFailReq:
+class QuestFailReq(WireMessage):
     """Opcode 2080: eEGS_QUEST_FAIL_REQ (request).
 
     Assumed to share the 2078 shape; not yet observed on the wire.
     """
     OPCODE: ClassVar[int] = 2080
-    timestamp: str = ''  # meaning unknown
-    quest_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += wide_string(self.timestamp)
-        b += struct.pack('<I', self.quest_id & 0xFFFFFFFF)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestFailReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['timestamp'] = r.read_wstring()
-        kw['quest_id'] = r.read_u32()
-        return cls(**kw)
+    timestamp: wstr = ''  # meaning unknown
+    quest_id: h32 = 0
 
 
 @dataclass
-class QuestFailAck:
+class QuestFailAck(WireMessage):
     """Opcode 2081: eEGS_QUEST_FAIL_ACK (reply).
 
     Handler 0x006223B0 (shared with 2079).
     """
     OPCODE: ClassVar[int] = 2081
-    result: int = 0
-    quest_ids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.quest_ids)) + b''.join(struct.pack('<I', e0 & 0xFFFFFFFF) for e0 in self.quest_ids)
-        b += bytes(bytes(18)).ljust(18, b'\x00')[:18]
-        b += b'\x10\x80'
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuestFailAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['quest_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
-        r.read_bytes(18)
-        r.read_empty_container(0x10)
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    quest_ids: Vector[h32] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'quest_ids',
+        Const(Raw[18], bytes(18)),
+        Const(EmptyVector),
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class ClearTutorialAck:
+class ClearTutorialAck(WireMessage):
     """Opcode 2083: eEGS_CLEAR_TUTORIAL_ACK (reply).
 
     Reader 0x0077EEB0. Moves the client to the town scene (0x006DBFA0(9)).
     """
     OPCODE: ClassVar[int] = 2083
-    result: int = 0
-    elements: list[Item] = field(default_factory=list)  # applied by 0x0077EEB0; the server resends the inventory
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x10' + varuint(len(self.elements)) + b''.join(e0.encode() for e0 in self.elements)
-        return bytes(b)
+    result: u32 = 0
+    elements: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # applied by 0x0077EEB0; the server resends the inventory
 
 
 @dataclass
-class GuideBeginnerUpdateReq:
+class GuideBeginnerUpdateReq(WireMessage):
     """Opcode 2358: eEGS_GUIDE_BEGINNER_UPDATE_REQ (request).
 
     Sender 0x0079A3B0. Captures always carry the header.
     """
     OPCODE: ClassVar[int] = 2358
-    header: int = REQUEST_HEADER
-    guide_ids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += b'\x10' + varuint(len(self.guide_ids)) + struct.pack('<%dI' % len(self.guide_ids), *self.guide_ids)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuideBeginnerUpdateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['guide_ids'] = r.read_tagged_vector(lambda r1: r1.read_u32())
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    guide_ids: Vector[u32] = field(default_factory=list)

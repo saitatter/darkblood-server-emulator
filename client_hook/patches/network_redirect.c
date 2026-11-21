@@ -16,7 +16,9 @@
 #define DEFAULT_RELAY_PORT 9401
 
 typedef int (WSAAPI *connect_t)(SOCKET, const struct sockaddr*, int);
-static connect_t orig_connect = NULL;
+typedef int (WSAAPI *WSAConnect_t)(SOCKET, const struct sockaddr*, int, LPWSABUF, LPWSABUF, LPQOS, LPQOS);
+static connect_t    orig_connect    = NULL;
+static WSAConnect_t orig_WSAConnect = NULL;
 
 static char  g_targetHost[128] = "127.0.0.1";
 static ULONG g_targetAddr      = 0;
@@ -38,43 +40,61 @@ static ULONG ResolveTargetHost(const char* host) {
     return inet_addr("127.0.0.1");
 }
 
+static int RedirectSockAddr(const char* apiName, const struct sockaddr* name, int namelen,
+                            struct sockaddr_in* out) {
+    char origIp[32], dstIp[32];
+    struct in_addr dstIn;
+    int origPort, dstPort;
+
+    if (namelen < (int)sizeof(struct sockaddr_in)) {
+        WSASetLastError(WSAEINVAL);
+        return -1;
+    }
+    *out = *(const struct sockaddr_in*)name;
+    lstrcpynA(origIp, inet_ntoa(out->sin_addr), sizeof(origIp));
+    origPort = ntohs(out->sin_port);
+
+    if (g_targetAddr == 0) {
+        g_targetAddr = ResolveTargetHost(g_targetHost);
+    }
+    dstPort = origPort;
+    if (origPort == DEFAULT_GAME_PORT && g_gamePort > 0 && g_gamePort <= 65535) {
+        dstPort = g_gamePort;
+    } else if (origPort == DEFAULT_RELAY_PORT && g_relayPort > 0 && g_relayPort <= 65535) {
+        dstPort = g_relayPort;
+    }
+
+    out->sin_addr.s_addr = g_targetAddr;
+    out->sin_port = htons((u_short)dstPort);
+
+    dstIn.s_addr = g_targetAddr;
+    lstrcpynA(dstIp, inet_ntoa(dstIn), sizeof(dstIp));
+    RawLogFmt("[NET] %s() -> %s:%d ==> %s:%d", apiName, origIp, origPort, dstIp, dstPort);
+    return 1;
+}
+
 static int WSAAPI Hook_connect(SOCKET s, const struct sockaddr* name, int namelen) {
     if (name && name->sa_family == AF_INET) {
         struct sockaddr_in redirected;
-        char origIp[32];
-        char dstIp[32];
-        struct in_addr dstIn;
-        int origPort, dstPort;
-
-        if (namelen < (int)sizeof(struct sockaddr_in)) {
-            WSASetLastError(WSAEINVAL);
-            return SOCKET_ERROR;
-        }
-        redirected = *(const struct sockaddr_in*)name;
-        lstrcpynA(origIp, inet_ntoa(redirected.sin_addr), sizeof(origIp));
-        origPort = ntohs(redirected.sin_port);
-
-        if (g_targetAddr == 0) {
-            g_targetAddr = ResolveTargetHost(g_targetHost);
-        }
-        dstPort = origPort;
-        if (origPort == DEFAULT_GAME_PORT && g_gamePort > 0 && g_gamePort <= 65535) {
-            dstPort = g_gamePort;
-        } else if (origPort == DEFAULT_RELAY_PORT && g_relayPort > 0 && g_relayPort <= 65535) {
-            dstPort = g_relayPort;
-        }
-
-        redirected.sin_addr.s_addr = g_targetAddr;
-        redirected.sin_port = htons((u_short)dstPort);
-
-        dstIn.s_addr = g_targetAddr;
-        lstrcpynA(dstIp, inet_ntoa(dstIn), sizeof(dstIp));
-        RawLogFmt("[NET] connect() -> %s:%d ==> %s:%d", origIp, origPort, dstIp, dstPort);
-
+        if (RedirectSockAddr("connect", name, namelen, &redirected) < 0) return SOCKET_ERROR;
         return orig_connect ? orig_connect(s, (const struct sockaddr*)&redirected, sizeof(redirected))
                             : SOCKET_ERROR;
     }
     return orig_connect ? orig_connect(s, name, namelen) : SOCKET_ERROR;
+}
+
+static int WSAAPI Hook_WSAConnect(SOCKET s, const struct sockaddr* name, int namelen,
+                                  LPWSABUF lpCallerData, LPWSABUF lpCalleeData,
+                                  LPQOS lpSQOS, LPQOS lpGQOS) {
+    if (name && name->sa_family == AF_INET) {
+        struct sockaddr_in redirected;
+        if (RedirectSockAddr("WSAConnect", name, namelen, &redirected) < 0) return SOCKET_ERROR;
+        return orig_WSAConnect ? orig_WSAConnect(s, (const struct sockaddr*)&redirected, sizeof(redirected),
+                                                 lpCallerData, lpCalleeData, lpSQOS, lpGQOS)
+                               : SOCKET_ERROR;
+    }
+    return orig_WSAConnect ? orig_WSAConnect(s, name, namelen, lpCallerData, lpCalleeData, lpSQOS, lpGQOS)
+                           : SOCKET_ERROR;
 }
 
 void Patch_NetworkRedirect_Install(void) {
@@ -99,6 +119,9 @@ void Patch_NetworkRedirect_Install(void) {
     if (hWs2) {
         orig_connect = (connect_t)InstallInlineHook(
             (void*)GetProcAddress(hWs2, "connect"), (void*)Hook_connect);
+        orig_WSAConnect = (WSAConnect_t)InstallInlineHook(
+            (void*)GetProcAddress(hWs2, "WSAConnect"), (void*)Hook_WSAConnect);
     }
-    RawLogFmt("[NET] Network hook setup %s", orig_connect ? "complete" : "failed");
+    RawLogFmt("[NET] Network hook setup: connect=%s WSAConnect=%s",
+              orig_connect ? "ok" : "fail", orig_WSAConnect ? "ok" : "skip");
 }

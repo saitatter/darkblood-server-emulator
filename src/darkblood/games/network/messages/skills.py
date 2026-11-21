@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Skills domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyMap, Extern, Lit, Map, Vector, WireMessage, i16, i32, i64, u16, u8, wstr
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -30,429 +30,213 @@ __all__ = [
 
 
 @dataclass
-class LearnedSkill:
+class LearnedSkill(WireMessage):
     """Value of the learned-skill map, element reader 0x004ACB80. Shared by 2698
     (0x007A74A0) and 2007 (0x004B1240 inside 0x00A40760); the map key is the skill index.
     """
-    skill_index: int = 0
-    level: int = 0
-    speech: str = ''
+    skill_index: u16 = 0
+    level: u8 = 0
+    speech: wstr = ''
     locked: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<HB', self.skill_index, self.level)
-        b += wide_string(self.speech)
-        b += struct.pack('<??', self.locked, False)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'LearnedSkill':
-        kw = {}
-        kw['skill_index'] = r.read_u16()
-        kw['level'] = r.read_u8()
-        kw['speech'] = r.read_wstring()
-        kw['locked'] = r.read_bool()
-        r.read_bool()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LearnedSkill':
-        return cls.read(JSerBufferReader(data))
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'skill_index',
+        'level',
+        'speech',
+        'locked',
+        Const(bool, False),
+    )
 
 
 @dataclass
-class SkillLevel:
+class SkillLevel(WireMessage):
     """Element of the 2697 request vector: tag 0x0F, then the pair."""
-    skill_index: int = 0
-    level: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x0f'
-        b += struct.pack('<HB', self.skill_index, self.level)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'SkillLevel':
-        kw = {}
-        r.expect_bytes(b'\x0f')
-        kw['skill_index'] = r.read_u16()
-        kw['level'] = r.read_u8()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SkillLevel':
-        return cls.read(JSerBufferReader(data))
+    skill_index: u16 = 0
+    level: u8 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Lit(b'\x0f'),
+        'skill_index',
+        'level',
+    )
 
 
 @dataclass
-class LearnSkillReq:
+class LearnSkillReq(WireMessage):
     """Opcode 2050: eEGS_LEARN_SKILL_REQ (request).
 
     Sender 0x0078DB30: 0x00B35190 sKindNameIndex, 0x00B35100 ucLevel.
     """
     OPCODE: ClassVar[int] = 2050
-    header: int = REQUEST_HEADER
-    skill_index: int = 0
-    level: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iHB', self.header, self.skill_index, self.level)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LearnSkillReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['skill_index'] = r.read_u16()
-        kw['level'] = r.read_u8()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_index: u16 = 0
+    level: u8 = 1
 
 
 @dataclass
-class LearnSkillAck:
+class LearnSkillAck(WireMessage):
     """Opcode 2051: eEGS_LEARN_SKILL_ACK (reply).
 
     On_eEGS_LEARN_SKILL_ACK 0x0078DBE0.
     """
     OPCODE: ClassVar[int] = 2051
-    result: int = 0
-    skill_index: int = 0
-    level: int = 1
-    remain_sp: int = 100
-    remain_gold: int = 10000
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iHBiq', self.result, self.skill_index, self.level, self.remain_sp, self.remain_gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LearnSkillAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['skill_index'] = r.read_u16()
-        kw['level'] = r.read_u8()
-        kw['remain_sp'] = r.read_i32()
-        kw['remain_gold'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    skill_index: u16 = 0
+    level: u8 = 1
+    remain_sp: i32 = 100
+    remain_gold: i64 = 10000
 
 
 @dataclass
-class UpdateSkillLockedReq:
+class UpdateSkillLockedReq(WireMessage):
     """Opcode 2117: eEGS_UPDATE_SKILL_LOCKED_REQ (request).
 
     Sender 0x00791B90: 0x00B35190 sKindNameIndex, 0x00B35630 bLocked.
     """
     OPCODE: ClassVar[int] = 2117
-    header: int = REQUEST_HEADER
-    skill_index: int = 0
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_index: i16 = 0
     locked: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ih?', self.header, self.skill_index, self.locked)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UpdateSkillLockedReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['skill_index'] = r.read_i16()
-        kw['locked'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class UpdateSkillLockedAck:
+class UpdateSkillLockedAck(WireMessage):
     """Opcode 2118: eEGS_UPDATE_SKILL_LOCKED_ACK (reply).
 
     On_eEGS_UPDATE_SKILL_LOCKED_ACK 0x00752C70.
     """
     OPCODE: ClassVar[int] = 2118
-    result: int = 0
-    skill_index: int = 0
+    result: i32 = 0
+    skill_index: i16 = 0
     locked: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ih?', self.result, self.skill_index, self.locked)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UpdateSkillLockedAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['skill_index'] = r.read_i16()
-        kw['locked'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class ModifySkillSpeechReq:
+class ModifySkillSpeechReq(WireMessage):
     """Opcode 2053: eEGS_MODIFY_SKILL_SPEECH_REQ (request).
 
     Sender 0x0078DE90: 0x00B35190 sKindNameIndex, 0x00B35A40 strSpeech (J-wstring).
     """
     OPCODE: ClassVar[int] = 2053
-    header: int = REQUEST_HEADER
-    skill_index: int = 0
-    speech: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iH', self.header, self.skill_index)
-        b += wide_string(self.speech)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ModifySkillSpeechReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['skill_index'] = r.read_u16()
-        kw['speech'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_index: u16 = 0
+    speech: wstr = ''
 
 
 @dataclass
-class ModifySkillSpeechAck:
+class ModifySkillSpeechAck(WireMessage):
     """Opcode 2054: eEGS_MODIFY_SKILL_SPEECH_ACK (reply).
 
     On_eEGS_MODIFY_SKILL_SPEECH_ACK 0x0078E090.
     """
     OPCODE: ClassVar[int] = 2054
-    result: int = 0
-    skill_index: int = 0
-    speech: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iH', self.result, self.skill_index)
-        b += wide_string(self.speech)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ModifySkillSpeechAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['skill_index'] = r.read_u16()
-        kw['speech'] = r.read_wstring()
-        return cls(**kw)
+    result: i32 = 0
+    skill_index: u16 = 0
+    speech: wstr = ''
 
 
 @dataclass
-class DeleteSkillSpeechReq:
+class DeleteSkillSpeechReq(WireMessage):
     """Opcode 2055: eEGS_DELETE_SKILL_SPEECH_REQ (request).
 
     Sender 0x0078DF40: 0x00B35190 sKindNameIndex.
     """
     OPCODE: ClassVar[int] = 2055
-    header: int = REQUEST_HEADER
-    skill_index: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iH', self.header, self.skill_index)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DeleteSkillSpeechReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['skill_index'] = r.read_u16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_index: u16 = 0
 
 
 @dataclass
-class DeleteSkillSpeechAck:
+class DeleteSkillSpeechAck(WireMessage):
     """Opcode 2056: eEGS_DELETE_SKILL_SPEECH_ACK (reply).
 
     On_eEGS_DELETE_SKILL_SPEECH_ACK 0x0078E270.
     """
     OPCODE: ClassVar[int] = 2056
-    result: int = 0
-    skill_index: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iH', self.result, self.skill_index)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DeleteSkillSpeechAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['skill_index'] = r.read_u16()
-        return cls(**kw)
+    result: i32 = 0
+    skill_index: u16 = 0
 
 
 @dataclass
-class InitSkillNot:
+class InitSkillNot(WireMessage):
     """Opcode 2280: eEGS_INIT_SKILL_NOT (reply).
 
     Handler 0x00797740.
     """
     OPCODE: ClassVar[int] = 2280
-    result: int = 0
-    sp: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<i', self.sp)
-        b += b'\x17\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'InitSkillNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['sp'] = r.read_i32()
-        r.read_empty_container(0x17)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    sp: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'sp',
+        Const(EmptyMap),
+    )
 
 
 @dataclass
-class UseLearnSkillItemReq:
+class UseLearnSkillItemReq(WireMessage):
     """Opcode 2111: eEGS_USE_LEARN_SKILL_ITEM_REQ (request).
 
     Sender 0x0078BB60: 0x00B353D0 item uid, 0x00B352B0 skill id (4 bytes).
     """
     OPCODE: ClassVar[int] = 2111
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    skill_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.header, self.item_uid, self.skill_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseLearnSkillItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['skill_id'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    skill_id: i32 = 0
 
 
 @dataclass
-class UseLearnSkillItemAck:
+class UseLearnSkillItemAck(WireMessage):
     """Opcode 2112: eEGS_USE_LEARN_SKILL_ITEM_ACK (reply).
 
     Handler 0x0078BCD0.
     """
     OPCODE: ClassVar[int] = 2112
-    result: int = 0
-    skill_id: int = 0
-    skill_level: int = 1
-    item_code: int = 0
-    count: int = 1
-    items: list[Item] = field(default_factory=list)
-    sp: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<hBii', self.skill_id, self.skill_level, self.item_code, self.count)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<i', self.sp)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    skill_id: i16 = 0
+    skill_level: u8 = 1
+    item_code: i32 = 0
+    count: i32 = 1
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    sp: i32 = 0
 
 
 @dataclass
-class InsertApNot:
+class InsertApNot(WireMessage):
     """Opcode 2109: eEGS_INSERT_AP_NOT (reply).
 
     Handler 0x00790480.
     """
     OPCODE: ClassVar[int] = 2109
-    current_ap: int = 0
-    total_ap: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.current_ap, self.total_ap)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'InsertApNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['current_ap'] = r.read_i32()
-        kw['total_ap'] = r.read_i32()
-        return cls(**kw)
+    current_ap: i32 = 0
+    total_ap: i32 = 0
 
 
 @dataclass
-class LearnSkillListReq:
+class LearnSkillListReq(WireMessage):
     """Opcode 2697: eEGS_LEARN_SKILL_LIST_REQ (request).
 
     Sender 0x007A73D0. Captures always carry the header.
     """
     OPCODE: ClassVar[int] = 2697
-    header: int = REQUEST_HEADER
-    skills: list[SkillLevel] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += b'\x10' + varuint(len(self.skills)) + b''.join(e0.encode() for e0 in self.skills)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LearnSkillListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['skills'] = r.read_tagged_vector(lambda r1: SkillLevel.read(r1))
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    skills: Vector[SkillLevel] = field(default_factory=list)
 
 
 @dataclass
-class LearnSkillListAck:
+class LearnSkillListAck(WireMessage):
     """Opcode 2698: eEGS_LEARN_SKILL_LIST_ACK (reply).
 
     On_opcode_2698 0x007A74A0.
     """
     OPCODE: ClassVar[int] = 2698
-    result: int = 0
-    skills: dict[int, LearnedSkill] = field(default_factory=dict)
-    remain_sp: int = 100
-    remain_gold: int = 10000
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x17' + varuint(len(self.skills)) + b''.join(b'\x0f' + struct.pack('<H', k0) + v0.encode() for k0, v0 in sorted(self.skills.items()))
-        b += struct.pack('<iq', self.remain_sp, self.remain_gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LearnSkillListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['skills'] = r.read_tagged_map(lambda r1: r1.read_u16(), lambda r1: LearnedSkill.read(r1))
-        kw['remain_sp'] = r.read_i32()
-        kw['remain_gold'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    skills: Map[u16, LearnedSkill] = field(default_factory=dict)
+    remain_sp: i32 = 100
+    remain_gold: i64 = 10000

@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Social domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyVector, Map, Raw, Vector, WireMessage, i32, i64, rest, u32, u8, wstr, wstrz
 from darkblood.games.network.messages.dungeon import RoomMemberInfo
 
 __all__ = [
@@ -38,630 +38,323 @@ __all__ = [
 
 
 @dataclass
-class FriendEntry:
+class FriendEntry(WireMessage):
     """Friend struct, reader 0x00A49450 (2140 and the 2132 map)."""
-    uid: int = 0  # +0x00 char uid
-    name: str = ''  # +0x08
-    char_class: int = 0  # +0x24 (sent as class, like the lobby entry; not confirmed)
-    level: int = 1  # +0x25 (not confirmed)
-    location: int = -1  # +0x26: 0x00926800 counts the friend online when not -1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.uid)
-        b += wide_string(self.name)
-        b += struct.pack('<BBq', self.char_class, self.level, self.location)
-        b += wide_string('')
-        b += struct.pack('<q?', 0, True)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'FriendEntry':
-        kw = {}
-        kw['uid'] = r.read_i64()
-        kw['name'] = r.read_wstring()
-        kw['char_class'] = r.read_u8()
-        kw['level'] = r.read_u8()
-        kw['location'] = r.read_i64()
-        r.read_wstring()
-        r.read_i64()
-        r.read_bool()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendEntry':
-        return cls.read(JSerBufferReader(data))
+    uid: i64 = 0  # +0x00 char uid
+    name: wstr = ''  # +0x08
+    char_class: u8 = 0  # +0x24 (sent as class, like the lobby entry; not confirmed)
+    level: u8 = 1  # +0x25 (not confirmed)
+    location: i64 = -1  # +0x26: 0x00926800 counts the friend online when not -1
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'uid',
+        'name',
+        'char_class',
+        'level',
+        'location',
+        Const(wstr, ''),
+        Const(i64, 0),
+        Const(bool, True),
+    )
 
 
 @dataclass
-class FriendListAck:
+class FriendListAck(WireMessage):
     """Opcode 2132: eEGS_FRIEND_LIST_REQUEST_ACK (reply).
 
     Reader 0x007712E0: map 0x0076AE20, key i64 uid (0x0074D520).
     """
     OPCODE: ClassVar[int] = 2132
-    result: int = 0
-    friends: dict[int, FriendEntry] = field(default_factory=dict)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x17' + varuint(len(self.friends)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in sorted(self.friends.items()))
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['friends'] = r.read_tagged_map(lambda r1: r1.read_i64(), lambda r1: FriendEntry.read(r1))
-        return cls(**kw)
+    result: u32 = 0
+    friends: Map[i64, FriendEntry] = field(default_factory=dict)
 
 
 @dataclass
-class FriendListAddReq:
+class FriendListAddReq(WireMessage):
     """Opcode 2139: eEGS_FRIEND_LIST_ADD_REQ (request).
 
     Sender 0x00791FA0. Live: ffffff7f + J-wstring name ("Mage1").
     """
     OPCODE: ClassVar[int] = 2139
-    header: int = REQUEST_HEADER
-    char_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.char_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListAddReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['char_name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    char_name: wstr = ''
 
 
 @dataclass
-class FriendListAddAck:
+class FriendListAddAck(WireMessage):
     """Opcode 2140: eEGS_FRIEND_LIST_ADD_ACK (reply).
 
     On_eEGS_FRIEND_LIST_ADD_ACK 0x007591A0. 0xCE: not found (0x00AB29C0); 0x1A5
     another error. On success the client adds the entry to its list (0x00926800).
     """
     OPCODE: ClassVar[int] = 2140
-    result: int = 0xCE
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0xCE
     friend: FriendEntry = field(default_factory=FriendEntry)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += self.friend.encode()
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListAddAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['friend'] = FriendEntry.read(r)
-        return cls(**kw)
 
 
 @dataclass
-class FriendListDeleteReq:
+class FriendListDeleteReq(WireMessage):
     """Opcode 2135: eEGS_FRIEND_LIST_DELETE_REQ (request).
 
     Sender 0x00792500.
     """
     OPCODE: ClassVar[int] = 2135
-    header: int = REQUEST_HEADER
-    char_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.char_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListDeleteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['char_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
 
 
 @dataclass
-class FriendListDeleteAck:
+class FriendListDeleteAck(WireMessage):
     """Opcode 2136: eEGS_FRIEND_LIST_DELETE_ACK (reply).
 
     On_eEGS_FRIEND_LIST_DELETE_ACK 0x00759560.
     """
     OPCODE: ClassVar[int] = 2136
-    result: int = 0
-    char_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.char_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListDeleteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['char_uid'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    char_uid: i64 = 0
 
 
 @dataclass
-class FriendListUpdateReq:
+class FriendListUpdateReq(WireMessage):
     """Opcode 2133: eEGS_FRIEND_LIST_UPDATE_REQ (request).
 
     Sender 0x007922E0: 0x00B353D0 uid, J-wstring comment.
     """
     OPCODE: ClassVar[int] = 2133
-    header: int = REQUEST_HEADER
-    char_uid: int = 0
-    comment: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.char_uid)
-        b += wide_string(self.comment)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListUpdateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['char_uid'] = r.read_i64()
-        kw['comment'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+    comment: wstr = ''
 
 
 @dataclass
-class FriendListUpdateAck:
+class FriendListUpdateAck(WireMessage):
     """Opcode 2134: eEGS_FRIEND_LIST_UPDATE_ACK (reply).
 
     On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80.
     """
     OPCODE: ClassVar[int] = 2134
-    result: int = 0
-    char_uid: int = 0
-    comment: str = ''  # null-terminated UTF-16 as sent so far; reader not checked
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.char_uid)
-        b += self.comment.encode('utf-16le') + b'\x00\x00'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendListUpdateAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['char_uid'] = r.read_i64()
-        kw['comment'] = r.read_wstring_z()
-        return cls(**kw)
+    result: i32 = 0
+    char_uid: i64 = 0
+    comment: wstrz = ''  # null-terminated UTF-16 as sent so far; reader not checked
 
 
 @dataclass
-class FriendMyConnectionNot:
+class FriendMyConnectionNot(WireMessage):
     """Opcode 5118: eERC_FRIEND_MY_CONNECTION_NOT (reply).
 
     Handler 0x0077A8A0.
     """
     OPCODE: ClassVar[int] = 5118
-    char_uid: int = 0
+    char_uid: i64 = 0
     is_online: bool = True
-    param1: int = 0  # meaning unknown
-    param2: int = 0  # meaning unknown
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q?qq', self.char_uid, self.is_online, self.param1, self.param2)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendMyConnectionNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['char_uid'] = r.read_i64()
-        kw['is_online'] = r.read_bool()
-        kw['param1'] = r.read_i64()
-        kw['param2'] = r.read_i64()
-        return cls(**kw)
+    param1: i64 = 0  # meaning unknown
+    param2: i64 = 0  # meaning unknown
 
 
 @dataclass
-class FriendMyDisconnectionNot:
+class FriendMyDisconnectionNot(WireMessage):
     """Opcode 5119: eERC_FRIEND_MY_DISCONNECTION_NOT (reply).
 
     Handler 0x00758FA0.
     """
     OPCODE: ClassVar[int] = 5119
-    char_uid: int = 0
+    char_uid: i64 = 0
     notify: bool = True
 
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q?', self.char_uid, self.notify)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FriendMyDisconnectionNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['char_uid'] = r.read_i64()
-        kw['notify'] = r.read_bool()
-        return cls(**kw)
-
 
 @dataclass
-class ChangeTeamReq:
+class ChangeTeamReq(WireMessage):
     """Opcode 5015: eERC_CHANGE_TEAM_REQ (request)."""
     OPCODE: ClassVar[int] = 5015
-    header: int = REQUEST_HEADER
-    team_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.header, self.team_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeTeamReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['team_id'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    team_id: i32 = 0
 
 
 @dataclass
-class ChangeTeamAck:
+class ChangeTeamAck(WireMessage):
     """Opcode 5016: eERC_CHANGE_TEAM_ACK (reply)."""
     OPCODE: ClassVar[int] = 5016
-    result: int = 0
-    team_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.result, self.team_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeTeamAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['team_id'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
+    team_id: i32 = 0
 
 
 @dataclass
-class ChatReq:
+class ChatReq(WireMessage):
     """Opcode 5040: eERC_CHAT_REQ (request).
 
     Sender 0x007AC570 writes one struct (0x00A4DC70). Captures carry no header:
     01 80 80 8a "/bags" 00 1080 1080 01000000 ff... The tail is not decoded.
     """
     OPCODE: ClassVar[int] = 5040
-    channel: int = 0
-    sender: str = ''
-    target: str = ''
-    message: str = ''
-    tail: bytes = b''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<B', self.channel)
-        b += wide_string(self.sender)
-        b += wide_string(self.target)
-        b += wide_string(self.message)
-        b += bytes(self.tail)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChatReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['channel'] = r.read_u8()
-        kw['sender'] = r.read_wstring()
-        kw['target'] = r.read_wstring()
-        kw['message'] = r.read_wstring()
-        kw['tail'] = r.read_rest()
-        return cls(**kw)
+    channel: u8 = 0
+    sender: wstr = ''
+    target: wstr = ''
+    message: wstr = ''
+    tail: rest = b''
 
 
 @dataclass
-class ChatAck:
+class ChatAck(WireMessage):
     """Opcode 5041: eERC_CHAT_ACK (reply).
 
     Handler 0x007AC890.
     """
     OPCODE: ClassVar[int] = 5041
-    result: int = 0
-    channel: int = 0
-    sender: str = 'System'
-    target: str = ''
-    message: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<B', self.channel)
-        b += wide_string(self.sender)
-        b += wide_string(self.target)
-        b += wide_string(self.message)
-        b += struct.pack('<BB', 0x0A, 0)
-        b += b'\x10\x80'
-        b += b'\x10\x80'
-        b += struct.pack('<iqqqi', 0, 0, 0, 0, 0)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChatAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['channel'] = r.read_u8()
-        kw['sender'] = r.read_wstring()
-        kw['target'] = r.read_wstring()
-        kw['message'] = r.read_wstring()
-        r.read_u8()
-        r.read_u8()
-        r.read_empty_container(0x10)
-        r.read_empty_container(0x10)
-        r.read_i32()
-        r.read_i64()
-        r.read_i64()
-        r.read_i64()
-        r.read_i32()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    channel: u8 = 0
+    sender: wstr = 'System'
+    target: wstr = ''
+    message: wstr = ''
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'channel',
+        'sender',
+        'target',
+        'message',
+        Const(u8, 0x0A),
+        Const(u8, 0),
+        Const(EmptyVector),
+        Const(EmptyVector),
+        Const(i32, 0),
+        Const(i64, 0),
+        Const(i64, 0),
+        Const(i64, 0),
+        Const(i32, 0),
+    )
 
 
 @dataclass
-class UseSpeakerItemReq:
+class UseSpeakerItemReq(WireMessage):
     """Opcode 2128: eEGS_USE_SPEAKER_ITEM_REQ (request).
 
     Sender 0x00792960: 0x00B353D0, J-wstring, 0x00B353D0.
     """
     OPCODE: ClassVar[int] = 2128
-    header: int = REQUEST_HEADER
-    speaker_uid: int = 0
-    message: str = ''
-    target_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.speaker_uid)
-        b += wide_string(self.message)
-        b += struct.pack('<q', self.target_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseSpeakerItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['speaker_uid'] = r.read_i64()
-        kw['message'] = r.read_wstring()
-        kw['target_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    speaker_uid: i64 = 0
+    message: wstr = ''
+    target_uid: i64 = 0
 
 
 @dataclass
-class UseSpeakerItemAck:
+class UseSpeakerItemAck(WireMessage):
     """Opcode 2129: eEGS_USE_SPEAKER_ITEM_ACK (reply).
 
     On_eEGS_USE_SPEAKER_ITEM_ACK 0x0077F320.
     """
     OPCODE: ClassVar[int] = 2129
-    result: int = 0
-    speaker_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.speaker_uid)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UseSpeakerItemAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['speaker_uid'] = r.read_i64()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    speaker_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'speaker_uid',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class ContractUpdateReq:
+class ContractUpdateReq(WireMessage):
     """Opcode 2121: eEGS_CONTRACT_UPDATE_REQ (request)."""
     OPCODE: ClassVar[int] = 2121
-    header: int = REQUEST_HEADER
-    contract_id: int = 0  # nContractID
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.header, self.contract_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ContractUpdateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['contract_id'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    contract_id: i32 = 0  # nContractID
 
 
 @dataclass
-class ContractUpdateAck:
+class ContractUpdateAck(WireMessage):
     """Opcode 2122: eEGS_CONTRACT_UPDATE_ACK (reply).
 
     On_eEGS_CONTRACT_UPDATE_ACK 0x00752D80.
     """
     OPCODE: ClassVar[int] = 2122
-    result: int = 0
-    contract_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.result, self.contract_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ContractUpdateAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['contract_id'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
+    contract_id: i32 = 0
 
 
 @dataclass
-class RequestCharInfoReq:
+class RequestCharInfoReq(WireMessage):
     """Opcode 6011: eERT_REQUEST_CHAR_INFO_REQ (request).
 
     Sender 0x00790C80: 0x00B35630, 0x00B353D0, 0x00B353D0. Which i64 is the
     character uid is not confirmed.
     """
     OPCODE: ClassVar[int] = 6011
-    header: int = REQUEST_HEADER
-    char_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i?qq', self.header, False, self.char_uid, 0)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestCharInfoReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        r.read_bool()
-        kw['char_uid'] = r.read_i64()
-        r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        Const(bool, False),
+        'char_uid',
+        Const(i64, 0),
+    )
 
 
 @dataclass
-class RequestCharInfoAck:
+class RequestCharInfoAck(WireMessage):
     """Opcode 6012: eERT_REQUEST_CHAR_INFO_ACK (reply).
 
     Handler 0x00790FA0. Summary struct not recovered (32 zero bytes).
     """
     OPCODE: ClassVar[int] = 6012
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<BB', 0x0A, 0)
-        b += bytes(bytes(32)).ljust(32, b'\x00')[:32]
-        b += b'\x10\x80'
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestCharInfoAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        r.read_u8()
-        r.read_u8()
-        r.read_bytes(32)
-        r.read_empty_container(0x10)
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(u8, 0x0A),
+        Const(u8, 0),
+        Const(Raw[32], bytes(32)),
+        Const(EmptyVector),
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class RequestItemInfoReq:
+class RequestItemInfoReq(WireMessage):
     """Opcode 6028: eERT_REQUEST_ITEM_INFO_REQ (request).
 
     Sender 0x007A4F20: 0x00B352B0 (4 bytes), 0x00B353D0, 0x00B353D0. Which i64 is
     the item uid is not confirmed.
     """
     OPCODE: ClassVar[int] = 6028
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iiqq', self.header, 0, self.item_uid, 0)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestItemInfoReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        Const(i32, 0),
+        'item_uid',
+        Const(i64, 0),
+    )
 
 
 @dataclass
-class RequestItemInfoAck:
+class RequestItemInfoAck(WireMessage):
     """Opcode 6029: eERT_REQUEST_ITEM_INFO_ACK (reply).
 
     Handler 0x00766C20. Item record not recovered (16 zero bytes).
     """
     OPCODE: ClassVar[int] = 6029
-    result: int = 0
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.item_uid)
-        if self.result != 0:
-            return bytes(b)
-        b += bytes(bytes(16)).ljust(16, b'\x00')[:16]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestItemInfoAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['item_uid'] = r.read_i64()
-        if kw['result'] != 0:
-            return cls(**kw)
-        r.read_bytes(16)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 2
+    result: i32 = 0
+    item_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'item_uid',
+        Const(Raw[16], bytes(16)),
+    )
 
 
 @dataclass
-class GetInviteListReq:
+class GetInviteListReq(WireMessage):
     """Opcode 2024: eEGS_GET_INVITELIST_REQ (request).
 
     Find user search. Sender 0x007AB560 (writer 0x0074BFF0); field names from its
@@ -669,54 +362,23 @@ class GetInviteListReq:
     nSquareUID / iLayerNetID. Live 2026-11-21: 1, 2, 0, 7, -1, square 1.
     """
     OPCODE: ClassVar[int] = 2024
-    header: int = REQUEST_HEADER
-    low_level: int = 0
-    high_level: int = 0
-    page: int = 0
-    job: int = 0  # 7 in the live capture (all classes, unverified)
-    layer_net_id: int = -1
-    square_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iiiiBqq', self.header, self.low_level, self.high_level, self.page, self.job, self.layer_net_id, self.square_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GetInviteListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['low_level'] = r.read_i32()
-        kw['high_level'] = r.read_i32()
-        kw['page'] = r.read_i32()
-        kw['job'] = r.read_u8()
-        kw['layer_net_id'] = r.read_i64()
-        kw['square_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    low_level: i32 = 0
+    high_level: i32 = 0
+    page: i32 = 0
+    job: u8 = 0  # 7 in the live capture (all classes, unverified)
+    layer_net_id: i64 = -1
+    square_uid: i64 = 0
 
 
 @dataclass
-class GetInviteListAck:
+class GetInviteListAck(WireMessage):
     """Opcode 2025: eEGS_GET_INVITELIST_ACK (reply).
 
     Handler 0x006A2E10: i32 result, then vecInviteList (tag 0x10, elements read by
     0x004B1AD0, the 0xA6-byte member struct of 5061).
     """
     OPCODE: ClassVar[int] = 2025
-    result: int = 0
-    users: list[RoomMemberInfo] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.users)) + b''.join(e0.encode() for e0 in self.users)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GetInviteListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['users'] = r.read_tagged_vector(lambda r1: RoomMemberInfo.read(r1))
-        return cls(**kw)
+    result: i32 = 0
+    users: Vector[RoomMemberInfo] = field(default_factory=list)

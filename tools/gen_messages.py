@@ -362,26 +362,28 @@ class PythonBackend:
         return OUTPUT_DIR / ('%s.py' % self.schema.domain)
 
     # -- type helpers
-    def readable(self, t):
-        if t.kind == 'extern':
-            return self.schema.externs[t.name].readable
-        if t.kind == 'struct':
-            return all(self.readable(f.type) for f in self.structs[t.name].fields)
-        if t.kind == 'pairs':
-            return False
-        return all(self.readable(a) for a in t.args)
-
-    def py_type(self, t):
+    def wire_type(self, t):
         if t.kind == 'scalar':
-            return SCALARS[t.name][1]
-        if t.kind in ('wstr', 'wstrz', 'wrest', 'ipv4'):
-            return 'str'
-        if t.kind in ('raw', 'rest'):
-            return 'bytes'
+            return 'bool' if t.name == 'bool' else t.name
+        if t.kind in ('wstr', 'wstrz', 'wrest', 'ipv4', 'rest'):
+            return t.kind
+        if t.kind == 'raw':
+            return 'Raw[%d]' % t.size
+        if t.kind == 'empty':
+            return {'vector': 'EmptyVector', 'set': 'EmptySet',
+                    'map': 'EmptyMap', 'array': 'EmptyArray'}[t.name]
         if t.kind in ('vector', 'set', 'array', 'pairs'):
-            return 'list[%s]' % self.py_type(t.args[0])
+            cls = {'vector': 'Vector', 'set': 'Set', 'array': 'Array', 'pairs': 'Pairs'}[t.kind]
+            return '%s[%s]' % (cls, self.wire_type(t.args[0]))
         if t.kind == 'map':
-            return 'dict[%s, %s]' % (self.py_type(t.args[0]), self.py_type(t.args[1]))
+            return 'Map[%s, %s]' % (self.wire_type(t.args[0]), self.wire_type(t.args[1]))
+        if t.kind == 'extern':
+            ext = self.schema.externs[t.name]
+            if ext.encode != 'encode':
+                return "Extern[%s, '%s', %s]" % (t.name, ext.encode, ext.readable)
+            if not ext.readable:
+                return "Extern[%s, 'encode', False]" % t.name
+            return t.name
         return t.name
 
     def default(self, f):
@@ -406,128 +408,16 @@ class PythonBackend:
         factory = {'vector': 'list', 'set': 'list', 'array': 'list', 'pairs': 'list', 'map': 'dict'}.get(t.kind, t.name)
         return 'field(default_factory=%s)' % factory
 
-    def value(self, f):
-        """Python expression for a field's value: self.name, or the constant of an anonymous field."""
-        if not f.anonymous:
-            return 'self.%s' % f.name
+    def const_value(self, f):
+        if f.type.kind == 'empty':
+            return None
         if f.default is not None:
             return f.default
         return self.default(f)
 
-    def enc(self, t, expr, depth=0):
-        """Expression producing the wire bytes of value `expr`."""
-        if t.kind == 'scalar':
-            if t.name == 'h32':
-                return "struct.pack('<I', %s & 0xFFFFFFFF)" % expr
-            return "struct.pack('<%s', %s)" % (SCALARS[t.name][0], expr)
-        if t.kind == 'wstr':
-            return 'wide_string(%s)' % expr
-        if t.kind == 'wstrz':
-            return "%s.encode('utf-16le') + b'\\x00\\x00'" % expr
-        if t.kind == 'wrest':
-            return "%s.encode('utf-16le')" % expr
-        if t.kind == 'ipv4':
-            return 'bytes(int(o) for o in %s.split(\'.\'))' % expr
-        if t.kind == 'raw':
-            return 'bytes(%s).ljust(%d, b\'\\x00\')[:%d]' % (expr, t.size, t.size)
-        if t.kind == 'rest':
-            return 'bytes(%s)' % expr
-        if t.kind == 'struct':
-            return '%s.encode()' % expr
-        if t.kind == 'extern':
-            return '%s.%s()' % (expr, self.schema.externs[t.name].encode)
-        if t.kind == 'empty':
-            if t.name == 'array':
-                return "b'\\x80'"
-            return "b'\\x%02x\\x80'" % TAGS[t.name]
-        e = 'e%d' % depth
-        if t.kind in ('vector', 'set', 'array', 'pairs'):
-            item = t.args[0]
-            seq = 'sorted(%s)' % expr if t.kind == 'set' else expr
-            if item.kind == 'scalar' and item.name != 'h32':
-                body = "struct.pack('<%%d%s' %% len(%s), *%s)" % (SCALARS[item.name][0], expr, seq)
-            else:
-                body = "b''.join(%s for %s in %s)" % (self.enc(item, e, depth + 1), e, seq)
-            prefix = '' if t.kind == 'array' else "b'\\x%02x' + " % TAGS[t.kind]
-            return "%svaruint(len(%s)) + %s" % (prefix, expr, body)
-        k, v = 'k%d' % depth, 'v%d' % depth
-        pair = "b'\\x0f' + %s + %s" % (self.enc(t.args[0], k, depth + 1), self.enc(t.args[1], v, depth + 1))
-        return "b'\\x17' + varuint(len(%s)) + b''.join(%s for %s, %s in sorted(%s.items()))" % (
-            expr, pair, k, v, expr)
-
-    def dec(self, t, reader='r', depth=0):
-        """Expression reading one value of type `t` from `reader`."""
-        if t.kind == 'scalar':
-            return '%s.%s()' % (reader, SCALARS[t.name][2])
-        if t.kind == 'wstr':
-            return '%s.read_wstring()' % reader
-        if t.kind == 'wstrz':
-            return '%s.read_wstring_z()' % reader
-        if t.kind == 'wrest':
-            return "%s.read_rest().decode('utf-16le', errors='replace').rstrip('\\x00')" % reader
-        if t.kind == 'ipv4':
-            return "'.'.join(str(o) for o in %s.read_bytes(4))" % reader
-        if t.kind == 'raw':
-            return '%s.read_bytes(%d)' % (reader, t.size)
-        if t.kind == 'rest':
-            return '%s.read_rest()' % reader
-        if t.kind in ('struct', 'extern'):
-            return '%s.read(%s)' % (t.name, reader)
-        if t.kind == 'empty':
-            if t.name == 'array':
-                return '%s.read_empty_container(None)' % reader
-            return '%s.read_empty_container(0x%02X)' % (reader, TAGS[t.name])
-        inner = 'r%d' % (depth + 1)
-        item = 'lambda %s: %s' % (inner, self.dec(t.args[0], inner, depth + 1))
-        if t.kind == 'vector':
-            return '%s.read_tagged_vector(%s)' % (reader, item)
-        if t.kind == 'set':
-            return '%s.read_tagged_set(%s)' % (reader, item)
-        if t.kind == 'array':
-            return '%s.read_vector(%s)' % (reader, item)
-        return '%s.read_tagged_map(%s, lambda %s: %s)' % (
-            reader, item, inner, self.dec(t.args[1], inner, depth + 1))
-
     # -- emitters
-    def encode_lines(self, fields, ok_index):
-        """Statements appending each field to bytearray `b`; consecutive scalars share one pack."""
-        lines, run = [], []
-        active = ['']
-
-        def ind():
-            return '    ' if active[0] else ''
-
-        def flush():
-            if run:
-                fmt = ''.join(SCALARS[f.type.name][0] for f in run)
-                args = ', '.join(self.value(f) + (' & 0xFFFFFFFF' if f.type.name == 'h32' else '') for f in run)
-                lines.append(ind() + "b += struct.pack('<%s', %s)" % (fmt, args))
-                run.clear()
-
-        for index, f in enumerate(fields):
-            if f.cond != active[0]:
-                flush()
-                active[0] = f.cond
-                if f.cond:
-                    neg = f.cond.startswith('!')
-                    lines.append('if %sself.%s:' % ('not ' if neg else '', f.cond.lstrip('!')))
-            if f.type.kind == 'scalar':
-                run.append(f)
-            elif f.type.kind == 'lit':
-                flush()
-                lines.append(ind() + 'b += %r' % f.literal)
-            else:
-                flush()
-                lines.append(ind() + 'b += %s' % self.enc(f.type, self.value(f)))
-            if ok_index is not None and index == ok_index - 1:
-                flush()
-                lines.append('if self.result != 0:')
-                lines.append('    return bytes(b)')
-        flush()
-        return lines
-
     def emit_struct(self, s):
-        out = ['', '', '@dataclass', 'class %s:' % s.name]
+        out = ['', '', '@dataclass', 'class %s(WireMessage):' % s.name]
         doc = list(s.doc)
         if s.is_message:
             doc.insert(0, 'Opcode %d: %s (%s).' % (s.opcode, s.client_name, s.direction))
@@ -538,58 +428,39 @@ class PythonBackend:
         if s.is_message:
             out.append('    OPCODE: ClassVar[int] = %d' % s.opcode)
         if s.header:
+            out.append("    _WIRE_HEADER: ClassVar[str] = '%s'" % s.header)
             fields.insert(0, Field(Type('scalar', 'i32'), 'header', 'REQUEST_HEADER'))
+        if s.ok_index is not None:
+            out.append('    _WIRE_OK_INDEX: ClassVar[int] = %d' % s.ok_index)
+
+        needs_layout = any(f.anonymous or f.type.kind == 'lit' or f.cond for f in fields)
         for f in fields:
-            if f.anonymous:
+            if f.anonymous or f.type.kind == 'lit':
                 continue
-            line = '    %s: %s = %s' % (f.name, self.py_type(f.type), self.default(f))
+            line = '    %s: %s = %s' % (f.name, self.wire_type(f.type), self.default(f))
             if f.comment:
                 line += '  # ' + f.comment
             out.append(line)
-        out += ['', '    def encode(self) -> bytes:']
-        if not fields:
-            out.append("        return b''")
-        else:
-            out.append('        b = bytearray()')
-            out += ['        ' + line for line in self.encode_lines(fields, s.ok_index)]
-            out.append('        return bytes(b)')
-        if all(self.readable(f.type) for f in fields if not f.anonymous):
-            out += self.emit_read(s, fields)
-        return out
 
-    def emit_read(self, s, fields):
-        out = ['']
-        if s.is_message:
-            out += ['    @classmethod', "    def decode(cls, data: bytes) -> '%s':" % s.name]
-            if fields:
-                out.append('        r = JSerBufferReader(data)')
-        else:
-            out += ['    @classmethod', "    def read(cls, r: JSerBufferReader) -> '%s':" % s.name]
-        if any(not f.anonymous for f in fields):
-            out.append('        kw = {}')
-        active = ''
-        for index, f in enumerate(fields):
-            if f.cond != active:
-                active = f.cond
-                if f.cond:
-                    neg = f.cond.startswith('!')
-                    out.append("        if %skw['%s']:" % ('not ' if neg else '', f.cond.lstrip('!')))
-            pad = '            ' if active else '        '
-            if f.name == 'header' and s.header == 'header?':
-                out.append(pad + "kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER")
-            elif f.type.kind == 'lit':
-                out.append(pad + 'r.expect_bytes(%r)' % f.literal)
-            elif f.anonymous:
-                out.append(pad + self.dec(f.type))
-            else:
-                out.append(pad + "kw['%s'] = %s" % (f.name, self.dec(f.type)))
-            if s.ok_index is not None and index == s.ok_index - 1:
-                out.append("        if kw['result'] != 0:")
-                out.append('            return cls(**kw)')
-        out.append('        return cls(**kw)' if any(not f.anonymous for f in fields) else '        return cls()')
-        if not s.is_message:
-            out += ['', '    @classmethod', "    def decode(cls, data: bytes) -> '%s':" % s.name,
-                    '        return cls.read(JSerBufferReader(data))']
+        if needs_layout:
+            out.append('    _WIRE_LAYOUT: ClassVar[tuple] = (')
+            for f in fields:
+                cond_arg = ", cond='%s'" % f.cond if f.cond else ''
+                if f.type.kind == 'lit':
+                    out.append('        Lit(%r%s),' % (f.literal, cond_arg))
+                elif f.anonymous:
+                    val = self.const_value(f)
+                    if val is None:
+                        out.append('        Const(%s%s),' % (self.wire_type(f.type), cond_arg))
+                    else:
+                        out.append('        Const(%s, %s%s),' % (self.wire_type(f.type), val, cond_arg))
+                elif f.cond:
+                    out.append("        ('%s', '%s')," % (f.name, f.cond))
+                else:
+                    out.append("        '%s'," % f.name)
+            out.append('    )')
+        elif not fields and not s.is_message:
+            out.append('    pass')
         return out
 
     @staticmethod
@@ -607,22 +478,27 @@ class PythonBackend:
         for s in schema.structs:
             body += self.emit_struct(s)
         text = '\n'.join(body)
-        jser = ['JSerBufferReader', 'REQUEST_HEADER', 'REQUEST_HEADER_BYTES', 'varuint', 'wide_string']
-        jser = [n for n in jser if re.search(r'\b%s\b' % n, text)]
+        wire_names = [
+            'Array', 'Const', 'EmptyArray', 'EmptyMap', 'EmptySet', 'EmptyVector',
+            'Extern', 'Lit', 'Map', 'Pairs', 'Raw', 'Set', 'Vector', 'WireMessage',
+            'f32', 'f64', 'h32', 'i16', 'i32', 'i64', 'i8', 'ipv4', 'rest',
+            'u16', 'u32', 'u64', 'u8', 'wrest', 'wstr', 'wstrz',
+        ]
+        used_wire = [n for n in wire_names if re.search(r'\b%s\b' % n, text)]
         head = [
             '# Generated by tools/gen_messages.py from %s. DO NOT EDIT.' % rel,
             '"""%s"""' % (schema.doc or schema.domain),
             'from __future__ import annotations',
             '',
+            'from dataclasses import dataclass%s' % (', field' if 'field(' in text else ''),
         ]
-        if 'struct.' in text:
-            head.append('import struct')
-        head.append('from dataclasses import dataclass%s' % (', field' if 'field(' in text else ''))
         if 'ClassVar' in text:
             head.append('from typing import ClassVar')
         head.append('')
-        if jser:
-            head.append('from darkblood.core.serialization.jser import %s' % ', '.join(jser))
+        if 'REQUEST_HEADER' in text:
+            head.append('from darkblood.core.serialization.jser import REQUEST_HEADER')
+        if used_wire:
+            head.append('from darkblood.core.serialization.wire import %s' % ', '.join(used_wire))
         modules = {}
         for ext in schema.externs.values():
             modules.setdefault(ext.module, []).append(ext.name)

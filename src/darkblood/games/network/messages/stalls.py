@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Personal Shop (Player Stalls) and Broker (Marketplace)."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyVector, Extern, Vector, WireMessage, i16, i32, i64, u16, u8, wstr
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -40,577 +40,297 @@ __all__ = [
 
 
 @dataclass
-class StallItem:
+class StallItem(WireMessage):
     """Item offered in a personal stall."""
-    item: Item = field(default_factory=Item)
-    price: int = 0  # AR price
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += self.item.encode()
-        b += struct.pack('<q', self.price)
-        return bytes(b)
+    item: Extern[Item, 'encode', False] = field(default_factory=Item)
+    price: i64 = 0  # AR price
 
 
 @dataclass
-class StallOffer:
+class StallOffer(WireMessage):
     """Element of the 2340 item vector (earlier server's guess)."""
-    item_uid: int = 0
-    count: int = 1
-    price: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qiq', self.item_uid, self.count, self.price)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'StallOffer':
-        kw = {}
-        kw['item_uid'] = r.read_i64()
-        kw['count'] = r.read_i32()
-        kw['price'] = r.read_i64()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'StallOffer':
-        return cls.read(JSerBufferReader(data))
+    item_uid: i64 = 0
+    count: i32 = 1
+    price: i64 = 0
 
 
 @dataclass
-class PersonalShopOpenReq:
+class PersonalShopOpenReq(WireMessage):
     """Opcode 2340: eEGS_PERSONALSHOP_START_REQ (request).
 
     No sender recovered; layout is the earlier guess.
     """
     OPCODE: ClassVar[int] = 2340
-    header: int = REQUEST_HEADER
-    title: str = ''
-    items: list[StallOffer] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.title)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopOpenReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['title'] = r.read_wstring()
-        kw['items'] = r.read_tagged_vector(lambda r1: StallOffer.read(r1))
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    title: wstr = ''
+    items: Vector[StallOffer] = field(default_factory=list)
 
 
 @dataclass
-class PersonalShopOpenAck:
+class PersonalShopOpenAck(WireMessage):
     """Opcode 2341: eEGS_PERSONALSHOP_START_ACK (reply).
 
     Reader 0x00601AA0 -> 0x00A55D70: result, jPersonalShop, title.
     """
     OPCODE: ClassVar[int] = 2341
-    result: int = 0
-    owner_uid: int = 0  # jPersonalShop
-    items: list[StallItem] = field(default_factory=list)
-    expire_time: int = 86400  # remaining seconds
-    title: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<qHBBBB', self.owner_uid, 2026, 11, 17, 12, 0)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += b'\x10\x80'
-        b += struct.pack('<qhi??', 0, 0, self.expire_time, True, True)
-        b += wide_string(self.title)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    owner_uid: i64 = 0  # jPersonalShop
+    items: Vector[StallItem] = field(default_factory=list)
+    expire_time: i32 = 86400  # remaining seconds
+    title: wstr = ''
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'owner_uid',
+        Const(u16, 2026),
+        Const(u8, 11),
+        Const(u8, 17),
+        Const(u8, 12),
+        Const(u8, 0),
+        'items',
+        Const(EmptyVector),
+        Const(i64, 0),
+        Const(i16, 0),
+        'expire_time',
+        Const(bool, True),
+        Const(bool, True),
+        'title',
+    )
 
 
 @dataclass
-class PersonalShopCloseReq:
+class PersonalShopCloseReq(WireMessage):
     """Opcode 2342: eEGS_PERSONALSHOP_CLOSE_REQ (request)."""
     OPCODE: ClassVar[int] = 2342
-    header: int = REQUEST_HEADER
-    owner_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.owner_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopCloseReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['owner_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    owner_uid: i64 = 0
 
 
 @dataclass
-class PersonalShopCloseAck:
+class PersonalShopCloseAck(WireMessage):
     """Opcode 2343: eEGS_PERSONALSHOP_CLOSE_ACK (reply)."""
     OPCODE: ClassVar[int] = 2343
-    result: int = 0
-    owner_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.owner_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopCloseAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['owner_uid'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    owner_uid: i64 = 0
 
 
 @dataclass
-class PersonalShopBuyReq:
+class PersonalShopBuyReq(WireMessage):
     """Opcode 5242: eERC_PERSONALSHOP_BUYITEM_REQ (request)."""
     OPCODE: ClassVar[int] = 5242
-    header: int = REQUEST_HEADER
-    seller_uid: int = 0
-    item_uid: int = 0
-    count: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqqi', self.header, self.seller_uid, self.item_uid, self.count)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopBuyReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['seller_uid'] = r.read_i64()
-        kw['item_uid'] = r.read_i64()
-        kw['count'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    seller_uid: i64 = 0
+    item_uid: i64 = 0
+    count: i32 = 1
 
 
 @dataclass
-class PersonalShopBuyAck:
+class PersonalShopBuyAck(WireMessage):
     """Opcode 5243: eERC_PERSONALSHOP_BUYITEM_ACK (reply).
 
     "vecItemOut >> jPersonalShop >> nCurrentAr".
     """
     OPCODE: ClassVar[int] = 5243
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # vecItemOut: granted or updated for the buyer
-    seller_uid: int = 0  # jPersonalShop
-    stall_items: list[StallItem] = field(default_factory=list)
-    expire_time: int = 86400
-    gold: int = 0  # nCurrentAr
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<qHBBBB', self.seller_uid, 2026, 11, 17, 12, 0)
-        b += b'\x10' + varuint(len(self.stall_items)) + b''.join(e0.encode() for e0 in self.stall_items)
-        b += b'\x10\x80'
-        b += struct.pack('<qhi??q', 0, 0, self.expire_time, True, True, self.gold)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItemOut: granted or updated for the buyer
+    seller_uid: i64 = 0  # jPersonalShop
+    stall_items: Vector[StallItem] = field(default_factory=list)
+    expire_time: i32 = 86400
+    gold: i64 = 0  # nCurrentAr
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'items',
+        'seller_uid',
+        Const(u16, 2026),
+        Const(u8, 11),
+        Const(u8, 17),
+        Const(u8, 12),
+        Const(u8, 0),
+        'stall_items',
+        Const(EmptyVector),
+        Const(i64, 0),
+        Const(i16, 0),
+        'expire_time',
+        Const(bool, True),
+        Const(bool, True),
+        'gold',
+    )
 
 
 @dataclass
-class PersonalShopGetProductsReq:
+class PersonalShopGetProductsReq(WireMessage):
     """Opcode 6021: eERT_PERSONALSHOP_GET_PRODUCTS_REQ (request)."""
     OPCODE: ClassVar[int] = 6021
-    header: int = REQUEST_HEADER
-    seller_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.seller_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopGetProductsReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['seller_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    seller_uid: i64 = 0
 
 
 @dataclass
-class PersonalShopGetProductsAck:
+class PersonalShopGetProductsAck(WireMessage):
     """Opcode 6022: eERT_PERSONALSHOP_GET_PRODUCTS_ACK (reply)."""
     OPCODE: ClassVar[int] = 6022
-    result: int = 0
-    seller_uid: int = 0
-    title: str = ''
-    items: list[StallItem] = field(default_factory=list)
-    expire_time: int = 86400
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.seller_uid)
-        b += wide_string(self.title)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<i', self.expire_time)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    seller_uid: i64 = 0
+    title: wstr = ''
+    items: Vector[StallItem] = field(default_factory=list)
+    expire_time: i32 = 86400
 
 
 @dataclass
-class PersonalShopChangeNot:
+class PersonalShopChangeNot(WireMessage):
     """Opcode 5250: eERC_PERSONALSHOP_CHANGE_NOT (reply)."""
     OPCODE: ClassVar[int] = 5250
-    seller_uid: int = 0
-    title: str = ''
-    item_count: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.seller_uid)
-        b += wide_string(self.title)
-        b += struct.pack('<i', self.item_count)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopChangeNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['seller_uid'] = r.read_i64()
-        kw['title'] = r.read_wstring()
-        kw['item_count'] = r.read_i32()
-        return cls(**kw)
+    seller_uid: i64 = 0
+    title: wstr = ''
+    item_count: i32 = 0
 
 
 @dataclass
-class PersonalShopStartNot:
+class PersonalShopStartNot(WireMessage):
     """Opcode 5254: eERC_PERSONALSHOP_START_NOT (reply)."""
     OPCODE: ClassVar[int] = 5254
-    seller_uid: int = 0
-    title: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.seller_uid)
-        b += wide_string(self.title)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopStartNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['seller_uid'] = r.read_i64()
-        kw['title'] = r.read_wstring()
-        return cls(**kw)
+    seller_uid: i64 = 0
+    title: wstr = ''
 
 
 @dataclass
-class PersonalShopCloseNot:
+class PersonalShopCloseNot(WireMessage):
     """Opcode 5255: eERC_PERSONALSHOP_CLOSE_NOT (reply)."""
     OPCODE: ClassVar[int] = 5255
-    seller_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.seller_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PersonalShopCloseNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['seller_uid'] = r.read_i64()
-        return cls(**kw)
+    seller_uid: i64 = 0
 
 
 @dataclass
-class BrokerProduct:
+class BrokerProduct(WireMessage):
     """Broker listing (earlier server's guess)."""
-    item: Item = field(default_factory=Item)
-    price: int = 0
-    seller_name: str = ''
-    expire_time: int = 86400
-    unit_price: int = 0
-    listing_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += self.item.encode()
-        b += struct.pack('<q', self.price)
-        b += wide_string(self.seller_name)
-        b += struct.pack('<iqq', self.expire_time, self.unit_price, self.listing_id)
-        return bytes(b)
+    item: Extern[Item, 'encode', False] = field(default_factory=Item)
+    price: i64 = 0
+    seller_name: wstr = ''
+    expire_time: i32 = 86400
+    unit_price: i64 = 0
+    listing_id: i64 = 0
 
 
 @dataclass
-class BrokerListReq:
+class BrokerListReq(WireMessage):
     """Opcode 2262: eEGS_BROKER_LIST_REQ (request)."""
     OPCODE: ClassVar[int] = 2262
-    header: int = REQUEST_HEADER
-    page: int = 0
-    category: int = 0
-    filter_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iii', self.header, self.page, self.category)
-        b += wide_string(self.filter_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['page'] = r.read_i32()
-        kw['category'] = r.read_i32()
-        kw['filter_name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    page: i32 = 0
+    category: i32 = 0
+    filter_name: wstr = ''
 
 
 @dataclass
-class BrokerListAck:
+class BrokerListAck(WireMessage):
     """Opcode 2263: eEGS_BROKER_LIST_ACK (reply).
 
     Reader 0x005ADAC0.
     """
     OPCODE: ClassVar[int] = 2263
-    result: int = 0
-    products: list[BrokerProduct] = field(default_factory=list)
-    page: int = 0
-    total_count: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.products)) + b''.join(e0.encode() for e0 in self.products)
-        b += struct.pack('<ii', self.page, self.total_count)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    products: Vector[BrokerProduct] = field(default_factory=list)
+    page: i32 = 0
+    total_count: i32 = 0
 
 
 @dataclass
-class BrokerMyListReq:
+class BrokerMyListReq(WireMessage):
     """Opcode 2264: eEGS_BROKER_MYLIST_REQ (request)."""
     OPCODE: ClassVar[int] = 2264
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerMyListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class BrokerMyListAck:
+class BrokerMyListAck(WireMessage):
     """Opcode 2265: eEGS_BROKER_MYLIST_ACK (reply).
 
     Reader 0x005ADFF0.
     """
     OPCODE: ClassVar[int] = 2265
-    result: int = 0
-    products: list[BrokerProduct] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.products)) + b''.join(e0.encode() for e0 in self.products)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    products: Vector[BrokerProduct] = field(default_factory=list)
 
 
 @dataclass
-class BrokerRegistItemReq:
+class BrokerRegistItemReq(WireMessage):
     """Opcode 2266: eEGS_BROKER_REGIST_ITEM_REQ (request)."""
     OPCODE: ClassVar[int] = 2266
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-    count: int = 1
-    price: int = 0
-    period_hours: int = 24
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqiqi', self.header, self.item_uid, self.count, self.price, self.period_hours)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerRegistItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['count'] = r.read_i32()
-        kw['price'] = r.read_i64()
-        kw['period_hours'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    count: i32 = 1
+    price: i64 = 0
+    period_hours: i32 = 24
 
 
 @dataclass
-class BrokerRegistItemAck:
+class BrokerRegistItemAck(WireMessage):
     """Opcode 2267: eEGS_BROKER_REGIST_ITEM_ACK (reply)."""
     OPCODE: ClassVar[int] = 2267
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerRegistItemAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class BrokerBuyItemReq:
+class BrokerBuyItemReq(WireMessage):
     """Opcode 2268: eEGS_BROKER_BUY_ITEM_REQ (request)."""
     OPCODE: ClassVar[int] = 2268
-    header: int = REQUEST_HEADER
-    listing_id: int = 0
-    count: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.header, self.listing_id, self.count)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerBuyItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['listing_id'] = r.read_i64()
-        kw['count'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    listing_id: i64 = 0
+    count: i32 = 1
 
 
 @dataclass
-class BrokerBuyItemAck:
+class BrokerBuyItemAck(WireMessage):
     """Opcode 2269: eEGS_BROKER_BUY_ITEM_ACK (reply)."""
     OPCODE: ClassVar[int] = 2269
-    result: int = 0
-    gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerBuyItemAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['gold'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    gold: i64 = 0
 
 
 @dataclass
-class BrokerCancelReq:
+class BrokerCancelReq(WireMessage):
     """Opcode 2270: eEGS_BROKER_CANCEL_REQ (request)."""
     OPCODE: ClassVar[int] = 2270
-    header: int = REQUEST_HEADER
-    listing_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.listing_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerCancelReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['listing_id'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    listing_id: i64 = 0
 
 
 @dataclass
-class BrokerCancelAck:
+class BrokerCancelAck(WireMessage):
     """Opcode 2271: eEGS_BROKER_CANCEL_ACK (reply).
 
     Handler 0x00789882.
     """
     OPCODE: ClassVar[int] = 2271
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerCancelAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class BrokerPriceReq:
+class BrokerPriceReq(WireMessage):
     """Opcode 2272: eEGS_BROKER_PRICE_REQ (request)."""
     OPCODE: ClassVar[int] = 2272
-    header: int = REQUEST_HEADER
-    item_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.header, self.item_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerPriceReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_id'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_id: i32 = 0
 
 
 @dataclass
-class BrokerPriceAck:
+class BrokerPriceAck(WireMessage):
     """Opcode 2273: eEGS_BROKER_PRICE_ACK (reply)."""
     OPCODE: ClassVar[int] = 2273
-    result: int = 0
-    avg_price: int = 0
-    min_price: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.result, self.avg_price, self.min_price)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BrokerPriceAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['avg_price'] = r.read_i64()
-        kw['min_price'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    avg_price: i64 = 0
+    min_price: i64 = 0

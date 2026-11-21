@@ -2,11 +2,11 @@
 """Dark Blood wire messages - Party and Spatial Movement domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, Raw, Vector, WireMessage, f32, i16, i32, i64, u16, u32, u8, wstr
 
 __all__ = [
     'UserJoinSquareNot',
@@ -31,98 +31,45 @@ __all__ = [
 
 
 @dataclass
-class UserJoinSquareNot:
+class UserJoinSquareNot(WireMessage):
     """Sent as 5021 by the server (client name eERC_CHANGE_ROOMHOST_REQ, no client
     handler). Layout is the earlier server's guess.
     """
-    char_id: int = 0
-    square_id: int = 1
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    angle: float = 0.0
-    char_class: int = 0
-    level: int = 1
-    char_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qiffffBB', self.char_id, self.square_id, self.x, self.y, self.z, self.angle, self.char_class, self.level)
-        b += wide_string(self.char_name)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'UserJoinSquareNot':
-        kw = {}
-        kw['char_id'] = r.read_i64()
-        kw['square_id'] = r.read_i32()
-        kw['x'] = r.read_f32()
-        kw['y'] = r.read_f32()
-        kw['z'] = r.read_f32()
-        kw['angle'] = r.read_f32()
-        kw['char_class'] = r.read_u8()
-        kw['level'] = r.read_u8()
-        kw['char_name'] = r.read_wstring()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UserJoinSquareNot':
-        return cls.read(JSerBufferReader(data))
+    char_id: i64 = 0
+    square_id: i32 = 1
+    x: f32 = 0.0
+    y: f32 = 0.0
+    z: f32 = 0.0
+    angle: f32 = 0.0
+    char_class: u8 = 0
+    level: u8 = 1
+    char_name: wstr = ''
 
 
 @dataclass
-class UserLeaveSquareNot:
+class UserLeaveSquareNot(WireMessage):
     """Sent as 5022 by the server (client name eERC_CHANGE_ROOMHOST_ACK, no client
     handler). Layout is the earlier server's guess.
     """
-    char_id: int = 0
-    reason: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qi', self.char_id, self.reason)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'UserLeaveSquareNot':
-        kw = {}
-        kw['char_id'] = r.read_i64()
-        kw['reason'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UserLeaveSquareNot':
-        return cls.read(JSerBufferReader(data))
+    char_id: i64 = 0
+    reason: i32 = 0
 
 
 @dataclass
-class InviteUseNickReq:
+class InviteUseNickReq(WireMessage):
     """Opcode 5092: eERC_INVITE_USE_NICK_REQ (request).
 
     Sender 0x007ABAA0; live: ffffff7f 8a 4d00610067006500 3100 -> "Mage1".
     The sender waits for no reply; the result reuses 5050.
     """
     OPCODE: ClassVar[int] = 5092
-    header: int = REQUEST_HEADER
-    name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'InviteUseNickReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    name: wstr = ''
 
 
 @dataclass
-class PartyInviteReq:
+class PartyInviteReq(WireMessage):
     """Opcode 5049: eERC_INVITE_REQ (request).
 
     Senders 0x0058B7F0 and 0x007AB8A0: 0x00B353D0, 0x00B35630, 0x00B353D0.
@@ -131,50 +78,30 @@ class PartyInviteReq:
     Lua_OnBtn_Party_Accept (nSquareUID, nCharUID). Using the first made every invite fail.
     """
     OPCODE: ClassVar[int] = 5049
-    header: int = REQUEST_HEADER
-    target_square_uid: int = 0
-    target_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq?q', self.header, self.target_square_uid, False, self.target_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyInviteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_square_uid'] = r.read_i64()
-        r.read_bool()
-        kw['target_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_square_uid: i64 = 0
+    target_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        'target_square_uid',
+        Const(bool, False),
+        'target_uid',
+    )
 
 
 @dataclass
-class PartyInviteAck:
+class PartyInviteAck(WireMessage):
     """Opcode 5050: eERC_INVITE_ACK (reply).
 
     Handler 0x00758700.
     """
     OPCODE: ClassVar[int] = 5050
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyInviteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class PartyInviteNot:
+class PartyInviteNot(WireMessage):
     """Opcode 5051: eERC_INVITE_NOT (reply).
 
     Handler 0x007706E0. Reader 0x00A4AD10: bool, host summary (0x00A49600), room
@@ -186,340 +113,144 @@ class PartyInviteNot:
     JERI_ALREADY_JOIN_CHAR while the GameRoom page +0xAC flag is set.
     """
     OPCODE: ClassVar[int] = 5051
-    inviter_square_uid: int = 1  # host summary (0x00A49600, RoomMemberInfo layout)
-    inviter_uid: int = 0
-    inviter_name: str = ''
-    inviter_class: int = 0
-    inviter_level: int = 0
-    room_uid: int = 0  # +0x90 nInviteRoomUID
-    room_name: str = ''  # +0x98
-    gate_id: int = -1  # +0xB4
-    map_id: int = -1  # +0xB8
-    diff: int = -1  # +0xBC
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<?qqI', False, self.inviter_square_uid, self.inviter_uid, 0)
-        b += wide_string(self.inviter_name)
-        b += struct.pack('<BHBqq', self.inviter_class, 0xFFFF, self.inviter_level, -1, -1)
-        b += bytes(bytes(74)).ljust(74, b'\x00')[:74]
-        b += struct.pack('<Bq', 0, self.room_uid)
-        b += wide_string(self.room_name)
-        b += struct.pack('<iih', self.gate_id, self.map_id, self.diff)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyInviteNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        r.read_bool()
-        kw['inviter_square_uid'] = r.read_i64()
-        kw['inviter_uid'] = r.read_i64()
-        r.read_u32()
-        kw['inviter_name'] = r.read_wstring()
-        kw['inviter_class'] = r.read_u8()
-        r.read_u16()
-        kw['inviter_level'] = r.read_u8()
-        r.read_i64()
-        r.read_i64()
-        r.read_bytes(74)
-        r.read_u8()
-        kw['room_uid'] = r.read_i64()
-        kw['room_name'] = r.read_wstring()
-        kw['gate_id'] = r.read_i32()
-        kw['map_id'] = r.read_i32()
-        kw['diff'] = r.read_i16()
-        return cls(**kw)
+    inviter_square_uid: i64 = 1  # host summary (0x00A49600, RoomMemberInfo layout)
+    inviter_uid: i64 = 0
+    inviter_name: wstr = ''
+    inviter_class: u8 = 0
+    inviter_level: u8 = 0
+    room_uid: i64 = 0  # +0x90 nInviteRoomUID
+    room_name: wstr = ''  # +0x98
+    gate_id: i32 = -1  # +0xB4
+    map_id: i32 = -1  # +0xB8
+    diff: i16 = -1  # +0xBC
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(bool, False),
+        'inviter_square_uid',
+        'inviter_uid',
+        Const(u32, 0),
+        'inviter_name',
+        'inviter_class',
+        Const(u16, 0xFFFF),
+        'inviter_level',
+        Const(i64, -1),
+        Const(i64, -1),
+        Const(Raw[74], bytes(74)),
+        Const(u8, 0),
+        'room_uid',
+        'room_name',
+        'gate_id',
+        'map_id',
+        'diff',
+    )
 
 
 @dataclass
-class LegacyPartyInviteReq:
+class LegacyPartyInviteReq(WireMessage):
     """Received by the server as 2100 (client name eEGS_CHEAT_QUEST_START_ACK)."""
-    target_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.target_uid)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'LegacyPartyInviteReq':
-        kw = {}
-        kw['target_uid'] = r.read_i64()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LegacyPartyInviteReq':
-        return cls.read(JSerBufferReader(data))
+    target_uid: i64 = 0
 
 
 @dataclass
-class PartyJoinReq:
+class PartyJoinReq(WireMessage):
     """Received by the server as 2102 (client name eEGS_CHEAT_INSERT_COIN_ACK)."""
-    party_id: int = 0
-    host_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.party_id, self.host_uid)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyJoinReq':
-        kw = {}
-        kw['party_id'] = r.read_i32()
-        kw['host_uid'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyJoinReq':
-        return cls.read(JSerBufferReader(data))
+    party_id: i32 = 0
+    host_uid: i32 = 0
 
 
 @dataclass
-class PartyJoinAck:
+class PartyJoinAck(WireMessage):
     """Sent by the server as 2103 (client name eEGS_CHEAT_INSERT_AR_REQ, no client handler)."""
-    result: int = 0
-    party_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.result, self.party_id)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyJoinAck':
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['party_id'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyJoinAck':
-        return cls.read(JSerBufferReader(data))
+    result: i32 = 0
+    party_id: i32 = 0
 
 
 @dataclass
-class PartyLeaveReq:
+class PartyLeaveReq(WireMessage):
     """Received by the server as 2104 (client name eEGS_CHEAT_INSERT_AR_ACK)."""
-    party_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.party_id)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyLeaveReq':
-        kw = {}
-        kw['party_id'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyLeaveReq':
-        return cls.read(JSerBufferReader(data))
+    party_id: i32 = 0
 
 
 @dataclass
-class PartyLeaveAck:
+class PartyLeaveAck(WireMessage):
     """Sent by the server as 2105 (client name eEGS_CHEAT_INSERT_AP_REQ, no client handler)."""
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyLeaveAck':
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyLeaveAck':
-        return cls.read(JSerBufferReader(data))
+    result: i32 = 0
 
 
 @dataclass
-class PartyKickReq:
+class PartyKickReq(WireMessage):
     """Received by the server as 2106 (client name eEGS_CHEAT_INSERT_AP_ACK)."""
-    target_uid: int = 0
-    party_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qi', self.target_uid, self.party_id)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyKickReq':
-        kw = {}
-        kw['target_uid'] = r.read_i64()
-        kw['party_id'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyKickReq':
-        return cls.read(JSerBufferReader(data))
+    target_uid: i64 = 0
+    party_id: i32 = 0
 
 
 @dataclass
-class PartyKickAck:
+class PartyKickAck(WireMessage):
     """Sent by the server as 2107 (client name eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_REQ, no client handler)."""
-    result: int = 0
-    target_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.target_uid)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyKickAck':
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['target_uid'] = r.read_i64()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyKickAck':
-        return cls.read(JSerBufferReader(data))
+    result: i32 = 0
+    target_uid: i64 = 0
 
 
 @dataclass
-class PartyAcceptInviteReq:
+class PartyAcceptInviteReq(WireMessage):
     """Opcode 5054: eERC_ACCEPT_INVITE_REQ (request).
 
     Sender 0x0058B430: host square UID, then host UID.
     """
     OPCODE: ClassVar[int] = 5054
-    header: int = REQUEST_HEADER
-    host_square_uid: int = 0
-    host_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.host_square_uid, self.host_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyAcceptInviteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['host_square_uid'] = r.read_i64()
-        kw['host_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    host_square_uid: i64 = 0
+    host_uid: i64 = 0
 
 
 @dataclass
-class PartyAcceptInviteAck:
+class PartyAcceptInviteAck(WireMessage):
     """Opcode 5055: eERC_ACCEPT_INVITE_ACK (reply).
 
     No client handler in handler_map.txt.
     """
     OPCODE: ClassVar[int] = 5055
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyAcceptInviteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class PartyAcceptInviteNot:
+class PartyAcceptInviteNot(WireMessage):
     """Opcode 5056: eERC_ACCEPT_INVITE_NOT (reply).
 
     No client handler in handler_map.txt; layout is the earlier server's guess.
     """
     OPCODE: ClassVar[int] = 5056
-    party_id: int = 0
-    member_uid: int = 0
+    party_id: i32 = 0
+    member_uid: i64 = 0
     is_leader: bool = False
-    member_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq?', self.party_id, self.member_uid, self.is_leader)
-        b += wide_string(self.member_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyAcceptInviteNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['party_id'] = r.read_i32()
-        kw['member_uid'] = r.read_i64()
-        kw['is_leader'] = r.read_bool()
-        kw['member_name'] = r.read_wstring()
-        return cls(**kw)
+    member_name: wstr = ''
 
 
 @dataclass
-class PartyMemberInfo:
+class PartyMemberInfo(WireMessage):
     """Party member state; not tied to a recovered reader."""
-    char_id: int = 0
-    char_class: int = 0
-    level: int = 1
-    hp: int = 1000
-    max_hp: int = 1000
+    char_id: i64 = 0
+    char_class: u8 = 0
+    level: u8 = 1
+    hp: u32 = 1000
+    max_hp: u32 = 1000
     is_leader: bool = False
-    char_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qBBiII?', self.char_id, self.char_class, self.level, 0, self.hp, self.max_hp, self.is_leader)
-        b += wide_string(self.char_name)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyMemberInfo':
-        kw = {}
-        kw['char_id'] = r.read_i64()
-        kw['char_class'] = r.read_u8()
-        kw['level'] = r.read_u8()
-        r.read_i32()
-        kw['hp'] = r.read_u32()
-        kw['max_hp'] = r.read_u32()
-        kw['is_leader'] = r.read_bool()
-        kw['char_name'] = r.read_wstring()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyMemberInfo':
-        return cls.read(JSerBufferReader(data))
+    char_name: wstr = ''
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'char_id',
+        'char_class',
+        'level',
+        Const(i32, 0),
+        'hp',
+        'max_hp',
+        'is_leader',
+        'char_name',
+    )
 
 
 @dataclass
-class PartyInfoNot:
+class PartyInfoNot(WireMessage):
     """Party roster; no opcode assigned."""
-    party_id: int = 0
-    leader_uid: int = 0
-    members: list[PartyMemberInfo] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.party_id, self.leader_uid)
-        b += b'\x10' + varuint(len(self.members)) + b''.join(e0.encode() for e0 in self.members)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PartyInfoNot':
-        kw = {}
-        kw['party_id'] = r.read_i32()
-        kw['leader_uid'] = r.read_i64()
-        kw['members'] = r.read_tagged_vector(lambda r1: PartyMemberInfo.read(r1))
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PartyInfoNot':
-        return cls.read(JSerBufferReader(data))
+    party_id: i32 = 0
+    leader_uid: i64 = 0
+    members: Vector[PartyMemberInfo] = field(default_factory=list)

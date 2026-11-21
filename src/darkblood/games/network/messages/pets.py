@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Pet, Mount and Taming domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyMap, EmptyVector, Raw, WireMessage, i32, i64, u16, u32, u8, wstr
 
 __all__ = [
     'TameingMonsterInsertReq',
@@ -41,731 +41,368 @@ __all__ = [
 
 
 @dataclass
-class TameingMonsterInsertReq:
+class TameingMonsterInsertReq(WireMessage):
     """Opcode 2348: eEGS_TAMEING_MONSTER_INSERT_REQ (request).
 
     Sender 0x00799BA0 writes a struct (0x00A48AB0) and a 4-byte value; the two
     i32 below are the earlier guess and are not confirmed.
     """
     OPCODE: ClassVar[int] = 2348
-    header: int = REQUEST_HEADER
-    monster_id: int = 0
-    slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iii', self.header, self.monster_id, self.slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TameingMonsterInsertReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['monster_id'] = r.read_i32()
-        kw['slot'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    monster_id: i32 = 0
+    slot: i32 = 0
 
 
 @dataclass
-class TamingMonsterInsertAck:
+class TamingMonsterInsertAck(WireMessage):
     """Opcode 2349: eEGS_TAMEING_MONSTER_INSERT_ACK (reply).
 
     Handler 0x00771A00.
     """
     OPCODE: ClassVar[int] = 2349
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TamingMonsterInsertAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class TameingMonsterDeleteReq:
+class TameingMonsterDeleteReq(WireMessage):
     """Opcode 2350: eEGS_TAMEING_MONSTER_DELETE_REQ (request).
 
     Sender 0x00799D30: two 4-byte values (0x00B352B0).
     """
     OPCODE: ClassVar[int] = 2350
-    header: int = REQUEST_HEADER
-    monster_id: int = 0
-    slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iii', self.header, self.monster_id, self.slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TameingMonsterDeleteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['monster_id'] = r.read_i32()
-        kw['slot'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    monster_id: i32 = 0
+    slot: i32 = 0
 
 
 @dataclass
-class TamingMonsterDeleteAck:
+class TamingMonsterDeleteAck(WireMessage):
     """Opcode 2351: eEGS_TAMEING_MONSTER_DELETE_ACK (reply).
 
     Handler 0x00771BB0.
     """
     OPCODE: ClassVar[int] = 2351
-    result: int = 0
-    deleted_slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x10\x80'
-        b += struct.pack('<i', self.deleted_slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'TamingMonsterDeleteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        r.read_empty_container(0x10)
-        kw['deleted_slot'] = r.read_i32()
-        return cls(**kw)
+    result: u32 = 0
+    deleted_slot: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+        'deleted_slot',
+    )
 
 
 @dataclass
-class RidingGetListReq:
+class RidingGetListReq(WireMessage):
     """Opcode 2434: eEGS_RIDING_GET_LIST_REQ (request).
 
     No sender recovered; no fields known.
     """
     OPCODE: ClassVar[int] = 2434
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RidingGetListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class RidingGetListAck:
+class RidingGetListAck(WireMessage):
     """Opcode 2435: eEGS_RIDING_GET_LIST_ACK (reply).
 
     Handler 0x0076C5A0.
     """
     OPCODE: ClassVar[int] = 2435
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x17\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RidingGetListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        r.read_empty_container(0x17)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+    )
 
 
 @dataclass
-class RidingRideObjectReq:
+class RidingRideObjectReq(WireMessage):
     """Opcode 2437: eEGS_RIDING_RIDE_OBJECT_REQ (request).
 
     Sender 0x0079CDE0: one 4-byte value.
     """
     OPCODE: ClassVar[int] = 2437
-    header: int = REQUEST_HEADER
-    ride_object_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iI', self.header, self.ride_object_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RidingRideObjectReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['ride_object_id'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    ride_object_id: u32 = 0
 
 
 @dataclass
-class RidingRideObjectAck:
+class RidingRideObjectAck(WireMessage):
     """Opcode 2438: eEGS_RIDING_RIDE_OBJECT_ACK (reply).
 
     Handler 0x00753A90.
     """
     OPCODE: ClassVar[int] = 2438
-    result: int = 0
-    ride_object_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<I', self.ride_object_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RidingRideObjectAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['ride_object_id'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    ride_object_id: u32 = 0
 
 
 @dataclass
-class PetCreateReq:
+class PetCreateReq(WireMessage):
     """Opcode 2464: eEGS_PET_CREATE_REQ (request).
 
     Sender 0x0079E090.
     """
     OPCODE: ClassVar[int] = 2464
-    header: int = REQUEST_HEADER
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetCreateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetCreateAck:
+class PetCreateAck(WireMessage):
     """Opcode 2465: eEGS_PET_CREATE_ACK (reply).
 
     Handler 0x0079E620. The earlier encoder put a 0x1E byte before the item;
     0x00B35010 consumes none for that tag, so it is not sent.
     """
     OPCODE: ClassVar[int] = 2465
-    result: int = 0
-    slot: int = 0
-    pet_item: bytes = bytes(52)  # item record, not recovered
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10\x80'
-        b += struct.pack('<i', self.slot)
-        b += bytes(self.pet_item).ljust(52, b'\x00')[:52]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetCreateAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        r.read_empty_container(0x10)
-        kw['slot'] = r.read_i32()
-        kw['pet_item'] = r.read_bytes(52)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    slot: i32 = 0
+    pet_item: Raw[52] = bytes(52)  # item record, not recovered
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+        'slot',
+        'pet_item',
+    )
 
 
 @dataclass
-class PetDeleteReq:
+class PetDeleteReq(WireMessage):
     """Opcode 2466: eEGS_PET_DELETE_REQ (request).
 
     Sender 0x0079E200.
     """
     OPCODE: ClassVar[int] = 2466
-    header: int = REQUEST_HEADER
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetDeleteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetDeleteAck:
+class PetDeleteAck(WireMessage):
     """Opcode 2467: eEGS_PET_DELETE_ACK (reply).
 
     Handler 0x0079EA50.
     """
     OPCODE: ClassVar[int] = 2467
-    result: int = 0
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetDeleteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetSummonReq:
+class PetSummonReq(WireMessage):
     """Opcode 2468: eEGS_PET_SUMMON_REQ (request).
 
     Sender 0x0079E3C0 writes no fields.
     """
     OPCODE: ClassVar[int] = 2468
 
-    def encode(self) -> bytes:
-        return b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetSummonReq':
-        return cls()
-
 
 @dataclass
-class PetSummonAck:
+class PetSummonAck(WireMessage):
     """Opcode 2469: eEGS_PET_SUMMON_ACK (reply).
 
     Handler 0x0079ECF0.
     """
     OPCODE: ClassVar[int] = 2469
-    result: int = 0
-    pet_slot: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<H', self.pet_slot)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetSummonAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['pet_slot'] = r.read_u16()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pet_slot: u16 = 0
 
 
 @dataclass
-class PetReleaseSummonReq:
+class PetReleaseSummonReq(WireMessage):
     """Opcode 2470: eEGS_PET_RELEASE_SUMMON_REQ (request).
 
     Sender 0x0079E4F0 writes no fields.
     """
     OPCODE: ClassVar[int] = 2470
 
-    def encode(self) -> bytes:
-        return b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetReleaseSummonReq':
-        return cls()
-
 
 @dataclass
-class PetReleaseSummonAck:
+class PetReleaseSummonAck(WireMessage):
     """Opcode 2471: eEGS_PET_RELEASE_SUMMON_ACK (reply).
 
     Handler 0x0079EEE0.
     """
     OPCODE: ClassVar[int] = 2471
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetReleaseSummonAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        return cls(**kw)
+    result: u32 = 0
 
 
 @dataclass
-class PetSaveReq:
+class PetSaveReq(WireMessage):
     """Opcode 2473: eEGS_PET_SAVE_REQ (request).
 
     Sender 0x0079F1E0: one 2-byte value (0x00B35190).
     """
     OPCODE: ClassVar[int] = 2473
-    header: int = REQUEST_HEADER
-    value: int = 0  # meaning unknown
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iH', self.header, self.value)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetSaveReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['value'] = r.read_u16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    value: u16 = 0  # meaning unknown
 
 
 @dataclass
-class PetSaveAck:
+class PetSaveAck(WireMessage):
     """Opcode 2474: eEGS_PET_SAVE_ACK (reply).
 
     Handler 0x007758B0.
     """
     OPCODE: ClassVar[int] = 2474
-    result: int = 0
-    value: int = 0  # meaning unknown
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<H', self.value)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetSaveAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['value'] = r.read_u16()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    value: u16 = 0  # meaning unknown
 
 
 @dataclass
-class PetLoadReq:
+class PetLoadReq(WireMessage):
     """Opcode 2475: eEGS_PET_LOAD_REQ (request).
 
     Sender 0x0079F300.
     """
     OPCODE: ClassVar[int] = 2475
-    header: int = REQUEST_HEADER
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetLoadReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetLoadAck:
+class PetLoadAck(WireMessage):
     """Opcode 2476: eEGS_PET_LOAD_ACK (reply).
 
     Handler 0x0079F560.
     """
     OPCODE: ClassVar[int] = 2476
-    result: int = 0
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetLoadAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetReplaceReq:
+class PetReplaceReq(WireMessage):
     """Opcode 2477: eEGS_PET_REPLACE_REQ (request).
 
     Sender 0x0079F430.
     """
     OPCODE: ClassVar[int] = 2477
-    header: int = REQUEST_HEADER
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetReplaceReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetReplaceAck:
+class PetReplaceAck(WireMessage):
     """Opcode 2478: eEGS_PET_REPLACE_ACK (reply).
 
     Handler 0x0079F770.
     """
     OPCODE: ClassVar[int] = 2478
-    result: int = 0
-    pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetReplaceAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pet_uid: i64 = 0
 
 
 @dataclass
-class PetEatNormalReq:
+class PetEatNormalReq(WireMessage):
     """Opcode 2480: eEGS_PET_EAT_NORMAL_REQ (request).
 
     Sender 0x0079FB80.
     """
     OPCODE: ClassVar[int] = 2480
-    header: int = REQUEST_HEADER
-    item_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetEatNormalReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
 
 
 @dataclass
-class PetEatNormalAck:
+class PetEatNormalAck(WireMessage):
     """Opcode 2481: eEGS_PET_EAT_NORMAL_ACK (reply).
 
     Handler 0x00781260.
     """
     OPCODE: ClassVar[int] = 2481
-    result: int = 0
-    satiety: int = 100
-    status: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10\x80'
-        b += struct.pack('<HB', self.satiety, self.status)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetEatNormalAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        r.read_empty_container(0x10)
-        kw['satiety'] = r.read_u16()
-        kw['status'] = r.read_u8()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    satiety: u16 = 100
+    status: u8 = 1
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+        'satiety',
+        'status',
+    )
 
 
 @dataclass
-class PetEvolutionReq:
+class PetEvolutionReq(WireMessage):
     """Opcode 2484: eEGS_PET_EVOLUTION_REQ (request).
 
     Sender 0x0079FE00 writes no fields.
     """
     OPCODE: ClassVar[int] = 2484
 
-    def encode(self) -> bytes:
-        return b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetEvolutionReq':
-        return cls()
-
 
 @dataclass
-class PetEvolutionAck:
+class PetEvolutionAck(WireMessage):
     """Opcode 2485: eEGS_PET_EVOLUTION_ACK (reply).
 
     Handler 0x0079FEF0.
     """
     OPCODE: ClassVar[int] = 2485
-    result: int = 0
-    old_pet_uid: int = 0
-    new_pet_id: int = 0
-    new_pet_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<qI', self.old_pet_uid, self.new_pet_id)
-        b += b'\x10\x80'
-        b += struct.pack('<q', self.new_pet_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetEvolutionAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['old_pet_uid'] = r.read_i64()
-        kw['new_pet_id'] = r.read_u32()
-        r.read_empty_container(0x10)
-        kw['new_pet_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    old_pet_uid: i64 = 0
+    new_pet_id: u32 = 0
+    new_pet_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'old_pet_uid',
+        'new_pet_id',
+        Const(EmptyVector),
+        'new_pet_uid',
+    )
 
 
 @dataclass
-class PetNickChangeReq:
+class PetNickChangeReq(WireMessage):
     """Opcode 2510: eEGS_PET_NICK_CHANGE_REQ (request).
 
     Sender 0x007A16B0.
     """
     OPCODE: ClassVar[int] = 2510
-    header: int = REQUEST_HEADER
-    pet_uid: int = 0
-    new_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.pet_uid)
-        b += wide_string(self.new_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetNickChangeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['pet_uid'] = r.read_i64()
-        kw['new_name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    pet_uid: i64 = 0
+    new_name: wstr = ''
 
 
 @dataclass
-class PetNickChangeAck:
+class PetNickChangeAck(WireMessage):
     """Opcode 2511: eEGS_PET_NICK_CHANGE_AKC (reply).
 
     Handler 0x00781CD0 (client name eEGS_PET_NICK_CHANGE_AKC).
     """
     OPCODE: ClassVar[int] = 2511
-    result: int = 0
-    pet_uid: int = 0
-    new_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10\x80'
-        b += struct.pack('<q', self.pet_uid)
-        b += wide_string(self.new_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PetNickChangeAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        r.read_empty_container(0x10)
-        kw['pet_uid'] = r.read_i64()
-        kw['new_name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pet_uid: i64 = 0
+    new_name: wstr = ''
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+        'pet_uid',
+        'new_name',
+    )

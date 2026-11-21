@@ -1,7 +1,4 @@
 """Game connection session (JEvent dispatcher)."""
-import struct
-import zlib
-
 from darkblood.core.serialization.jser import WireError, event, parse_event
 from darkblood.games.dispatcher import PacketDispatcher
 from darkblood.games.handlers.arena import ArenaHandlers
@@ -87,16 +84,6 @@ class GameSession:
         except WireError as exc:
             self.transport.record('bad-event', data, error=str(exc))
             return
-        if compressed and len(body) > 6 and body[4] == 0x78:
-            # Observed (2073, 2216, 2346): u32 inflated size + zlib stream.
-            # 2203 also sets the flag with a plain body, so inflate only when
-            # a zlib header follows and the size matches; otherwise keep it.
-            try:
-                inflated = zlib.decompress(body[4:])
-                if len(inflated) == struct.unpack_from('<I', body)[0]:
-                    body = inflated
-            except zlib.error:
-                pass
         self.transport.record('event', body, opcode=opcode, opcode_hex='0x%04x' % opcode,
                               correlation=correlation, compressed=compressed)
         if self.authenticated or opcode == 5386:

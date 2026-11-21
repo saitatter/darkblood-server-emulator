@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Arena, PvP Duels, and League domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyMap, EmptyVector, Raw, Vector, WireMessage, i16, i32, i64, rest, u16, u32, u64, u8, wstr
 
 __all__ = [
     'DuelRequestReq',
@@ -50,1031 +50,516 @@ __all__ = [
 
 
 @dataclass
-class DuelRequestReq:
+class DuelRequestReq(WireMessage):
     """Opcode 5100: eERC_DUEL_REQUEST_REQ (request).
 
     Sender 0x006B7410.
     """
     OPCODE: ClassVar[int] = 5100
-    header: int = REQUEST_HEADER
-    target_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.target_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelRequestReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['target_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0
 
 
 @dataclass
-class DuelRequestAck:
+class DuelRequestAck(WireMessage):
     """Opcode 5101: eERC_DUEL_REQUEST_ACK (reply).
 
     Table case in 0x006D2610 -> 0x006C0A10.
     """
     OPCODE: ClassVar[int] = 5101
-    result: int = 0
-    target_uid: int = 0
-    target_name: str = 'Opponent'
-    char_class: int = 1
-    level: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iq', self.result, self.target_uid)
-        b += wide_string(self.target_name)
-        b += struct.pack('<BB', self.char_class, self.level)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelRequestAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['target_uid'] = r.read_i64()
-        kw['target_name'] = r.read_wstring()
-        kw['char_class'] = r.read_u8()
-        kw['level'] = r.read_u8()
-        return cls(**kw)
+    result: u32 = 0
+    target_uid: i64 = 0
+    target_name: wstr = 'Opponent'
+    char_class: u8 = 1
+    level: u8 = 1
 
 
 @dataclass
-class DuelStartReq:
+class DuelStartReq(WireMessage):
     """Opcode 5097: eERC_DUEL_START_REQ (request).
 
     Sender 0x006B74C0: 0x00B353D0 then two 0x00B35510 values (kept raw).
     """
     OPCODE: ClassVar[int] = 5097
-    header: int = REQUEST_HEADER
-    opponent_uid: int = 0
-    tail: bytes = b''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.opponent_uid)
-        b += bytes(self.tail)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelStartReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['opponent_uid'] = r.read_i64()
-        kw['tail'] = r.read_rest()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    opponent_uid: i64 = 0
+    tail: rest = b''
 
 
 @dataclass
-class DuelStartAck:
+class DuelStartAck(WireMessage):
     """Opcode 5098: eERC_DUEL_START_ACK (reply).
 
     Table case in 0x006D2610 -> 0x006CBE60: result, 36-byte struct, map.
     """
     OPCODE: ClassVar[int] = 5098
-    result: int = 0
-    session_blob: bytes = bytes(36)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += bytes(self.session_blob).ljust(36, b'\x00')[:36]
-        b += b'\x17\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelStartAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['session_blob'] = r.read_bytes(36)
-        r.read_empty_container(0x17)
-        return cls(**kw)
+    result: u32 = 0
+    session_blob: Raw[36] = bytes(36)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'session_blob',
+        Const(EmptyMap),
+    )
 
 
 @dataclass
-class DuelStartNot:
+class DuelStartNot(WireMessage):
     """Opcode 5099: eERC_DUEL_START_NOT (reply).
 
     Table case in 0x006D2610 -> 0x006CCDF0: 36-byte struct.
     """
     OPCODE: ClassVar[int] = 5099
-    session_blob: bytes = bytes(36)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += bytes(self.session_blob).ljust(36, b'\x00')[:36]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelStartNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['session_blob'] = r.read_bytes(36)
-        return cls(**kw)
+    session_blob: Raw[36] = bytes(36)
 
 
 @dataclass
-class DuelResultReq:
+class DuelResultReq(WireMessage):
     """Opcode 5105: eERC_DUEL_RESULT_REQ (request)."""
     OPCODE: ClassVar[int] = 5105
-    header: int = REQUEST_HEADER
-    winner_uid: int = 0
-    loser_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqq', self.header, self.winner_uid, self.loser_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelResultReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['winner_uid'] = r.read_i64()
-        kw['loser_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    winner_uid: i64 = 0
+    loser_uid: i64 = 0
 
 
 @dataclass
-class DuelResultAck:
+class DuelResultAck(WireMessage):
     """Opcode 5106: eERC_DUEL_RESULT_ACK (reply).
 
     Table case in 0x006D2610 -> 0x006CC6B0: result, 21-byte struct.
     """
     OPCODE: ClassVar[int] = 5106
-    result: int = 0
-    result_blob: bytes = bytes(21)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += bytes(self.result_blob).ljust(21, b'\x00')[:21]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelResultAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['result_blob'] = r.read_bytes(21)
-        return cls(**kw)
+    result: u32 = 0
+    result_blob: Raw[21] = bytes(21)
 
 
 @dataclass
-class DuelGiveupNot:
+class DuelGiveupNot(WireMessage):
     """Opcode 5108: eERC_DUEL_GIVEUP_NOT (reply)."""
     OPCODE: ClassVar[int] = 5108
-    surrender_char_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.surrender_char_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelGiveupNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['surrender_char_uid'] = r.read_i64()
-        return cls(**kw)
+    surrender_char_uid: i64 = 0
 
 
 @dataclass
-class DuelRefuseReq:
+class DuelRefuseReq(WireMessage):
     """Opcode 5112: eERC_DUEL_REFUSE_REQ (request)."""
     OPCODE: ClassVar[int] = 5112
-    header: int = REQUEST_HEADER
-    challenger_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.challenger_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelRefuseReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['challenger_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    challenger_uid: i64 = 0
 
 
 @dataclass
-class DuelRefuseAck:
+class DuelRefuseAck(WireMessage):
     """Opcode 5113: eERC_DUEL_REFUSE_ACK (reply).
 
     Table case in 0x006D2610 -> 0x006B4120.
     """
     OPCODE: ClassVar[int] = 5113
-    result: int = 0
-    target_uid: int = 0
-    target_name: str = 'Opponent'
-    char_class: int = 1
-    level: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iq', self.result, self.target_uid)
-        b += wide_string(self.target_name)
-        b += struct.pack('<BB', self.char_class, self.level)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DuelRefuseAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['target_uid'] = r.read_i64()
-        kw['target_name'] = r.read_wstring()
-        kw['char_class'] = r.read_u8()
-        kw['level'] = r.read_u8()
-        return cls(**kw)
+    result: u32 = 0
+    target_uid: i64 = 0
+    target_name: wstr = 'Opponent'
+    char_class: u8 = 1
+    level: u8 = 1
 
 
 @dataclass
-class ArenaSquareListReq:
+class ArenaSquareListReq(WireMessage):
     """Opcode 2304: eEGS_ARENA_SQUARELIST_REQ (request)."""
     OPCODE: ClassVar[int] = 2304
-    header: int = REQUEST_HEADER
-    server_key: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iI', self.header, self.server_key)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaSquareListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['server_key'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    server_key: u32 = 1
 
 
 @dataclass
-class ArenaSquare:
+class ArenaSquare(WireMessage):
     """Element 0x0049F160 -> 0x00A49700 (same reader as the 2022 channel entry)."""
-    square_id: int = 101
-    name: str = 'Arena 1'
-    load: int = 50
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Q', self.square_id)
-        b += wide_string(self.name)
-        b += struct.pack('<III', 0, self.load, 0)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'ArenaSquare':
-        kw = {}
-        kw['square_id'] = r.read_u64()
-        kw['name'] = r.read_wstring()
-        r.read_u32()
-        kw['load'] = r.read_u32()
-        r.read_u32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaSquare':
-        return cls.read(JSerBufferReader(data))
+    square_id: u64 = 101
+    name: wstr = 'Arena 1'
+    load: u32 = 50
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'square_id',
+        'name',
+        Const(u32, 0),
+        'load',
+        Const(u32, 0),
+    )
 
 
 @dataclass
-class ArenaSquareListAck:
+class ArenaSquareListAck(WireMessage):
     """Opcode 2305: eEGS_ARENA_SQUARELIST_ACK (reply).
 
     Case in 0x004B7E80 -> 0x004B67F0.
     """
     OPCODE: ClassVar[int] = 2305
-    result: int = 0
-    squares: list[ArenaSquare] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x10' + varuint(len(self.squares)) + b''.join(e0.encode() for e0 in self.squares)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaSquareListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['squares'] = r.read_tagged_vector(lambda r1: ArenaSquare.read(r1))
-        return cls(**kw)
+    result: u32 = 0
+    squares: Vector[ArenaSquare] = field(default_factory=list)
 
 
 @dataclass
-class ArenaJoinSquareAck:
+class ArenaJoinSquareAck(WireMessage):
     """Opcode 5138: eERC_ARENA_JOIN_SQUARE_ACK (reply)."""
     OPCODE: ClassVar[int] = 5138
-    result: int = 0
-    square_id: int = 101
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iq', self.result, self.square_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaJoinSquareAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['square_id'] = r.read_i64()
-        return cls(**kw)
+    result: u32 = 0
+    square_id: i64 = 101
 
 
 @dataclass
-class ArenaRoomInfo:
+class ArenaRoomInfo(WireMessage):
     """sARENA_ROOM_INFO: base (0x00A49380 / 0x00A492F0) then extension
     (0x00A50A70 / 0x00A4F330). Field meanings beyond the names are guesses.
     """
-    room_id: int = 1
-    room_name: str = 'Arena Room'
-    map_id: int = 1
-    game_mode: int = 1
-    max_players: int = 8
-    host_uid: int = 0
-    team_id: int = 0
-    state: int = 0
-    min_level: int = 1
-    field10: int = 0
-    field11: int = 0
-    field12: int = 0
-    field13: int = 0
-    field14: int = 0
-    field15: int = 0
-    field16: int = 0
-    field17: int = 0
-    password: str = ''
-    notice: str = ''
+    room_id: u64 = 1
+    room_name: wstr = 'Arena Room'
+    map_id: u16 = 1
+    game_mode: u16 = 1
+    max_players: u32 = 8
+    host_uid: u64 = 0
+    team_id: u64 = 0
+    state: u32 = 0
+    min_level: u32 = 1
+    field10: u16 = 0
+    field11: u16 = 0
+    field12: u16 = 0
+    field13: u16 = 0
+    field14: u32 = 0
+    field15: u32 = 0
+    field16: u32 = 0
+    field17: u16 = 0
+    password: wstr = ''
+    notice: wstr = ''
     has_custom_map: bool = False
-    field22: int = 0
-    field23: int = 0
-    field24: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Q', self.room_id)
-        b += wide_string(self.room_name)
-        b += struct.pack('<HHIQQIIHHHHIIIH', self.map_id, self.game_mode, self.max_players, self.host_uid, self.team_id, self.state, self.min_level, self.field10, self.field11, self.field12, self.field13, self.field14, self.field15, self.field16, self.field17)
-        b += wide_string(self.password)
-        b += wide_string(self.notice)
-        b += struct.pack('<?', self.has_custom_map)
-        b += b'\x17\x80'
-        b += struct.pack('<HIB', self.field22, self.field23, self.field24)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'ArenaRoomInfo':
-        kw = {}
-        kw['room_id'] = r.read_u64()
-        kw['room_name'] = r.read_wstring()
-        kw['map_id'] = r.read_u16()
-        kw['game_mode'] = r.read_u16()
-        kw['max_players'] = r.read_u32()
-        kw['host_uid'] = r.read_u64()
-        kw['team_id'] = r.read_u64()
-        kw['state'] = r.read_u32()
-        kw['min_level'] = r.read_u32()
-        kw['field10'] = r.read_u16()
-        kw['field11'] = r.read_u16()
-        kw['field12'] = r.read_u16()
-        kw['field13'] = r.read_u16()
-        kw['field14'] = r.read_u32()
-        kw['field15'] = r.read_u32()
-        kw['field16'] = r.read_u32()
-        kw['field17'] = r.read_u16()
-        kw['password'] = r.read_wstring()
-        kw['notice'] = r.read_wstring()
-        kw['has_custom_map'] = r.read_bool()
-        r.read_empty_container(0x17)
-        kw['field22'] = r.read_u16()
-        kw['field23'] = r.read_u32()
-        kw['field24'] = r.read_u8()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaRoomInfo':
-        return cls.read(JSerBufferReader(data))
+    field22: u16 = 0
+    field23: u32 = 0
+    field24: u8 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'room_id',
+        'room_name',
+        'map_id',
+        'game_mode',
+        'max_players',
+        'host_uid',
+        'team_id',
+        'state',
+        'min_level',
+        'field10',
+        'field11',
+        'field12',
+        'field13',
+        'field14',
+        'field15',
+        'field16',
+        'field17',
+        'password',
+        'notice',
+        'has_custom_map',
+        Const(EmptyMap),
+        'field22',
+        'field23',
+        'field24',
+    )
 
 
 @dataclass
-class ArenaGetRoomListReq:
+class ArenaGetRoomListReq(WireMessage):
     """Opcode 2306: eEGS_ARENA_GET_ROOMLIST_REQ (request).
 
     Sender 0x004A99A0: 0x00B352B0 (4 bytes), 0x00B35630.
     """
     OPCODE: ClassVar[int] = 2306
-    header: int = REQUEST_HEADER
-    page: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii?', self.header, self.page, False)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaGetRoomListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['page'] = r.read_i32()
-        r.read_bool()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    page: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        'page',
+        Const(bool, False),
+    )
 
 
 @dataclass
-class ArenaGetRoomListAck:
+class ArenaGetRoomListAck(WireMessage):
     """Opcode 2307: eEGS_ARENA_GET_ROOMLIST_ACK (reply).
 
     Case in 0x004C6080 -> 0x004B96D0, item 0x0049E9C0 -> 0x00A50A70.
     """
     OPCODE: ClassVar[int] = 2307
-    result: int = 0
+    result: u32 = 0
     flag: bool = True
-    room_count: int = 0  # sent equal to len(rooms)
-    rooms: list[ArenaRoomInfo] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I?i', self.result, self.flag, self.room_count)
-        b += b'\x10' + varuint(len(self.rooms)) + b''.join(e0.encode() for e0 in self.rooms)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaGetRoomListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['flag'] = r.read_bool()
-        kw['room_count'] = r.read_i32()
-        kw['rooms'] = r.read_tagged_vector(lambda r1: ArenaRoomInfo.read(r1))
-        return cls(**kw)
+    room_count: i32 = 0  # sent equal to len(rooms)
+    rooms: Vector[ArenaRoomInfo] = field(default_factory=list)
 
 
 @dataclass
-class ArenaCreateRoomReq:
+class ArenaCreateRoomReq(WireMessage):
     """Opcode 5153: eERC_ARENA_CREATE_ROOM_REQ (request).
 
     Serializer 0x004C21E0 -> 0x0049E980 -> 0x00A4F330 (sender 0x004C1F70).
     """
     OPCODE: ClassVar[int] = 5153
-    header: int = REQUEST_HEADER
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
     room: ArenaRoomInfo = field(default_factory=ArenaRoomInfo)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += self.room.encode()
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaCreateRoomReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['room'] = ArenaRoomInfo.read(r)
-        return cls(**kw)
 
 
 @dataclass
-class ArenaCreateRoomAck:
+class ArenaCreateRoomAck(WireMessage):
     """Opcode 5154: eERC_ARENA_CREATE_ROOM_ACK (reply).
 
     Case in 0x004C6080 -> 0x004BCCE0: result, room, 6-byte slot config.
     """
     OPCODE: ClassVar[int] = 5154
-    result: int = 0
+    result: u32 = 0
     room: ArenaRoomInfo = field(default_factory=ArenaRoomInfo)
-    slot_config: bytes = bytes(6)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += self.room.encode()
-        b += bytes(self.slot_config).ljust(6, b'\x00')[:6]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaCreateRoomAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['room'] = ArenaRoomInfo.read(r)
-        kw['slot_config'] = r.read_bytes(6)
-        return cls(**kw)
+    slot_config: Raw[6] = bytes(6)
 
 
 @dataclass
-class ArenaJoinRoomReq:
+class ArenaJoinRoomReq(WireMessage):
     """Opcode 5145: eERC_ARENA_JOIN_ROOM_REQ (request).
 
     Encoded at 0x004C1C30.
     """
     OPCODE: ClassVar[int] = 5145
-    header: int = REQUEST_HEADER
-    room_id: int = 0
-    password: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iQ', self.header, self.room_id)
-        b += wide_string(self.password)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaJoinRoomReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['room_id'] = r.read_u64()
-        kw['password'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    room_id: u64 = 0
+    password: wstr = ''
 
 
 @dataclass
-class ArenaJoinRoomAck:
+class ArenaJoinRoomAck(WireMessage):
     """Opcode 5146: eERC_ARENA_JOIN_ROOM_ACK (reply).
 
     Handled at 0x004C6080 -> 0x004C5380.
     """
     OPCODE: ClassVar[int] = 5146
-    result: int = 0
+    result: u32 = 0
     room: ArenaRoomInfo = field(default_factory=ArenaRoomInfo)
-    host_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += self.room.encode()
-        b += struct.pack('<Q', self.host_uid)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaJoinRoomAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['room'] = ArenaRoomInfo.read(r)
-        kw['host_uid'] = r.read_u64()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    host_uid: u64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'room',
+        'host_uid',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class ArenaLeaveRoomReq:
+class ArenaLeaveRoomReq(WireMessage):
     """Opcode 5148: eERC_ARENA_LEAVE_ROOM_REQ (request)."""
     OPCODE: ClassVar[int] = 5148
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaLeaveRoomReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class ArenaLeaveRoomAck:
+class ArenaLeaveRoomAck(WireMessage):
     """Opcode 5149: eERC_ARENA_LEAVE_ROOM_ACK (reply).
 
     Handled at 0x004BB5B0.
     """
     OPCODE: ClassVar[int] = 5149
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x10\x80'
-        b += bytes(bytes(14)).ljust(14, b'\x00')[:14]
-        b += bytes(bytes(14)).ljust(14, b'\x00')[:14]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaLeaveRoomAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        r.read_empty_container(0x10)
-        r.read_bytes(14)
-        r.read_bytes(14)
-        return cls(**kw)
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+        Const(Raw[14], bytes(14)),
+        Const(Raw[14], bytes(14)),
+    )
 
 
 @dataclass
-class ArenaGetInviteListReq:
+class ArenaGetInviteListReq(WireMessage):
     """Opcode 2308: eEGS_ARENA_GET_INVITELIST_REQ (request)."""
     OPCODE: ClassVar[int] = 2308
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaGetInviteListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class ArenaGetInviteListAck:
+class ArenaGetInviteListAck(WireMessage):
     """Opcode 2309: eEGS_ARENA_GET_INVITELIST_ACK (reply).
 
     Case in 0x004C5200 -> 0x004B4680.
     """
     OPCODE: ClassVar[int] = 2309
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaGetInviteListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class ArenaTeamInfo:
+class ArenaTeamInfo(WireMessage):
     """Arena team record (server state; not tied to a recovered reader)."""
-    team_id: int = 1
-    team_type: int = 1
-    score: int = 1000
-    member_count: int = 1
-    team_name: str = 'Gladiators'
-    leader_name: str = 'Leader'
-    notice: str = 'Welcome to Arena Team'
-    timestamp: int = 0
-    leader_uid: int = 0
-    field10: int = 0
-    field11: int = 0
-    field12: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qhii', self.team_id, self.team_type, self.score, self.member_count)
-        b += wide_string(self.team_name)
-        b += wide_string(self.leader_name)
-        b += wide_string(self.notice)
-        b += struct.pack('<QqIII', self.timestamp, self.leader_uid, self.field10, self.field11, self.field12)
-        b += b'\x17\x80'
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'ArenaTeamInfo':
-        kw = {}
-        kw['team_id'] = r.read_i64()
-        kw['team_type'] = r.read_i16()
-        kw['score'] = r.read_i32()
-        kw['member_count'] = r.read_i32()
-        kw['team_name'] = r.read_wstring()
-        kw['leader_name'] = r.read_wstring()
-        kw['notice'] = r.read_wstring()
-        kw['timestamp'] = r.read_u64()
-        kw['leader_uid'] = r.read_i64()
-        kw['field10'] = r.read_u32()
-        kw['field11'] = r.read_u32()
-        kw['field12'] = r.read_u32()
-        r.read_empty_container(0x17)
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamInfo':
-        return cls.read(JSerBufferReader(data))
+    team_id: i64 = 1
+    team_type: i16 = 1
+    score: i32 = 1000
+    member_count: i32 = 1
+    team_name: wstr = 'Gladiators'
+    leader_name: wstr = 'Leader'
+    notice: wstr = 'Welcome to Arena Team'
+    timestamp: u64 = 0
+    leader_uid: i64 = 0
+    field10: u32 = 0
+    field11: u32 = 0
+    field12: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'team_id',
+        'team_type',
+        'score',
+        'member_count',
+        'team_name',
+        'leader_name',
+        'notice',
+        'timestamp',
+        'leader_uid',
+        'field10',
+        'field11',
+        'field12',
+        Const(EmptyMap),
+    )
 
 
 @dataclass
-class ArenaTeamCreateReq:
+class ArenaTeamCreateReq(WireMessage):
     """Opcode 5269: eERC_ARENA_TEAM_CREATE_REQ (request)."""
     OPCODE: ClassVar[int] = 5269
-    header: int = REQUEST_HEADER
-    team_name: str = 'Gladiators'
-    team_type: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.team_name)
-        b += struct.pack('<h', self.team_type)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamCreateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['team_name'] = r.read_wstring()
-        kw['team_type'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    team_name: wstr = 'Gladiators'
+    team_type: i16 = 1
 
 
 @dataclass
-class ArenaTeamCreateAck:
+class ArenaTeamCreateAck(WireMessage):
     """Opcode 5270: eERC_ARENA_TEAM_CREATE_ACK (reply).
 
     Table case in 0x0049D180 -> 0x0049BEF0.
     """
     OPCODE: ClassVar[int] = 5270
-    result: int = 0
-    team_id: int = 1
-    team_type: int = 1
-    score: int = 1000
-    member_count: int = 1
-    team_name: str = 'Gladiators'
-    leader_name: str = 'Leader'
-    notice: str = 'Welcome to Arena Team'
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iqhii', self.result, self.team_id, self.team_type, self.score, self.member_count)
-        b += wide_string(self.team_name)
-        b += wide_string(self.leader_name)
-        b += wide_string(self.notice)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamCreateAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['team_id'] = r.read_i64()
-        kw['team_type'] = r.read_i16()
-        kw['score'] = r.read_i32()
-        kw['member_count'] = r.read_i32()
-        kw['team_name'] = r.read_wstring()
-        kw['leader_name'] = r.read_wstring()
-        kw['notice'] = r.read_wstring()
-        return cls(**kw)
+    result: u32 = 0
+    team_id: i64 = 1
+    team_type: i16 = 1
+    score: i32 = 1000
+    member_count: i32 = 1
+    team_name: wstr = 'Gladiators'
+    leader_name: wstr = 'Leader'
+    notice: wstr = 'Welcome to Arena Team'
 
 
 @dataclass
-class ArenaTeamJoinReq:
+class ArenaTeamJoinReq(WireMessage):
     """Opcode 5271: eERC_ARENA_TEAM_JOIN_REQ (request)."""
     OPCODE: ClassVar[int] = 5271
-    header: int = REQUEST_HEADER
-    team_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.team_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamJoinReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['team_id'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    team_id: i64 = 1
 
 
 @dataclass
-class ArenaTeamJoinAck:
+class ArenaTeamJoinAck(WireMessage):
     """Opcode 5272: eERC_ARENA_TEAM_JOIN_ACK (reply).
 
     Table case in 0x0049D180 -> 0x0049C4B0.
     """
     OPCODE: ClassVar[int] = 5272
-    result: int = 0
-    team_id: int = 1
-    team_type: int = 1
-    score: int = 1000
-    member_count: int = 2
-    team_name: str = 'Gladiators'
-    leader_name: str = 'Leader'
-    notice: str = 'Welcome to Arena Team'
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iqhii', self.result, self.team_id, self.team_type, self.score, self.member_count)
-        b += wide_string(self.team_name)
-        b += wide_string(self.leader_name)
-        b += wide_string(self.notice)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamJoinAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['team_id'] = r.read_i64()
-        kw['team_type'] = r.read_i16()
-        kw['score'] = r.read_i32()
-        kw['member_count'] = r.read_i32()
-        kw['team_name'] = r.read_wstring()
-        kw['leader_name'] = r.read_wstring()
-        kw['notice'] = r.read_wstring()
-        return cls(**kw)
+    result: u32 = 0
+    team_id: i64 = 1
+    team_type: i16 = 1
+    score: i32 = 1000
+    member_count: i32 = 2
+    team_name: wstr = 'Gladiators'
+    leader_name: wstr = 'Leader'
+    notice: wstr = 'Welcome to Arena Team'
 
 
 @dataclass
-class ArenaTeamLeaveReq:
+class ArenaTeamLeaveReq(WireMessage):
     """Opcode 5274: eERC_ARENA_TEAM_LEAVE_REQ (request)."""
     OPCODE: ClassVar[int] = 5274
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamLeaveReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class ArenaTeamLeaveAck:
+class ArenaTeamLeaveAck(WireMessage):
     """Opcode 5275: eERC_ARENA_TEAM_LEAVE_ACK (reply).
 
     Table case in 0x0049D180 -> 0x00490100: result, 14 raw bytes.
     """
     OPCODE: ClassVar[int] = 5275
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += bytes(bytes(14)).ljust(14, b'\x00')[:14]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaTeamLeaveAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        r.read_bytes(14)
-        return cls(**kw)
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(Raw[14], bytes(14)),
+    )
 
 
 @dataclass
-class LeagueRankEntry:
+class LeagueRankEntry(WireMessage):
     """Ladder entry, 0x00475AA0 -> 0x00A4A120."""
-    rank: int = 1
-    char_uid: int = 10001
-    char_name: str = 'Gladiator'
-    score: int = 1500
-    char_class: int = 1
-    char_level: int = 50
-    wins: int = 10
-    losses: int = 2
-    draws: int = 0
-    rating: int = 1500
-    tier: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IQ', self.rank, self.char_uid)
-        b += wide_string(self.char_name)
-        b += struct.pack('<IBBIIIII', self.score, self.char_class, self.char_level, self.wins, self.losses, self.draws, self.rating, self.tier)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'LeagueRankEntry':
-        kw = {}
-        kw['rank'] = r.read_u32()
-        kw['char_uid'] = r.read_u64()
-        kw['char_name'] = r.read_wstring()
-        kw['score'] = r.read_u32()
-        kw['char_class'] = r.read_u8()
-        kw['char_level'] = r.read_u8()
-        kw['wins'] = r.read_u32()
-        kw['losses'] = r.read_u32()
-        kw['draws'] = r.read_u32()
-        kw['rating'] = r.read_u32()
-        kw['tier'] = r.read_u32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeagueRankEntry':
-        return cls.read(JSerBufferReader(data))
+    rank: u32 = 1
+    char_uid: u64 = 10001
+    char_name: wstr = 'Gladiator'
+    score: u32 = 1500
+    char_class: u8 = 1
+    char_level: u8 = 50
+    wins: u32 = 10
+    losses: u32 = 2
+    draws: u32 = 0
+    rating: u32 = 1500
+    tier: u32 = 1
 
 
 @dataclass
-class LeagueSeasonArenaGetRankReq:
+class LeagueSeasonArenaGetRankReq(WireMessage):
     """Opcode 2550: eEGS_LEAGUE_SEASON_ARENA_GET_RANK_REQ (request)."""
     OPCODE: ClassVar[int] = 2550
-    header: int = REQUEST_HEADER
-    season_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.header, self.season_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeagueSeasonArenaGetRankReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['season_id'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    season_id: i32 = 1
 
 
 @dataclass
-class LeagueSeasonArenaGetRankAck:
+class LeagueSeasonArenaGetRankAck(WireMessage):
     """Opcode 2551: eEGS_LEAGUE_SEASON_ARENA_GET_RANK_ACK (reply).
 
     Case in 0x0049B230 -> 0x00499DC0: result, season, entries, 12-byte footer.
     """
     OPCODE: ClassVar[int] = 2551
-    result: int = 0
-    season_id: int = 1
-    ranks: list[LeagueRankEntry] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Ii', self.result, self.season_id)
-        b += b'\x10' + varuint(len(self.ranks)) + b''.join(e0.encode() for e0 in self.ranks)
-        b += bytes(bytes(12)).ljust(12, b'\x00')[:12]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeagueSeasonArenaGetRankAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['season_id'] = r.read_i32()
-        kw['ranks'] = r.read_tagged_vector(lambda r1: LeagueRankEntry.read(r1))
-        r.read_bytes(12)
-        return cls(**kw)
+    result: u32 = 0
+    season_id: i32 = 1
+    ranks: Vector[LeagueRankEntry] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'season_id',
+        'ranks',
+        Const(Raw[12], bytes(12)),
+    )
 
 
 @dataclass
-class LeagueSeasonArenaGetMyRankReq:
+class LeagueSeasonArenaGetMyRankReq(WireMessage):
     """Opcode 2552: eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_REQ (request)."""
     OPCODE: ClassVar[int] = 2552
-    header: int = REQUEST_HEADER
-    season_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.header, self.season_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeagueSeasonArenaGetMyRankReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['season_id'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    season_id: i32 = 1
 
 
 @dataclass
-class LeagueSeasonArenaGetMyRankAck:
+class LeagueSeasonArenaGetMyRankAck(WireMessage):
     """Opcode 2553: eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_ACK (reply).
 
     Table case in 0x0049D180 -> 0x00492A10.
     """
     OPCODE: ClassVar[int] = 2553
-    result: int = 0
-    my_rank: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Ii', self.result, self.my_rank)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeagueSeasonArenaGetMyRankAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['my_rank'] = r.read_i32()
-        return cls(**kw)
+    result: u32 = 0
+    my_rank: i32 = 1

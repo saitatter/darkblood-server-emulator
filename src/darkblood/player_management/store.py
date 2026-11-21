@@ -78,6 +78,8 @@ class SqliteCharacterStore(ICharacterStore):
 
     def _init_db(self):
         with self.lock, self._get_connection() as conn:
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('PRAGMA synchronous=NORMAL')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS meta (
                     key TEXT PRIMARY KEY,
@@ -106,28 +108,6 @@ class SqliteCharacterStore(ICharacterStore):
                          'VALUES (1, "OfflinePlayer", strftime("%s","now"))')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_char_account ON characters(account)')
             conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_char_name ON characters(name)')
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS mailbox (
-                    uid INTEGER PRIMARY KEY AUTOINCREMENT,
-                    recipient_char_id INTEGER NOT NULL,
-                    sender_char_id INTEGER NOT NULL,
-                    sender_name TEXT NOT NULL,
-                    post_type INTEGER NOT NULL DEFAULT 0,
-                    title TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    gold INTEGER NOT NULL DEFAULT 0,
-                    extra INTEGER NOT NULL DEFAULT 0,
-                    is_read INTEGER NOT NULL DEFAULT 0,
-                    has_item INTEGER NOT NULL DEFAULT 0,
-                    can_return INTEGER NOT NULL DEFAULT 1,
-                    remain_days INTEGER NOT NULL DEFAULT 30,
-                    send_time INTEGER NOT NULL,
-                    items_json TEXT NOT NULL DEFAULT '[]',
-                    is_deleted INTEGER NOT NULL DEFAULT 0
-                )
-            ''')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_mail_recipient ON mailbox(recipient_char_id, is_deleted)')
-            conn.execute('CREATE INDEX IF NOT EXISTS idx_mail_sender ON mailbox(sender_char_id, is_deleted)')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS mailbox (
                     uid INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,6 +214,21 @@ class SqliteCharacterStore(ICharacterStore):
             cur.execute('DELETE FROM characters WHERE account = ? AND id = ?', (account, char_id))
             conn.commit()
             return cur.rowcount > 0
+
+    def save_char(self, account: str, char_id: int):
+        """Persist a single cached character to SQLite without rewriting unrelated characters."""
+        with self.lock:
+            char = self._cache.get((account, char_id))
+            if char is None:
+                return
+            with self._get_connection() as conn:
+                conn.execute(
+                    'UPDATE characters SET name = ?, char_class = ?, level = ?, data_json = ? '
+                    'WHERE account = ? AND id = ?',
+                    (char['name'], char.get('char_class', 1), char.get('level', 1),
+                     json.dumps(char), account, char_id),
+                )
+                conn.commit()
 
     def save(self):
         """Persist all active cached character changes to SQLite atomically."""

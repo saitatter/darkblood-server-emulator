@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Lobby domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyArray, EmptyMap, EmptySet, EmptyVector, Extern, Lit, Map, Pairs, Raw, Vector, WireMessage, f32, i32, i64, ipv4, u16, u32, u64, u8, wstr
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
@@ -32,102 +32,48 @@ __all__ = [
 
 
 @dataclass
-class GameServer:
+class GameServer(WireMessage):
     """Server List entry of 2403 (reader 0x00A496B0, constructor 0x0074DF70)."""
-    name: str = 'Offline'
-    u16: int = 0  # meaning unknown
-    u64: int = 0  # meaning unknown
+    name: wstr = 'Offline'
+    u16: u16 = 0  # meaning unknown
+    u64: u64 = 0  # meaning unknown
     flag_a: bool = False  # meaning unknown
     flag_b: bool = False  # meaning unknown
     flag_c: bool = True  # meaning unknown
 
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += wide_string(self.name)
-        b += struct.pack('<HQ???', self.u16, self.u64, self.flag_a, self.flag_b, self.flag_c)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'GameServer':
-        kw = {}
-        kw['name'] = r.read_wstring()
-        kw['u16'] = r.read_u16()
-        kw['u64'] = r.read_u64()
-        kw['flag_a'] = r.read_bool()
-        kw['flag_b'] = r.read_bool()
-        kw['flag_c'] = r.read_bool()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GameServer':
-        return cls.read(JSerBufferReader(data))
-
 
 @dataclass
-class ChannelSquare:
+class ChannelSquare(WireMessage):
     """Channel List entry of 2022 (reader 0x00A49700)."""
-    square_id: int = 1
-    name: str = 'Channel 1'
-    a: int = 0  # meaning unknown
-    load: int = 100  # 100 = "Normal · [Good]" in the UI
-    c: int = 0  # meaning unknown
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Q', self.square_id)
-        b += wide_string(self.name)
-        b += struct.pack('<III', self.a, self.load, self.c)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'ChannelSquare':
-        kw = {}
-        kw['square_id'] = r.read_u64()
-        kw['name'] = r.read_wstring()
-        kw['a'] = r.read_u32()
-        kw['load'] = r.read_u32()
-        kw['c'] = r.read_u32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChannelSquare':
-        return cls.read(JSerBufferReader(data))
+    square_id: u64 = 1
+    name: wstr = 'Channel 1'
+    a: u32 = 0  # meaning unknown
+    load: u32 = 100  # 100 = "Normal · [Good]" in the UI
+    c: u32 = 0  # meaning unknown
 
 
 @dataclass
-class QuickSlot:
+class QuickSlot(WireMessage):
     """2007 quickslot element 0x00A49DC0 (25 bytes, defaults 0x0049F690),
     loaded by 0x00966080 at 0x007AA8A6.
     """
-    type: int = 0  # 0 item, 1 skill
-    slot: int = 0
-    ref_id: int = 0  # nRefID
-    ref_uid: int = 0  # nRefUID
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<BBiq?qH', self.type, self.slot, self.ref_id, self.ref_uid, False, 0, 0xFFFF)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'QuickSlot':
-        kw = {}
-        kw['type'] = r.read_u8()
-        kw['slot'] = r.read_u8()
-        kw['ref_id'] = r.read_i32()
-        kw['ref_uid'] = r.read_i64()
-        r.read_bool()
-        r.read_i64()
-        r.read_u16()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'QuickSlot':
-        return cls.read(JSerBufferReader(data))
+    type: u8 = 0  # 0 item, 1 skill
+    slot: u8 = 0
+    ref_id: i32 = 0  # nRefID
+    ref_uid: i64 = 0  # nRefUID
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'type',
+        'slot',
+        'ref_id',
+        'ref_uid',
+        Const(bool, False),
+        Const(i64, 0),
+        Const(u16, 0xFFFF),
+    )
 
 
 @dataclass
-class SelectCharacterAck:
+class SelectCharacterAck(WireMessage):
     """Opcode 2007: eEGS_SELECT_CHAR_ACK (reply).
 
     Handler 0x007AA4B0: untagged struct 0x00A40760 starting with the result (the
@@ -136,118 +82,115 @@ class SelectCharacterAck:
     meanings are unknown unless commented; they are sent as zero or empty.
     """
     OPCODE: ClassVar[int] = 2007
-    result: int = 0
-    character: Character = field(default_factory=Character)
-    bags: list[Bag] = field(default_factory=list)  # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
-    items: list[Item] = field(default_factory=list)  # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
-    quickslots: list[QuickSlot] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
-    skills: dict[int, LearnedSkill] = field(default_factory=dict)  # 0x004B1240, element reader 0x004ACB80 (as 2698)
-    active_quests: list[ActiveQuest] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x80'
-        b += b'\x80'
-        b += self.character.encode_world_details()
-        b += struct.pack('<QQQQBB', 0, 0, 0, 0, 0, 0)
-        b += b'\x17\x80'
-        b += b'\x10' + varuint(len(self.bags)) + b''.join(e0.encode() for e0 in self.bags)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += b'\x10' + varuint(len(self.quickslots)) + b''.join(e0.encode() for e0 in self.quickslots)
-        b += b'\x10\x80'
-        b += b'\x17' + varuint(len(self.skills)) + b''.join(b'\x0f' + struct.pack('<H', k0) + v0.encode() for k0, v0 in sorted(self.skills.items()))
-        b += b'\x17\x80'
-        b += b'\x13\x80'
-        b += b'\x17\x80'
-        b += struct.pack('<QII', 0, 0, 0)
-        b += b'\x17' + varuint(len(self.active_quests)) + b''.join(e0.encode_entry() for e0 in self.active_quests)
-        b += b'\x13\x80'
-        b += bytes(bytes(18)).ljust(18, b'\x00')[:18]
-        b += b'\x13\x80'
-        b += struct.pack('<QQQIQQ', 0, 0, 0, 0, 0, 0)
-        b += b'\x10\x80'
-        b += struct.pack('<Q??fQQ', 0, False, False, 0.0, 0, 0)
-        b += b'\x17\x80'
-        b += b'\x17\x80'
-        b += wide_string('')
-        b += b'\x17\x80'
-        b += b'\x17\x80'
-        b += struct.pack('<?', False)
-        b += b'\x17\x80'
-        b += struct.pack('<QQI', 0, 0, 0)
-        b += b'\x10\x80'
-        b += b'\x10\x80'
-        b += struct.pack('<HQQ', 0, 0, 0)
-        b += b'\x17\x80'
-        b += b'\x17\x80'
-        b += b'\x17\x80'
-        b += struct.pack('<Q?Q', 0, False, 0)
-        b += b'\x10\x80'
-        b += struct.pack('<IQQQ', 0, 0, 0, 0)
-        b += b'\x17\x80'
-        b += b'\x10\x80'
-        b += struct.pack('<H', 0)
-        b += b'\x10\x80'
-        b += b'\x17\x80'
-        b += struct.pack('<H', 0)
-        b += b'\x17\x80'
-        b += b'\x10\x80'
-        return bytes(b)
+    result: u32 = 0
+    character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
+    bags: Vector[Extern[Bag, 'encode', False]] = field(default_factory=list)  # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
+    quickslots: Vector[QuickSlot] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
+    skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # 0x004B1240, element reader 0x004ACB80 (as 2698)
+    active_quests: Pairs[Extern[ActiveQuest, 'encode_entry', False]] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyArray),
+        Const(EmptyArray),
+        'character',
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u8, 0),
+        Const(u8, 0),
+        Const(EmptyMap),
+        'bags',
+        'items',
+        'quickslots',
+        Const(EmptyVector),
+        'skills',
+        Const(EmptyMap),
+        Const(EmptySet),
+        Const(EmptyMap),
+        Const(u64, 0),
+        Const(u32, 0),
+        Const(u32, 0),
+        'active_quests',
+        Const(EmptySet),
+        Const(Raw[18], bytes(18)),
+        Const(EmptySet),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u32, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(EmptyVector),
+        Const(u64, 0),
+        Const(bool, False),
+        Const(bool, False),
+        Const(f32, 0.0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(wstr, ''),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(bool, False),
+        Const(EmptyMap),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u32, 0),
+        Const(EmptyVector),
+        Const(EmptyVector),
+        Const(u16, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(u64, 0),
+        Const(bool, False),
+        Const(u64, 0),
+        Const(EmptyVector),
+        Const(u32, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(EmptyMap),
+        Const(EmptyVector),
+        Const(u16, 0),
+        Const(EmptyVector),
+        Const(EmptyMap),
+        Const(u16, 0),
+        Const(EmptyMap),
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class JoinSquareAck:
+class JoinSquareAck(WireMessage):
     """Opcode 5029: eERC_JOIN_SQUARE_ACK (reply).
 
     Reader 0x00757AD0.
     """
     OPCODE: ClassVar[int] = 5029
-    result: int = 0
-    square_id: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IQ', self.result, self.square_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'JoinSquareAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['square_id'] = r.read_u64()
-        return cls(**kw)
+    result: u32 = 0
+    square_id: u64 = 1
 
 
 @dataclass
-class RelayAddressNot:
+class RelayAddressNot(WireMessage):
     """Opcode 5134: eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT (reply).
 
     Reader 0x0075AAE0: implicit 0x1E struct = 6 raw bytes (0x00A48910) written to
     the relay buffer; the handler then calls JP2PClient::Connect (0x00956C80).
     """
     OPCODE: ClassVar[int] = 5134
-    ip: str = '127.0.0.1'  # network byte order
-    port: int = 9401
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += bytes(int(o) for o in self.ip.split('.'))
-        b += struct.pack('<H', self.port)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RelayAddressNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['ip'] = '.'.join(str(o) for o in r.read_bytes(4))
-        kw['port'] = r.read_u16()
-        return cls(**kw)
+    ip: ipv4 = '127.0.0.1'  # network byte order
+    port: u16 = 9401
 
 
 @dataclass
-class BackToSquareAck:
+class BackToSquareAck(WireMessage):
     """Opcode 5046: eERC_BACK_TO_SQUARE_ACK (reply).
 
     Handler 0x007897F0; names from "nJoinSquareUID >> nJoinLayerNetID >>
@@ -256,228 +199,108 @@ class BackToSquareAck:
     eAS_SquarePlay and reconnects the relay.
     """
     OPCODE: ClassVar[int] = 5046
-    result: int = 0
-    square_uid: int = 1
-    layer_net_id: int = field(default_factory=layer_net_id)
+    result: u32 = 0
+    square_uid: u64 = 1
+    layer_net_id: u64 = field(default_factory=layer_net_id)
     use_waypoint: bool = False
-    cur_ar: int = 0  # iCurAr: current AR; 0 showed 0 AR in town until relog
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<IQQ', self.result, self.square_uid, self.layer_net_id)
-        b += b'\x10\x80'
-        b += struct.pack('<?q', self.use_waypoint, self.cur_ar)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'BackToSquareAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['square_uid'] = r.read_u64()
-        kw['layer_net_id'] = r.read_u64()
-        r.read_empty_container(0x10)
-        kw['use_waypoint'] = r.read_bool()
-        kw['cur_ar'] = r.read_i64()
-        return cls(**kw)
+    cur_ar: i64 = 0  # iCurAr: current AR; 0 showed 0 AR in town until relog
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'square_uid',
+        'layer_net_id',
+        Const(EmptyVector),
+        'use_waypoint',
+        'cur_ar',
+    )
 
 
 @dataclass
-class RelayJoinGroupAck:
+class RelayJoinGroupAck(WireMessage):
     """ProudNet relay RMI 3001 JoinGroupACK (relay PIDL), not a JEvent."""
-    group_host_id: int = 0x10000
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x00\x03'
-        b += struct.pack('<HI', 3001, self.group_host_id)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'RelayJoinGroupAck':
-        kw = {}
-        r.expect_bytes(b'\x00\x03')
-        r.read_u16()
-        kw['group_host_id'] = r.read_u32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RelayJoinGroupAck':
-        return cls.read(JSerBufferReader(data))
+    group_host_id: u32 = 0x10000
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Lit(b'\x00\x03'),
+        Const(u16, 3001),
+        'group_host_id',
+    )
 
 
 @dataclass
-class PageCharTemp:
+class PageCharTemp(WireMessage):
     """Player entry of 5027 (reader 0x00A494B0, writer 0x00A49530)."""
-    char_id: int = 0
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    name: str = ''
-    char_class: int = 1
-    level: int = 1
-    guild_uid: int = 0
-    guild_name: str = ''
-    server_bits: int = 0  # server-list key in bits 54-58 (0x00A614A0): key << 54
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qfff', self.char_id, self.x, self.y, self.z)
-        b += wide_string(self.name)
-        b += struct.pack('<Bqq', self.char_class, self.level, self.guild_uid)
-        b += wide_string(self.guild_name)
-        b += struct.pack('<Q', self.server_bits)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'PageCharTemp':
-        kw = {}
-        kw['char_id'] = r.read_i64()
-        kw['x'] = r.read_f32()
-        kw['y'] = r.read_f32()
-        kw['z'] = r.read_f32()
-        kw['name'] = r.read_wstring()
-        kw['char_class'] = r.read_u8()
-        kw['level'] = r.read_i64()
-        kw['guild_uid'] = r.read_i64()
-        kw['guild_name'] = r.read_wstring()
-        kw['server_bits'] = r.read_u64()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PageCharTemp':
-        return cls.read(JSerBufferReader(data))
+    char_id: i64 = 0
+    x: f32 = 0.0
+    y: f32 = 0.0
+    z: f32 = 0.0
+    name: wstr = ''
+    char_class: u8 = 1
+    level: i64 = 1
+    guild_uid: i64 = 0
+    guild_name: wstr = ''
+    server_bits: u64 = 0  # server-list key in bits 54-58 (0x00A614A0): key << 54
 
 
 @dataclass
-class JoinLayerNot:
+class JoinLayerNot(WireMessage):
     """Opcode 5027: eERC_JOIN_LAYER_NOT (reply).
 
     Handler 0x00787790: vecPageCharTemp, vecDuel. Spawns players in the town layer.
     """
     OPCODE: ClassVar[int] = 5027
-    players: list[PageCharTemp] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x10' + varuint(len(self.players)) + b''.join(e0.encode() for e0 in self.players)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'JoinLayerNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['players'] = r.read_tagged_vector(lambda r1: PageCharTemp.read(r1))
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    players: Vector[PageCharTemp] = field(default_factory=list)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'players',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class DeleteCharacterReq:
+class DeleteCharacterReq(WireMessage):
     """Opcode 2014: eEGS_DELETE_CHARACTER_REQ (request).
 
     Live: ffffff7f 0200000000000000 deletes character 2.
     """
     OPCODE: ClassVar[int] = 2014
-    header: int = REQUEST_HEADER
-    char_uid: int = 0  # nDelCharUID
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.char_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DeleteCharacterReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['char_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0  # nDelCharUID
 
 
 @dataclass
-class DeleteCharacterAck:
+class DeleteCharacterAck(WireMessage):
     """Opcode 2015: eEGS_DELETE_CHARACTER_ACK (reply).
 
     On_eEGS_DELETE_CHARACTER_ACK 0x00758370.
     """
     OPCODE: ClassVar[int] = 2015
-    result: int = 0
-    char_uid: int = 0  # nDelCharUID
-    complete_time: int = 0  # nUserDelCompleteTime (0 = instant)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqi', self.result, self.char_uid, self.complete_time)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DeleteCharacterAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['char_uid'] = r.read_i64()
-        kw['complete_time'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
+    char_uid: i64 = 0  # nDelCharUID
+    complete_time: i32 = 0  # nUserDelCompleteTime (0 = instant)
 
 
 @dataclass
-class UndeleteCharacterAck:
+class UndeleteCharacterAck(WireMessage):
     """Opcode 2247: eEGS_UNDELETE_CHARACTER_ACK (reply).
 
     Handler 0x0075A8A0. Result 0 clears the pending deletion of that slot
     (0x006F02E0 with flag 0, time 0). Request 2246 has the same body as 2014.
     """
     OPCODE: ClassVar[int] = 2247
-    result: int = 0
-    char_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.char_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'UndeleteCharacterAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['char_uid'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    char_uid: i64 = 0
 
 
 @dataclass
-class ArenaBackToSquareReq:
+class ArenaBackToSquareReq(WireMessage):
     """Opcode 5165: eERC_ARENA_BACK_TO_SQUARE_REQ (request)."""
     OPCODE: ClassVar[int] = 5165
 
-    def encode(self) -> bytes:
-        return b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaBackToSquareReq':
-        return cls()
-
 
 @dataclass
-class ArenaBackToSquareAck:
+class ArenaBackToSquareAck(WireMessage):
     """Opcode 5166: eERC_ARENA_BACK_TO_SQUARE_ACK (reply).
 
     Handler 0x00758550.
     """
     OPCODE: ClassVar[int] = 5166
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ArenaBackToSquareAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0

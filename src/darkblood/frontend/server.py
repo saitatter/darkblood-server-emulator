@@ -206,6 +206,7 @@ class BootstrapServer:
         self.dungeon_rooms = {}
         self.room_ids = count(1)
         self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
+        self._log_stream = None
         self.guid = uuid.UUID('a1d7e8c2-5a20-44af-94e1-52424c4f4f44').bytes_le
         key_file = str(key_path) if key_path else str(ROOT / 'logs' / 'server_rsa.key')
         self.rsa = RSAKey.load_or_create(key_file)
@@ -214,16 +215,29 @@ class BootstrapServer:
 
     async def start(self):
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._log_stream = self.log_path.open('a', encoding='utf-8', buffering=1)
         self.server = await asyncio.start_server(self.handle_client, self.host, self.port)
         logger.info('Listening on %s:%s (%s)', self.host, self.port, self.role)
+
+    def close_log(self):
+        if self._log_stream is not None:
+            try:
+                self._log_stream.close()
+            except OSError:
+                pass
+            self._log_stream = None
 
     def record(self, peer, event, data=b'', **extra):
         entry = dict(time=time.time(), peer=peer, event=event, hex=data.hex())
         if self.role != 'game':
             entry['role'] = self.role
         entry.update({k: v for k, v in extra.items() if v is not None})
-        with self.log_path.open('a', encoding='utf-8') as stream:
-            stream.write(json.dumps(entry) + '\n')
+        line = json.dumps(entry) + '\n'
+        if self._log_stream is not None and not self._log_stream.closed:
+            self._log_stream.write(line)
+        else:
+            with self.log_path.open('a', encoding='utf-8') as stream:
+                stream.write(line)
         logger.info('%s %s %s %s', peer, event, data.hex(' ')[:600],
                     ' '.join('%s=%s' % kv for kv in extra.items() if kv[1] is not None))
 

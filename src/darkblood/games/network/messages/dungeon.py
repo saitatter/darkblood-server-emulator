@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Dungeon domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyMap, EmptySet, EmptyVector, Extern, Lit, Map, Raw, Set, Vector, WireMessage, h32, i16, i32, i64, rest, u16, u32, u8, wstr
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 
@@ -53,7 +53,7 @@ __all__ = [
 
 
 @dataclass
-class RoomInfo:
+class RoomInfo(WireMessage):
     """Untagged jRoomInfo, reader 0x00A49380, shared by 5002, 5004 and 2011.
     Destinations: +0, +8, +0x2C, +0x2E, +0x30, +0x24, +0x34, +0x3C, +0x40,
     +0x44. The find-party row filler (near 0x0062DA71) prints UI_625 with
@@ -62,45 +62,31 @@ class RoomInfo:
     +0x44 to 0x0074B3E0. Gate, map and difficulty follow the create order
     (szRoomName << nGateID << nMapID << sMapDiff << sMaxNumUser).
     """
-    room_id: int = 0
-    name: str = ''
-    max_users: int = 4
-    cur_users: int = 1
-    state: int = 8  # 8 waiting (Join enabled, 0x0062E422); 1/2 shown as PLAY (live); else FULL
-    host_uid: int = 0
-    gate_id: int = -1
-    map_id: int = -1
-    diff: int = -1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<q', self.room_id)
-        b += wide_string(self.name)
-        b += struct.pack('<hhiqqiih', self.max_users, self.cur_users, self.state, self.host_uid, 0, self.gate_id, self.map_id, self.diff)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'RoomInfo':
-        kw = {}
-        kw['room_id'] = r.read_i64()
-        kw['name'] = r.read_wstring()
-        kw['max_users'] = r.read_i16()
-        kw['cur_users'] = r.read_i16()
-        kw['state'] = r.read_i32()
-        kw['host_uid'] = r.read_i64()
-        r.read_i64()
-        kw['gate_id'] = r.read_i32()
-        kw['map_id'] = r.read_i32()
-        kw['diff'] = r.read_i16()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomInfo':
-        return cls.read(JSerBufferReader(data))
+    room_id: i64 = 0
+    name: wstr = ''
+    max_users: i16 = 4
+    cur_users: i16 = 1
+    state: i32 = 8  # 8 waiting (Join enabled, 0x0062E422); 1/2 shown as PLAY (live); else FULL
+    host_uid: i64 = 0
+    gate_id: i32 = -1
+    map_id: i32 = -1
+    diff: i16 = -1
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'room_id',
+        'name',
+        'max_users',
+        'cur_users',
+        'state',
+        'host_uid',
+        Const(i64, 0),
+        'gate_id',
+        'map_id',
+        'diff',
+    )
 
 
 @dataclass
-class RoomInfoListAck:
+class RoomInfoListAck(WireMessage):
     """Opcode 2011: eEGS_GET_ROOMINFOLIST_ACK (reply).
 
     JUserClient handler 0x0077A1F0; names from the read-failure messages:
@@ -110,233 +96,146 @@ class RoomInfoListAck:
     jRoomInfo (0x00A49380), the same untagged struct as in 5002.
     """
     OPCODE: ClassVar[int] = 2011
-    result: int = 0
+    result: u32 = 0
     show_only_wait: bool = False
-    page: int = 0
-    rooms: list[RoomInfo] = field(default_factory=list)  # m_vecRoomList
-    pages: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I?i', self.result, self.show_only_wait, self.page)
-        b += b'\x10' + varuint(len(self.rooms)) + b''.join(e0.encode() for e0 in self.rooms)
-        b += struct.pack('<i', self.pages)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomInfoListAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['show_only_wait'] = r.read_bool()
-        kw['page'] = r.read_i32()
-        kw['rooms'] = r.read_tagged_vector(lambda r1: RoomInfo.read(r1))
-        kw['pages'] = r.read_i32()
-        return cls(**kw)
+    page: i32 = 0
+    rooms: Vector[RoomInfo] = field(default_factory=list)  # m_vecRoomList
+    pages: i32 = 0
 
 
 @dataclass
-class CreateRoomReq:
+class CreateRoomReq(WireMessage):
     """Opcode 5001: eERC_CREATE_ROOM_REQ (request).
 
     Sender 0x0058B060: CreateRoomREQ( szRoomTitle, nGateID, nDungeonID,
     sDiff, sMaxUserCount ) writes a J-wstring, two i32s and two i16s.
     """
     OPCODE: ClassVar[int] = 5001
-    header: int = REQUEST_HEADER
-    name: str = ''
-    gate_id: int = -1
-    map_id: int = -1
-    diff: int = -1
-    max_users: int = 4
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.name)
-        b += struct.pack('<iihh', self.gate_id, self.map_id, self.diff, self.max_users)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'CreateRoomReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['name'] = r.read_wstring()
-        kw['gate_id'] = r.read_i32()
-        kw['map_id'] = r.read_i32()
-        kw['diff'] = r.read_i16()
-        kw['max_users'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    name: wstr = ''
+    gate_id: i32 = -1
+    map_id: i32 = -1
+    diff: i16 = -1
+    max_users: i16 = 4
 
 
 @dataclass
-class CreateRoomAck:
+class CreateRoomAck(WireMessage):
     """Opcode 5002: eERC_CREATE_ROOM_ACK (reply).
 
     Handler 0x005984D0: result, room info, team ID, relay endpoint.
     """
     OPCODE: ClassVar[int] = 5002
-    result: int = 0
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
     room: RoomInfo = field(default_factory=RoomInfo)
-    team_id: int = 0
-    relay: bytes = bytes(6)  # IPv4 bytes + u16 port (frontend.relay.relay_address)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += self.room.encode()
-        b += struct.pack('<I', self.team_id)
-        b += bytes(self.relay).ljust(6, b'\x00')[:6]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'CreateRoomAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['room'] = RoomInfo.read(r)
-        kw['team_id'] = r.read_u32()
-        kw['relay'] = r.read_bytes(6)
-        return cls(**kw)
+    team_id: u32 = 0
+    relay: Raw[6] = bytes(6)  # IPv4 bytes + u16 port (frontend.relay.relay_address)
 
 
 @dataclass
-class JoinRoomReq:
+class JoinRoomReq(WireMessage):
     """Opcode 5003: eERC_JOIN_ROOM_REQ (request).
 
     Sender 0x0058B430.
     """
     OPCODE: ClassVar[int] = 5003
-    header: int = REQUEST_HEADER
-    room_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.room_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'JoinRoomReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['room_id'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    room_id: i64 = 0
 
 
 @dataclass
-class RoomMember:
+class RoomMember(WireMessage):
     """jNetChar (0x00A533A0). Unmapped fields use constructor 0x00486190 defaults."""
-    character: Character = field(default_factory=Character)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += self.character.encode_world_details()
-        b += struct.pack('<q', -1)
-        b += b'\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b += struct.pack('<qqIHHHHHHHHHHHHI', -1, -1, 0, 2010, 1, 1, 0, 0, 0, 2010, 1, 1, 0, 0, 0, 0)
-        return bytes(b)
+    character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'character',
+        Const(i64, -1),
+        Lit(b'\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'),
+        Const(i64, -1),
+        Const(i64, -1),
+        Const(u32, 0),
+        Const(u16, 2010),
+        Const(u16, 1),
+        Const(u16, 1),
+        Const(u16, 0),
+        Const(u16, 0),
+        Const(u16, 0),
+        Const(u16, 2010),
+        Const(u16, 1),
+        Const(u16, 1),
+        Const(u16, 0),
+        Const(u16, 0),
+        Const(u16, 0),
+        Const(u32, 0),
+    )
 
 
 @dataclass
-class JoinRoomAck:
+class JoinRoomAck(WireMessage):
     """Opcode 5004: eERC_JOIN_ROOM_ACK (reply).
 
     Handler 0x00597C30: result, room info, host UID, roster, relay, two bools.
     """
     OPCODE: ClassVar[int] = 5004
-    result: int = 0
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
     room: RoomInfo = field(default_factory=RoomInfo)
-    host_uid: int = 0
-    members: list[RoomMember] = field(default_factory=list)
-    relay: bytes = bytes(6)
+    host_uid: i64 = 0
+    members: Vector[RoomMember] = field(default_factory=list)
+    relay: Raw[6] = bytes(6)
     free_item_obtain: bool = True  # bFreeItemObtain: looting mode (5088 mode 1 = free for all, 0 = random)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += self.room.encode()
-        b += struct.pack('<q', self.host_uid)
-        b += b'\x10' + varuint(len(self.members)) + b''.join(e0.encode() for e0 in self.members)
-        b += bytes(self.relay).ljust(6, b'\x00')[:6]
-        b += struct.pack('<??', self.free_item_obtain, False)
-        return bytes(b)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'room',
+        'host_uid',
+        'members',
+        'relay',
+        'free_item_obtain',
+        Const(bool, False),
+    )
 
 
 @dataclass
-class RoomMemberJoinedNot:
+class RoomMemberJoinedNot(WireMessage):
     """Opcode 5035: eERC_JOIN_ROOM_NOT (reply).
 
     Handler 0x00598D90: jNetChar and bIsAllCharSameRate.
     """
     OPCODE: ClassVar[int] = 5035
     member: RoomMember = field(default_factory=RoomMember)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += self.member.encode()
-        b += struct.pack('<?', False)
-        return bytes(b)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'member',
+        Const(bool, False),
+    )
 
 
 @dataclass
-class RoomMemberLeftNot:
+class RoomMemberLeftNot(WireMessage):
     """Opcode 5036: eERC_LEAVE_ROOM_NOT (reply).
 
     Handler 0x005991B0: result and departing character UID.
     """
     OPCODE: ClassVar[int] = 5036
-    char_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iq', 0, self.char_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomMemberLeftNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        r.read_u32()
-        kw['char_uid'] = r.read_i64()
-        return cls(**kw)
+    char_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(u32, 0),
+        'char_uid',
+    )
 
 
 @dataclass
-class DungeonHistory:
+class DungeonHistory(WireMessage):
     """Value of the 5044 history map (0x00A492C0)."""
-    map_id: str = ''
-    max_diff: int = 0  # m_ucDiff: highest cleared difficulty
-    cleared: int = 0  # with max_diff, see SelectDungeonAck
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += wide_string(self.map_id)
-        b += struct.pack('<BB', self.max_diff, self.cleared)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'DungeonHistory':
-        kw = {}
-        kw['map_id'] = r.read_wstring()
-        kw['max_diff'] = r.read_u8()
-        kw['cleared'] = r.read_u8()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DungeonHistory':
-        return cls.read(JSerBufferReader(data))
+    map_id: wstr = ''
+    max_diff: u8 = 0  # m_ucDiff: highest cleared difficulty
+    cleared: u8 = 0  # with max_diff, see SelectDungeonAck
 
 
 @dataclass
-class SelectDungeonAck:
+class SelectDungeonAck(WireMessage):
     """Opcode 5044: eERC_SELECT_DUNGEON_ACK (reply).
 
     JUserClient handler 0x007702E0. Result 0x94 is a special failure stored on
@@ -352,34 +251,21 @@ class SelectDungeonAck:
     map's QuestLink (+0x44) is in it (0x006B5930, 0x006C77E0, 0x006D1120).
     """
     OPCODE: ClassVar[int] = 5044
-    result: int = 0
-    dun_history: dict[str, DungeonHistory] = field(default_factory=dict)  # dungeon id -> history
-    gate_id: str = ''
-    quest_ids: list[int] = field(default_factory=list)  # 0x005EAB90; pass sorted unique u32 ids
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x17' + varuint(len(self.dun_history)) + b''.join(b'\x0f' + wide_string(k0) + v0.encode() for k0, v0 in sorted(self.dun_history.items()))
-        b += b'\x13\x80'
-        b += wide_string(self.gate_id)
-        b += b'\x13' + varuint(len(self.quest_ids)) + b''.join(struct.pack('<I', e0 & 0xFFFFFFFF) for e0 in sorted(self.quest_ids))
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SelectDungeonAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['dun_history'] = r.read_tagged_map(lambda r1: r1.read_wstring(), lambda r1: DungeonHistory.read(r1))
-        r.read_empty_container(0x13)
-        kw['gate_id'] = r.read_wstring()
-        kw['quest_ids'] = r.read_tagged_set(lambda r1: r1.read_u32())
-        return cls(**kw)
+    result: u32 = 0
+    dun_history: Map[wstr, DungeonHistory] = field(default_factory=dict)  # dungeon id -> history
+    gate_id: wstr = ''
+    quest_ids: Set[h32] = field(default_factory=list)  # 0x005EAB90; pass sorted unique u32 ids
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'dun_history',
+        Const(EmptySet),
+        'gate_id',
+        'quest_ids',
+    )
 
 
 @dataclass
-class ChangeMapCodeAck:
+class ChangeMapCodeAck(WireMessage):
     """Opcode 5010: eERC_CHANGE_MAPCODE_ACK (reply).
 
     JAppStateDungeonGate vf20 -> 0x006D4A00. The map code is looked up as a map
@@ -387,155 +273,87 @@ class ChangeMapCodeAck:
     bool's meaning is not recovered; it echoes the trailing byte of 5009.
     """
     OPCODE: ClassVar[int] = 5010
-    result: int = 0
-    map_code: str = ''
+    result: u32 = 0
+    map_code: wstr = ''
     flag: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += wide_string(self.map_code)
-        b += struct.pack('<?', self.flag)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeMapCodeAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['map_code'] = r.read_wstring()
-        kw['flag'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class StartGameReq:
+class StartGameReq(WireMessage):
     """Opcode 5013: eERC_START_GAME_REQ (request).
 
     Sender 0x007AD030; captures always carry the header.
     """
     OPCODE: ClassVar[int] = 5013
-    header: int = REQUEST_HEADER
-    map_code: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.map_code)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'StartGameReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['map_code'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    map_code: wstr = ''
 
 
 @dataclass
-class StartGameAck:
+class StartGameAck(WireMessage):
     """Opcode 5014: eERC_START_GAME_ACK (reply).
 
     Reader 0x007880A0. Errors contain only the result. The scalar defaults and
     empty maps preserve the verified single-player reply.
     """
     OPCODE: ClassVar[int] = 5014
-    result: int = 0
-    map_code: str = ''
-    item_updates: list[Item] = field(default_factory=list)  # 0x004B94C0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<HI', 0, 0)
-        b += wide_string(self.map_code)
-        b += b'\x17\x80'
-        b += b'\x17\x80'
-        b += b'\x17\x80'
-        b += b'\x10' + varuint(len(self.item_updates)) + b''.join(e0.encode() for e0 in self.item_updates)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    map_code: wstr = ''
+    item_updates: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B94C0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(u16, 0),
+        Const(u32, 0),
+        'map_code',
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        'item_updates',
+    )
 
 
 @dataclass
-class ChangeDungeonLayerNot:
+class ChangeDungeonLayerNot(WireMessage):
     """Opcode 5095: eERC_CHANGE_DUNGEON_LAYER_NOT (reply).
 
     JAppStateGamePlay::Initialize -> sender 0x007900B0; captures always carry the
     header. layer_net_id is (jhash(map_code) << 32) | layer_id.
     """
     OPCODE: ClassVar[int] = 5095
-    header: int = REQUEST_HEADER
-    layer_net_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.layer_net_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeDungeonLayerNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['layer_net_id'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    layer_net_id: i64 = 0
 
 
 @dataclass
-class MonsterDeadReq:
+class MonsterDeadReq(WireMessage):
     """Opcode 5063: eERC_MONSTER_DEAD_REQ (request).
 
     JUserClient::MonsterDeadREQ 0x0078A690; captures always carry the header.
     """
     OPCODE: ClassVar[int] = 5063
-    header: int = REQUEST_HEADER
-    monster_id: int = 0
-    param: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iII', self.header, self.monster_id, self.param)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'MonsterDeadReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['monster_id'] = r.read_u32()
-        kw['param'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    monster_id: u32 = 0
+    param: u32 = 0
 
 
 @dataclass
-class ActiveWarFlagReq:
+class ActiveWarFlagReq(WireMessage):
     """Opcode 2422: eEGS_ACTIVE_WARFLAG_REQ (request).
 
     0x0087D170 -> sender 0x0079C300; captures always carry the header.
     """
     OPCODE: ClassVar[int] = 2422
-    header: int = REQUEST_HEADER
-    war_flag_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iI', self.header, self.war_flag_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ActiveWarFlagReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['war_flag_id'] = r.read_u32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    war_flag_id: u32 = 0
 
 
 @dataclass
-class GameplayDieCharReq:
+class GameplayDieCharReq(WireMessage):
     """Opcode 5093: eERC_GAMEPLAY_DIE_CHAR_REQ (request).
 
     Sender 0x0078EDF0; captures have both forms (21 or 25 bytes). Client
@@ -543,33 +361,17 @@ class GameplayDieCharReq:
     pjMyUserInfo->m_nLayerID, (int)m_vPosition.x, (int)m_vPosition.y ).
     """
     OPCODE: ClassVar[int] = 5093
-    header: int = REQUEST_HEADER
-    char_uid: int = 0
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
     bDie: bool = True
-    layer_id: int = 0
-    x: int = 0  # current position, truncated to int
-    y: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq?iii', self.header, self.char_uid, self.bDie, self.layer_id, self.x, self.y)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GameplayDieCharReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['char_uid'] = r.read_i64()
-        kw['bDie'] = r.read_bool()
-        kw['layer_id'] = r.read_i32()
-        kw['x'] = r.read_i32()
-        kw['y'] = r.read_i32()
-        return cls(**kw)
+    layer_id: i32 = 0
+    x: i32 = 0  # current position, truncated to int
+    y: i32 = 0
 
 
 @dataclass
-class GameplayDieCharAck:
+class GameplayDieCharAck(WireMessage):
     """Opcode 5094: eERC_GAMEPLAY_DIE_CHAR_ACK (reply).
 
     Handler 0x0078F090 (assembly-checked). char_uid is compared with the own UID
@@ -582,42 +384,30 @@ class GameplayDieCharAck:
     places the revived unit, so they must carry a real position.
     """
     OPCODE: ClassVar[int] = 5094
-    result: int = 0
-    char_uid: int = 0  # nFromCharUID
-    other_uid: int = 0  # nToCharUID
+    result: u32 = 0
+    char_uid: i64 = 0  # nFromCharUID
+    other_uid: i64 = 0  # nToCharUID
     bDie: bool = True
-    layer_id: int = 0
-    x: int = 0
-    y: int = 0
-    party_rebirth_limit: int = 0  # sCurPartyRebirthLimit; semantics not recovered
-    rebirth_coin: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<Iqq?iiiH', self.result, self.char_uid, self.other_uid, self.bDie, self.layer_id, self.x, self.y, self.party_rebirth_limit)
-        if not self.bDie:
-            b += struct.pack('<H', self.rebirth_coin)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GameplayDieCharAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['char_uid'] = r.read_i64()
-        kw['other_uid'] = r.read_i64()
-        kw['bDie'] = r.read_bool()
-        kw['layer_id'] = r.read_i32()
-        kw['x'] = r.read_i32()
-        kw['y'] = r.read_i32()
-        kw['party_rebirth_limit'] = r.read_u16()
-        if not kw['bDie']:
-            kw['rebirth_coin'] = r.read_u16()
-        return cls(**kw)
+    layer_id: i32 = 0
+    x: i32 = 0
+    y: i32 = 0
+    party_rebirth_limit: u16 = 0  # sCurPartyRebirthLimit; semantics not recovered
+    rebirth_coin: u16 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'char_uid',
+        'other_uid',
+        'bDie',
+        'layer_id',
+        'x',
+        'y',
+        'party_rebirth_limit',
+        ('rebirth_coin', '!bDie'),
+    )
 
 
 @dataclass
-class DailyRebirthCoinUseReq:
+class DailyRebirthCoinUseReq(WireMessage):
     """Opcode 2448: eEGS_DAILY_REBIRTH_COIN_USE_REQ (request).
 
     Sender 0x0079D8F0. A claim of free daily rebirth coins, not a revive. 0 is
@@ -626,76 +416,38 @@ class DailyRebirthCoinUseReq:
     Observed live: ffffff7f 00.
     """
     OPCODE: ClassVar[int] = 2448
-    header: int = REQUEST_HEADER
-    coin_type: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iB', self.header, self.coin_type)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DailyRebirthCoinUseReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['coin_type'] = r.read_u8()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    coin_type: u8 = 0
 
 
 @dataclass
-class DailyRebirthCoinUseAck:
+class DailyRebirthCoinUseAck(WireMessage):
     """Opcode 2449: eEGS_DAILY_REBIRTH_COIN_USE_ACK (reply).
 
     On_eEGS_DAILY_REBIRTH_COIN_USE_ACK 0x0079DC70. The ack does not change the
     owned coin count; 2286 does.
     """
     OPCODE: ClassVar[int] = 2449
-    result: int = 0
-    daily_recv_cnt: int = 1  # -> player +0x7E
-    pcbang_coin_remain: int = 5  # passed to page 0x12 0x0054A1E0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iHI', self.result, self.daily_recv_cnt, self.pcbang_coin_remain)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'DailyRebirthCoinUseAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['daily_recv_cnt'] = r.read_u16()
-        kw['pcbang_coin_remain'] = r.read_u32()
-        return cls(**kw)
+    result: i32 = 0
+    daily_recv_cnt: u16 = 1  # -> player +0x7E
+    pcbang_coin_remain: u32 = 5  # passed to page 0x12 0x0054A1E0
 
 
 @dataclass
-class ChoiceRewardPartyRankReq:
+class ChoiceRewardPartyRankReq(WireMessage):
     """Opcode 5090: eERC_CHOICE_REWARD_PARTYRANK_REQ (request).
 
     Sender 0x0078D5C0; captures always carry the header.
     """
     OPCODE: ClassVar[int] = 5090
-    header: int = REQUEST_HEADER
-    card_index: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<ii', self.header, self.card_index)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChoiceRewardPartyRankReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['card_index'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
+    card_index: i32 = 0
 
 
 @dataclass
-class ChoiceRewardPartyRankAck:
+class ChoiceRewardPartyRankAck(WireMessage):
     """Opcode 5091: eERC_CHOICE_REWARD_PARTYRANK_ACK (reply).
 
     On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0) is shown by the
@@ -703,25 +455,30 @@ class ChoiceRewardPartyRankAck:
     "xN" when >= 2. A UID at +0 showed "unknown item".
     """
     OPCODE: ClassVar[int] = 5091
-    result: int = 0
-    char_uid: int = 0  # nChoiceCharUID
-    item_id: int = 0  # +0 item code
-    count: int = 1  # +6
-    box_type: int = 0  # nBoxType
-    box_cost: int = 0  # nBoxCost
-    items: list[Item] = field(default_factory=list)  # read when char_uid is the local player (0x004B94C0)
-    gold: int = 0  # new player gold (+0x70)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iqIHHIii', self.result, self.char_uid, self.item_id & 0xFFFFFFFF, 0, self.count, 0, self.box_type, self.box_cost)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<q', self.gold)
-        return bytes(b)
+    result: i32 = 0
+    char_uid: i64 = 0  # nChoiceCharUID
+    item_id: h32 = 0  # +0 item code
+    count: u16 = 1  # +6
+    box_type: i32 = 0  # nBoxType
+    box_cost: i32 = 0  # nBoxCost
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # read when char_uid is the local player (0x004B94C0)
+    gold: i64 = 0  # new player gold (+0x70)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'char_uid',
+        'item_id',
+        Const(u16, 0),
+        'count',
+        Const(u32, 0),
+        'box_type',
+        'box_cost',
+        'items',
+        'gold',
+    )
 
 
 @dataclass
-class ChangeDungeonPenaltyNot:
+class ChangeDungeonPenaltyNot(WireMessage):
     """Opcode 2085: eEGS_CHANGE_DUNGEON_PENALTY_NOT (reply).
 
     Handler 0x0078FA70.
@@ -729,67 +486,32 @@ class ChangeDungeonPenaltyNot:
     OPCODE: ClassVar[int] = 2085
     in_dungeon: bool = False
     is_penalty: bool = False
-    penalty_level: int = 0
-    penalty_id: int = 0
-    duration: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<??hii', self.in_dungeon, self.is_penalty, self.penalty_level, self.penalty_id, self.duration)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeDungeonPenaltyNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['in_dungeon'] = r.read_bool()
-        kw['is_penalty'] = r.read_bool()
-        kw['penalty_level'] = r.read_i16()
-        kw['penalty_id'] = r.read_i32()
-        kw['duration'] = r.read_i32()
-        return cls(**kw)
+    penalty_level: i16 = 0
+    penalty_id: i32 = 0
+    duration: i32 = 0
 
 
 @dataclass
-class LeaveRoomReq:
+class LeaveRoomReq(WireMessage):
     """Opcode 5005: eERC_LEAVE_ROOM_REQ (request).
 
     Sender 0x0058B240; captured bodies are empty.
     """
     OPCODE: ClassVar[int] = 5005
 
-    def encode(self) -> bytes:
-        return b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeaveRoomReq':
-        return cls()
-
 
 @dataclass
-class LeaveRoomAck:
+class LeaveRoomAck(WireMessage):
     """Opcode 5006: eERC_LEAVE_ROOM_ACK (reply).
 
     Handler 0x00598A00.
     """
     OPCODE: ClassVar[int] = 5006
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'LeaveRoomAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class FinishGameReq:
+class FinishGameReq(WireMessage):
     """Opcode 5017: eERC_FINISH_GAME_REQ (request).
 
     Sender 0x007AD2F0: bool, two 0x17 maps, 4 bytes, a 0x10 vector, 4 bytes.
@@ -797,237 +519,139 @@ class FinishGameReq:
     """
     OPCODE: ClassVar[int] = 5017
     is_clear: bool = True
-    tail: bytes = b''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<?', self.is_clear)
-        b += bytes(self.tail)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FinishGameReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['is_clear'] = r.read_bool()
-        kw['tail'] = r.read_rest()
-        return cls(**kw)
+    tail: rest = b''
 
 
 @dataclass
-class SingleReward:
+class SingleReward(WireMessage):
     """mapSingleReward value in 5018: raw 40-byte block (0x00A1E7A0 reads 0x28
     bytes). 0x0071F9F0 copies it to JResultDirect +0x74 (result page 0x1B, +0xD4).
     The stylish/demolition/damage gauges come from party member data.
     """
-    total: int = 0  # +0x04 "num_total" (0x00720164)
-    rate_a: int = 100  # +0x08 explist row 1, shown as value / 100.0 after "X"
-    rate_b: int = 100  # +0x0C explist row 2
-    exp: int = 0  # +0x10 explist row 0 text
-    extra_box_count: int = 0  # +0x20: 0x0071FF0F adds this many "extra_box" entries; keep small
-    extra_box_price: int = 0  # +0x24 "num_price" (0x0071FE83)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iiiiiiiiii', 0, self.total, self.rate_a, self.rate_b, self.exp, 0, 0, 0, self.extra_box_count, self.extra_box_price)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'SingleReward':
-        kw = {}
-        r.read_i32()
-        kw['total'] = r.read_i32()
-        kw['rate_a'] = r.read_i32()
-        kw['rate_b'] = r.read_i32()
-        kw['exp'] = r.read_i32()
-        r.read_i32()
-        r.read_i32()
-        r.read_i32()
-        kw['extra_box_count'] = r.read_i32()
-        kw['extra_box_price'] = r.read_i32()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'SingleReward':
-        return cls.read(JSerBufferReader(data))
+    total: i32 = 0  # +0x04 "num_total" (0x00720164)
+    rate_a: i32 = 100  # +0x08 explist row 1, shown as value / 100.0 after "X"
+    rate_b: i32 = 100  # +0x0C explist row 2
+    exp: i32 = 0  # +0x10 explist row 0 text
+    extra_box_count: i32 = 0  # +0x20: 0x0071FF0F adds this many "extra_box" entries; keep small
+    extra_box_price: i32 = 0  # +0x24 "num_price" (0x0071FE83)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(i32, 0),
+        'total',
+        'rate_a',
+        'rate_b',
+        'exp',
+        Const(i32, 0),
+        Const(i32, 0),
+        Const(i32, 0),
+        'extra_box_count',
+        'extra_box_price',
+    )
 
 
 @dataclass
-class FinishGameAck:
+class FinishGameAck(WireMessage):
     """Opcode 5018: eERC_FINISH_GAME_ACK (reply).
 
     Handler 0x007ADB60.
     """
     OPCODE: ClassVar[int] = 5018
-    result: int = 0
+    result: u32 = 0
     is_clear: bool = True  # dungeon clear / victory
-    map_code: str = ''
+    map_code: wstr = ''
     flag: bool = False  # bSamePerson
-    rewards: dict[int, SingleReward] = field(default_factory=dict)  # mapSingleReward: char uid -> block
-    rank_first: int = 1  # nPartyRankFirst
-    rank_final: int = 1  # nPartyRankFinal
-    box_grade: int = 1  # nBoxGrade
-    extra_box_cost: int = 0  # nExtraBoxCost
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I?', self.result, self.is_clear)
-        b += wide_string(self.map_code)
-        b += struct.pack('<?', self.flag)
-        b += b'\x17\x80'
-        if self.is_clear:
-            b += b'\x17' + varuint(len(self.rewards)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in sorted(self.rewards.items()))
-            b += struct.pack('<iiii', self.rank_first, self.rank_final, self.box_grade, self.extra_box_cost)
-            b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'FinishGameAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        kw['is_clear'] = r.read_bool()
-        kw['map_code'] = r.read_wstring()
-        kw['flag'] = r.read_bool()
-        r.read_empty_container(0x17)
-        if kw['is_clear']:
-            kw['rewards'] = r.read_tagged_map(lambda r1: r1.read_i64(), lambda r1: SingleReward.read(r1))
-            kw['rank_first'] = r.read_i32()
-            kw['rank_final'] = r.read_i32()
-            kw['box_grade'] = r.read_i32()
-            kw['extra_box_cost'] = r.read_i32()
-            r.read_empty_container(0x10)
-        return cls(**kw)
+    rewards: Map[i64, SingleReward] = field(default_factory=dict)  # mapSingleReward: char uid -> block
+    rank_first: i32 = 1  # nPartyRankFirst
+    rank_final: i32 = 1  # nPartyRankFinal
+    box_grade: i32 = 1  # nBoxGrade
+    extra_box_cost: i32 = 0  # nExtraBoxCost
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'is_clear',
+        'map_code',
+        'flag',
+        Const(EmptyMap),
+        ('rewards', 'is_clear'),
+        ('rank_first', 'is_clear'),
+        ('rank_final', 'is_clear'),
+        ('box_grade', 'is_clear'),
+        ('extra_box_cost', 'is_clear'),
+        Const(EmptyVector, cond='is_clear'),
+    )
 
 
 @dataclass
-class RoomMemInfoReq:
+class RoomMemInfoReq(WireMessage):
     """Opcode 5060: eERC_ROOM_MEM_INFO_REQ (request).
 
     Sent when a Find party row is clicked: GetRoomMemberInfoREQ(
     m_vecRoomList[iChildIdx].m_nRoomUID ). Live: ffffff7f + i64 room uid.
     """
     OPCODE: ClassVar[int] = 5060
-    header: int = REQUEST_HEADER
-    room_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.room_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomMemInfoReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['room_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    room_uid: i64 = 0
 
 
 @dataclass
-class RoomMemberInfo:
+class RoomMemberInfo(WireMessage):
     """5061 member entry: 0x0049EA40 checks tag 0x1E without a byte, then reader
     0x00A49600. Names from the Find party member row (near 0x0062E339):
     SquareUID +0, CharUID +8, CharNick +0x14, Class +0x30, CharLevel +0x33.
     """
-    square_uid: int = 0
-    char_uid: int = 0
-    name: str = ''
-    char_class: int = 0
-    level: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qqi', self.square_uid, self.char_uid, 0)
-        b += wide_string(self.name)
-        b += struct.pack('<BhBqq', self.char_class, 0, self.level, 0, 0)
-        b += bytes(bytes(74)).ljust(74, b'\x00')[:74]
-        b += struct.pack('<?', False)
-        return bytes(b)
-
-    @classmethod
-    def read(cls, r: JSerBufferReader) -> 'RoomMemberInfo':
-        kw = {}
-        kw['square_uid'] = r.read_i64()
-        kw['char_uid'] = r.read_i64()
-        r.read_i32()
-        kw['name'] = r.read_wstring()
-        kw['char_class'] = r.read_u8()
-        r.read_i16()
-        kw['level'] = r.read_u8()
-        r.read_i64()
-        r.read_i64()
-        r.read_bytes(74)
-        r.read_bool()
-        return cls(**kw)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomMemberInfo':
-        return cls.read(JSerBufferReader(data))
+    square_uid: i64 = 0
+    char_uid: i64 = 0
+    name: wstr = ''
+    char_class: u8 = 0
+    level: u8 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'square_uid',
+        'char_uid',
+        Const(i32, 0),
+        'name',
+        'char_class',
+        Const(i16, 0),
+        'level',
+        Const(i64, 0),
+        Const(i64, 0),
+        Const(Raw[74], bytes(74)),
+        Const(bool, False),
+    )
 
 
 @dataclass
-class RoomMemInfoAck:
+class RoomMemInfoAck(WireMessage):
     """Opcode 5061: eERC_ROOM_MEM_INFO_ACK (reply).
 
     JUserClient::OneERC_ROOM_MEM_INFO_ACK 0x0076BC60: result peek, then jAck
     (0x00A53B80): i32 result, i64 room uid, two tagged vectors.
     """
     OPCODE: ClassVar[int] = 5061
-    result: int = 0
-    room_uid: int = 0
-    members: list[RoomMemberInfo] = field(default_factory=list)  # +0xC, 0x004B40F0 -> 0x004B1AD0 (0xA6-byte elements)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.room_uid)
-        b += b'\x10' + varuint(len(self.members)) + b''.join(e0.encode() for e0 in self.members)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RoomMemInfoAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['room_uid'] = r.read_i64()
-        kw['members'] = r.read_tagged_vector(lambda r1: RoomMemberInfo.read(r1))
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    room_uid: i64 = 0
+    members: Vector[RoomMemberInfo] = field(default_factory=list)  # +0xC, 0x004B40F0 -> 0x004B1AD0 (0xA6-byte elements)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'room_uid',
+        'members',
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class RequestJoinRoomReq:
+class RequestJoinRoomReq(WireMessage):
     """Opcode 5047: eERC_REQUEST_JOIN_ROOM_REQ (request).
 
     View party info "Join": RequestJoinRoomREQ( nRoomUID ). Live: ffffff7f + i64.
     """
     OPCODE: ClassVar[int] = 5047
-    header: int = REQUEST_HEADER
-    room_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.room_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestJoinRoomReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['room_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    room_uid: i64 = 0
 
 
 @dataclass
-class RequestJoinRoomAck:
+class RequestJoinRoomAck(WireMessage):
     """Opcode 5048: eERC_REQUEST_JOIN_ROOM_ACK (reply).
 
     Sent to the room host. GameRoom page dispatcher 0x0059D970 (case 46) ->
@@ -1035,33 +659,14 @@ class RequestJoinRoomAck:
     5061 member struct), then a confirmation popup for the host.
     """
     OPCODE: ClassVar[int] = 5048
-    result: int = 0
-    room_uid: int = 0
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    room_uid: i64 = 0
     requester: RoomMemberInfo = field(default_factory=RoomMemberInfo)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.room_uid)
-        b += self.requester.encode()
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'RequestJoinRoomAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['room_uid'] = r.read_i64()
-        kw['requester'] = RoomMemberInfo.read(r)
-        return cls(**kw)
 
 
 @dataclass
-class ChangeRoomInfoReq:
+class ChangeRoomInfoReq(WireMessage):
     """Opcode 5011: eERC_CHANGE_ROOMINFO_REQ (request).
 
     Party info OK. Sender 0x00597970 (caller 0x0063BB53) writes a whole jRoomInfo
@@ -1070,26 +675,13 @@ class ChangeRoomInfoReq:
     first. Live 2026-11-21: cur_users, state and the two i64s are uninitialised.
     """
     OPCODE: ClassVar[int] = 5011
-    header: int = REQUEST_HEADER
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
     room: RoomInfo = field(default_factory=RoomInfo)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += self.room.encode()
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeRoomInfoReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['room'] = RoomInfo.read(r)
-        return cls(**kw)
 
 
 @dataclass
-class ChangeRoomInfoAck:
+class ChangeRoomInfoAck(WireMessage):
     """Opcode 5012: eERC_CHANGE_ROOMINFO_ACK (reply).
 
     Handler 0x00584160 (dispatch 0x0059D970): u32 result (0 = ok), then the room
@@ -1098,30 +690,13 @@ class ChangeRoomInfoAck:
     input locked, so a missing reply froze it.
     """
     OPCODE: ClassVar[int] = 5012
-    result: int = 0
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
     room: RoomInfo = field(default_factory=RoomInfo)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += self.room.encode()
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeRoomInfoAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['room'] = RoomInfo.read(r)
-        return cls(**kw)
 
 
 @dataclass
-class ChangeItemObtainReq:
+class ChangeItemObtainReq(WireMessage):
     """Opcode 5088: eERC_CHANGE_ITEM_OBTAIN_REQ (request).
 
     Looting mode button. Sender 0x0058B380 (0x13E0), caller 0x0054F86C: one bool,
@@ -1129,25 +704,13 @@ class ChangeItemObtainReq:
     random and which free looting is not recovered.
     """
     OPCODE: ClassVar[int] = 5088
-    header: int = REQUEST_HEADER
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
     mode: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i?', self.header, self.mode)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeItemObtainReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['mode'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class ChangeItemObtainAck:
+class ChangeItemObtainAck(WireMessage):
     """Opcode 5089: eERC_CHANGE_ITEM_OBTAIN_ACK (reply).
 
     Handler 0x00588B50 (dispatch 0x0059D970 case 0x13E1). It starts with
@@ -1162,18 +725,5 @@ class ChangeItemObtainAck:
     all" otherwise: mode 0 = random looting, mode 1 = free for all.
     """
     OPCODE: ClassVar[int] = 5089
-    result: int = 0
+    result: i32 = 0
     mode: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i?', self.result, self.mode)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'ChangeItemObtainAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['mode'] = r.read_bool()
-        return cls(**kw)

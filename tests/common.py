@@ -65,6 +65,7 @@ class ServerTestCase(unittest.TestCase):
                 await client.close()
                 server.server.close()
                 await server.server.wait_closed()
+                server.close_log()
 
     def assertNoLogs_dispatcher(self):
         test = self

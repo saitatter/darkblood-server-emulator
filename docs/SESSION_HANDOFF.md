@@ -1,5 +1,19 @@
 # Session handoff — 2026-11-21
 
+## Typed wire serialization & project audit refactors — saita machine, 2026-11-21
+
+- **Typed wire serialization (`src/darkblood/core/serialization/wire.py`, `tools/gen_messages.py`)**:
+  - Added `WireMessage` + `JSerBufferWriter` and nominal wire types (`i8..u64`, `h32`, `f32`, `f64`, `bool`, `wstr`, `wstrz`, `wrest`, `ipv4`, `rest`, `Raw[N]`, `Vector[T]`, `Set[T]`, `Map[K, V]`, `Array[T]`, `Pairs[T]`, `Extern[...]`, `Const`, `Lit`).
+  - Updated `PythonBackend` in `tools/gen_messages.py` to emit declarative typed `WireMessage` dataclasses with **0** `struct.pack`/`struct.unpack` calls across all 15 `messages/*.py` modules (verified 0 diffs against a 434-class byte-for-byte snapshot).
+- **Server & persistence cleanups**:
+  - Removed duplicate zlib decompression in `src/darkblood/games/session.py` (`jser.parse_event` already handles it).
+  - Added `BaseDomainService.reply()` and `send_msg()` helpers in `src/darkblood/games/handlers/base.py`.
+  - Enabled SQLite WAL mode (`PRAGMA journal_mode=WAL`, `synchronous=NORMAL`), removed the duplicate `CREATE TABLE mailbox` block, and added single-character `SqliteCharacterStore.save_char(account, char_id)` in `src/darkblood/player_management/store.py`.
+  - Switched `BootstrapServer.record()` in `src/darkblood/frontend/server.py` to a persistent line-buffered log handle (`close_log()` on shutdown).
+- **Client hook isolation (`client_hook/patches/network_redirect.c`)**:
+  - Added `WSAConnect` inline hook alongside `connect` (sharing `RedirectSockAddr` and the verified `8B FF 55 8B EC` prologue check); rebuilt and deployed `research/client/steam_api.dll`.
+- **Verification**: 190/190 headless tests pass (`tests/test_wire_typing.py` added), `gen_messages.py --check` and `gen_progress.py --check` pass.
+
 ## Inventory domain sweep (31 opcodes + 6 unmapped fields) — saita machine, 2026-11-21
 
 - Recovered 6 previously unmapped fields in `schemas/inventory.jsch` from client readers/asserts:

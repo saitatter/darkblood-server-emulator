@@ -2,11 +2,11 @@
 """Mailbox wire messages (eEGS_POST_*)."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Extern, Map, Vector, WireMessage, i16, i32, i64, rest, u32, u8, wstr
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -28,242 +28,136 @@ __all__ = [
 
 
 @dataclass
-class PostEntry:
+class PostEntry(WireMessage):
     """Mail header and payload (deserializer 0x00A55920, 0x8C bytes in memory).
     The 0x1E struct check in the reader consumes no wire byte, so no tag is written.
     """
-    uid: int = 0  # +0x00
-    post_type: int = 0  # +0x08: 0 normal, 1 system, 2 returned
-    sender_uid: int = 0  # +0x09
+    uid: i64 = 0  # +0x00
+    post_type: u8 = 0  # +0x08: 0 normal, 1 system, 2 returned
+    sender_uid: i64 = 0  # +0x09
     is_read: bool = False  # +0x11
     has_item: bool = False  # +0x12
     can_return: bool = True  # +0x13
-    remain_days: int = 30  # +0x14
-    gold: int = 0  # +0x18
-    send_time: int = 0  # +0x20
-    sender_name: str = ''  # +0x28
-    title: str = ''  # +0x44
-    content: str = ''  # +0x60
-    items: list[Item] = field(default_factory=list)  # +0x7C
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<qBq???iqq', self.uid, self.post_type, self.sender_uid, self.is_read, self.has_item, self.can_return, self.remain_days, self.gold, self.send_time)
-        b += wide_string(self.sender_name)
-        b += wide_string(self.title)
-        b += wide_string(self.content)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    remain_days: i32 = 30  # +0x14
+    gold: i64 = 0  # +0x18
+    send_time: i64 = 0  # +0x20
+    sender_name: wstr = ''  # +0x28
+    title: wstr = ''  # +0x44
+    content: wstr = ''  # +0x60
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # +0x7C
 
 
 @dataclass
-class PostListReq:
+class PostListReq(WireMessage):
     """Opcode 2219: eEGS_POST_REQUEST_LIST_REQ (request).
 
     Sender 0x00796270. Observed live body: ffffff7f 00.
     """
     OPCODE: ClassVar[int] = 2219
-    header: int = REQUEST_HEADER
+    _WIRE_HEADER: ClassVar[str] = 'header'
+    header: i32 = REQUEST_HEADER
     flag: bool = False  # 0x00B35630 argument; meaning unknown
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i?', self.header, self.flag)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostListReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32()
-        kw['flag'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class PostListAck:
+class PostListAck(WireMessage):
     """Opcode 2220: eEGS_POST_REQUEST_LIST_ACK (reply).
 
     Handler 0x007AEF70. Map values are read by 0x00784F30.
     """
     OPCODE: ClassVar[int] = 2220
-    result: int = 0
-    inbox: dict[int, PostEntry] = field(default_factory=dict)  # key = mail uid
-    outbox: dict[int, PostEntry] = field(default_factory=dict)  # key = mail uid
-    unread_count: int = 0
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    inbox: Map[i64, PostEntry] = field(default_factory=dict)  # key = mail uid
+    outbox: Map[i64, PostEntry] = field(default_factory=dict)  # key = mail uid
+    unread_count: u32 = 0
     notify: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x17' + varuint(len(self.inbox)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in sorted(self.inbox.items()))
-        b += b'\x17' + varuint(len(self.outbox)) + b''.join(b'\x0f' + struct.pack('<q', k0) + v0.encode() for k0, v0 in sorted(self.outbox.items()))
-        b += struct.pack('<I?', self.unread_count, self.notify)
-        return bytes(b)
 
 
 @dataclass
-class PostSendReq:
+class PostSendReq(WireMessage):
     """Opcode 2221: eEGS_POST_SEND_REQ (request).
 
     Sender 0x00795D40.
     """
     OPCODE: ClassVar[int] = 2221
-    header: int = REQUEST_HEADER
-    recipient: str = ''
-    title: str = ''
-    items: list[int] = field(default_factory=list)  # attached item uids (0x004CB5E0)
-    gold: int = 0  # attached gold
-    extra: int = 0  # COD price
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    recipient: wstr = ''
+    title: wstr = ''
+    items: Vector[i64] = field(default_factory=list)  # attached item uids (0x004CB5E0)
+    gold: i64 = 0  # attached gold
+    extra: i64 = 0  # COD price
     is_cod: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.recipient)
-        b += wide_string(self.title)
-        b += b'\x10' + varuint(len(self.items)) + struct.pack('<%dq' % len(self.items), *self.items)
-        b += struct.pack('<qq?', self.gold, self.extra, self.is_cod)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostSendReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['recipient'] = r.read_wstring()
-        kw['title'] = r.read_wstring()
-        kw['items'] = r.read_tagged_vector(lambda r1: r1.read_i64())
-        kw['gold'] = r.read_i64()
-        kw['extra'] = r.read_i64()
-        kw['is_cod'] = r.read_bool()
-        return cls(**kw)
 
 
 @dataclass
-class PostSendAck:
+class PostSendAck(WireMessage):
     """Opcode 2222: eEGS_POST_SEND_ACK (reply).
 
     Handler 0x00795F40.
     """
     OPCODE: ClassVar[int] = 2222
-    result: int = 0
-    items: list[Item] = field(default_factory=list)  # updated inventory items
-    remain_gold: int = 0
-    daily_send_count: int = 1
-    max_daily_send_count: int = 30
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += struct.pack('<qhh', self.remain_gold, self.daily_send_count, self.max_daily_send_count)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # updated inventory items
+    remain_gold: i64 = 0
+    daily_send_count: i16 = 1
+    max_daily_send_count: i16 = 30
 
 
 @dataclass
-class PostReadReq:
+class PostReadReq(WireMessage):
     """Opcode 2223: eEGS_POST_READ_REQ (request).
 
     Sender 0x00796390.
     """
     OPCODE: ClassVar[int] = 2223
-    header: int = REQUEST_HEADER
-    mail_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.mail_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostReadReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['mail_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mail_uid: i64 = 0
 
 
 @dataclass
-class PostReadAck:
+class PostReadAck(WireMessage):
     """Opcode 2224: eEGS_POST_READ_ACK (reply).
 
     Handler 0x0075A660.
     """
     OPCODE: ClassVar[int] = 2224
-    result: int = 0
-    mail_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.result, self.mail_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostReadAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        kw['mail_uid'] = r.read_i64()
-        return cls(**kw)
+    result: i32 = 0
+    mail_uid: i64 = 0
 
 
 @dataclass
-class PostGetAppendItemReq:
+class PostGetAppendItemReq(WireMessage):
     """Opcode 2225: eEGS_POST_GET_APPEND_ITEM_REQ (request).
 
     Sender 0x007965F0.
     """
     OPCODE: ClassVar[int] = 2225
-    header: int = REQUEST_HEADER
-    mail_uid: int = 0
-    item_record: bytes = b''  # item record written by 0x00A4FAA0; not decoded
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.mail_uid)
-        b += bytes(self.item_record)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostGetAppendItemReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['mail_uid'] = r.read_i64()
-        kw['item_record'] = r.read_rest()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mail_uid: i64 = 0
+    item_record: rest = b''  # item record written by 0x00A4FAA0; not decoded
 
 
 @dataclass
-class PostGetAppendItemAck:
+class PostGetAppendItemAck(WireMessage):
     """Opcode 2226: eEGS_POST_GET_APPEND_ITEM_ACK (reply).
 
     Handler 0x0077F8E0.
     """
     OPCODE: ClassVar[int] = 2226
-    result: int = 0
-    mail_uid: int = 0
-    gold: int = 0
-    items: list[Item] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<qq', self.mail_uid, self.gold)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        return bytes(b)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    mail_uid: i64 = 0
+    gold: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
-class PostNewArrivalNot:
+class PostNewArrivalNot(WireMessage):
     """Opcode 2227: eEGS_POST_NEW_ARRIVAL_NOT (reply).
 
     Handler 0x007965B0. Sent as an empty body; whether the handler reads a
@@ -271,116 +165,50 @@ class PostNewArrivalNot:
     """
     OPCODE: ClassVar[int] = 2227
 
-    def encode(self) -> bytes:
-        return b''
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostNewArrivalNot':
-        return cls()
-
 
 @dataclass
-class PostReturnReq:
+class PostReturnReq(WireMessage):
     """Opcode 2234: eEGS_POST_RETURN_REQ (request).
 
     No sender recovered in research/opcode_xrefs.tsv (call site near 0x00A33907).
     """
     OPCODE: ClassVar[int] = 2234
-    header: int = REQUEST_HEADER
-    mail_id: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.mail_id)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostReturnReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['mail_id'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mail_id: i64 = 0
 
 
 @dataclass
-class PostReturnAck:
+class PostReturnAck(WireMessage):
     """Opcode 2235: eEGS_POST_RETURN_ACK (reply).
 
     Handler 0x00771470.
     """
     OPCODE: ClassVar[int] = 2235
-    result: int = 0
-    mail_uids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.mail_uids)) + struct.pack('<%dq' % len(self.mail_uids), *self.mail_uids)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostReturnAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['mail_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    mail_uids: Vector[i64] = field(default_factory=list)
 
 
 @dataclass
-class PostDeleteReq:
+class PostDeleteReq(WireMessage):
     """Opcode 2236: eEGS_POST_DELETE_REQ (request).
 
     Sender 0x00796470: header, then tag 0x10 vector (0x004CB5E0).
     """
     OPCODE: ClassVar[int] = 2236
-    header: int = REQUEST_HEADER
-    mail_uids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += b'\x10' + varuint(len(self.mail_uids)) + struct.pack('<%dq' % len(self.mail_uids), *self.mail_uids)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostDeleteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['mail_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mail_uids: Vector[i64] = field(default_factory=list)
 
 
 @dataclass
-class PostDeleteAck:
+class PostDeleteAck(WireMessage):
     """Opcode 2237: eEGS_POST_DELETE_ACK (reply).
 
     Handler 0x007715F0.
     """
     OPCODE: ClassVar[int] = 2237
-    result: int = 0
-    mail_uids: list[int] = field(default_factory=list)
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += b'\x10' + varuint(len(self.mail_uids)) + struct.pack('<%dq' % len(self.mail_uids), *self.mail_uids)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'PostDeleteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['mail_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    mail_uids: Vector[i64] = field(default_factory=list)

@@ -2,11 +2,11 @@
 """Dark Blood protocol wire messages - Guild domain."""
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from darkblood.core.serialization.jser import JSerBufferReader, REQUEST_HEADER, REQUEST_HEADER_BYTES, varuint, wide_string
+from darkblood.core.serialization.jser import REQUEST_HEADER
+from darkblood.core.serialization.wire import Const, EmptyMap, EmptyVector, Extern, Raw, Vector, WireMessage, i16, i32, i64, u32, wrest, wstr, wstrz
 from darkblood.games.entities.items import Item
 
 __all__ = [
@@ -44,737 +44,354 @@ __all__ = [
 
 
 @dataclass
-class GuildOrAttendanceAck:
+class GuildOrAttendanceAck(WireMessage):
     """Opcode 2570: eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK (reply).
 
     Reply to 2569, reader 0x00772160.
     """
     OPCODE: ClassVar[int] = 2570
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<I', self.result)
-        b += b'\x17\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildOrAttendanceAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_u32()
-        r.read_empty_container(0x17)
-        return cls(**kw)
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+    )
 
 
 @dataclass
-class GuildCreateReq:
+class GuildCreateReq(WireMessage):
     """Opcode 2150: eEGS_GUILD_CREATE_REQ (request).
 
     No sender recovered; kept as the earlier raw UTF-16 form.
     """
     OPCODE: ClassVar[int] = 2150
-    header: int = REQUEST_HEADER
-    guild_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += self.guild_name.encode('utf-16le')
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildCreateReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['guild_name'] = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    guild_name: wrest = ''
 
 
 @dataclass
-class GuildCreateProposalReq:
+class GuildCreateProposalReq(WireMessage):
     """Opcode 5121: eERC_GUILD_CREATE_PROPOSAL_REQ (request).
 
     Sender 0x007935F0 writes a J-wstring.
     """
     OPCODE: ClassVar[int] = 5121
-    header: int = REQUEST_HEADER
-    guild_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.guild_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildCreateProposalReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['guild_name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    guild_name: wstr = ''
 
 
 @dataclass
-class GuildCreateAck:
+class GuildCreateAck(WireMessage):
     """Opcode 2151: eEGS_GUILD_CREATE_ACK (reply).
 
     On_eEGS_GUILD_CREATE_ACK 0x00793720.
     """
     OPCODE: ClassVar[int] = 2151
-    result: int = 0
-    guild_uid: int = 1
-    guild_name: str = ''  # null-terminated UTF-16 as sent so far; reader not checked
-    remain_gold: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.guild_uid)
-        b += self.guild_name.encode('utf-16le') + b'\x00\x00'
-        b += struct.pack('<q', self.remain_gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildCreateAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['guild_uid'] = r.read_i64()
-        kw['guild_name'] = r.read_wstring_z()
-        kw['remain_gold'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    guild_uid: i64 = 1
+    guild_name: wstrz = ''  # null-terminated UTF-16 as sent so far; reader not checked
+    remain_gold: i64 = 0
 
 
 @dataclass
-class GuildCreateProposalAck:
+class GuildCreateProposalAck(WireMessage):
     """Opcode 5122: eERC_GUILD_CREATE_PROPOSAL_ACK (reply).
 
     On_eERC_GUILD_CREATE_PROPOSAL_ACK 0x00759750.
     """
     OPCODE: ClassVar[int] = 5122
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildCreateProposalAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GuildPersonJoinReq:
+class GuildPersonJoinReq(WireMessage):
     """Opcode 2155: eEGS_GUILD_PERSON_JOIN_REQ (request).
 
     Sender 0x00793DF0.
     """
     OPCODE: ClassVar[int] = 2155
-    header: int = REQUEST_HEADER
-    guild_uid: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.guild_uid)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonJoinReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['guild_uid'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    guild_uid: i64 = 0
 
 
 @dataclass
-class GuildPersonJoinAck:
+class GuildPersonJoinAck(WireMessage):
     """Opcode 2156: eEGS_GUILD_PERSON_JOIN_ACK (reply).
 
     On_eEGS_GUILD_PERSON_JOIN_ACK 0x0075A220.
     """
     OPCODE: ClassVar[int] = 2156
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonJoinAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GuildInviteReq:
+class GuildInviteReq(WireMessage):
     """Opcode 2160: eEGS_GUILD_INVITE_REQ (request).
 
     No sender recovered; kept as the earlier raw UTF-16 form.
     """
     OPCODE: ClassVar[int] = 2160
-    header: int = REQUEST_HEADER
-    char_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += self.char_name.encode('utf-16le')
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildInviteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['char_name'] = r.read_rest().decode('utf-16le', errors='replace').rstrip('\x00')
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_name: wrest = ''
 
 
 @dataclass
-class GuildInviteAck:
+class GuildInviteAck(WireMessage):
     """Opcode 2161: eEGS_GUILD_INVITE_ACK (reply).
 
     On_eEGS_GUILD_INVITE_ACK 0x00759870.
     """
     OPCODE: ClassVar[int] = 2161
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildInviteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GuildPersonLeaveReq:
+class GuildPersonLeaveReq(WireMessage):
     """Opcode 2162: eEGS_GUILD_PERSON_LEAVE_REQ (request).
 
     Sender 0x00793C90 writes no fields.
     """
     OPCODE: ClassVar[int] = 2162
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonLeaveReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class GuildPersonLeaveAck:
+class GuildPersonLeaveAck(WireMessage):
     """Opcode 2163: eEGS_GUILD_PERSON_LEAVE_ACK (reply).
 
     On_eEGS_GUILD_PERSON_LEAVE_ACK 0x00759CA0.
     """
     OPCODE: ClassVar[int] = 2163
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonLeaveAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GuildMoneyInReq:
+class GuildMoneyInReq(WireMessage):
     """Opcode 2179: eEGS_GUILD_MONEY_IN_REQ (request).
 
     Sender 0x007941A0.
     """
     OPCODE: ClassVar[int] = 2179
-    header: int = REQUEST_HEADER
-    amount: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.amount)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildMoneyInReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['amount'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    amount: i64 = 0
 
 
 @dataclass
-class GuildMoneyInAck:
+class GuildMoneyInAck(WireMessage):
     """Opcode 2180: eEGS_GUILD_MONEY_IN_ACK (reply).
 
     On_eEGS_GUILD_MONEY_IN_ACK 0x00794250.
     """
     OPCODE: ClassVar[int] = 2180
-    result: int = 0
-    remain_gold: int = 0  # written to player +0x70
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.remain_gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildMoneyInAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['remain_gold'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    remain_gold: i64 = 0  # written to player +0x70
 
 
 @dataclass
-class GuildMoneyOutReq:
+class GuildMoneyOutReq(WireMessage):
     """Opcode 2181: eEGS_GUILD_MONEY_OUT_REQ (request).
 
     Sender 0x007943C0.
     """
     OPCODE: ClassVar[int] = 2181
-    header: int = REQUEST_HEADER
-    amount: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.amount)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildMoneyOutReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['amount'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    amount: i64 = 0
 
 
 @dataclass
-class GuildMoneyOutAck:
+class GuildMoneyOutAck(WireMessage):
     """Opcode 2182: eEGS_GUILD_MONEY_OUT_ACK (reply).
 
     On_eEGS_GUILD_MONEY_OUT_ACK 0x00794470.
     """
     OPCODE: ClassVar[int] = 2182
-    result: int = 0
-    remain_gold: int = 0  # written to player +0x70
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<q', self.remain_gold)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildMoneyOutAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['remain_gold'] = r.read_i64()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    remain_gold: i64 = 0  # written to player +0x70
 
 
 @dataclass
-class GuildLevelUpReq:
+class GuildLevelUpReq(WireMessage):
     """Opcode 2183: eEGS_GUILD_LEVEL_UP_REQ (request).
 
     Sender 0x007945E0 writes no fields.
     """
     OPCODE: ClassVar[int] = 2183
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildLevelUpReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class GuildLevelUpAck:
+class GuildLevelUpAck(WireMessage):
     """Opcode 2184: eEGS_GUILD_LEVEL_UP_ACK (reply).
 
     On_eEGS_GUILD_LEVEL_UP_ACK 0x00753380.
     """
     OPCODE: ClassVar[int] = 2184
-    result: int = 0
-    new_level: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<h', self.new_level)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildLevelUpAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['new_level'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    new_level: i16 = 1
 
 
 @dataclass
-class GuildNoticeModifyReq:
+class GuildNoticeModifyReq(WireMessage):
     """Opcode 2185: eEGS_GUILD_NOTICE_MODIFY_REQ (request).
 
     Sender 0x00794660 writes a J-wstring.
     """
     OPCODE: ClassVar[int] = 2185
-    header: int = REQUEST_HEADER
-    notice: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += wide_string(self.notice)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildNoticeModifyReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['notice'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    notice: wstr = ''
 
 
 @dataclass
-class GuildNoticeModifyAck:
+class GuildNoticeModifyAck(WireMessage):
     """Opcode 2186: eEGS_GUILD_NOTICE_MODIFY_ACK (reply).
 
     On_eEGS_GUILD_NOTICE_MODIFY_ACK 0x0075A120.
     """
     OPCODE: ClassVar[int] = 2186
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildNoticeModifyAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GuildNoticeDeleteReq:
+class GuildNoticeDeleteReq(WireMessage):
     """Opcode 2188: eEGS_GUILD_NOTICE_DELETE_REQ (request).
 
     No fields known.
     """
     OPCODE: ClassVar[int] = 2188
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildNoticeDeleteReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class GuildNoticeDeleteAck:
+class GuildNoticeDeleteAck(WireMessage):
     """Opcode 2189: eEGS_GUILD_NOTICE_DELETE_ACK (reply).
 
     On_eEGS_GUILD_NOTICE_DELETE_ACK 0x0074B830.
     """
     OPCODE: ClassVar[int] = 2189
-    result: int = 0
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildNoticeDeleteAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        return cls(**kw)
+    result: i32 = 0
 
 
 @dataclass
-class GuildAllSkillInitReq:
+class GuildAllSkillInitReq(WireMessage):
     """Opcode 2214: eEGS_GUILD_ALL_SKILL_INIT_REQ (request).
 
     No fields known.
     """
     OPCODE: ClassVar[int] = 2214
-    header: int = REQUEST_HEADER
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildAllSkillInitReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
 
 
 @dataclass
-class GuildAllSkillInitAck:
+class GuildAllSkillInitAck(WireMessage):
     """Opcode 2215: eEGS_GUILD_ALL_SKILL_INIT_ACK (reply).
 
     Handler 0x00752D80.
     """
     OPCODE: ClassVar[int] = 2215
-    result: int = 0
-    param: int = 0  # meaning unknown
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<i', self.param)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildAllSkillInitAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['param'] = r.read_i32()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    param: i32 = 0  # meaning unknown
 
 
 @dataclass
-class GuildNameChangeReq:
+class GuildNameChangeReq(WireMessage):
     """Opcode 2314: eEGS_GUILD_NAME_CHANGE_REQ (request).
 
     Sender 0x00798A70: 0x00B353D0 then a J-wstring (the earlier decoder read the
     name first).
     """
     OPCODE: ClassVar[int] = 2314
-    header: int = REQUEST_HEADER
-    item_uid: int = 0  # meaning of the i64 not confirmed
-    new_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<iq', self.header, self.item_uid)
-        b += wide_string(self.new_name)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildNameChangeReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['item_uid'] = r.read_i64()
-        kw['new_name'] = r.read_wstring()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0  # meaning of the i64 not confirmed
+    new_name: wstr = ''
 
 
 @dataclass
-class GuildNameChangeAck:
+class GuildNameChangeAck(WireMessage):
     """Opcode 2315: eEGS_GUILD_NAME_CHANGE_ACK (reply).
 
     Handler 0x00780590.
     """
     OPCODE: ClassVar[int] = 2315
-    result: int = 0
-    items: list[Item] = field(default_factory=list)
-    new_name: str = ''
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        b += b'\x10' + varuint(len(self.items)) + b''.join(e0.encode() for e0 in self.items)
-        b += wide_string(self.new_name)
-        return bytes(b)
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    new_name: wstr = ''
 
 
 @dataclass
-class GuildInfoNot:
+class GuildInfoNot(WireMessage):
     """Opcode 2157: eEGS_GUILD_INFO_NOT (reply).
 
     Handler 0x00752FF0. Guild struct not recovered: 64 zero bytes.
     """
     OPCODE: ClassVar[int] = 2157
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += bytes(bytes(64)).ljust(64, b'\x00')[:64]
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildInfoNot':
-        r = JSerBufferReader(data)
-        r.read_bytes(64)
-        return cls()
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(Raw[64], bytes(64)),
+    )
 
 
 @dataclass
-class GuildPersonListNot:
+class GuildPersonListNot(WireMessage):
     """Opcode 2158: eEGS_GUILD_PERSON_LIST_NOT (reply).
 
     Handler 0x0077ABA0.
     """
     OPCODE: ClassVar[int] = 2158
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonListNot':
-        r = JSerBufferReader(data)
-        r.read_empty_container(0x10)
-        return cls()
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyVector),
+    )
 
 
 @dataclass
-class GuildPersonGradeModifyReq:
+class GuildPersonGradeModifyReq(WireMessage):
     """Opcode 2164: eEGS_GUILD_PERSON_GRADE_MODIFY_REQ (request).
 
     Sender 0x00793D10: tag 0x10 vector (0x004CB5E0), then 0x00B35190.
     """
     OPCODE: ClassVar[int] = 2164
-    header: int = REQUEST_HEADER
-    member_uids: list[int] = field(default_factory=list)
-    new_grade: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.header)
-        b += b'\x10' + varuint(len(self.member_uids)) + struct.pack('<%dq' % len(self.member_uids), *self.member_uids)
-        b += struct.pack('<h', self.new_grade)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonGradeModifyReq':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['header'] = r.read_i32() if r.peek(4) == REQUEST_HEADER_BYTES else REQUEST_HEADER
-        kw['member_uids'] = r.read_tagged_vector(lambda r1: r1.read_i64())
-        kw['new_grade'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    member_uids: Vector[i64] = field(default_factory=list)
+    new_grade: i16 = 1
 
 
 @dataclass
-class GuildPersonGradeModifyAck:
+class GuildPersonGradeModifyAck(WireMessage):
     """Opcode 2165: eEGS_GUILD_PERSON_GRADE_MODIFY_ACK (reply).
 
     Handler 0x00753170.
     """
     OPCODE: ClassVar[int] = 2165
-    result: int = 0
-    member_uid: int = 0
-    new_grade: int = 1
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<i', self.result)
-        if self.result != 0:
-            return bytes(b)
-        b += struct.pack('<qh', self.member_uid, self.new_grade)
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildPersonGradeModifyAck':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['result'] = r.read_i32()
-        if kw['result'] != 0:
-            return cls(**kw)
-        kw['member_uid'] = r.read_i64()
-        kw['new_grade'] = r.read_i16()
-        return cls(**kw)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    member_uid: i64 = 0
+    new_grade: i16 = 1
 
 
 @dataclass
-class GuildSkillNot:
+class GuildSkillNot(WireMessage):
     """Opcode 2205: eEGS_GUILD_SKILL_NOT (reply).
 
     Handler 0x00779390.
     """
     OPCODE: ClassVar[int] = 2205
     flag: bool = False
-
-    def encode(self) -> bytes:
-        b = bytearray()
-        b += struct.pack('<?', self.flag)
-        b += b'\x10\x80'
-        return bytes(b)
-
-    @classmethod
-    def decode(cls, data: bytes) -> 'GuildSkillNot':
-        r = JSerBufferReader(data)
-        kw = {}
-        kw['flag'] = r.read_bool()
-        r.read_empty_container(0x10)
-        return cls(**kw)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'flag',
+        Const(EmptyVector),
+    )

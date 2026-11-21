@@ -15,8 +15,12 @@ async def serve():
     relay = BootstrapServer(port=RELAY_PORT, role='relay')
     await game.start()
     await relay.start()
-    async with game.server, relay.server:
-        await asyncio.gather(game.server.serve_forever(), relay.server.serve_forever())
+    try:
+        async with game.server, relay.server:
+            await asyncio.gather(game.server.serve_forever(), relay.server.serve_forever())
+    finally:
+        game.close_log()
+        relay.close_log()
 
 
 def main():
