@@ -40,6 +40,17 @@ OUT_OF_SCOPE_GROUPS = (
 OUT_OF_SCOPE = re.compile(
     r'^(NPROTECT|XTRAP|AUTOCHECK|LOG_|COMPUTER|FRAME_STAT|WARFLAG_HACK|BILLING|ACTOZ)'
 )
+# Opcodes present in the client's enum string table (assets/opcodes.tsv) that have been
+# verified against unpacked.analysis.exe + handler_map.txt to have no sender or handler
+# in this client build (a82ae3d7...): replaced or removed features, or fire-and-forget ACKs.
+UNUSED_IN_CLIENT = frozenset({
+    # inventory (8): no senders or handlers in build
+    2034, 2035, 2382, 2383, 2705, 2706, 2707, 2708,
+    # skills (2): 2052 replaced by 2111/2112; 2153 unused (2152 is fire-and-forget)
+    2052, 2153,
+    # quests (7): old achieve reward/stat & title list opcodes replaced by 2330/2444/2446
+    2331, 2332, 2333, 2334, 2337, 2380, 2381,
+})
 DOMAIN_RULES = [(domain, re.compile(rx)) for domain, rx in [
     ('gm', r'^CHEAT'),
     ('fishing', r'^FISHING'),
@@ -106,9 +117,12 @@ def client_opcodes():
     for line in (ROOT / 'assets' / 'opcodes.tsv').read_text(encoding='utf-8').splitlines():
         parts = line.split('	')
         if len(parts) >= 2 and parts[0].isdigit():
+            op = int(parts[0])
+            if op in UNUSED_IN_CLIENT:
+                continue
             match = re.match(r'eE(?:GS|RC|RT)_(.*)', parts[1])
             if match and not OUT_OF_SCOPE.match(match.group(1)):
-                names[int(parts[0])] = match.group(1)
+                names[op] = match.group(1)
     return names
 
 
@@ -127,11 +141,15 @@ def server_handlers():
 
 def excluded_counts():
     counts = {label: 0 for label, _ in OUT_OF_SCOPE_GROUPS}
+    counts['unused in client'] = 0
     for line in (ROOT / 'assets' / 'opcodes.tsv').read_text(encoding='utf-8').splitlines():
         parts = line.split('\t')
         if len(parts) >= 2 and parts[0].isdigit():
             match = re.match(r'eE(?:GS|RC|RT)_(.*)', parts[1])
             if not match:
+                continue
+            if int(parts[0]) in UNUSED_IN_CLIENT:
+                counts['unused in client'] += 1
                 continue
             body = match.group(1)
             for label, rx in OUT_OF_SCOPE_GROUPS:
