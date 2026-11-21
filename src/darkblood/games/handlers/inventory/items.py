@@ -162,11 +162,22 @@ class ItemHandlersMixin:
                 await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
                                  note='use item fail (bag full: need %d, free %d)' % (slots_needed(contents), free))
                 return
-        item_code = jhash(used_item.get('code', ''))
+        item_str_code = used_item.get('code', '')
+        item_code = jhash(item_str_code)
         count = used_item.get('count', 1) - req.use_count
         updated = []
         if count <= 0:
             items.remove(used_item)
+            # Send a zero-count tombstone at the item's slot so the client
+            # clears the icon from the bag (same pattern as 2211 dye consume).
+            updated.append(Item(
+                owner=UPDATE_OWNER,
+                uid=0,
+                code='',
+                container=used_item.get('container', 1),
+                slot=used_item.get('slot', 0),
+                count=0,
+            ))
         else:
             used_item['count'] = count
             updated.append(Item(owner=UPDATE_OWNER, **used_item))
@@ -174,7 +185,16 @@ class ItemHandlersMixin:
 
         await self.reply(UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count),
                          correlation, note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
-        await self.session.pets.apply_pet_or_mount_item(char, used_item.get('code', ''))
+        if item_str_code == 'Ispaa0001':
+            from darkblood.games.network.messages.skills import InsertApNot
+            from darkblood.games.progression import add_ap
+            add_ap(char, max(1, req.use_count))
+            self.save_char()
+            await self.send_msg(
+                InsertApNot(current_ap=char['sp'], total_ap=char['total_ap']),
+                note='book of ap used (+%d AP -> sp=%d total=%d)' % (max(1, req.use_count), char['sp'], char['total_ap']),
+            )
+        await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
         if contents:
             stored = add_reward_items(char, contents)
             self.save_char()
