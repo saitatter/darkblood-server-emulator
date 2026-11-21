@@ -1,4 +1,22 @@
-# Session handoff — 2026-11-20 (compressed)
+# Session handoff — 2026-11-21
+
+## Custom launcher and modular client hook — saita machine, 2026-11-21
+
+- **Modular client hook (`client_hook/`)**: split `steam_api_hook.c` into shared core (`common.h`/`common.c`, Steam API exports + VEH dispatcher in `steam_api_hook.c`) and one file per patch/hook under `client_hook/patches/`:
+  - `network_redirect.c`: IPv4 `connect()` redirect reading `[network] host`, `port`, and `relay_port` from `darkblood_options.ini` (resolves hostnames, falls back to `127.0.0.1`, maps port `9400 -> port` and `9401 -> relay_port`).
+  - `borderless_fullscreen.c` (`[client] borderless_fullscreen`, default 1, still honours `exclusive_fullscreen.txt`).
+  - `auto_reconnect.c` (`[client] auto_reconnect`, default 1; includes the two post-reconnect VEH recovery sites).
+  - `peer_update_interval.c` (`[client] peer_update_interval`, default 1; `0x00966C9C` 2000 ms -> 100 ms).
+  - `skip_logos.c` (`[client] skip_logos`, default 0).
+  - `skip_tutorial_always.c` (`[client] skip_tutorial_always`, default 0).
+  - `diagnostic_hooks.c` (`[client] diagnostic_hooks`, default 1; `TraceWelcome`, `TraceJoin`/`handler_map.txt`, `TraceUserMessage`, C++ selection throw log).
+  - `debug_tools.c` (`[client] debug_tools`, default 1; `bp.txt` INT3 tracer and `sample.txt` thread sampler).
+- Built and verified with MSVC x86 (`client_hook/build.bat`, all 57 Steam exports intact) and deployed to `research/client/steam_api.dll`. Live client launch check pending.
+- **Custom launcher (`tools/launcher.py`, `Launch_DarkBlood.bat`, `src/darkblood/core/options.py`)**:
+  - Configures server IP/host, game port, relay port (`[network]`), account and client count (`[launcher]`), and toggles all client/server patches grouped by Improvements, Hacks, Server Behaviour, and Diagnostics (showing each patch's source file).
+  - Includes TCP connection probe, local server start/stop button, one-click hook DLL rebuild & deploy, and direct 1–4 client launch (with multibox mutex release).
+  - `tools/patcher.py` now delegates to `tools/launcher.py`. `steam_api_hook.c` also reads `[launcher] account` when `DARKBLOOD_ACCOUNT` is unset.
+  - 185 headless tests pass (`tests/test_options.py` expanded for network/launcher round-trip, validation, and patch metadata).
 
 ## Docs cleanup and progress CI — saita machine, 2026-11-20 (late)
 

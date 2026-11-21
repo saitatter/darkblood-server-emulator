@@ -238,8 +238,14 @@ python run_server.py
 ```
 *Port `9400` handles game traffic; port `9401` handles relay traffic.*
 
-### 3. Launch Client
-Launch the working client in `research\client\`:
+### 3. Launch Client (Custom Launcher)
+Use the custom launcher (`Launch_DarkBlood.bat` or `python tools\launcher.py`) to configure the target server IP/port, toggle individual client patches (`client_hook/patches/*.c`) and server options, rebuild/deploy `steam_api.dll`, and launch 1–4 clients:
+
+```powershell
+python tools\launcher.py
+```
+
+Or launch the working client in `research\client\` directly:
 
 ```powershell
 $env:__COMPAT_LAYER = 'RunAsInvoker'

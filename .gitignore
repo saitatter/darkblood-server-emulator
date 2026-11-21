@@ -4,6 +4,7 @@ client_hook/*.dll
 client_hook/*.obj
 client_hook/*.lib
 client_hook/*.exp
+client_hook/patches/*.obj
 research/
 logs/
 extracted_sample/
