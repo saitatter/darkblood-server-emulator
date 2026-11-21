@@ -933,7 +933,8 @@ def quest_mission_counts():
             if block.startswith('LoadQuest'):
                 for q_block in re.split(r'\n  \{', block):
                     qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
+                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
                     if qid and mids:
                         out[jhash(qid.group(1)) & 0xFFFFFFFF] = len(mids)
     return out
@@ -983,7 +984,8 @@ def quest_item_objectives():
             elif block.startswith('LoadQuest'):
                 for q_block in re.split(r'\n  \{', block):
                     qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
+                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
                     if qid and mids:
                         quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = mids
 
@@ -1187,7 +1189,8 @@ def quest_monster_objectives():
             elif block.startswith('LoadQuest'):
                 for q_block in re.split(r'\n  \{', block):
                     qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
+                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
                     if qid and mids:
                         quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = mids
 

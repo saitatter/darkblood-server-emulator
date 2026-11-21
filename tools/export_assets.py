@@ -195,7 +195,8 @@ def export_quests(root):
                     reward_g = re.search(r'RewardItemG = "([^"]+)"', q_block)
                     select_g = re.search(r'RewardSelectG = "([^"]+)"', q_block)
                     quest_lines.append(f"{qid.group(1)}\t{int(float(exp.group(1))) if exp else 0}\t{int(float(gold.group(1))) if gold else 0}\t{int(float(gp.group(1))) if gp else 0}\t{offer.group(1) if offer else ''}\t{reward_g.group(1) if reward_g else ''}\t{select_g.group(1) if select_g else ''}")
-                    mids = re.findall(r'"(QM\d+)"', q_block)
+                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
+                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
                     for idx, mid in enumerate(mids):
                         chain_lines.append(f"{qid.group(1)}\t{idx}\t{mid}")
             elif block.startswith('LoadMission'):
