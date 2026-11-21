@@ -268,6 +268,44 @@ class DungeonCombatHandlers:
                     )
 
 
+    async def _update_quest_dungeon_clear(self, map_code, char):
+        """Advance dungeon-clear objectives (mission types 2 and 3) on 5017 clear."""
+        if not map_code:
+            return
+        from darkblood.games.game_data.client_dict import dungeon_maps, quest_dungeon_objectives
+        from darkblood.games.network.messages import QuestObjective, QuestUpdateNot
+        by_dungeon, by_map = quest_dungeon_objectives()
+        info = dungeon_maps().get(map_code)
+        dungeon_id = info[0] if info else ''
+
+        candidates = list(by_map.get(map_code, ()))
+        if dungeon_id:
+            candidates.extend(by_dungeon.get(dungeon_id, ()))
+        if not candidates:
+            return
+
+        active = char.get('quests_active', {})
+        seen = set()
+        for q_hash, obj_idx, target_count in candidates:
+            key = (q_hash, obj_idx)
+            if key in seen:
+                continue
+            seen.add(key)
+            q_key = str(q_hash)
+            if q_key in active:
+                q_record = active[q_key]
+                counters = q_record.setdefault('counters', [])
+                while len(counters) <= obj_idx:
+                    counters.append(0)
+                if counters[obj_idx] < target_count:
+                    counters[obj_idx] += 1
+                    update = QuestUpdateNot(updates=[QuestObjective(q_hash, obj_idx, counters[obj_idx])]).encode()
+                    await self.transport.send_event(
+                        event(2075, update),
+                        note=f'quest dungeon clear not ({q_key} map={map_code} obj={obj_idx} count={counters[obj_idx]}/{target_count})'
+                    )
+
+
     @packet_handler(5017)
     async def handle_finish_game(self, correlation, body):
         # eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60).
@@ -338,6 +376,7 @@ class DungeonCombatHandlers:
             member.dungeon.dungeon_cleared = bool(req.is_clear)
             if req.is_clear:
                 member.dungeon._record_dungeon_clear(char, map_code)
+                await member.dungeon._update_quest_dungeon_clear(map_code, char)
             # EXP was already granted per kill (5063 -> 5086), so the result
             # screen only reports it. No extra boxes are offered.
             uid = int(char.get('id', 0))

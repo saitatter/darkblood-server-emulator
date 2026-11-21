@@ -351,6 +351,55 @@ class QuestFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_quest_dungeon_clear_objectives_advance_on_finish_game(self):
+        """5017 FinishGame clear advances both mission_type 3 (exact map) and mission_type 2 (dungeon id)."""
+        q_map_hash = hashing.jhash('Q0019S01') & 0xFFFFFFFF  # QM23: type 3 -> Act1_G1_A34
+        # Also pick a type-2 quest targeting dungeon Act1_G1_A3 (e.g. QM44/QM24)
+        from darkblood.games.game_data.client_dict import quest_dungeon_objectives
+        by_dungeon, _ = quest_dungeon_objectives()
+        q_dun_hash, q_dun_idx, _ = by_dungeon['Act1_G1_A3'][0]
+
+        stamp = 'x'.encode('utf-16le')
+        req_map = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', q_map_hash, -1)
+        req_dun = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', q_dun_hash, -1)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('HaramRunner'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            # Accept both quests
+            client.send_event(2073, req_map, compressed=True)
+            await client.expect_event(2074)
+            client.send_event(2073, req_dun, compressed=True)
+            await client.expect_event(2074)
+
+            # Enter and clear Act1_G1_A34 (dungeon Act1_G1_A3)
+            from darkblood.games.network.messages import StartGameReq
+            client.send_event(5013, StartGameReq(map_code='Act1_G1_A34').encode())
+            await client.expect_event(5014)
+            client.send_event(5017, b'\x01')
+
+            updates = {}
+            for _ in range(2):
+                _, body2075 = await client.expect_event(2075)
+                qid, idx, cnt = struct.unpack_from('<iii', body2075, 2)
+                updates[(qid & 0xFFFFFFFF, idx)] = cnt
+            await client.expect_event(5018)
+
+            self.assertEqual(updates.get((q_map_hash, 0)), 1)
+            self.assertEqual(updates.get((q_dun_hash, q_dun_idx)), 1)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertEqual(char['quests_active'][str(q_map_hash)]['counters'][0], 1)
+            self.assertEqual(char['quests_active'][str(q_dun_hash)]['counters'][q_dun_idx], 1)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

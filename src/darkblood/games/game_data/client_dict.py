@@ -1200,3 +1200,34 @@ def quest_monster_objectives():
                 out.setdefault(target_mon, []).append((qid_hash, obj_idx, target_val))
                 out.setdefault(target_hash, []).append((qid_hash, obj_idx, target_val))
     return out
+
+
+@lru_cache(maxsize=None)
+def quest_dungeon_objectives():
+    """Return (by_dungeon_id, by_map_id) for dungeon-clear quest objectives.
+
+    - mission_type 2: target_id is a DungeonID (e.g. 'Act1_G1_A3')
+    - mission_type 3: target_id is an exact MapID (e.g. 'Act1_G1_A34')
+    Each maps id (str) -> [(quest_id_hash, objective_index, target_count)].
+    """
+    by_dungeon = {}
+    by_map = {}
+    tsv_m = ASSETS_DIR / 'quest_missions.tsv'
+    tsv_c = ASSETS_DIR / 'quest_chains.tsv'
+    if tsv_m.is_file() and tsv_c.is_file():
+        mission_defs = {}
+        for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 4 and parts[1] in ('2', '3') and parts[2]:
+                mission_defs[parts[0]] = (parts[1], parts[2], int(parts[3]))
+        for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 3:
+                qid, idx, mid = parts[0], int(parts[1]), parts[2]
+                if mid in mission_defs:
+                    mtype, target_id, tval = mission_defs[mid]
+                    qhash = jhash(qid) & 0xFFFFFFFF
+                    bucket = by_dungeon if mtype == '2' else by_map
+                    bucket.setdefault(target_id, []).append((qhash, idx, tval))
+        return by_dungeon, by_map
+    return by_dungeon, by_map
