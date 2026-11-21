@@ -479,6 +479,32 @@ def item_max_durability(code: str):
     return item_durabilities().get(code)
 
 
+@lru_cache(maxsize=1)
+def life_water_prices():
+    """{level: [step0, step1, step2, step3, step4]} AR costs from DictDunPenalty:LoadLifeWater."""
+    tsv = ASSETS_DIR / 'life_water.tsv'
+    if tsv.is_file():
+        out = {}
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 6:
+                out[int(parts[0])] = [int(x) for x in parts[1:6]]
+        return out
+    path = data_root() / 'dungeonpenalty.lua'
+    if not path.is_file():
+        return {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    m = re.search(r'LoadLifeWater\(\{(.*)\}\)', text, re.S)
+    if not m:
+        return {}
+    out = {}
+    for lv_s, step_s in re.findall(r'LV = (\d+),\s*step = \{([^}]+)\}', m.group(1)):
+        nums = [int(x) for x in re.findall(r'\d+', step_s)]
+        if len(nums) >= 5:
+            out[int(lv_s)] = nums[:5]
+    return out
+
+
 TUTORIAL_REWARD_RE = re.compile(r'\{RewardItemAmount = (\d+), RewardItemID = "([^"]+)"\}')
 
 

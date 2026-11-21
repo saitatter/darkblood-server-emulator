@@ -50,6 +50,16 @@ def export_levelup_ap():
     print(f"Exported {len(lines)-1} levelup AP rows to {out.name}")
 
 
+def export_life_water():
+    data = client_dict.life_water_prices()
+    lines = ['level\tstep0\tstep1\tstep2\tstep3\tstep4']
+    for lv, steps in sorted(data.items()):
+        lines.append(f"{lv}\t" + '\t'.join(str(x) for x in steps[:5]))
+    out = ASSETS_DIR / 'life_water.tsv'
+    out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    print(f"Exported {len(lines)-1} life water price rows to {out.name}")
+
+
 def export_item_durabilities():
     data = client_dict.item_durabilities()
     lines = ['item_code\tmax_durability']
@@ -267,6 +277,7 @@ def main():
     export_starter_equipment()
     export_char_stats()
     export_levelup_ap()
+    export_life_water()
     export_item_durabilities()
     export_equip_index()
     export_item_fields()

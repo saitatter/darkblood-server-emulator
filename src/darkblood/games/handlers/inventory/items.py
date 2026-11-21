@@ -344,13 +344,34 @@ class ItemHandlersMixin:
 
     @packet_handler(BuyLifeWaterReq)
     async def handle_buy_life_water(self, correlation, body):
-        """Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): purchase life water."""
+        """Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): cure dungeon penalty for AR."""
+        from darkblood.games.progression import clear_dungeon_penalty, life_water_cost
         req = BuyLifeWaterReq.decode(body)
         self.transport.record('buy-life-water-req', body, flag=req.flag)
         char = self.current_char()
-        gold = char.get('gold', 100000) if char else 100000
+        if char is None:
+            await self.reply(BuyLifeWaterAck(result=1, flag=req.flag, remain_currency=0),
+                             correlation, note='buy life water ack (no char)')
+            return
+        penalty_type = 1 if req.flag else 0
+        gold = int(char.get('gold', char.get('u66', 0)))
+        cost = life_water_cost(char, penalty_type=penalty_type)
+        if cost > gold:
+            await self.reply(BuyLifeWaterAck(result=1, flag=req.flag, remain_currency=gold),
+                             correlation, note=f'buy life water refused (need {cost} AR, have {gold})')
+            return
+        gold -= cost
+        char['gold'] = gold
+        char['u66'] = gold
+        clear_not = clear_dungeon_penalty(char, penalty_type=penalty_type)
+        self.save_char()
         await self.reply(BuyLifeWaterAck(result=0, flag=req.flag, remain_currency=gold),
-                         correlation, note=f'buy life water ack (flag={req.flag})')
+                         correlation, note=f'buy life water ack (flag={req.flag}, -{cost} AR)')
+        if cost > 0:
+            await self.transport.send_event(
+                event(2085, clear_not.encode()),
+                note=f'clear dungeon penalty (type={penalty_type})',
+            )
 
     @packet_handler(2119)
     async def handle_alarm_update(self, correlation, body):

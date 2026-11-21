@@ -257,8 +257,8 @@ class FrontendHandlers(BaseDomainService):
             await self.session.dungeon.leave_room()
             await world.remove_session_player(self.session)
         self.session.active_char_id = char_id
-        from darkblood.games.progression import refresh_stress
-        if refresh_stress(char):
+        from darkblood.games.progression import active_penalty_notice, refresh_character_timers
+        if refresh_character_timers(char):
             self.save_char()
         ack = build_select_char_ack(char, account_chars=self.store().characters(self.account))
         await self.transport.send_event(event(2007, ack, correlation),
@@ -266,6 +266,15 @@ class FrontendHandlers(BaseDomainService):
         done = [int(q) for q in char.get('quests_done', [])]
         await self.transport.send_event(event(2410, QuestHistoryNot(quest_ids=done).encode()),
                                         note='quest history not (%d)' % len(done))
+        for ptype in (0, 1):
+            pen_not = active_penalty_notice(char, penalty_type=ptype)
+            if pen_not is not None:
+                await self.transport.send_event(
+                    event(2085, pen_not.encode()),
+                    note=f'restore dungeon penalty (type={ptype}, count={pen_not.penalty_level}, '
+                         f'step={pen_not.penalty_id}, elapsed={pen_not.duration}s)',
+                )
+        self.session.start_timer_loop()
         # Register in GameWorldManager and broadcast mutual character spawns
         try:
             player = world.register_player(self.session, char_id, char, square_id=self.session.square_id)

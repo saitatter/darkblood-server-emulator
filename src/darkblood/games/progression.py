@@ -9,6 +9,12 @@ MAX_STRESS = 330
 STRESS_PER_DUNGEON_ROOM = 2
 STRESS_RECOVERY_INTERVAL_SEC = 60
 
+# DungeonPenalty.lua (DictDunPenalty:LoadLeavePenalty / LoadWipeoutPenalty):
+# Count 1..3 -> 60% / 70% / 80% HP/MP reduction; 5 recovery steps over 600s.
+PENALTY_TOTAL_SEC = 600
+PENALTY_STEP_THRESHOLDS = (40, 90, 210, 450, 600)
+MAX_PENALTY_COUNT = 3
+
 
 def ap_at_level(level):
     return level_up_ap().get(level, 3 if level < 20 else 4)
@@ -129,3 +135,182 @@ def stress_changed_not(char):
         stress_week=max(0, min(MAX_STRESS, int(char.get('stress_week', 0)))),
         today_cronos_stress=int(char.get('today_cronos_stress', 0)),
     )
+
+
+def _penalty_keys(penalty_type: int):
+    prefix = 'wipeout_penalty' if penalty_type else 'leave_penalty'
+    return f'{prefix}_count', f'{prefix}_started_at', f'{prefix}_step'
+
+
+def penalty_step_for_elapsed(elapsed: float) -> int:
+    """Map elapsed seconds since penalty start to DungeonPenalty.lua step index (0..4) or -1 if expired."""
+    if elapsed < 0:
+        return 0
+    for idx, threshold in enumerate(PENALTY_STEP_THRESHOLDS):
+        if elapsed < threshold:
+            return idx
+    return -1
+
+
+def apply_dungeon_penalty(char, penalty_type: int = 0, now=None):
+    """Apply or escalate a dungeon leave/wipeout penalty (Count 1..3) and return 2085 notice.
+
+    Client On_eEGS_CHANGE_DUNGEON_PENALTY_NOT (0x0078FA70) passes duration to FUN_00a8f090:
+      end_ms = (total_sec - duration) * 1000 + now_ms
+    So duration is ELAPSED seconds (0 on initial application -> full 600s countdown).
+    """
+    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
+    now = time.time() if now is None else float(now)
+    k_cnt, k_start, k_step = _penalty_keys(penalty_type)
+    prev_start = float(char.get(k_start, 0) or 0)
+    prev_cnt = int(char.get(k_cnt, 0) or 0)
+    if prev_cnt > 0 and prev_start > 0 and (now - prev_start) < PENALTY_TOTAL_SEC:
+        cnt = min(MAX_PENALTY_COUNT, prev_cnt + 1)
+    else:
+        cnt = 1
+    char[k_cnt] = cnt
+    char[k_start] = now
+    char[k_step] = 0
+    return ChangeDungeonPenaltyNot(
+        in_dungeon=True,
+        is_penalty=bool(penalty_type),
+        penalty_level=cnt,
+        penalty_id=0,
+        duration=0,
+    )
+
+
+def refresh_dungeon_penalty(char, penalty_type: int = 0, now=None):
+    """Advance or expire a persisted dungeon penalty based on wall-clock elapsed time.
+
+    Returns (changed: bool, notice: ChangeDungeonPenaltyNot | None).
+    """
+    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
+    now = time.time() if now is None else float(now)
+    k_cnt, k_start, k_step = _penalty_keys(penalty_type)
+    cnt = int(char.get(k_cnt, 0) or 0)
+    started_at = float(char.get(k_start, 0) or 0)
+    if cnt <= 0 or started_at <= 0:
+        return False, None
+
+    elapsed = max(0.0, now - started_at)
+    new_step = penalty_step_for_elapsed(elapsed)
+    old_step = int(char.get(k_step, 0))
+
+    if new_step < 0:
+        char[k_cnt] = 0
+        char[k_start] = 0
+        char[k_step] = -1
+        return True, ChangeDungeonPenaltyNot(
+            in_dungeon=False,
+            is_penalty=bool(penalty_type),
+            penalty_level=0,
+            penalty_id=-1,
+            duration=-1,
+        )
+
+    if new_step != old_step:
+        char[k_step] = new_step
+        return True, ChangeDungeonPenaltyNot(
+            in_dungeon=False,
+            is_penalty=bool(penalty_type),
+            penalty_level=cnt,
+            penalty_id=new_step,
+            duration=int(elapsed),
+        )
+    return False, None
+
+
+def active_penalty_notice(char, penalty_type: int = 0, now=None):
+    """Return a silent 2085 notice to restore an active penalty on character login, or None."""
+    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
+    now = time.time() if now is None else float(now)
+    refresh_dungeon_penalty(char, penalty_type=penalty_type, now=now)
+    k_cnt, k_start, k_step = _penalty_keys(penalty_type)
+    cnt = int(char.get(k_cnt, 0) or 0)
+    started_at = float(char.get(k_start, 0) or 0)
+    if cnt <= 0 or started_at <= 0:
+        return None
+    elapsed = max(0.0, now - started_at)
+    step = penalty_step_for_elapsed(elapsed)
+    if step < 0:
+        return None
+    char[k_step] = step
+    return ChangeDungeonPenaltyNot(
+        in_dungeon=False,
+        is_penalty=bool(penalty_type),
+        penalty_level=cnt,
+        penalty_id=step,
+        duration=int(elapsed),
+    )
+
+
+def clear_dungeon_penalty(char, penalty_type: int = 0):
+    """Immediately clear an active dungeon penalty (e.g. via 2086 BuyLifeWater)."""
+    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
+    k_cnt, k_start, k_step = _penalty_keys(penalty_type)
+    char[k_cnt] = 0
+    char[k_start] = 0
+    char[k_step] = -1
+    return ChangeDungeonPenaltyNot(
+        in_dungeon=False,
+        is_penalty=bool(penalty_type),
+        penalty_level=0,
+        penalty_id=-1,
+        duration=-1,
+    )
+
+
+def life_water_cost(char, penalty_type: int = 0, now=None) -> int:
+    """Compute AR cost to clear an active dungeon penalty from DictDunPenalty:LoadLifeWater."""
+    from darkblood.games.game_data.client_dict import life_water_prices
+    now = time.time() if now is None else float(now)
+    refresh_dungeon_penalty(char, penalty_type=penalty_type, now=now)
+    k_cnt, k_start, _ = _penalty_keys(penalty_type)
+    cnt = int(char.get(k_cnt, 0) or 0)
+    started_at = float(char.get(k_start, 0) or 0)
+    if cnt <= 0 or started_at <= 0:
+        return 0
+    step = penalty_step_for_elapsed(max(0.0, now - started_at))
+    if step < 0:
+        return 0
+    lv = max(1, min(MAX_LEVEL, int(char.get('level', 1))))
+    steps = life_water_prices().get(lv)
+    if steps and step < len(steps):
+        return int(steps[step])
+    return max(100, lv * 500 * (5 - step) // 5)
+
+
+def refresh_depot_timers(char, now=None) -> bool:
+    """Update depot_extend_remain from persisted depot_extend_expires timestamps."""
+    now = time.time() if now is None else float(now)
+    expires = char.get('depot_extend_expires')
+    if not isinstance(expires, list):
+        return False
+    remain = list(char.get('depot_extend_remain', [0, 0]))
+    while len(remain) < len(expires):
+        remain.append(0)
+    changed = False
+    for idx, exp_ts in enumerate(expires):
+        new_rem = max(0, int(float(exp_ts) - now)) if exp_ts else 0
+        if remain[idx] != new_rem:
+            remain[idx] = new_rem
+            changed = True
+    if changed:
+        char['depot_extend_remain'] = remain
+    return changed
+
+
+def refresh_character_timers(char, now=None) -> bool:
+    """Refresh all persisted wall-clock timers on a character (stress, penalties, depot)."""
+    now = time.time() if now is None else float(now)
+    changed = False
+    if refresh_stress(char, now=now):
+        changed = True
+    for ptype in (0, 1):
+        p_changed, _ = refresh_dungeon_penalty(char, penalty_type=ptype, now=now)
+        if p_changed:
+            changed = True
+    if refresh_depot_timers(char, now=now):
+        changed = True
+    return changed

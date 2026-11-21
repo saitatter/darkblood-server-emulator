@@ -42,6 +42,26 @@ class SqliteCharacterStore(ICharacterStore):
         self.lock = threading.Lock()
         self._cache = {}  # (account, char_id) -> dict
         self._init_db()
+        self.refresh_all_timers()
+
+    def refresh_all_timers(self, now=None):
+        """Reconcile persisted wall-clock timers across all characters on DB load / startup."""
+        import time as _time
+        from darkblood.games.progression import refresh_character_timers
+        now = _time.time() if now is None else float(now)
+        changed = False
+        expired_deletes = []
+        for account, char in self.all_characters():
+            del_ts = char.get('delete_time')
+            if del_ts and float(del_ts) <= now:
+                expired_deletes.append((account, char['id']))
+                continue
+            if refresh_character_timers(char, now=now):
+                changed = True
+        for account, char_id in expired_deletes:
+            self.delete(account, char_id)
+        if changed:
+            self.save()
 
     @property
     def path(self):

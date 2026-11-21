@@ -1,4 +1,5 @@
 """Game connection session (JEvent dispatcher)."""
+import asyncio
 from darkblood.core.serialization.jser import WireError, event, parse_event
 from darkblood.games.dispatcher import PacketDispatcher, packet_handler
 from darkblood.games.handlers.arena import ArenaHandlers
@@ -44,9 +45,68 @@ class GameSession:
         self.authenticated = False
         self.active_char_id = None
         self.square_id = 1
+        self._timer_task = None
 
         for name, controller_type in CONTROLLERS:
             setattr(self, name, controller_type(self))
+
+    def start_timer_loop(self, interval: float = 5.0):
+        """Start (or restart) the per-session periodic cooldown/stress/penalty ticker."""
+        self.stop_timer_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._timer_task = loop.create_task(self._run_timer_loop(interval))
+
+    def stop_timer_loop(self):
+        task = getattr(self, '_timer_task', None)
+        if task is not None and not task.done():
+            task.cancel()
+        self._timer_task = None
+
+    async def tick_timers(self, now=None):
+        """Run one timer tick: live town stress recovery (2023) and penalty step/expiry (2085)."""
+        char = self.current_char()
+        if char is None:
+            return
+        from darkblood.games.progression import (
+            refresh_depot_timers,
+            refresh_dungeon_penalty,
+            refresh_stress,
+            stress_changed_not,
+        )
+        dirty = False
+        # Passive stress recovery (-1/min) ticks while outside a dungeon.
+        if not getattr(self.dungeon, 'in_dungeon', False):
+            if refresh_stress(char, now=now):
+                dirty = True
+                await self.transport.send_event(
+                    event(2023, stress_changed_not(char).encode()),
+                    note=f"stress timer tick ({char['stress']})",
+                )
+        # Dungeon leave (0) and wipeout (1) penalty recovery steps & expiration.
+        for ptype in (0, 1):
+            p_changed, notice = refresh_dungeon_penalty(char, penalty_type=ptype, now=now)
+            if p_changed:
+                dirty = True
+                if notice is not None:
+                    await self.transport.send_event(
+                        event(2085, notice.encode()),
+                        note=f'dungeon penalty tick (type={ptype}, step={notice.penalty_id}, elapsed={notice.duration})',
+                    )
+        if refresh_depot_timers(char, now=now):
+            dirty = True
+        if dirty:
+            self.store().save()
+
+    async def _run_timer_loop(self, interval: float):
+        try:
+            while True:
+                await asyncio.sleep(interval)
+                await self.tick_timers()
+        except (asyncio.CancelledError, ConnectionError, OSError):
+            return
 
     @property
     def char_id(self):
@@ -77,6 +137,7 @@ class GameSession:
         )
 
     async def on_disconnect(self):
+        self.stop_timer_loop()
         await self.dungeon.leave_room()
         if self.active_char_id:
             from darkblood.games.world import GameWorldManager

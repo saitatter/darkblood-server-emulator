@@ -865,29 +865,12 @@ class DungeonHandlers(BaseDomainService):
             if not was_cleared:
                 char = self.current_char()
                 if char is not None:
-                    import time
-                    now = int(time.time())
-                    prev_exp = int(char.get('leave_penalty_expires', 0) or 0)
-                    prev_cnt = int(char.get('leave_penalty_count', 0) or 0) if prev_exp > now else 0
-                    cnt = min(3, prev_cnt + 1)
-                    duration = 600  # DungeonPenalty.lua: 600s full recovery (5 steps: 40/90/210/450/600s)
-                    char['leave_penalty_count'] = cnt
-                    char['leave_penalty_expires'] = now + duration
+                    from darkblood.games.progression import apply_dungeon_penalty
+                    pen = apply_dungeon_penalty(char, penalty_type=0)
                     self.save_char()
-                    # 2085 On_eEGS_CHANGE_DUNGEON_PENALTY_NOT (0x0078FA70):
-                    #   in_dungeon=True -> show alarm popup (JAppPagePenaltyAlarm 0x2F) on town arrival
-                    #   is_penalty=False -> type 0 (LeavePenalty, player +0x2E8/+0x2E9)
-                    #   penalty_level=cnt (1..3 -> 60%/70%/80%), penalty_id=0 (step 0), duration=600s
-                    pen = ChangeDungeonPenaltyNot(
-                        in_dungeon=True,
-                        is_penalty=False,
-                        penalty_level=cnt,
-                        penalty_id=0,
-                        duration=duration,
-                    ).encode()
                     await self.transport.send_event(
-                        event(2085, pen),
-                        note=f'change dungeon penalty not (leave count={cnt}, duration={duration}s)',
+                        event(2085, pen.encode()),
+                        note=f'change dungeon penalty not (leave count={pen.penalty_level}, elapsed={pen.duration}s)',
                     )
 
     @packet_handler(ChoiceRewardPartyRankReq)

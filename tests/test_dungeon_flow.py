@@ -121,7 +121,25 @@ class DungeonFlowTest(ServerTestCase):
             _, not2085 = await client.expect_event(2085)
             pen = ChangeDungeonPenaltyNot.decode(not2085)
             self.assertEqual((pen.in_dungeon, pen.is_penalty, pen.penalty_level, pen.penalty_id, pen.duration),
-                             (True, False, 1, 0, 600))
+                             (True, False, 1, 0, 0))
+
+            # 10d. BuyLifeWater (2086 -> 2087 + 2085 clear) deducts exact LoadLifeWater AR and clears penalty
+            from darkblood.games.network.messages import BuyLifeWaterAck, BuyLifeWaterReq
+            from darkblood.games.progression import life_water_cost
+            char['gold'] = 10000
+            char['u66'] = 10000
+            expected_lw_cost = life_water_cost(char, penalty_type=0)
+            self.assertGreater(expected_lw_cost, 0)
+            client.send_event(2086, BuyLifeWaterReq(flag=False).encode())
+            _, ack2087 = await client.expect_event(2087)
+            lw_ack = BuyLifeWaterAck.decode(ack2087)
+            self.assertEqual((lw_ack.result, lw_ack.flag, lw_ack.remain_currency),
+                             (0, False, 10000 - expected_lw_cost))
+            _, not2085_clear = await client.expect_event(2085)
+            pen_clear = ChangeDungeonPenaltyNot.decode(not2085_clear)
+            self.assertEqual((pen_clear.in_dungeon, pen_clear.is_penalty, pen_clear.penalty_level,
+                              pen_clear.penalty_id, pen_clear.duration),
+                             (False, False, 0, -1, -1))
 
             # 11. Back to square (5045 -> 5046)
             client.send_event(5045, struct.pack('<i', 0x7fffffff))
@@ -416,6 +434,63 @@ class DungeonFlowTest(ServerTestCase):
             client.send_event(5095, struct.pack('<iq', 0x7fffffff, (map_hash << 32) | 2))
             _, n2 = await client.expect_event(2023)
             self.assertEqual(StressChangedNot.decode(n2).stress, 4)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_penalty_timers_relogin_and_db_reload(self):
+        """Verify penalty recovery steps (40/90/210/450/600s), DB reload reconciliation, and 2006 login restore."""
+        import time
+        from darkblood.games.network.messages import ChangeDungeonPenaltyNot
+        from darkblood.games.progression import (
+            apply_dungeon_penalty,
+            refresh_dungeon_penalty,
+        )
+        from darkblood.games.session import GameSession
+
+        t0 = 1_700_000_000.0
+        c = {'id': 1, 'level': 5}
+        p0 = apply_dungeon_penalty(c, penalty_type=0, now=t0)
+        self.assertEqual((p0.in_dungeon, p0.penalty_level, p0.penalty_id, p0.duration), (True, 1, 0, 0))
+        # Step 1 at 45s
+        changed, p1 = refresh_dungeon_penalty(c, penalty_type=0, now=t0 + 45)
+        self.assertTrue(changed)
+        self.assertEqual((p1.in_dungeon, p1.penalty_level, p1.penalty_id, p1.duration), (False, 1, 1, 45))
+        # No change at 50s (still step 1)
+        changed, p_same = refresh_dungeon_penalty(c, penalty_type=0, now=t0 + 50)
+        self.assertFalse(changed)
+        self.assertIsNone(p_same)
+        # Step 4 at 460s
+        changed, p4 = refresh_dungeon_penalty(c, penalty_type=0, now=t0 + 460)
+        self.assertTrue(changed)
+        self.assertEqual((p4.penalty_id, p4.duration), (4, 460))
+        # Expired at 605s -> cleared with duration=-1
+        changed, p_end = refresh_dungeon_penalty(c, penalty_type=0, now=t0 + 605)
+        self.assertTrue(changed)
+        self.assertEqual((p_end.penalty_level, p_end.penalty_id, p_end.duration), (0, -1, -1))
+        self.assertEqual(c['leave_penalty_count'], 0)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('PenHero', char_class=1))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            # Seed a persisted penalty started 100s ago (step 2) before login, simulating server restart
+            char = GameSession.store().get('OfflinePlayer', char_id)
+            apply_dungeon_penalty(char, penalty_type=0, now=time.time() - 100)
+            GameSession.store().save()
+            GameSession.store().refresh_all_timers()
+            self.assertEqual(char['leave_penalty_step'], 2)
+
+            # On 2006 SelectCharacter, client receives 2007, 2410, and silent 2085 restore (in_dungeon=False)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+            _, restored = await client.expect_event(2085)
+            pen = ChangeDungeonPenaltyNot.decode(restored)
+            self.assertEqual((pen.in_dungeon, pen.is_penalty, pen.penalty_level, pen.penalty_id),
+                             (False, False, 1, 2))
+            self.assertGreaterEqual(pen.duration, 95)
+            self.assertLess(pen.duration, 210)
 
         self.run_async(self.with_server(scenario))
 
