@@ -294,11 +294,32 @@ class CommerceHandlers(BaseDomainService):
                                         note=f'contract update ack (contract={req.contract_id})')
 
     async def on_2143(self, correlation, body):
-        # eEGS_DURABILITY_CHANGE_REQ (0x00790000.c:2049) -> 2144 eEGS_DURABILITY_CHANGE_ACK (0x00774AE0).
+        # eEGS_DURABILITY_CHANGE_REQ (0x00792AC0) -> 2144 eEGS_DURABILITY_CHANGE_ACK (0x00774AE0).
+        from darkblood.games.game_data.client_dict import item_max_durability
         req = DurabilityChangeReq.decode(body)
-        self.transport.record('durability-change-req', body)
-        ack = DurabilityChangeAck(result=0).encode()
-        await self.transport.send_event(event(2144, ack, correlation), note='durability change ack')
+        self.transport.record('durability-change-req', body, count=len(req.durabilities))
+        char = self.current_char()
+        broken_uids = []
+        changed = False
+        if char is not None and req.durabilities:
+            items_by_uid = {int(it.get('uid', -1)): it for it in char.get('items', [])}
+            for item_uid, new_dur in req.durabilities.items():
+                item = items_by_uid.get(int(item_uid))
+                if item is None:
+                    continue
+                max_dur = item_max_durability(item.get('code', ''))
+                clamped = max(0.0, float(new_dur))
+                if max_dur is not None:
+                    clamped = min(clamped, float(max_dur))
+                item['durability'] = clamped
+                changed = True
+                if clamped <= 0.0:
+                    broken_uids.append(int(item_uid))
+            if changed:
+                self.save_char()
+        ack = DurabilityChangeAck(result=0, changed_item_uids=broken_uids).encode()
+        await self.transport.send_event(event(2144, ack, correlation),
+                                        note=f'durability change ack (updated={len(req.durabilities)}, broken={len(broken_uids)})')
 
     # Trade handlers (5069 - 5083)
     async def on_5069(self, correlation, body):

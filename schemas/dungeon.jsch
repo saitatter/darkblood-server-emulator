@@ -286,7 +286,7 @@ struct SingleReward
   i32 _                      # +0x18 unknown
   i32 _                      # +0x1C unknown
   i32 extra_box_count        # +0x20: 0x0071FF0F adds this many "extra_box" entries; keep small
-  i32 extra_box_price        # +0x24 "num_price" (0x0071FE83)
+  i32 rank                   # +0x24 individual rank 0=D..6=SSS (Lua_OnChecked_5 @ 0x0071F9F0 / 0x00720000:530)
 end
 
 message 5018 FinishGameAck

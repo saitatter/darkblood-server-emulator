@@ -139,16 +139,33 @@ class SquareHandlers(BaseDomainService):
         # it here sent 5036 for the host, and the member saw "all members left the
         # party" when the leader closed the dungeon gate (live 2026-11-21).
         room = self.session.dungeon.room
+        party_members = []
         if room is not None and room.info.name == '_singleplay':
             await self.session.dungeon.leave_room()
         elif room is not None:
             room.started = False
+            # In a party dungeon/gate, only the host sends 5045 when the result
+            # timer expires or the gate is closed (live 2026-11-21); return all
+            # other party members to town as well so nobody is left stranded.
+            if room.host is self.session:
+                party_members = [m for m in list(room.members) if m is not self.session]
         # Return to the layer the player left town from: after GamePlay the
         # client places the unit by that layer's waypoint (0x008EC230).
         ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=self._town_layer(),
                               cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
+        for member in party_members:
+            try:
+                m_ack = BackToSquareAck(
+                    square_uid=_wire_square_uid(member.square_id),
+                    layer_net_id=member.square._town_layer(),
+                    cur_ar=member.square._current_gold(),
+                ).encode()
+                await member.transport.send_event(event(5046, m_ack),
+                                                  note='back to square ack (party)')
+            except (ConnectionError, OSError):
+                pass
 
     def _town_layer(self):
         char = self.current_char()

@@ -570,46 +570,89 @@ class DungeonHandlers(BaseDomainService):
         else:
             char = self._current_char()
             members = [(self.session, char)] if char is not None else []
+        # Optional 5017 trailing maps: map<i64,i32> scores, map<i64,i32> rank_points.
+        # Headless tests may send a bare 1-byte body; parse defensively.
+        rank_points = {}
+        if req.tail:
+            from darkblood.core.serialization.jser import JSerBufferReader
+            try:
+                r = JSerBufferReader(req.tail)
+                r.read_tagged_map(JSerBufferReader.read_i64, JSerBufferReader.read_i32)  # per-player combat score
+                rank_points = r.read_tagged_map(JSerBufferReader.read_i64, JSerBufferReader.read_i32)  # per-player rank percentage (0..100+)
+            except (WireError, struct.error, IndexError):
+                rank_points = {}
+
+        # Client rank enum (0x007101F0 / 0x00720000:530 Lua_OnChecked_5):
+        # 0=D, 1=C, 2=B, 3=A, 4=S, 5=SS, 6=SSS.
+        kill_count = getattr(self, 'dungeon_kill_count', 0)
+        score = getattr(self, 'dungeon_score', 0)
+        if score >= 50000 or kill_count >= 25:
+            fallback_rank = 6
+        elif score >= 30000 or kill_count >= 20:
+            fallback_rank = 5
+        elif score >= 15000 or kill_count >= 15:
+            fallback_rank = 4
+        elif score >= 8000 or kill_count >= 10:
+            fallback_rank = 3
+        elif score >= 3000 or kill_count >= 5:
+            fallback_rank = 2
+        elif score >= 1000 or kill_count >= 2:
+            fallback_rank = 1
+        else:
+            fallback_rank = 0
+
+        def _points_to_rank(pts: int) -> int:
+            if pts >= 98:
+                return 6
+            if pts >= 90:
+                return 5
+            if pts >= 80:
+                return 4
+            if pts >= 65:
+                return 3
+            if pts >= 50:
+                return 2
+            if pts >= 30:
+                return 1
+            return 0
+
         # The player's UID is the character id (2007 details +0x1C, copied to
         # player +0x10 by 0x0095A150). Characters have no 'char_uid' key, so
         # mapSingleReward used to go out empty and the result screen froze.
         rewards = {}
+        member_ranks = []
         for member, char in members:
             if req.is_clear:
                 member.dungeon._record_dungeon_clear(char, map_code)
             # EXP was already granted per kill (5063 -> 5086), so the result
             # screen only reports it. No extra boxes are offered.
+            uid = int(char.get('id', 0))
             gained = getattr(member.dungeon, 'dungeon_exp', 0)
-            rewards[int(char.get('id', 0))] = SingleReward(total=gained, exp=gained)
+            user_rank = _points_to_rank(rank_points[uid]) if uid in rank_points else fallback_rank
+            member_ranks.append(user_rank)
+            rewards[uid] = SingleReward(total=gained, exp=gained, rank=user_rank)
         if members and req.is_clear:
             self.store().save()
 
-        kill_count = getattr(self, 'dungeon_kill_count', 0)
-        score = getattr(self, 'dungeon_score', 0)
-        # Server-side rank heuristic. Ranks: 1=SSS, 2=SS, 3=S, 4=A.
-        if score >= 50000 or kill_count >= 20:
-            rank, box_grade = 1, 4
-        elif score >= 20000 or kill_count >= 10:
-            rank, box_grade = 2, 3
-        elif score >= 5000 or kill_count >= 5:
-            rank, box_grade = 3, 2
-        else:
-            rank, box_grade = 4, 1
+        # Party rank uses the exact same 0..6 (D..SSS) scale as SingleReward.rank.
+        # In solo runs this guarantees party_rank == user_rank (never off-by-one).
+        party_rank = round(sum(member_ranks) / len(member_ranks)) if member_ranks else fallback_rank
+        box_grade = min(4, max(1, (party_rank + 1) // 2))
 
         ack = FinishGameAck(
             result=0,
             is_clear=req.is_clear,
             map_code=map_code,
             rewards={uid: reward for uid, reward in rewards.items() if uid},
-            rank_first=rank,
-            rank_final=rank,
+            rank_first=party_rank,
+            rank_final=party_rank,
             box_grade=box_grade,
             extra_box_cost=0,
         ).encode()
         await self.transport.send_event(event(5018, ack, correlation),
-                                        note=f'finish game ack ({map_code} clear={req.is_clear} rank={rank})')
+                                        note=f'finish game ack ({map_code} clear={req.is_clear} rank={party_rank})')
         await self._send_to([member for member, _ in members if member is not self.session], event(5018, ack),
-                            f'finish game (party, {map_code} rank={rank})')
+                            f'finish game (party, {map_code} rank={party_rank})')
 
     async def _drop_loot(self, source_id, monster, char):
         """Roll itemlooting.lua drops for a kill and announce them with 5064.
@@ -796,13 +839,7 @@ class DungeonHandlers(BaseDomainService):
             return
         run = self._run_members()
         room = self._shared_run()
-        if room is not None and room.loot_mode == 0 and run:
-            # Random looting: whoever picks it up, a random member of the run gets it.
-            import random
-            winner, char = random.choice(run)
-        else:
-            winner = self.session
-        others = [member for member, _ in run if member is not winner]
+        is_random = room is not None and room.loot_mode == 0 and bool(run)
         from darkblood.games.game_data.client_dict import money_drops
         money = money_drops().get(code)
         if money:
@@ -810,11 +847,16 @@ class DungeonHandlers(BaseDomainService):
             # (0x0086AFF0) and plays the picker's pickup before it checks the
             # result; only result 0 adds the amount to the *local* player +0x70.
             # The other members get the same notice with a nonzero result.
+            import random
+            if is_random:
+                winner, char = random.choice(run)
+            else:
+                winner = self.session
+            others = [member for member, _ in run if member is not winner]
             from darkblood.games.network.messages import GetDropArNot
             del drops[req.drop_uid]
             amount = holder.floor_gold.pop(req.drop_uid, None)
             if amount is None:
-                import random
                 amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
             char['gold'] = char.get('gold', 0) + amount
             char['u66'] = char['gold']
@@ -825,12 +867,28 @@ class DungeonHandlers(BaseDomainService):
             seen = GetDropArNot(result=1, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
             await self._send_to(others, event(5114, seen), 'AR picked by %s' % char.get('name'))
             return
-        free = free_bag_slots(char)
-        if free is not None and slots_needed([(code, 1)]) > free:
-            # The winner's bag is full: the drop stays on the floor.
-            await self.transport.send_event(event(5068, PickUpItemResultAck(result=results.INVEN_FULL, picker_uid=char['id']).encode()),
-                                            note='pick up item refused (bag full, drop %d)' % req.drop_uid)
-            return
+        needed = slots_needed([(code, 1)])
+        if is_random:
+            # Random looting: choose randomly among members who have free bag space,
+            # so one member's full bag does not block the whole party from looting.
+            import random
+            eligible = [(m, c) for m, c in run
+                        if free_bag_slots(c) is None or free_bag_slots(c) >= needed]
+            if not eligible:
+                await self.transport.send_event(
+                    event(5068, PickUpItemResultAck(result=results.INVEN_FULL, picker_uid=char['id']).encode()),
+                    note='pick up item refused (all party bags full, drop %d)' % req.drop_uid)
+                return
+            winner, char = random.choice(eligible)
+        else:
+            winner = self.session
+            free = free_bag_slots(char)
+            if free is not None and needed > free:
+                await self.transport.send_event(
+                    event(5068, PickUpItemResultAck(result=results.INVEN_FULL, picker_uid=char['id']).encode()),
+                    note='pick up item refused (bag full, drop %d)' % req.drop_uid)
+                return
+        others = [member for member, _ in run if member is not winner]
         del drops[req.drop_uid]
         stored = add_reward_items(char, [(code, 1)])
         self.store().save()

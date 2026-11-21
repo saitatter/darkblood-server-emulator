@@ -116,13 +116,13 @@
 | `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:149 | guild members |
 | `2205 GuildSkillNot` | `vector<?>` | guild.jsch:168 |  |
 
-## inventory (3 of 232 fields)
+## inventory (3 of 233 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `ItemDropEntry` | `u16` | inventory.jsch:21 | +0xC (ctor 0xFFFF) |
-| `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:265 |  |
-| `AddedItemNotice` | `u32` | inventory.jsch:396 | +8 (u16 zero + 2 bytes struct padding) |
+| `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
+| `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
 ## lobby (72 of 122 fields)
 

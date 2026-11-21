@@ -1,5 +1,19 @@
 # Session handoff — 2026-11-21
 
+## Live 2-client co-op dungeon bugfixes — saita machine, 2026-11-21
+
+- **Party Rank & User Rank (`schemas/dungeon.jsch`, `src/darkblood/games/handlers/dungeon.py`)**:
+  - Recovered `SingleReward +0x24` from `0x0071F9F0` / `0x00720000:530` (`Lua_OnChecked_5`): it is the per-player individual `rank` (`0=D, 1=C, 2=B, 3=A, 4=S, 5=SS, 6=SSS`), not `extra_box_price`. Previously it was always `0` (`D`) while `FinishGameAck.rank_first/rank_final` sent `1` (`C`), making Party Rank always 1 grade higher than User Rank.
+  - `on_5017` now decodes the optional `5017 FinishGameReq` score and rank-point maps, computes each member's `SingleReward.rank` on the `0..6` scale, and sets `rank_first = rank_final = round(avg(member_ranks))` (matching `user_rank` identically in solo runs).
+- **Random Looting bag-full fallback (`src/darkblood/games/handlers/dungeon.py`)**:
+  - In `on_5065` when `room.loot_mode == 0` (Random Looting), filter party members with free bag slots before `random.choice` so one member having a full bag no longer blocks other members from looting drops.
+- **Party dungeon end timer / back to square (`src/darkblood/games/handlers/square.py`)**:
+  - In a party dungeon, only the host sends `5045 BackToSquareReq` when the result timer expires or the gate is closed. `handle_back_to_square` now also sends `5046 BackToSquareAck` (with each member's own square/layer/gold) to every other member in the room while keeping the party intact.
+- **Durability loss & repair (`schemas/inventory.jsch`, `src/darkblood/games/handlers/commerce.py`, `src/darkblood/games/handlers/inventory/crafting.py`)**:
+  - Decoded `map<i64,f32>` in `2143 DurabilityChangeReq`, `2145 DurabilityRepairReq`, and `2154 DurabilityRepairByItemReq` (plus `i64 repair_item_uid`).
+  - `on_2143` persists updated item durability (clamped to `[0, max_dur]`) and reports broken (`<= 0`) item UIDs in `2144 DurabilityChangeAck`.
+  - `handle_durability_repair` (`2145 -> 2146`) restores items to max durability, charges AR proportional to missing durability, persists changes, and returns `repaired_items` + `remain_gold`. `handle_durability_repair_by_item` (`2154 -> 2146`) restores durability without AR cost and consumes 1 repair kit item.
+
 ## Typed wire serialization & project audit refactors — saita machine, 2026-11-21
 
 - **Typed wire serialization (`src/darkblood/core/serialization/wire.py`, `tools/gen_messages.py`)**:

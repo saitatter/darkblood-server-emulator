@@ -286,6 +286,48 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2462 = await client.expect_event(2462)
             self.assertEqual(struct.unpack_from('<ihq', ack2462[:14]), (0, 5, 0))
 
+            # 46. Durability loss (2143 -> 2144), AR repair (2145 -> 2146), and repair-by-item (2154 -> 2146)
+            from darkblood.games.network.messages import (
+                DurabilityChangeAck, DurabilityChangeReq, DurabilityRepairAck,
+                DurabilityRepairByItemReq, DurabilityRepairReq,
+            )
+            from darkblood.games.session import GameSession
+            char = GameSession.store().get('OfflinePlayer', char_id)
+            char['gold'] = 5000
+            char['u66'] = 5000
+            target_item = {'uid': 777, 'code': 'Abodk0002', 'container': 1, 'slot': 2, 'durability': 20.0}
+            char.setdefault('items', []).append(target_item)
+            item_uid = 777
+            # Prefixed 2143 lowering durability to 5.0 (not broken)
+            client.send_event(2143, DurabilityChangeReq(durabilities={item_uid: 5.0}).encode())
+            _, ack2144 = await client.expect_event(2144)
+            parsed2144 = DurabilityChangeAck.decode(ack2144)
+            self.assertEqual((parsed2144.result, parsed2144.changed_item_uids), (0, []))
+            self.assertAlmostEqual(target_item['durability'], 5.0, places=3)
+            # Bare 2143 (without 0x7FFFFFFF prefix) breaking durability to 0.0 -> reported in changed_item_uids
+            client.send_event(2143, DurabilityChangeReq(durabilities={item_uid: 0.0}).encode()[4:])
+            _, ack2144_broken = await client.expect_event(2144)
+            parsed2144_broken = DurabilityChangeAck.decode(ack2144_broken)
+            self.assertEqual((parsed2144_broken.result, parsed2144_broken.changed_item_uids), (0, [item_uid]))
+            self.assertAlmostEqual(target_item['durability'], 0.0, places=3)
+            # 2145 repair with AR -> restores durability and deducts gold
+            client.send_event(2145, DurabilityRepairReq(repair_items={item_uid: 0.0}).encode())
+            _, ack2146 = await client.expect_event(2146)
+            parsed2146 = DurabilityRepairAck.decode(ack2146)
+            self.assertEqual(parsed2146.result, 0)
+            self.assertIn(item_uid, parsed2146.repaired_items)
+            self.assertGreater(parsed2146.repaired_items[item_uid], 0.0)
+            self.assertAlmostEqual(target_item['durability'], parsed2146.repaired_items[item_uid], places=3)
+            self.assertLess(parsed2146.remain_gold, 5000)
+            # 2154 repair by item -> restores durability without deducting AR
+            target_item['durability'] = 1.0
+            gold_before = char['gold']
+            client.send_event(2154, DurabilityRepairByItemReq(repair_items={item_uid: 1.0}, repair_item_uid=999999).encode())
+            _, ack2146_kit = await client.expect_event(2146)
+            parsed2146_kit = DurabilityRepairAck.decode(ack2146_kit)
+            self.assertEqual((parsed2146_kit.result, parsed2146_kit.remain_gold), (0, gold_before))
+            self.assertGreater(target_item['durability'], 1.0)
+
         self.run_async(self.with_server(scenario))
 
 

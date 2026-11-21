@@ -209,18 +209,37 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, guest_exp = await guest.expect_event(5086)
                 self.assertEqual(struct.unpack_from('<i', host_exp, 12), struct.unpack_from('<i', guest_exp, 12))
                 self.assertGreater(struct.unpack_from('<i', guest_exp, 12)[0], 0)
-                host.send_event(5017, b'\x01', correlation=56)
+                # 5017 with per-player scores and rank_points (both 77 -> rank 3 = A).
+                from darkblood.core.serialization.wire import JSerBufferWriter
+                from darkblood.games.network.messages import FinishGameAck
+                w5017 = JSerBufferWriter()
+                w5017.write_bool(True)
+                for m in ({host_id: 1796, guest_id: 952}, {host_id: 77, guest_id: 77}):
+                    w5017.write_u8(0x17)
+                    w5017.write_varuint(len(m))
+                    for k, v in sorted(m.items()):
+                        w5017.write_u8(0x0F)
+                        w5017.write_i64(k)
+                        w5017.write_i32(v)
+                host.send_event(5017, w5017.to_bytes(), correlation=56)
                 correlation, result = await host.expect_event(5018)
                 self.assertEqual(correlation, 56)
                 _, member_result = await guest.expect_event(5018)
                 self.assertEqual(member_result, result)
+                parsed_result = FinishGameAck.decode(result)
+                self.assertEqual(parsed_result.rewards[host_id].rank, 3)
+                self.assertEqual(parsed_result.rewards[guest_id].rank, 3)
+                self.assertEqual(parsed_result.rank_first, 3)
+                self.assertEqual(parsed_result.rank_final, 3)
                 for uid in (host_id, guest_id):
                     self.assertIn(b'\x0f' + struct.pack('<q', uid), result)
 
-                # Closing the dungeon gate (5045, back to square) keeps the party:
-                # both members are still listed and the guest gets no 5036.
+                # Closing the dungeon gate or finishing a run (5045, back to square)
+                # returns BOTH host and party members to town (5046) while keeping
+                # the party intact (no 5036).
                 host.send_event(5045, struct.pack('<i', 0x7fffffff))
                 await host.expect_event(5046)
+                await guest.expect_event(5046)
                 guest.send_event(5060, struct.pack('<iq', 0x7fffffff, room_id))
                 _, still = await guest.expect_event(5061)
                 self.assertEqual(struct.unpack_from('<Iq', still), (0, room_id))

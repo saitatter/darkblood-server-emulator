@@ -464,12 +464,12 @@ class ChangeBagNameAck(WireMessage):
 class DurabilityRepairReq(WireMessage):
     """Opcode 2145: eEGS_DURABILITY_REPAIR_REQ (request).
 
-    Sender 0x00792C80 writes a tag 0x17 map; kept raw.
+    Sender 0x00792C80 writes map<i64,f32> (item_uid -> current/target durability).
     """
     OPCODE: ClassVar[int] = 2145
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    raw_payload: rest = b''
+    repair_items: Map[i64, f32] = field(default_factory=dict)
 
 
 @dataclass
@@ -490,12 +490,13 @@ class DurabilityRepairAck(WireMessage):
 class DurabilityRepairByItemReq(WireMessage):
     """Opcode 2154: eEGS_DURABILITY_REPAIR_BY_ITEM_REQ (request).
 
-    Sender 0x00792E40 writes map<i64,f32> + i64 repair_item_uid; kept raw like 2145.
+    Sender 0x00792E40 writes map<i64,f32> + i64 repair_item_uid.
     """
     OPCODE: ClassVar[int] = 2154
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    raw_payload: rest = b''
+    repair_items: Map[i64, f32] = field(default_factory=dict)
+    repair_item_uid: i64 = 0
 
 
 @dataclass
@@ -527,12 +528,13 @@ class ItemUpgradeAck(WireMessage):
 class DurabilityChangeReq(WireMessage):
     """Opcode 2143: eEGS_DURABILITY_CHANGE_REQ (request).
 
-    Sender 0x00792AC0 writes a tag 0x17 map; captures have both forms. Kept raw.
+    Sender 0x00792AC0 writes map<i64,f32> (item_uid -> new durability).
+    Live captures have both prefixed (0x7FFFFFFF) and bare forms.
     """
     OPCODE: ClassVar[int] = 2143
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    raw_payload: rest = b''
+    durabilities: Map[i64, f32] = field(default_factory=dict)
 
 
 @dataclass

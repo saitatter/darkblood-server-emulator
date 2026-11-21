@@ -205,8 +205,8 @@ message 2033 ChangeBagNameAck
 end
 
 message 2145 DurabilityRepairReq header?
-  ## Sender 0x00792C80 writes a tag 0x17 map; kept raw.
-  rest raw_payload
+  ## Sender 0x00792C80 writes map<i64,f32> (item_uid -> current/target durability).
+  map<i64,f32> repair_items
 end
 
 message 2146 DurabilityRepairAck ok_only
@@ -218,8 +218,9 @@ message 2146 DurabilityRepairAck ok_only
 end
 
 message 2154 DurabilityRepairByItemReq header?
-  ## Sender 0x00792E40 writes map<i64,f32> + i64 repair_item_uid; kept raw like 2145.
-  rest raw_payload
+  ## Sender 0x00792E40 writes map<i64,f32> + i64 repair_item_uid.
+  map<i64,f32> repair_items
+  i64 repair_item_uid
 end
 
 message 2115 ItemUpgradeReq header?
@@ -236,8 +237,9 @@ message 2116 ItemUpgradeAck
 end
 
 message 2143 DurabilityChangeReq header?
-  ## Sender 0x00792AC0 writes a tag 0x17 map; captures have both forms. Kept raw.
-  rest raw_payload
+  ## Sender 0x00792AC0 writes map<i64,f32> (item_uid -> new durability).
+  ## Live captures have both prefixed (0x7FFFFFFF) and bare forms.
+  map<i64,f32> durabilities
 end
 
 message 2144 DurabilityChangeAck

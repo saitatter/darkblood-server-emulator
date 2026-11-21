@@ -57,22 +57,80 @@ class CraftingHandlersMixin:
     @packet_handler(DurabilityRepairReq)
     async def handle_durability_repair(self, correlation, body):
         """Opcode 2145 (eEGS_DURABILITY_REPAIR_REQ) -> 2146 (eEGS_DURABILITY_REPAIR_ACK): repair equipment with AR."""
-        DurabilityRepairReq.decode(body)
-        self.transport.record('durability-repair-req', body)
+        from darkblood.games.game_data.client_dict import item_field, item_max_durability
+        req = DurabilityRepairReq.decode(body)
+        self.transport.record('durability-repair-req', body, count=len(req.repair_items))
         char = self.current_char()
-        gold = char.get('gold', 100000) if char else 100000
-        await self.reply(DurabilityRepairAck(result=0, remain_gold=gold), correlation,
-                         note='durability repair ack (success, 0 items repaired)')
+        if char is None:
+            await self.reply(DurabilityRepairAck(result=1, remain_gold=0), correlation,
+                             note='durability repair ack (no char)')
+            return
+        gold = int(char.get('gold', char.get('u66', 0)))
+        items_by_uid = {int(it.get('uid', -1)): it for it in char.get('items', [])}
+        repaired = {}
+        total_cost = 0
+        for item_uid in req.repair_items:
+            item = items_by_uid.get(int(item_uid))
+            if item is None:
+                continue
+            code = item.get('code', '')
+            max_dur = item_max_durability(code)
+            target_dur = float(max_dur) if max_dur is not None else 100.0
+            cur_dur = float(item.get('durability', target_dur))
+            missing = max(0.0, target_dur - cur_dur)
+            if missing > 0.0:
+                sell_price = int(item_field(code, 'SellPrice', 10) or 10)
+                total_cost += max(1, int(round(missing * max(1.0, sell_price / max(1.0, target_dur)))))
+            repaired[int(item_uid)] = target_dur
+        if total_cost > gold:
+            await self.reply(DurabilityRepairAck(result=1, remain_gold=gold), correlation,
+                             note=f'durability repair refused (need {total_cost} AR, have {gold})')
+            return
+        for item_uid, target_dur in repaired.items():
+            items_by_uid[item_uid]['durability'] = target_dur
+        gold -= total_cost
+        char['gold'] = gold
+        char['u66'] = gold
+        if repaired:
+            self.save_char()
+        await self.reply(DurabilityRepairAck(result=0, repaired_items=repaired, remain_gold=gold), correlation,
+                         note=f'durability repair ack ({len(repaired)} items, -{total_cost} AR)')
 
     @packet_handler(DurabilityRepairByItemReq)
     async def handle_durability_repair_by_item(self, correlation, body):
         """Opcode 2154 (eEGS_DURABILITY_REPAIR_BY_ITEM_REQ) -> 2146: repair equipment using a repair kit item."""
-        DurabilityRepairByItemReq.decode(body)
-        self.transport.record('durability-repair-by-item-req', body)
+        from darkblood.games.game_data.client_dict import item_max_durability
+        req = DurabilityRepairByItemReq.decode(body)
+        self.transport.record('durability-repair-by-item-req', body,
+                              count=len(req.repair_items), kit=req.repair_item_uid)
         char = self.current_char()
-        gold = char.get('gold', 100000) if char else 100000
-        await self.reply(DurabilityRepairAck(result=0, repaired_items={}, remain_gold=gold), correlation,
-                         note='durability repair by item ack')
+        if char is None:
+            await self.reply(DurabilityRepairAck(result=1, remain_gold=0), correlation,
+                             note='durability repair by item ack (no char)')
+            return
+        gold = int(char.get('gold', char.get('u66', 0)))
+        items = char.get('items', [])
+        items_by_uid = {int(it.get('uid', -1)): it for it in items}
+        repaired = {}
+        for item_uid in req.repair_items:
+            item = items_by_uid.get(int(item_uid))
+            if item is None:
+                continue
+            max_dur = item_max_durability(item.get('code', ''))
+            target_dur = float(max_dur) if max_dur is not None else 100.0
+            item['durability'] = target_dur
+            repaired[int(item_uid)] = target_dur
+        kit = items_by_uid.get(int(req.repair_item_uid))
+        if kit is not None and repaired:
+            cnt = int(kit.get('count', 1))
+            if cnt > 1:
+                kit['count'] = cnt - 1
+            else:
+                items.remove(kit)
+        if repaired:
+            self.save_char()
+        await self.reply(DurabilityRepairAck(result=0, repaired_items=repaired, remain_gold=gold), correlation,
+                         note=f'durability repair by item ack ({len(repaired)} items)')
 
     @packet_handler(MagicEnchantEnchantReq)
     async def handle_magic_enchant(self, correlation, body):
