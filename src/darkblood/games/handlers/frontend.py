@@ -124,7 +124,8 @@ def build_select_char_ack(char, account_chars=None):
         bags=bags,
         items=items,
         skills=learned_skill_map(char.get('skills', {}), char.get('skill_speeches', {}),
-                                 char.get('locked_skills', [])) if isinstance(char, dict) else {},
+                                 char.get('locked_skills', []),
+                                 char.get('skill_show_cooltime', [])) if isinstance(char, dict) else {},
         quickslots=[QuickSlot(*q) for q in sorted(
             (q['type'], q['slot'], q['ref_id'], q['ref_uid'])
             for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()

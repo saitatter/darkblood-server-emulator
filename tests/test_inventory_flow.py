@@ -365,6 +365,43 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual((parsed2146_kit.result, parsed2146_kit.remain_gold), (0, gold_before))
             self.assertGreater(target_item['durability'], 1.0)
 
+            # 47. Extended skills sweep: 2152 show cooltime, 2302/2303 readjust quality,
+            #     2384/2385 init proficiency, 2579/2580 dual skill switch, plus 2577/2578/2280 encodings.
+            from darkblood.games.network.messages import (
+                DualSkillActiveNot, DualSkillChangeIndexReq, DualSkillExpireNot,
+                InitProficiencyReq, InitSkillNot, ReadjustQualityReq, SkillUpdateShowCoolTimeReq,
+            )
+            client.send_event(2152, SkillUpdateShowCoolTimeReq(skill_index=101, show_cooltime=True).encode())
+            client.send_event(2302, ReadjustQualityReq(target_item_uid=item_uid, material_item_uid=999999).encode())
+            _, ack2303 = await client.expect_event(2303)
+            self.assertEqual(struct.unpack_from('<i', ack2303[:4])[0], 0)
+            self.assertIn(101, char.get('skill_show_cooltime', []))
+
+            client.send_event(2384, InitProficiencyReq(item_uid=999999, pf_index=2).encode())
+            _, ack2385 = await client.expect_event(2385)
+            self.assertEqual(struct.unpack_from('<iq', ack2385[:12]), (0, 999999))
+
+            # Switch to Dual Skill page 1, then back to page 0 (preserving page 0 skills)
+            char['skills'] = {'101': 2}
+            char['sp'] = 15
+            client.send_event(2579, DualSkillChangeIndexReq(dual_skill_index=1).encode())
+            _, ack2580_1 = await client.expect_event(2580)
+            self.assertEqual(struct.unpack_from('<i', ack2580_1[:4])[0], 0)
+            self.assertEqual(char['dual_skill_index'], 1)
+            self.assertEqual(char['skills'], {})
+
+            client.send_event(2579, DualSkillChangeIndexReq(dual_skill_index=0).encode())
+            _, ack2580_0 = await client.expect_event(2580)
+            self.assertEqual(struct.unpack_from('<i', ack2580_0[:4])[0], 0)
+            self.assertEqual(char['dual_skill_index'], 0)
+            self.assertEqual(char['skills'], {'101': 2})
+            self.assertEqual(char['sp'], 15)
+
+            # Verify wire notifications 2577, 2578, 2280 encode cleanly
+            self.assertEqual(DualSkillExpireNot(cur_dual_skill_index=0).encode(), b'\x00\x00')
+            self.assertEqual(len(DualSkillActiveNot(extend_time=86400, add_day=30, cur_dual_skill_index=1, item_id=1).encode()), 16)
+            self.assertEqual(struct.unpack_from('<ii', InitSkillNot(result=0, sp=20, skills={}).encode(), 0), (0, 20))
+
         self.run_async(self.with_server(scenario))
 
 

@@ -10,12 +10,11 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
-from darkblood.games.network.messages.skills import LearnedSkill
+from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
 
 __all__ = [
     'GameServer',
     'ChannelSquare',
-    'QuickSlot',
     'DepotSlotInfo',
     'DepotInfo',
     'SelectCharacterAck',
@@ -52,26 +51,6 @@ class ChannelSquare(WireMessage):
     a: u32 = 0  # meaning unknown
     load: u32 = 100  # 100 = "Normal · [Good]" in the UI
     c: u32 = 0  # meaning unknown
-
-
-@dataclass
-class QuickSlot(WireMessage):
-    """2007 quickslot element 0x00A49DC0 (25 bytes, defaults 0x0049F690),
-    loaded by 0x00966080 at 0x007AA8A6.
-    """
-    type: u8 = 0  # 0 item, 1 skill
-    slot: u8 = 0
-    ref_id: i32 = 0  # nRefID
-    ref_uid: i64 = 0  # nRefUID
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'type',
-        'slot',
-        'ref_id',
-        'ref_uid',
-        Const(bool, False),
-        Const(i64, 0),
-        Const(u16, 0xFFFF),
-    )
 
 
 @dataclass
@@ -121,7 +100,7 @@ class SelectCharacterAck(WireMessage):
     depots: Map[i64, DepotInfo] = field(default_factory=dict)  # 0x00A40720 -> 0x00A40590 -> 0x00A40380, consumed by JDepotMgr 0x00942EE0
     bags: Vector[Extern[Bag, 'encode', False]] = field(default_factory=list)  # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
-    quickslots: Vector[QuickSlot] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
+    quickslots: Vector[Extern[QuickSlot, 'encode', False]] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
     skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # 0x004B1240, element reader 0x004ACB80 (as 2698)
     active_quests: Pairs[Extern[ActiveQuest, 'encode_entry', False]] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
     _WIRE_LAYOUT: ClassVar[tuple] = (

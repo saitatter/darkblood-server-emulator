@@ -6,6 +6,18 @@ domain skills Dark Blood protocol wire messages - Skills domain.
 
 extern Item from darkblood.games.entities.items
 
+struct QuickSlot
+  ## 2007/2580/2429 quickslot element 0x00A49DC0 (25 bytes, defaults 0x0049F690),
+  ## loaded by 0x00966080 at 0x007AA8A6 and 0x007A406F.
+  u8 type                    # 0 item, 1 skill
+  u8 slot
+  i32 ref_id                 # nRefID
+  i64 ref_uid                # nRefUID
+  bool _                     # meaning unknown
+  i64 _                      # meaning unknown
+  u16 _ = 0xFFFF             # meaning unknown
+end
+
 struct LearnedSkill
   ## Value of the learned-skill map, element reader 0x004ACB80. Shared by 2698
   ## (0x007A74A0) and 2007 (0x004B1240 inside 0x00A40760); the map key is the skill index.
@@ -13,7 +25,7 @@ struct LearnedSkill
   u8 level
   wstr speech
   bool locked
-  bool _                     # meaning unknown
+  bool show_cooltime         # +0x21, toggled by 2152 (0x00952BD0)
 end
 
 struct SkillLevel
@@ -76,10 +88,10 @@ message 2056 DeleteSkillSpeechAck
 end
 
 message 2280 InitSkillNot ok_only
-  ## Handler 0x00797740.
+  ## Handler 0x00797740. Assert 0x00CFBC88: iMarginAP >> mapSkill.
   i32 result
-  i32 sp
-  map<?> _
+  i32 sp                     # iMarginAP
+  map<u16,LearnedSkill> skills  # mapSkill (0x004ACB80)
 end
 
 message 2111 UseLearnSkillItemReq header?
@@ -116,4 +128,65 @@ message 2698 LearnSkillListAck
   map<u16,LearnedSkill> skills
   i32 remain_sp = 100
   i64 remain_gold = 10000
+end
+
+message 2152 SkillUpdateShowCoolTimeReq header?
+  ## Sender 0x00793450. Assert 0x00CFB250: sSkillKindNameIdx << bShowCoolTime.
+  ## Fire-and-forget: client applies locally via 0x00952BD0; 2153 has no handler.
+  u16 skill_index            # sSkillKindNameIdx
+  bool show_cooltime         # bShowCoolTime
+end
+
+message 2302 ReadjustQualityReq header?
+  ## Sender 0x007988F0: two i64 item UIDs (target equipment + readjust scroll).
+  i64 target_item_uid
+  i64 material_item_uid
+end
+
+message 2303 ReadjustQualityAck ok_only
+  ## JAppPageReadjustQuality::OneEGS_READJUST_QUALITY_ACK 0x00639850.
+  i32 result
+  vector<Item> items         # 0x004B9210 (must be non-empty on result 0)
+end
+
+message 2384 InitProficiencyReq header?
+  ## Sender 0x007979D0: i64 item UID + i32 proficiency index.
+  i64 item_uid
+  i32 pf_index
+end
+
+message 2385 InitProficiencyAck ok_only
+  ## Handler 0x00797B10. Assert 0x00CFBD80: nItemUID >> vecItem >> iPfIndex >> mapSkill.
+  i32 result
+  i64 item_uid               # nItemUID
+  vector<Item> items         # vecItem (0x004B9210)
+  i32 pf_index               # iPfIndex
+  map<u16,LearnedSkill> skills  # mapSkill (0x004ACB80)
+end
+
+message 2577 DualSkillExpireNot
+  ## Handler 0x007A3530. Assert 0x00CFEAD0: sCurDualSkillIndex.
+  u16 cur_dual_skill_index
+end
+
+message 2578 DualSkillActiveNot
+  ## Handler 0x007A3990. Assert 0x00CFEBF0: nExtendTime >> sAddDay >> sCurDualSkillIndex >> nItemID.
+  i64 extend_time            # nExtendTime (remaining duration)
+  u16 add_day                # sAddDay
+  u16 cur_dual_skill_index   # sCurDualSkillIndex
+  h32 item_id                # nItemID
+end
+
+message 2579 DualSkillChangeIndexReq header?
+  ## Sender 0x007A3DE0: u16 sDualSkillIndex (0 or 1).
+  u16 dual_skill_index
+end
+
+message 2580 DualSkillChangeIndexAck ok_only
+  ## Handler 0x007A3F00. Assert 0x00CFED58: mapLearnSkill >> vecQuickSlot >> nMarginAP >> sDualSkillIndex.
+  i32 result
+  map<u16,LearnedSkill> skills  # mapLearnSkill (0x004ACB80)
+  vector<QuickSlot> quickslots  # vecQuickSlot (0x004B1330)
+  i32 remain_sp              # nMarginAP
+  u16 dual_skill_index       # sDualSkillIndex
 end

@@ -1,8 +1,14 @@
-"""Skill learning, quickslots, locked skills and speech handlers."""
+"""Skill learning, quickslots, locked skills, cooltime display, dual skill, proficiency and speech handlers."""
 from darkblood.core.serialization.jser import event
+from darkblood.games.entities.items import Item, UPDATE_OWNER
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
     DeleteSkillSpeechAck,
     DeleteSkillSpeechReq,
+    DualSkillChangeIndexAck,
+    DualSkillChangeIndexReq,
+    InitProficiencyAck,
+    InitProficiencyReq,
     LearnSkillAck,
     LearnedSkill,
     LearnSkillListAck,
@@ -10,6 +16,10 @@ from darkblood.games.network.messages import (
     LearnSkillReq,
     ModifySkillSpeechAck,
     ModifySkillSpeechReq,
+    QuickSlot,
+    ReadjustQualityAck,
+    ReadjustQualityReq,
+    SkillUpdateShowCoolTimeReq,
     UpdateSkillLockedAck,
     UpdateSkillLockedReq,
     UseLearnSkillItemAck,
@@ -19,13 +29,16 @@ from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
-def learned_skill_map(skills, speeches=None, locked=()):
-    """Stored skills ({index: level}, keys may be strings) -> map for 2698 and 2007."""
+def learned_skill_map(skills, speeches=None, locked=(), show_cooltime=()):
+    """Stored skills ({index: level}, keys may be strings) -> map for 2698, 2007, 2280, 2385, 2580."""
     speeches = speeches or {}
     locked = {int(x) for x in locked}
+    show_cooltime = {int(x) for x in show_cooltime}
     result = {}
     for sidx, lvl in ((int(k), int(v)) for k, v in skills.items()):
-        result[sidx] = LearnedSkill(sidx, lvl, speeches.get(str(sidx), ''), sidx in locked)
+        result[sidx] = LearnedSkill(
+            sidx, lvl, speeches.get(str(sidx), ''), sidx in locked, sidx in show_cooltime
+        )
     return result
 
 
@@ -147,3 +160,138 @@ class SkillHandlers(BaseDomainService):
         self.transport.record('use-learn-skill-item-req', body, item_uid=req.item_uid, skill_id=req.skill_id)
         ack = UseLearnSkillItemAck(result=0, skill_id=req.skill_id, skill_level=1, item_code=0, count=1, items=[], sp=10).encode()
         await self.transport.send_event(event(2112, ack, correlation), note=f'use learn skill item ack (skill={req.skill_id})')
+
+    @packet_handler(SkillUpdateShowCoolTimeReq)
+    async def handle_skill_update_show_cooltime(self, correlation, body):
+        """Opcode 2152 (eEGS_SKILL_UPDATE_SHOWCOOLTIME_REQ): persist skill cooldown display toggle (no ACK)."""
+        req = SkillUpdateShowCoolTimeReq.decode(body)
+        self.transport.record('skill-show-cooltime', body, skill=req.skill_index, show=req.show_cooltime)
+        char = self.current_char()
+        if char:
+            shown = set(char.setdefault('skill_show_cooltime', []))
+            if req.show_cooltime:
+                shown.add(req.skill_index)
+            else:
+                shown.discard(req.skill_index)
+            char['skill_show_cooltime'] = sorted(shown)
+            self.save_char()
+
+    @packet_handler(ReadjustQualityReq)
+    async def handle_readjust_quality(self, correlation, body):
+        """Opcode 2302 (eEGS_READJUST_QUALITY_REQ) -> 2303 (eEGS_READJUST_QUALITY_ACK): re-roll equipment quality."""
+        req = ReadjustQualityReq.decode(body)
+        self.transport.record('readjust-quality-req', body,
+                              target=req.target_item_uid, material=req.material_item_uid)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.target_item_uid), None)
+        if not target:
+            await self.reply(ReadjustQualityAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
+                             note=f'readjust quality fail (target={req.target_item_uid} not found)')
+            return
+        updated = [Item(owner=UPDATE_OWNER, **target)]
+        mat = next((i for i in items if i.get('uid') == req.material_item_uid), None)
+        if mat is not None and mat is not target:
+            cnt = mat.get('count', 1) - 1
+            if cnt <= 0:
+                items.remove(mat)
+                updated.append(Item(owner=UPDATE_OWNER, uid=0, code='',
+                                    container=mat['container'], slot=mat['slot'], count=0))
+            else:
+                mat['count'] = cnt
+                updated.append(Item(owner=UPDATE_OWNER, **mat))
+            self.save_char()
+        await self.reply(ReadjustQualityAck(result=0, items=updated), correlation,
+                         note=f'readjust quality ack (target={req.target_item_uid})')
+
+    @packet_handler(InitProficiencyReq)
+    async def handle_init_proficiency(self, correlation, body):
+        """Opcode 2384 (eEGS_INIT_PROFICIENCY_REQ) -> 2385 (eEGS_INIT_PROFICIENCY_ACK): reset a proficiency."""
+        req = InitProficiencyReq.decode(body)
+        self.transport.record('init-proficiency-req', body, item_uid=req.item_uid, pf_index=req.pf_index)
+        char = self.current_char()
+        if not char:
+            await self.reply(InitProficiencyAck(result=results.NO_EXIST_CHAR), correlation,
+                             note='init proficiency fail (no char)')
+            return
+        items = char.get('items', [])
+        updated = []
+        used = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if used is not None:
+            cnt = used.get('count', 1) - 1
+            if cnt <= 0:
+                items.remove(used)
+                updated.append(Item(owner=UPDATE_OWNER, uid=0, code='',
+                                    container=used['container'], slot=used['slot'], count=0))
+            else:
+                used['count'] = cnt
+                updated.append(Item(owner=UPDATE_OWNER, **used))
+            self.save_char()
+        skills_map = learned_skill_map(
+            char.get('skills', {}),
+            char.get('skill_speeches', {}),
+            char.get('locked_skills', []),
+            char.get('skill_show_cooltime', []),
+        )
+        await self.reply(
+            InitProficiencyAck(result=0, item_uid=req.item_uid, items=updated,
+                               pf_index=req.pf_index, skills=skills_map),
+            correlation,
+            note=f'init proficiency ack (pf={req.pf_index} item={req.item_uid})',
+        )
+
+    @packet_handler(DualSkillChangeIndexReq)
+    async def handle_dual_skill_change_index(self, correlation, body):
+        """Opcode 2579 (eEGS_DUALSKILL_CHANGE_INDEX_REQ) -> 2580 (eEGS_DUALSKILL_CHANGE_INDEX_ACK): switch active skill set."""
+        req = DualSkillChangeIndexReq.decode(body)
+        self.transport.record('dual-skill-change-index-req', body, index=req.dual_skill_index)
+        char = self.current_char()
+        if not char:
+            await self.reply(DualSkillChangeIndexAck(result=results.NO_EXIST_CHAR), correlation,
+                             note='dual skill change index fail (no char)')
+            return
+        old_idx = str(char.get('dual_skill_index', 0))
+        new_idx = str(req.dual_skill_index)
+        sets = char.setdefault('dual_skill_sets', {})
+        # Save current active build into its slot before switching
+        sets[old_idx] = {
+            'skills': dict(char.get('skills', {})),
+            'quickslots': dict(char.get('quickslots', {})),
+            'sp': int(char.get('sp', 0)),
+        }
+        if new_idx in sets:
+            target = sets[new_idx]
+            char['skills'] = dict(target.get('skills', {}))
+            char['quickslots'] = dict(target.get('quickslots', {}))
+            char['sp'] = int(target.get('sp', char.get('sp', 0)))
+        else:
+            from darkblood.games.progression import total_ap
+            char['skills'] = {}
+            char['quickslots'] = {}
+            char['sp'] = total_ap(char)
+        char['dual_skill_index'] = req.dual_skill_index
+        self.save_char()
+        skills_map = learned_skill_map(
+            char.get('skills', {}),
+            char.get('skill_speeches', {}),
+            char.get('locked_skills', []),
+            char.get('skill_show_cooltime', []),
+        )
+        quickslots = [
+            QuickSlot(*q) for q in sorted(
+                (q['type'], q['slot'], q['ref_id'], q['ref_uid'])
+                for q in char.get('quickslots', {}).values()
+                if 'slot' in q
+            )
+        ]
+        await self.reply(
+            DualSkillChangeIndexAck(
+                result=0,
+                skills=skills_map,
+                quickslots=quickslots,
+                remain_sp=int(char.get('sp', 0)),
+                dual_skill_index=req.dual_skill_index,
+            ),
+            correlation,
+            note=f'dual skill change index ack (index={req.dual_skill_index} sp={char.get("sp", 0)})',
+        )

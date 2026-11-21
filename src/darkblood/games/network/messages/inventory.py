@@ -8,8 +8,7 @@ from typing import ClassVar
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Bag, Item
-from darkblood.games.network.messages.lobby import QuickSlot
-from darkblood.games.network.messages.skills import LearnedSkill
+from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
 
 __all__ = [
     'ItemDropEntry',

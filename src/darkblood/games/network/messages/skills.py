@@ -10,6 +10,7 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Item
 
 __all__ = [
+    'QuickSlot',
     'LearnedSkill',
     'SkillLevel',
     'LearnSkillReq',
@@ -26,7 +27,36 @@ __all__ = [
     'InsertApNot',
     'LearnSkillListReq',
     'LearnSkillListAck',
+    'SkillUpdateShowCoolTimeReq',
+    'ReadjustQualityReq',
+    'ReadjustQualityAck',
+    'InitProficiencyReq',
+    'InitProficiencyAck',
+    'DualSkillExpireNot',
+    'DualSkillActiveNot',
+    'DualSkillChangeIndexReq',
+    'DualSkillChangeIndexAck',
 ]
+
+
+@dataclass
+class QuickSlot(WireMessage):
+    """2007/2580/2429 quickslot element 0x00A49DC0 (25 bytes, defaults 0x0049F690),
+    loaded by 0x00966080 at 0x007AA8A6 and 0x007A406F.
+    """
+    type: u8 = 0  # 0 item, 1 skill
+    slot: u8 = 0
+    ref_id: i32 = 0  # nRefID
+    ref_uid: i64 = 0  # nRefUID
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'type',
+        'slot',
+        'ref_id',
+        'ref_uid',
+        Const(bool, False),
+        Const(i64, 0),
+        Const(u16, 0xFFFF),
+    )
 
 
 @dataclass
@@ -38,13 +68,7 @@ class LearnedSkill(WireMessage):
     level: u8 = 0
     speech: wstr = ''
     locked: bool = False
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'skill_index',
-        'level',
-        'speech',
-        'locked',
-        Const(bool, False),
-    )
+    show_cooltime: bool = False  # +0x21, toggled by 2152 (0x00952BD0)
 
 
 @dataclass
@@ -163,17 +187,13 @@ class DeleteSkillSpeechAck(WireMessage):
 class InitSkillNot(WireMessage):
     """Opcode 2280: eEGS_INIT_SKILL_NOT (reply).
 
-    Handler 0x00797740.
+    Handler 0x00797740. Assert 0x00CFBC88: iMarginAP >> mapSkill.
     """
     OPCODE: ClassVar[int] = 2280
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    sp: i32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'sp',
-        Const(EmptyMap),
-    )
+    sp: i32 = 0  # iMarginAP
+    skills: Map[u16, LearnedSkill] = field(default_factory=dict)  # mapSkill (0x004ACB80)
 
 
 @dataclass
@@ -240,3 +260,120 @@ class LearnSkillListAck(WireMessage):
     skills: Map[u16, LearnedSkill] = field(default_factory=dict)
     remain_sp: i32 = 100
     remain_gold: i64 = 10000
+
+
+@dataclass
+class SkillUpdateShowCoolTimeReq(WireMessage):
+    """Opcode 2152: eEGS_SKILL_UPDATE_SHOWCOOLTIME_REQ (request).
+
+    Sender 0x00793450. Assert 0x00CFB250: sSkillKindNameIdx << bShowCoolTime.
+    Fire-and-forget: client applies locally via 0x00952BD0; 2153 has no handler.
+    """
+    OPCODE: ClassVar[int] = 2152
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    skill_index: u16 = 0  # sSkillKindNameIdx
+    show_cooltime: bool = False  # bShowCoolTime
+
+
+@dataclass
+class ReadjustQualityReq(WireMessage):
+    """Opcode 2302: eEGS_READJUST_QUALITY_REQ (request).
+
+    Sender 0x007988F0: two i64 item UIDs (target equipment + readjust scroll).
+    """
+    OPCODE: ClassVar[int] = 2302
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_item_uid: i64 = 0
+    material_item_uid: i64 = 0
+
+
+@dataclass
+class ReadjustQualityAck(WireMessage):
+    """Opcode 2303: eEGS_READJUST_QUALITY_ACK (reply).
+
+    JAppPageReadjustQuality::OneEGS_READJUST_QUALITY_ACK 0x00639850.
+    """
+    OPCODE: ClassVar[int] = 2303
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210 (must be non-empty on result 0)
+
+
+@dataclass
+class InitProficiencyReq(WireMessage):
+    """Opcode 2384: eEGS_INIT_PROFICIENCY_REQ (request).
+
+    Sender 0x007979D0: i64 item UID + i32 proficiency index.
+    """
+    OPCODE: ClassVar[int] = 2384
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    pf_index: i32 = 0
+
+
+@dataclass
+class InitProficiencyAck(WireMessage):
+    """Opcode 2385: eEGS_INIT_PROFICIENCY_ACK (reply).
+
+    Handler 0x00797B10. Assert 0x00CFBD80: nItemUID >> vecItem >> iPfIndex >> mapSkill.
+    """
+    OPCODE: ClassVar[int] = 2385
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    item_uid: i64 = 0  # nItemUID
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem (0x004B9210)
+    pf_index: i32 = 0  # iPfIndex
+    skills: Map[u16, LearnedSkill] = field(default_factory=dict)  # mapSkill (0x004ACB80)
+
+
+@dataclass
+class DualSkillExpireNot(WireMessage):
+    """Opcode 2577: eEGS_DUALSKILL_EXPIRE_NOT (reply).
+
+    Handler 0x007A3530. Assert 0x00CFEAD0: sCurDualSkillIndex.
+    """
+    OPCODE: ClassVar[int] = 2577
+    cur_dual_skill_index: u16 = 0
+
+
+@dataclass
+class DualSkillActiveNot(WireMessage):
+    """Opcode 2578: eEGS_DUALSKILL_ACTIVE_NOT (reply).
+
+    Handler 0x007A3990. Assert 0x00CFEBF0: nExtendTime >> sAddDay >> sCurDualSkillIndex >> nItemID.
+    """
+    OPCODE: ClassVar[int] = 2578
+    extend_time: i64 = 0  # nExtendTime (remaining duration)
+    add_day: u16 = 0  # sAddDay
+    cur_dual_skill_index: u16 = 0  # sCurDualSkillIndex
+    item_id: h32 = 0  # nItemID
+
+
+@dataclass
+class DualSkillChangeIndexReq(WireMessage):
+    """Opcode 2579: eEGS_DUALSKILL_CHANGE_INDEX_REQ (request).
+
+    Sender 0x007A3DE0: u16 sDualSkillIndex (0 or 1).
+    """
+    OPCODE: ClassVar[int] = 2579
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    dual_skill_index: u16 = 0
+
+
+@dataclass
+class DualSkillChangeIndexAck(WireMessage):
+    """Opcode 2580: eEGS_DUALSKILL_CHANGE_INDEX_ACK (reply).
+
+    Handler 0x007A3F00. Assert 0x00CFED58: mapLearnSkill >> vecQuickSlot >> nMarginAP >> sDualSkillIndex.
+    """
+    OPCODE: ClassVar[int] = 2580
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    skills: Map[u16, LearnedSkill] = field(default_factory=dict)  # mapLearnSkill (0x004ACB80)
+    quickslots: Vector[QuickSlot] = field(default_factory=list)  # vecQuickSlot (0x004B1330)
+    remain_sp: i32 = 0  # nMarginAP
+    dual_skill_index: u16 = 0  # sDualSkillIndex

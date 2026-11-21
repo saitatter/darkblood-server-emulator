@@ -7,6 +7,7 @@ extern Bag from darkblood.games.entities.items
 extern Item from darkblood.games.entities.items
 extern ActiveQuest from darkblood.games.missions.quests encode=encode_entry
 extern LearnedSkill from darkblood.games.network.messages.skills
+extern QuickSlot from darkblood.games.network.messages.skills
 import layer_net_id from darkblood.games.entities.character
 
 struct GameServer
@@ -26,18 +27,6 @@ struct ChannelSquare
   u32 a                      # meaning unknown
   u32 load = 100             # 100 = "Normal · [Good]" in the UI
   u32 c                      # meaning unknown
-end
-
-struct QuickSlot
-  ## 2007 quickslot element 0x00A49DC0 (25 bytes, defaults 0x0049F690),
-  ## loaded by 0x00966080 at 0x007AA8A6.
-  u8 type                    # 0 item, 1 skill
-  u8 slot
-  i32 ref_id                 # nRefID
-  i64 ref_uid                # nRefUID
-  bool _                     # meaning unknown
-  i64 _                      # meaning unknown
-  u16 _ = 0xFFFF             # meaning unknown
 end
 
 struct DepotSlotInfo

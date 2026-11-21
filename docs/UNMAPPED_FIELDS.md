@@ -120,82 +120,79 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (72 of 133 fields)
+## lobby (69 of 126 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `QuickSlot` | `bool` | lobby.jsch:38 | meaning unknown |
-| `QuickSlot` | `i64` | lobby.jsch:39 | meaning unknown |
-| `QuickSlot` | `u16` | lobby.jsch:40 | meaning unknown |
-| `DepotInfo` | `i64` | lobby.jsch:61 | +0x54 unknown |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:70 | 0x00A3ED30, max 3 |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:71 | 0x00A1E840, max 10 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:73 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:74 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:75 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:76 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:77 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:78 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:83 | 0x00A3EEC0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:85 | 0x0076E560 |
-| `2007 SelectCharacterAck` | `set<?>` | lobby.jsch:86 | 0x0076A8C0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:87 | 0x00A3E410 |
+| `DepotInfo` | `i64` | lobby.jsch:50 | +0x54 unknown |
+| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:59 | 0x00A3ED30, max 3 |
+| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:60 | 0x00A1E840, max 10 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:62 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:63 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:64 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:65 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:66 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:67 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:72 | 0x00A3EEC0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:74 | 0x0076E560 |
+| `2007 SelectCharacterAck` | `set<?>` | lobby.jsch:75 | 0x0076A8C0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:76 | 0x00A3E410 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:77 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:78 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:79 |  |
+| `2007 SelectCharacterAck` | `set<?>` | lobby.jsch:81 | 0x005EE0F0 |
+| `2007 SelectCharacterAck` | `raw[18]` | lobby.jsch:82 | 0x00641E00 |
+| `2007 SelectCharacterAck` | `set<?>` | lobby.jsch:83 | 0x005EE0F0 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:84 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:85 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:86 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:87 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:88 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:89 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:90 |  |
-| `2007 SelectCharacterAck` | `set<?>` | lobby.jsch:92 | 0x005EE0F0 |
-| `2007 SelectCharacterAck` | `raw[18]` | lobby.jsch:93 | 0x00641E00 |
-| `2007 SelectCharacterAck` | `set<?>` | lobby.jsch:94 | 0x005EE0F0 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:89 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:90 | 0x004B1A60 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:91 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:92 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:93 |  |
+| `2007 SelectCharacterAck` | `f32` | lobby.jsch:94 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:95 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:96 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:97 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:98 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:99 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:100 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:101 | 0x004B1A60 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:102 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:103 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:104 |  |
-| `2007 SelectCharacterAck` | `f32` | lobby.jsch:105 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:106 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:107 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:108 | 0x00485220 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:109 | 0x00485220 |
-| `2007 SelectCharacterAck` | `wstr` | lobby.jsch:110 | 0x00B35AB0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:111 | 0x0074C1D0: two maps and a bool |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:112 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:113 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:114 | 0x00A3EA00 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:97 | 0x00485220 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:98 | 0x00485220 |
+| `2007 SelectCharacterAck` | `wstr` | lobby.jsch:99 | 0x00B35AB0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:100 | 0x0074C1D0: two maps and a bool |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:101 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:102 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:103 | 0x00A3EA00 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:104 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:105 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:106 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:107 | 0x004DA660 |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:108 | 0x004DA660 |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:109 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:110 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:111 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:112 | 0x005F9190 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:113 | 0x0076ABA0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:114 | 0x00A1E8C0: map, u64, bool, u64 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:115 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:116 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:117 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:118 | 0x004DA660 |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:119 | 0x004DA660 |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:120 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:116 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:117 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:118 | 0x00A3EDD0 |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:119 | 0x00A1EEA0: u32, 3 x u64 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:120 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:121 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:122 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:123 | 0x005F9190 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:124 | 0x0076ABA0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:125 | 0x00A1E8C0: map, u64, bool, u64 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:126 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:127 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:128 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:129 | 0x00A3EDD0 |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:130 | 0x00A1EEA0: u32, 3 x u64 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:131 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:132 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:133 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:134 | 0x00A1E900: map + vector |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:135 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:136 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:137 | 0x004DA660 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:138 | 0x005F9150 |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:139 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:140 | 0x00485220 |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:141 | 0x004B9210 |
-| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:165 | vecTargetState (0x00773870), element layout unknown |
-| `RelayJoinGroupAck` | `u16` | lobby.jsch:173 | RMI id |
-| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:194 | vecDuel |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:123 | 0x00A1E900: map + vector |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:124 |  |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:125 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:126 | 0x004DA660 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:127 | 0x005F9150 |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:128 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:129 | 0x00485220 |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:130 | 0x004B9210 |
+| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:154 | vecTargetState (0x00773870), element layout unknown |
+| `RelayJoinGroupAck` | `u16` | lobby.jsch:162 | RMI id |
+| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:183 | vecDuel |
 
 ## party (9 of 62 fields)
 
@@ -248,12 +245,13 @@
 | `2081 QuestFailAck` | `vector<?>` | quests.jsch:92 |  |
 | `2081 QuestFailAck` | `vector<?>` | quests.jsch:93 |  |
 
-## skills (2 of 46 fields)
+## skills (3 of 77 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `LearnedSkill` | `bool` | skills.jsch:16 | meaning unknown |
-| `2280 InitSkillNot` | `map<?>` | skills.jsch:82 |  |
+| `QuickSlot` | `bool` | skills.jsch:16 | meaning unknown |
+| `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
+| `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
 ## social (23 of 81 fields)
 

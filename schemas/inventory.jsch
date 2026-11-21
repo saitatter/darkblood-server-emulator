@@ -6,7 +6,7 @@ domain inventory Dark Blood protocol wire messages - Inventory domain.
 
 extern Item from darkblood.games.entities.items
 extern Bag from darkblood.games.entities.items
-extern QuickSlot from darkblood.games.network.messages.lobby
+extern QuickSlot from darkblood.games.network.messages.skills
 extern LearnedSkill from darkblood.games.network.messages.skills
 
 struct ItemDropEntry

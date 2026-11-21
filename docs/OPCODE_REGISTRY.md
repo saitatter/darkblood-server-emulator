@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 588  
+**Tracked opcodes**: 593  
 **Client handlers mapped**: 298  
-**Server handlers**: 216  
+**Server handlers**: 220  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -133,6 +133,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2148 | `eEGS_SEAL_ITEM_ACK` | — | — | `SealItemAck` |  |
 | 2150 | `eEGS_GUILD_CREATE_REQ` | — | `social.py` (`handle_guild_create`) | `GuildCreateReq` | eEGS_GUILD_CREATE_REQ -> 2151 eEGS_GUILD_CREATE_ACK (0x00793720). |
 | 2151 | `eEGS_GUILD_CREATE_ACK` | 0x00793720 | — | `GuildCreateAck` |  |
+| 2152 | `eEGS_SKILL_UPDATE_SHOWCOOLTIME_REQ` | — | `skills.py` (`handle_skill_update_show_cooltime`) | `SkillUpdateShowCoolTimeReq` | Opcode 2152 (eEGS_SKILL_UPDATE_SHOWCOOLTIME_REQ): persist skill cooldown display toggle (no ACK). |
 | 2154 | `eEGS_DURABILITY_REPAIR_BY_ITEM_REQ` | — | `inventory/crafting.py` (`handle_durability_repair_by_item`) | `DurabilityRepairByItemReq` | Opcode 2154 (eEGS_DURABILITY_REPAIR_BY_ITEM_REQ) -> 2146: repair equipment using a repair kit item. |
 | 2155 | `eEGS_GUILD_PERSON_JOIN_REQ` | — | `social.py` (`handle_guild_person_join`) | `GuildPersonJoinReq` | eEGS_GUILD_PERSON_JOIN_REQ (0x00790000.c:2837) -> 2156 eEGS_GUILD_PERSON_JOIN_ACK (0x0075A220). |
 | 2156 | `eEGS_GUILD_PERSON_JOIN_ACK` | 0x0075A220 | — | `GuildPersonJoinAck` |  |
@@ -227,6 +228,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2287 | `eEGS_NOT_ENOUGH_INVEN_SPACE_NOT` | 0x00771790 | — | `NotEnoughInvenSpaceNot` |  |
 | 2288 | `eEGS_DUNGEON_EXP_BONUS_FINISH_NOT` | 0x007986F0 | — | — |  |
 | 2301 | `eEGS_DUNGEON_BONUS_EXP_CHANGE_NOT` | 0x007987D0 | — | — |  |
+| 2302 | `eEGS_READJUST_QUALITY_REQ` | — | `skills.py` (`handle_readjust_quality`) | `ReadjustQualityReq` | Opcode 2302 (eEGS_READJUST_QUALITY_REQ) -> 2303 (eEGS_READJUST_QUALITY_ACK): re-roll equipment quality. |
+| 2303 | `eEGS_READJUST_QUALITY_ACK` | — | — | `ReadjustQualityAck` |  |
 | 2304 | `eEGS_ARENA_SQUARELIST_REQ` | — | `arena.py` (`handle_arena_square_list`) | `ArenaSquareListReq` | Opcode 2304 -> 2305 / 2447. |
 | 2305 | `eEGS_ARENA_SQUARELIST_ACK` | — | — | `ArenaSquareListAck` |  |
 | 2306 | `eEGS_ARENA_GET_ROOMLIST_REQ` | — | `arena.py` (`handle_arena_get_room_list`) | `ArenaGetRoomListReq` | Opcode 2306 -> 2307 / 2449. |
@@ -271,7 +274,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2365 | `eEGS_AVATAR_ZAM_ERASE_ACK` | 0x00782F40 | — | `AvatarZamEraseAck` |  |
 | 2369 | `eEGS_BILLING_GET_CURRENT_CASH_REQ` | — | `commerce.py` (`handle_get_current_cash`) | — | eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: result, u64 cash, u32 mileage. |
 | 2370 | `eEGS_BILLING_GET_CURRENT_CASH_ACK` | — | — | `CurrentCashAck` |  |
-| 2385 | `eEGS_INIT_PROFICIENCY_ACK` | 0x00797B10 | — | — |  |
+| 2384 | `eEGS_INIT_PROFICIENCY_REQ` | — | `skills.py` (`handle_init_proficiency`) | `InitProficiencyReq` | Opcode 2384 (eEGS_INIT_PROFICIENCY_REQ) -> 2385 (eEGS_INIT_PROFICIENCY_ACK): reset a proficiency. |
+| 2385 | `eEGS_INIT_PROFICIENCY_ACK` | 0x00797B10 | — | `InitProficiencyAck` |  |
 | 2390 | `eEGS_ROULETTE_MANAGER_INFO_REQ` | — | `commerce.py` (`handle_roulette_manager_info`) | — | eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0. |
 | 2391 | `eEGS_ROULETTE_MANAGER_INFO_ACK` | — | — | `RouletteManagerInfoAck` |  |
 | 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | — |  |
@@ -380,9 +384,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2572 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK` | 0x00753C80 | — | — |  |
 | 2573 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ` | — | `inventory/items.py` (`handle_use_league_point_item`) | `UseItemLeaguePointAddReq` | Opcode 2573 (eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ) -> 2574: consume an item that awards league points. |
 | 2574 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_ACK` | 0x007A3140 | — | `UseItemLeaguePointAddAck` |  |
-| 2577 | `eEGS_DUALSKILL_EXPIRE_NOT` | 0x007A3530 | — | — |  |
-| 2578 | `eEGS_DUALSKILL_ACTIVE_NOT` | 0x007A3990 | — | — |  |
-| 2580 | `eEGS_DUALSKILL_CHANGE_INDEX_ACK` | 0x007A3F00 | — | — |  |
+| 2577 | `eEGS_DUALSKILL_EXPIRE_NOT` | 0x007A3530 | — | `DualSkillExpireNot` |  |
+| 2578 | `eEGS_DUALSKILL_ACTIVE_NOT` | 0x007A3990 | — | `DualSkillActiveNot` |  |
+| 2579 | `eEGS_DUALSKILL_CHANGE_INDEX_REQ` | — | `skills.py` (`handle_dual_skill_change_index`) | `DualSkillChangeIndexReq` | Opcode 2579 (eEGS_DUALSKILL_CHANGE_INDEX_REQ) -> 2580 (eEGS_DUALSKILL_CHANGE_INDEX_ACK): switch active skill set. |
+| 2580 | `eEGS_DUALSKILL_CHANGE_INDEX_ACK` | 0x007A3F00 | — | `DualSkillChangeIndexAck` |  |
 | 2582 | `eEGS_CHANGE_MAINSPIRIT_NOT` | 0x007A42F0 | — | — |  |
 | 2583 | `eEGS_RAREAVATAR_CHANGE_LOOK_REQ` | — | `inventory/crafting.py` (`handle_rare_avatar_change_look`) | `RareAvatarChangeLookReq` | Opcode 2583 (eEGS_RAREAVATAR_CHANGE_LOOK_REQ) -> 2584: transmog a rare avatar appearance. |
 | 2584 | `eEGS_RAREAVATAR_CHANGE_LOOK_ACK` | — | — | `RareAvatarChangeLookAck` |  |
