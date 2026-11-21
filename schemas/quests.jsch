@@ -1,15 +1,45 @@
-# Quest start, progress, completion, give-up and tutorial messages.
+# Quest start, progress, completion, give-up, tracking, tutorial and NPC Kairo/Seal messages.
 # Format: schemas/README.md.
 
 domain quests Dark Blood protocol wire messages - Quests domain.
 
 extern Item from darkblood.games.entities.items
+extern ChannelSquare from darkblood.games.network.messages.lobby
+extern AddedItemNotice from darkblood.games.network.messages.inventory
+extern ItemDropEntry from darkblood.games.network.messages.inventory
+extern LearnedSkill from darkblood.games.network.messages.skills
 
 struct QuestObjective
   ## Element of 2075 (reader 0x00529010). Its 0x1E check consumes no byte.
   h32 quest_id               # jhash, e.g. jhash('Q0882S01')
   i32 objective_index        # 0-based
   i32 count                  # current progress / kill count
+end
+
+struct QuestSpecialInfo
+  ## 18-byte jInfo block (raw copy 0x00A48A90) shared by 2074, 2077, 2079, 2081, 2091.
+  ## action_type: 1/2 = quest action (2 = class change), 3 = skill update (0x00622970).
+  i32 action_type = -1
+  u16 skill_1_index = 0xFFFF
+  i32 skill_1_value = -1
+  i32 skill_2_index = -1
+  i32 skill_2_value = -1
+end
+
+struct KairoResult
+  ## Reader 0x00A55AD0, shared by 2178 (ActKairoAck) and 2497 (NpcMakingKairoAck).
+  wstr kairo_id              # DictKairo key (0x0098B860)
+  bool great_success         # +0x1C
+  bool special_effect        # +0x1D
+  f32 rate                   # +0x1E
+  vector<AddedItemNotice> notices  # +0x22 (0x007738C0, 12-byte item notices)
+  vector<Item> items         # +0x32 (0x004B94C0, inventory delta)
+end
+
+message 2073 QuestStartReq
+  ## Observed body: J-wstring tag (timestamp), then u32 quest id (jhash).
+  wstr tag
+  h32 quest_id
 end
 
 message 2074 QuestStartAck
@@ -19,12 +49,8 @@ message 2074 QuestStartAck
   u32 result
   h32 quest_id               # jhash of the quest key, e.g. 'Q0001S01'
   i64 quest_uid = 1
-  i32 _ = -1                 # jInfo
-  u16 _ = 0xFFFF             # jInfo
-  i32 _ = -1                 # jInfo
-  i32 _ = -1                 # jInfo
-  i32 _ = -1                 # jInfo
-  vector<?> _                # vecItem (0x004B9210)
+  QuestSpecialInfo info = QuestSpecialInfo()
+  vector<Item> items         # vecItem (0x004B9210)
 end
 
 message 2075 QuestUpdateNot
@@ -38,24 +64,33 @@ message 2410 QuestHistoryNot
   bool weekly
 end
 
+message 2076 QuestCompleteReq
+  ## Observed body: J-wstring tag, u32 quest id, i32 selected reward index (-1 = none).
+  wstr tag
+  h32 quest_id
+  i32 select_index = -1
+end
+
 message 2077 QuestCompleteAck
   ## JAppPageTalkBox, case 0x659F00 -> 0x656870; implicit struct jAck (reader
   ## 0x00A55B70). The consumer never writes the player's EXP; the server
   ## persists it and the client sees it at the next selection.
   u32 result
   h32 quest_id               # +0x00, 0x00A7B390 lookup
-  i32 _                      # +0x04 index for 0x00A88560 (-1 skips its table; 0 observed safe)
-  i32 _ = -1                 # +0x08 jInfo; first i32 1/2 selects extra actions (2 = class change)
-  u16 _ = 0xFFFF             # jInfo
-  i32 _ = -1                 # jInfo
-  i32 _ = -1                 # jInfo
-  i32 _ = -1                 # jInfo
+  i32 select_index           # +0x04 index for 0x00A88560 (-1 skips its table; 0 observed safe)
+  QuestSpecialInfo info = QuestSpecialInfo()  # +0x08 jInfo (2 = class change)
   i32 _                      # +0x1A, not read by the consumer
   i64 total                  # +0x1E new gold total, diff with player +0x70 is announced
   vector<Item> items         # +0x26 (0x004B94C0) -> inventory insert 0x007741D0
-  map<?> _                   # +0x36 (0x004B0310), meaning unknown
+  map<u16,LearnedSkill> skills  # +0x36 (0x004B0310 -> 0x004ACB80), granted/updated skills
   i32 exp                    # +0x42 reward EXP (floating number type 0xC)
   i32 gp                     # +0x46 reward GP (floating number type 0xE)
+end
+
+message 2346 TutorialQuestStartReq
+  ## Sender 0x00799A60: J-wstring tag + u32 quest id.
+  wstr tag
+  h32 quest_id
 end
 
 message 2347 TutorialQuestStartAck
@@ -63,34 +98,66 @@ message 2347 TutorialQuestStartAck
   u32 result
 end
 
+message 2353 TutorialMonsterDeadNot header?
+  ## Sender 0x00799E60: u32 monster template hash.
+  h32 monster_hash
+end
+
 message 2078 QuestGiveupReq
   ## Observed body: J-wstring then u32 quest id (jhash), same shape as 2073. No header.
-  wstr timestamp             # e.g. "2015-02-23 15:42:11, "; meaning unknown
+  wstr timestamp             # e.g. "2015-02-23 15:42:11, "
   h32 quest_id
 end
 
 message 2079 QuestGiveupAck ok_only
-  ## Handler 0x006223B0.
+  ## Handler 0x006223B0 (reader 0x00A559F0).
   i32 result
   vector<h32> quest_ids
-  raw[18] _                  # meaning unknown
-  vector<?> _
-  vector<?> _
+  QuestSpecialInfo info = QuestSpecialInfo()
+  vector<h32> removed_quest_ids
+  vector<Item> items
 end
 
 message 2080 QuestFailReq
-  ## Assumed to share the 2078 shape; not yet observed on the wire.
-  wstr timestamp             # meaning unknown
+  ## Shares the 2078 shape.
+  wstr timestamp
   h32 quest_id
 end
 
 message 2081 QuestFailAck ok_only
-  ## Handler 0x006223B0 (shared with 2079).
+  ## Handler 0x006223B0 (shared with 2079, reader 0x00A559F0).
   i32 result
   vector<h32> quest_ids
-  raw[18] _                  # meaning unknown
-  vector<?> _
-  vector<?> _
+  QuestSpecialInfo info = QuestSpecialInfo()
+  vector<h32> removed_quest_ids
+  vector<Item> items
+end
+
+message 2090 QuestDiscardReq
+  ## Shares the 2078 shape.
+  wstr timestamp
+  h32 quest_id
+end
+
+message 2091 QuestDiscardAck ok_only
+  ## Handler 0x006223B0 (case 0x82B, shared with 2079/2081, reader 0x00A559F0).
+  i32 result
+  vector<h32> quest_ids
+  QuestSpecialInfo info = QuestSpecialInfo()
+  vector<h32> removed_quest_ids
+  vector<Item> items
+end
+
+message 2098 QuestAlimiChangeNot header?
+  ## Sender 0x0078DFF0 (0x00B352B0 quest_id, 0x00B35630 tracked).
+  ## Fire-and-forget: persists quest tracker (Alimi) checkbox state.
+  h32 quest_id
+  bool tracked
+end
+
+message 2082 ClearTutorialReq header?
+  ## Live: ffffff7f 00 (skip) or 01 (completed).
+  bool completed
 end
 
 message 2083 ClearTutorialAck
@@ -99,7 +166,112 @@ message 2083 ClearTutorialAck
   vector<Item> elements      # applied by 0x0077EEB0; the server resends the inventory
 end
 
+message 2094 NpcFirstMeetReq header?
+  ## Live: ffffff7f + u32 npc id.
+  h32 npc_id
+end
+
+message 2113 QuestUpdateMissionReq header?
+  ## Live: ffffff7f + J-wstring mission id (e.g. "QM807").
+  wstr mission_id
+end
+
+message 2114 QuestUpdateMissionAck
+  ## JAppPageTalkBox case 0x842 -> 0x006481E0.
+  u32 result
+end
+
+message 2126 GetQuestTagReq bare
+  ## Sender 0x004EA9B3 writes no fields.
+end
+
+message 2127 GetQuestTagAck ok_only
+  ## JAppPageTalkBox::OneEGS_GET_QUEST_TAG_ACK (0x006482A0).
+  i32 result
+  wstr tag
+end
+
+message 2177 ActKairoReq header?
+  ## Sender 0x00727551 / 0x007EB0DD: J-wstring kairo id + i32 param (-1 default).
+  wstr kairo_id
+  i32 param = -1
+end
+
+message 2178 ActKairoAck ok_only
+  ## JMyUnitMgr::OneEGS_ACT_KAIRO_ACK (0x0080BC30).
+  i32 result
+  KairoResult kairo = KairoResult()
+  i64 remain_gold
+end
+
+message 2344 WaypointInsertReq header?
+  ## Live: ffffff7f + u64 layer_net_id.
+  u64 layer_net_id
+end
+
+message 2345 WaypointInsertAck
+  ## Handler 0x0064AE00.
+  u32 result
+  u64 layer_net_id
+  ChannelSquare square = ChannelSquare()
+end
+
 message 2358 GuideBeginnerUpdateReq header
   ## Sender 0x0079A3B0. Captures always carry the header.
   vector<u32> guide_ids
+end
+
+message 2445 AchieveUpdateAck
+  ## Handler 0x0074B830.
+  u32 result
+end
+
+message 2447 AchieveDivUpdateAck
+  ## Handler 0x0074B830.
+  u32 result
+end
+
+message 2496 NpcMakingKairoReq header?
+  ## Sender 0x00727510: J-wstring kairo id.
+  wstr kairo_id
+end
+
+message 2497 NpcMakingKairoAck ok_only
+  ## JAppPageMakingKairo::OneEGS_NPC_MAKING_KAIRO_ACK (0x005C60C0).
+  i32 result
+  KairoResult kairo = KairoResult()
+  i64 remain_gold
+end
+
+message 2728 NpcSealItemReq header?
+  ## Sender 0x0062D1F0 (case 0xAA8): i64 item uid.
+  i64 item_uid
+end
+
+message 2729 NpcSealItemAck ok_only
+  ## JAppPageSealing::OneEGS_NPC_SEAL_ITEM_ACK (0x0063D4B0).
+  i32 result
+  vector<Item> items         # 0x004B9210 (must be non-empty on result 0)
+  i64 remain_gold
+end
+
+message 5382 QuestItemDropReq header?
+  ## Sender 0x007A7710: nMissionID, nLayerID, fPosX, fPosY, bJump.
+  h32 mission_id
+  i32 layer_id
+  f32 pos_x
+  f32 pos_y
+  bool jump
+end
+
+message 5383 QuestItemDropAck ok_only
+  ## JUserClient::OneERC_QUESTITEM_DROP_ACK (0x007A78C0).
+  ## Assert 0x00CFFE70: nMissionID >> nLayerID >> fPosX >> fPosY >> bJump >> vecDropItem.
+  i32 result
+  h32 mission_id
+  i32 layer_id
+  f32 pos_x
+  f32 pos_y
+  bool jump
+  vector<ItemDropEntry> drops  # 0x004E3AD0 (0x1A-byte drop entries)
 end

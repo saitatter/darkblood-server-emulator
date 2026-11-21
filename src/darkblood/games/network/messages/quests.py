@@ -8,20 +8,50 @@ from typing import ClassVar
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.inventory import AddedItemNotice, ItemDropEntry
+from darkblood.games.network.messages.lobby import ChannelSquare
+from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
     'QuestObjective',
+    'QuestSpecialInfo',
+    'KairoResult',
+    'QuestStartReq',
     'QuestStartAck',
     'QuestUpdateNot',
     'QuestHistoryNot',
+    'QuestCompleteReq',
     'QuestCompleteAck',
+    'TutorialQuestStartReq',
     'TutorialQuestStartAck',
+    'TutorialMonsterDeadNot',
     'QuestGiveupReq',
     'QuestGiveupAck',
     'QuestFailReq',
     'QuestFailAck',
+    'QuestDiscardReq',
+    'QuestDiscardAck',
+    'QuestAlimiChangeNot',
+    'ClearTutorialReq',
     'ClearTutorialAck',
+    'NpcFirstMeetReq',
+    'QuestUpdateMissionReq',
+    'QuestUpdateMissionAck',
+    'GetQuestTagReq',
+    'GetQuestTagAck',
+    'ActKairoReq',
+    'ActKairoAck',
+    'WaypointInsertReq',
+    'WaypointInsertAck',
     'GuideBeginnerUpdateReq',
+    'AchieveUpdateAck',
+    'AchieveDivUpdateAck',
+    'NpcMakingKairoReq',
+    'NpcMakingKairoAck',
+    'NpcSealItemReq',
+    'NpcSealItemAck',
+    'QuestItemDropReq',
+    'QuestItemDropAck',
 ]
 
 
@@ -31,6 +61,40 @@ class QuestObjective(WireMessage):
     quest_id: h32 = 0  # jhash, e.g. jhash('Q0882S01')
     objective_index: i32 = 0  # 0-based
     count: i32 = 0  # current progress / kill count
+
+
+@dataclass
+class QuestSpecialInfo(WireMessage):
+    """18-byte jInfo block (raw copy 0x00A48A90) shared by 2074, 2077, 2079, 2081, 2091.
+    action_type: 1/2 = quest action (2 = class change), 3 = skill update (0x00622970).
+    """
+    action_type: i32 = -1
+    skill_1_index: u16 = 0xFFFF
+    skill_1_value: i32 = -1
+    skill_2_index: i32 = -1
+    skill_2_value: i32 = -1
+
+
+@dataclass
+class KairoResult(WireMessage):
+    """Reader 0x00A55AD0, shared by 2178 (ActKairoAck) and 2497 (NpcMakingKairoAck)."""
+    kairo_id: wstr = ''  # DictKairo key (0x0098B860)
+    great_success: bool = False  # +0x1C
+    special_effect: bool = False  # +0x1D
+    rate: f32 = 0.0  # +0x1E
+    notices: Vector[Extern[AddedItemNotice, 'encode', False]] = field(default_factory=list)  # +0x22 (0x007738C0, 12-byte item notices)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # +0x32 (0x004B94C0, inventory delta)
+
+
+@dataclass
+class QuestStartReq(WireMessage):
+    """Opcode 2073: eEGS_QUEST_START_REQ (request).
+
+    Observed body: J-wstring tag (timestamp), then u32 quest id (jhash).
+    """
+    OPCODE: ClassVar[int] = 2073
+    tag: wstr = ''
+    quest_id: h32 = 0
 
 
 @dataclass
@@ -45,17 +109,8 @@ class QuestStartAck(WireMessage):
     result: u32 = 0
     quest_id: h32 = 0  # jhash of the quest key, e.g. 'Q0001S01'
     quest_uid: i64 = 1
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'quest_id',
-        'quest_uid',
-        Const(i32, -1),
-        Const(u16, 0xFFFF),
-        Const(i32, -1),
-        Const(i32, -1),
-        Const(i32, -1),
-        Const(EmptyVector),
-    )
+    info: QuestSpecialInfo = field(default_factory=QuestSpecialInfo)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem (0x004B9210)
 
 
 @dataclass
@@ -80,6 +135,18 @@ class QuestHistoryNot(WireMessage):
 
 
 @dataclass
+class QuestCompleteReq(WireMessage):
+    """Opcode 2076: eEGS_QUEST_COMPLETE_REQ (request).
+
+    Observed body: J-wstring tag, u32 quest id, i32 selected reward index (-1 = none).
+    """
+    OPCODE: ClassVar[int] = 2076
+    tag: wstr = ''
+    quest_id: h32 = 0
+    select_index: i32 = -1
+
+
+@dataclass
 class QuestCompleteAck(WireMessage):
     """Opcode 2077: eEGS_QUEST_COMPLETE_ACK (reply).
 
@@ -90,26 +157,36 @@ class QuestCompleteAck(WireMessage):
     OPCODE: ClassVar[int] = 2077
     result: u32 = 0
     quest_id: h32 = 0  # +0x00, 0x00A7B390 lookup
+    select_index: i32 = 0  # +0x04 index for 0x00A88560 (-1 skips its table; 0 observed safe)
+    info: QuestSpecialInfo = field(default_factory=QuestSpecialInfo)  # +0x08 jInfo (2 = class change)
     total: i64 = 0  # +0x1E new gold total, diff with player +0x70 is announced
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # +0x26 (0x004B94C0) -> inventory insert 0x007741D0
+    skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # +0x36 (0x004B0310 -> 0x004ACB80), granted/updated skills
     exp: i32 = 0  # +0x42 reward EXP (floating number type 0xC)
     gp: i32 = 0  # +0x46 reward GP (floating number type 0xE)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'quest_id',
-        Const(i32, 0),
-        Const(i32, -1),
-        Const(u16, 0xFFFF),
-        Const(i32, -1),
-        Const(i32, -1),
-        Const(i32, -1),
+        'select_index',
+        'info',
         Const(i32, 0),
         'total',
         'items',
-        Const(EmptyMap),
+        'skills',
         'exp',
         'gp',
     )
+
+
+@dataclass
+class TutorialQuestStartReq(WireMessage):
+    """Opcode 2346: eEGS_TUTORIAL_QUEST_START_REQ (request).
+
+    Sender 0x00799A60: J-wstring tag + u32 quest id.
+    """
+    OPCODE: ClassVar[int] = 2346
+    tag: wstr = ''
+    quest_id: h32 = 0
 
 
 @dataclass
@@ -123,13 +200,25 @@ class TutorialQuestStartAck(WireMessage):
 
 
 @dataclass
+class TutorialMonsterDeadNot(WireMessage):
+    """Opcode 2353: eEGS_TUTORIAL_MONSTER_DEAD_NOT (reply).
+
+    Sender 0x00799E60: u32 monster template hash.
+    """
+    OPCODE: ClassVar[int] = 2353
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    monster_hash: h32 = 0
+
+
+@dataclass
 class QuestGiveupReq(WireMessage):
     """Opcode 2078: eEGS_QUEST_GIVEUP_REQ (request).
 
     Observed body: J-wstring then u32 quest id (jhash), same shape as 2073. No header.
     """
     OPCODE: ClassVar[int] = 2078
-    timestamp: wstr = ''  # e.g. "2015-02-23 15:42:11, "; meaning unknown
+    timestamp: wstr = ''  # e.g. "2015-02-23 15:42:11, "
     quest_id: h32 = 0
 
 
@@ -137,29 +226,25 @@ class QuestGiveupReq(WireMessage):
 class QuestGiveupAck(WireMessage):
     """Opcode 2079: eEGS_QUEST_GIVEUP_ACK (reply).
 
-    Handler 0x006223B0.
+    Handler 0x006223B0 (reader 0x00A559F0).
     """
     OPCODE: ClassVar[int] = 2079
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     quest_ids: Vector[h32] = field(default_factory=list)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'quest_ids',
-        Const(Raw[18], bytes(18)),
-        Const(EmptyVector),
-        Const(EmptyVector),
-    )
+    info: QuestSpecialInfo = field(default_factory=QuestSpecialInfo)
+    removed_quest_ids: Vector[h32] = field(default_factory=list)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
 
 
 @dataclass
 class QuestFailReq(WireMessage):
     """Opcode 2080: eEGS_QUEST_FAIL_REQ (request).
 
-    Assumed to share the 2078 shape; not yet observed on the wire.
+    Shares the 2078 shape.
     """
     OPCODE: ClassVar[int] = 2080
-    timestamp: wstr = ''  # meaning unknown
+    timestamp: wstr = ''
     quest_id: h32 = 0
 
 
@@ -167,19 +252,67 @@ class QuestFailReq(WireMessage):
 class QuestFailAck(WireMessage):
     """Opcode 2081: eEGS_QUEST_FAIL_ACK (reply).
 
-    Handler 0x006223B0 (shared with 2079).
+    Handler 0x006223B0 (shared with 2079, reader 0x00A559F0).
     """
     OPCODE: ClassVar[int] = 2081
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     quest_ids: Vector[h32] = field(default_factory=list)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'quest_ids',
-        Const(Raw[18], bytes(18)),
-        Const(EmptyVector),
-        Const(EmptyVector),
-    )
+    info: QuestSpecialInfo = field(default_factory=QuestSpecialInfo)
+    removed_quest_ids: Vector[h32] = field(default_factory=list)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class QuestDiscardReq(WireMessage):
+    """Opcode 2090: eEGS_QUEST_DISCARD_REQ (request).
+
+    Shares the 2078 shape.
+    """
+    OPCODE: ClassVar[int] = 2090
+    timestamp: wstr = ''
+    quest_id: h32 = 0
+
+
+@dataclass
+class QuestDiscardAck(WireMessage):
+    """Opcode 2091: eEGS_QUEST_DISCARD_ACK (reply).
+
+    Handler 0x006223B0 (case 0x82B, shared with 2079/2081, reader 0x00A559F0).
+    """
+    OPCODE: ClassVar[int] = 2091
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    quest_ids: Vector[h32] = field(default_factory=list)
+    info: QuestSpecialInfo = field(default_factory=QuestSpecialInfo)
+    removed_quest_ids: Vector[h32] = field(default_factory=list)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class QuestAlimiChangeNot(WireMessage):
+    """Opcode 2098: eEGS_QUEST_ALIMI_CHANGE_NOT (reply).
+
+    Sender 0x0078DFF0 (0x00B352B0 quest_id, 0x00B35630 tracked).
+    Fire-and-forget: persists quest tracker (Alimi) checkbox state.
+    """
+    OPCODE: ClassVar[int] = 2098
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    quest_id: h32 = 0
+    tracked: bool = False
+
+
+@dataclass
+class ClearTutorialReq(WireMessage):
+    """Opcode 2082: eEGS_CLEAR_TUTORIAL_REQ (request).
+
+    Live: ffffff7f 00 (skip) or 01 (completed).
+    """
+    OPCODE: ClassVar[int] = 2082
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    completed: bool = False
 
 
 @dataclass
@@ -194,6 +327,111 @@ class ClearTutorialAck(WireMessage):
 
 
 @dataclass
+class NpcFirstMeetReq(WireMessage):
+    """Opcode 2094: eEGS_NPC_FIRST_MEET_REQ (request).
+
+    Live: ffffff7f + u32 npc id.
+    """
+    OPCODE: ClassVar[int] = 2094
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    npc_id: h32 = 0
+
+
+@dataclass
+class QuestUpdateMissionReq(WireMessage):
+    """Opcode 2113: eEGS_QUEST_UPDATE_MISSION_REQ (request).
+
+    Live: ffffff7f + J-wstring mission id (e.g. "QM807").
+    """
+    OPCODE: ClassVar[int] = 2113
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mission_id: wstr = ''
+
+
+@dataclass
+class QuestUpdateMissionAck(WireMessage):
+    """Opcode 2114: eEGS_QUEST_UPDATE_MISSION_ACK (reply).
+
+    JAppPageTalkBox case 0x842 -> 0x006481E0.
+    """
+    OPCODE: ClassVar[int] = 2114
+    result: u32 = 0
+
+
+@dataclass
+class GetQuestTagReq(WireMessage):
+    """Opcode 2126: eEGS_GET_QUEST_TAG_REQ (request).
+
+    Sender 0x004EA9B3 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2126
+
+
+@dataclass
+class GetQuestTagAck(WireMessage):
+    """Opcode 2127: eEGS_GET_QUEST_TAG_ACK (reply).
+
+    JAppPageTalkBox::OneEGS_GET_QUEST_TAG_ACK (0x006482A0).
+    """
+    OPCODE: ClassVar[int] = 2127
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    tag: wstr = ''
+
+
+@dataclass
+class ActKairoReq(WireMessage):
+    """Opcode 2177: eEGS_ACT_KAIRO_REQ (request).
+
+    Sender 0x00727551 / 0x007EB0DD: J-wstring kairo id + i32 param (-1 default).
+    """
+    OPCODE: ClassVar[int] = 2177
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    kairo_id: wstr = ''
+    param: i32 = -1
+
+
+@dataclass
+class ActKairoAck(WireMessage):
+    """Opcode 2178: eEGS_ACT_KAIRO_ACK (reply).
+
+    JMyUnitMgr::OneEGS_ACT_KAIRO_ACK (0x0080BC30).
+    """
+    OPCODE: ClassVar[int] = 2178
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    kairo: KairoResult = field(default_factory=KairoResult)
+    remain_gold: i64 = 0
+
+
+@dataclass
+class WaypointInsertReq(WireMessage):
+    """Opcode 2344: eEGS_WAYPOINT_INSERT_REQ (request).
+
+    Live: ffffff7f + u64 layer_net_id.
+    """
+    OPCODE: ClassVar[int] = 2344
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    layer_net_id: u64 = 0
+
+
+@dataclass
+class WaypointInsertAck(WireMessage):
+    """Opcode 2345: eEGS_WAYPOINT_INSERT_ACK (reply).
+
+    Handler 0x0064AE00.
+    """
+    OPCODE: ClassVar[int] = 2345
+    result: u32 = 0
+    layer_net_id: u64 = 0
+    square: Extern[ChannelSquare, 'encode', False] = field(default_factory=ChannelSquare)
+
+
+@dataclass
 class GuideBeginnerUpdateReq(WireMessage):
     """Opcode 2358: eEGS_GUIDE_BEGINNER_UPDATE_REQ (request).
 
@@ -203,3 +441,107 @@ class GuideBeginnerUpdateReq(WireMessage):
     _WIRE_HEADER: ClassVar[str] = 'header'
     header: i32 = REQUEST_HEADER
     guide_ids: Vector[u32] = field(default_factory=list)
+
+
+@dataclass
+class AchieveUpdateAck(WireMessage):
+    """Opcode 2445: eEGS_ACHIEVE_UPDATE_ACK (reply).
+
+    Handler 0x0074B830.
+    """
+    OPCODE: ClassVar[int] = 2445
+    result: u32 = 0
+
+
+@dataclass
+class AchieveDivUpdateAck(WireMessage):
+    """Opcode 2447: eEGS_ACHIEVE_DIV_UPDATE_ACK (reply).
+
+    Handler 0x0074B830.
+    """
+    OPCODE: ClassVar[int] = 2447
+    result: u32 = 0
+
+
+@dataclass
+class NpcMakingKairoReq(WireMessage):
+    """Opcode 2496: eEGS_NPC_MAKING_KAIRO_REQ (request).
+
+    Sender 0x00727510: J-wstring kairo id.
+    """
+    OPCODE: ClassVar[int] = 2496
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    kairo_id: wstr = ''
+
+
+@dataclass
+class NpcMakingKairoAck(WireMessage):
+    """Opcode 2497: eEGS_NPC_MAKING_KAIRO_ACK (reply).
+
+    JAppPageMakingKairo::OneEGS_NPC_MAKING_KAIRO_ACK (0x005C60C0).
+    """
+    OPCODE: ClassVar[int] = 2497
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    kairo: KairoResult = field(default_factory=KairoResult)
+    remain_gold: i64 = 0
+
+
+@dataclass
+class NpcSealItemReq(WireMessage):
+    """Opcode 2728: eEGS_NPC_SEAL_ITEM_REQ (request).
+
+    Sender 0x0062D1F0 (case 0xAA8): i64 item uid.
+    """
+    OPCODE: ClassVar[int] = 2728
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+
+
+@dataclass
+class NpcSealItemAck(WireMessage):
+    """Opcode 2729: eEGS_NPC_SEAL_ITEM_ACK (reply).
+
+    JAppPageSealing::OneEGS_NPC_SEAL_ITEM_ACK (0x0063D4B0).
+    """
+    OPCODE: ClassVar[int] = 2729
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9210 (must be non-empty on result 0)
+    remain_gold: i64 = 0
+
+
+@dataclass
+class QuestItemDropReq(WireMessage):
+    """Opcode 5382: eERC_QUESTITEM_DROP_REQ (request).
+
+    Sender 0x007A7710: nMissionID, nLayerID, fPosX, fPosY, bJump.
+    """
+    OPCODE: ClassVar[int] = 5382
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mission_id: h32 = 0
+    layer_id: i32 = 0
+    pos_x: f32 = 0.0
+    pos_y: f32 = 0.0
+    jump: bool = False
+
+
+@dataclass
+class QuestItemDropAck(WireMessage):
+    """Opcode 5383: eERC_QUESTITEM_DROP_ACK (reply).
+
+    JUserClient::OneERC_QUESTITEM_DROP_ACK (0x007A78C0).
+    Assert 0x00CFFE70: nMissionID >> nLayerID >> fPosX >> fPosY >> bJump >> vecDropItem.
+    """
+    OPCODE: ClassVar[int] = 5383
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: i32 = 0
+    mission_id: h32 = 0
+    layer_id: i32 = 0
+    pos_x: f32 = 0.0
+    pos_y: f32 = 0.0
+    jump: bool = False
+    drops: Vector[Extern[ItemDropEntry, 'encode', False]] = field(default_factory=list)  # 0x004E3AD0 (0x1A-byte drop entries)

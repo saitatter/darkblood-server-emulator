@@ -6,14 +6,29 @@ from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.game_data.client_dict import char_level_stat
 from darkblood.games.missions.quests import ActiveQuest
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
+    ActKairoAck,
+    ActKairoReq,
     ChangeExpNot,
+    GetQuestTagAck,
+    GetQuestTagReq,
+    KairoResult,
     LevelUpNot,
+    NpcMakingKairoAck,
+    NpcMakingKairoReq,
+    NpcSealItemAck,
+    NpcSealItemReq,
+    QuestAlimiChangeNot,
     QuestCompleteAck,
+    QuestDiscardAck,
+    QuestDiscardReq,
     QuestFailAck,
     QuestFailReq,
     QuestGiveupAck,
     QuestGiveupReq,
+    QuestItemDropAck,
+    QuestItemDropReq,
     QuestStartAck,
     TutorialQuestStartAck,
 )
@@ -328,3 +343,94 @@ class QuestHandlers(BaseDomainService):
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
         ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
+
+    @packet_handler(QuestDiscardReq)
+    async def handle_quest_discard(self, correlation: int, body: bytes):
+        """Opcode 2090 (eEGS_QUEST_DISCARD_REQ) -> 2091 (eEGS_QUEST_DISCARD_ACK): discard an active quest."""
+        req = QuestDiscardReq.decode(body)
+        char = self.current_char()
+        if char and str(req.quest_id) in char.get('quests_active', {}):
+            del char['quests_active'][str(req.quest_id)]
+            self.save_char()
+        self.transport.record('quest-discard', body, quest_id=req.quest_id)
+        await self.reply(
+            QuestDiscardAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []),
+            correlation, note=f'quest discard ack ({req.quest_id:#010x})',
+        )
+
+    @packet_handler(QuestAlimiChangeNot)
+    async def handle_quest_alimi_change(self, correlation: int, body: bytes):
+        """Opcode 2098 (eEGS_QUEST_ALIMI_CHANGE_NOT): persist quest tracker (Alimi) checkbox state."""
+        req = QuestAlimiChangeNot.decode(body)
+        self.transport.record('quest-alimi-change', body, quest_id=req.quest_id, tracked=req.tracked)
+        char = self.current_char()
+        if char:
+            record = char.get('quests_active', {}).get(str(req.quest_id))
+            if isinstance(record, dict):
+                record['tracked'] = bool(req.tracked)
+                self.save_char()
+
+    @packet_handler(GetQuestTagReq)
+    async def handle_get_quest_tag(self, correlation: int, body: bytes):
+        """Opcode 2126 (eEGS_GET_QUEST_TAG_REQ) -> 2127 (eEGS_GET_QUEST_TAG_ACK): return quest tag string."""
+        await self.reply(GetQuestTagAck(result=0, tag=''), correlation, note='get quest tag ack')
+
+    @packet_handler(ActKairoReq)
+    async def handle_act_kairo(self, correlation: int, body: bytes):
+        """Opcode 2177 (eEGS_ACT_KAIRO_REQ) -> 2178 (eEGS_ACT_KAIRO_ACK): execute Kairo box/action."""
+        req = ActKairoReq.decode(body)
+        self.transport.record('act-kairo-req', body, kairo_id=req.kairo_id, param=req.param)
+        char = self.current_char()
+        gold = int(char.get('gold', 0)) if char else 0
+        await self.reply(
+            ActKairoAck(result=0, kairo=KairoResult(kairo_id=req.kairo_id), remain_gold=gold),
+            correlation, note=f'act kairo ack ({req.kairo_id})',
+        )
+
+    @packet_handler(NpcMakingKairoReq)
+    async def handle_npc_making_kairo(self, correlation: int, body: bytes):
+        """Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting."""
+        req = NpcMakingKairoReq.decode(body)
+        self.transport.record('npc-making-kairo-req', body, kairo_id=req.kairo_id)
+        char = self.current_char()
+        gold = int(char.get('gold', 0)) if char else 0
+        await self.reply(
+            NpcMakingKairoAck(result=0, kairo=KairoResult(kairo_id=req.kairo_id), remain_gold=gold),
+            correlation, note=f'npc making kairo ack ({req.kairo_id})',
+        )
+
+    @packet_handler(NpcSealItemReq)
+    async def handle_npc_seal_item(self, correlation: int, body: bytes):
+        """Opcode 2728 (eEGS_NPC_SEAL_ITEM_REQ) -> 2729 (eEGS_NPC_SEAL_ITEM_ACK): seal an equipment item at NPC."""
+        req = NpcSealItemReq.decode(body)
+        self.transport.record('npc-seal-item-req', body, item_uid=req.item_uid)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target:
+            await self.reply(NpcSealItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
+                             note=f'npc seal item fail (uid={req.item_uid} not found)')
+            return
+        gold = int(char.get('gold', 0))
+        await self.reply(
+            NpcSealItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **target)], remain_gold=gold),
+            correlation, note=f'npc seal item ack (uid={req.item_uid})',
+        )
+
+    @packet_handler(QuestItemDropReq)
+    async def handle_quest_item_drop(self, correlation: int, body: bytes):
+        """Opcode 5382 (eERC_QUESTITEM_DROP_REQ) -> 5383 (eERC_QUESTITEM_DROP_ACK): spawn quest item floor drop."""
+        req = QuestItemDropReq.decode(body)
+        self.transport.record('quest-item-drop-req', body, mission_id=req.mission_id, layer_id=req.layer_id)
+        await self.reply(
+            QuestItemDropAck(
+                result=0,
+                mission_id=req.mission_id,
+                layer_id=req.layer_id,
+                pos_x=req.pos_x,
+                pos_y=req.pos_y,
+                jump=req.jump,
+                drops=[],
+            ),
+            correlation, note=f'quest item drop ack (mission={req.mission_id:#010x})',
+        )

@@ -402,6 +402,40 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(len(DualSkillActiveNot(extend_time=86400, add_day=30, cur_dual_skill_index=1, item_id=1).encode()), 16)
             self.assertEqual(struct.unpack_from('<ii', InitSkillNot(result=0, sp=20, skills={}).encode(), 0), (0, 20))
 
+            # 48. Extended quests sweep: 2098 alimi tracker, 2090/2091 discard, 2126/2127 tag,
+            #     2177/2178 act kairo, 2496/2497 making kairo, 2728/2729 npc seal, 5382/5383 quest item drop.
+            from darkblood.games.network.messages import (
+                ActKairoReq, GetQuestTagReq, NpcMakingKairoReq, NpcSealItemReq,
+                QuestAlimiChangeNot, QuestDiscardReq, QuestItemDropReq,
+            )
+            char.setdefault('quests_active', {})['123456'] = {'uid': 9, 'tracked': True, 'counters': []}
+            client.send_event(2098, QuestAlimiChangeNot(quest_id=123456, tracked=False).encode())
+            client.send_event(2126, GetQuestTagReq().encode())
+            _, ack2127 = await client.expect_event(2127)
+            self.assertEqual(struct.unpack_from('<i', ack2127[:4])[0], 0)
+            self.assertFalse(char['quests_active']['123456']['tracked'])
+
+            client.send_event(2090, QuestDiscardReq(timestamp='2026-11-21', quest_id=123456).encode())
+            _, ack2091 = await client.expect_event(2091)
+            self.assertEqual(struct.unpack_from('<i', ack2091[:4])[0], 0)
+            self.assertNotIn('123456', char['quests_active'])
+
+            client.send_event(2177, ActKairoReq(kairo_id='KairoTest', param=-1).encode())
+            _, ack2178 = await client.expect_event(2178)
+            self.assertEqual(struct.unpack_from('<i', ack2178[:4])[0], 0)
+
+            client.send_event(2496, NpcMakingKairoReq(kairo_id='MakingTest').encode())
+            _, ack2497 = await client.expect_event(2497)
+            self.assertEqual(struct.unpack_from('<i', ack2497[:4])[0], 0)
+
+            client.send_event(2728, NpcSealItemReq(item_uid=item_uid).encode())
+            _, ack2729 = await client.expect_event(2729)
+            self.assertEqual(struct.unpack_from('<i', ack2729[:4])[0], 0)
+
+            client.send_event(5382, QuestItemDropReq(mission_id=0x11223344, layer_id=1, pos_x=10.0, pos_y=20.0, jump=True).encode())
+            _, ack5383 = await client.expect_event(5383)
+            self.assertEqual(struct.unpack_from('<iIi', ack5383[:12]), (0, 0x11223344, 1))
+
         self.run_async(self.with_server(scenario))
 
 

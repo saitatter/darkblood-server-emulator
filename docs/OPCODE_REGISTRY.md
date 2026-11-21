@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 593  
+**Tracked opcodes**: 607  
 **Client handlers mapped**: 298  
-**Server handlers**: 220  
+**Server handlers**: 227  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -80,24 +80,27 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2070 | `eEGS_SELL_ITEM_ACK` | 0x0077E8E0 | — | `SellItemAck` |  |
 | 2071 | `eEGS_REPURCHASE_ITEM_REQ` | — | `commerce.py` (`handle_repurchase_item`) | `RepurchaseItemReq` | eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30). |
 | 2072 | `eEGS_REPURCHASE_ITEM_ACK` | 0x0077EC30 | — | `RepurchaseItemAck` |  |
-| 2073 | `eEGS_QUEST_START_REQ` | — | `quests.py` (`handle_quest_start`) | — | Opcode 2073 (eEGS_QUEST_START_REQ) -> 2074 (eEGS_QUEST_START_ACK). |
+| 2073 | `eEGS_QUEST_START_REQ` | — | `quests.py` (`handle_quest_start`) | `QuestStartReq` | Opcode 2073 (eEGS_QUEST_START_REQ) -> 2074 (eEGS_QUEST_START_ACK). |
 | 2074 | `eEGS_QUEST_START_ACK` | — | — | `QuestStartAck` |  |
 | 2075 | `eEGS_QUEST_UPDATE_NOT` | — | — | `QuestUpdateNot` |  |
-| 2076 | `eEGS_QUEST_COMPLETE_REQ` | — | `quests.py` (`handle_quest_complete`) | — | Opcode 2076 (eEGS_QUEST_COMPLETE_REQ) -> 2077 (eEGS_QUEST_COMPLETE_ACK). |
+| 2076 | `eEGS_QUEST_COMPLETE_REQ` | — | `quests.py` (`handle_quest_complete`) | `QuestCompleteReq` | Opcode 2076 (eEGS_QUEST_COMPLETE_REQ) -> 2077 (eEGS_QUEST_COMPLETE_ACK). |
 | 2077 | `eEGS_QUEST_COMPLETE_ACK` | — | — | `QuestCompleteAck` |  |
 | 2078 | `eEGS_QUEST_GIVEUP_REQ` | — | `quests.py` (`handle_quest_giveup`) | `QuestGiveupReq` | Opcode 2078 (eEGS_QUEST_GIVEUP_REQ) -> 2079 (eEGS_QUEST_GIVEUP_ACK). |
 | 2079 | `eEGS_QUEST_GIVEUP_ACK` | — | — | `QuestGiveupAck` |  |
 | 2080 | `eEGS_QUEST_FAIL_REQ` | — | `quests.py` (`handle_quest_fail`) | `QuestFailReq` | Opcode 2080 (eEGS_QUEST_FAIL_REQ) -> 2081 (eEGS_QUEST_FAIL_ACK). |
 | 2081 | `eEGS_QUEST_FAIL_ACK` | — | — | `QuestFailAck` |  |
-| 2082 | `eEGS_CLEAR_TUTORIAL_REQ` | — | `square.py` (`handle_clear_tutorial`) | — | Opcode 2082 (eEGS_CLEAR_TUTORIAL_REQ) -> 2083 (eEGS_CLEAR_TUTORIAL_ACK). |
+| 2082 | `eEGS_CLEAR_TUTORIAL_REQ` | — | `square.py` (`handle_clear_tutorial`) | `ClearTutorialReq` | Opcode 2082 (eEGS_CLEAR_TUTORIAL_REQ) -> 2083 (eEGS_CLEAR_TUTORIAL_ACK). |
 | 2083 | `eEGS_CLEAR_TUTORIAL_ACK` | 0x0077EEB0 | — | `ClearTutorialAck` |  |
 | 2084 | `eEGS_CLEAR_OPENING_NOT` | — | `square.py` (`handle_clear_opening`) | — | Opcode 2084 (eEGS_CLEAR_OPENING_NOT): Cinematic intro complete. |
 | 2085 | `eEGS_CHANGE_DUNGEON_PENALTY_NOT` | 0x0078FA70 | — | `ChangeDungeonPenaltyNot` |  |
 | 2086 | `eEGS_BUY_LIFE_WATER_REQ` | — | `inventory/items.py` (`handle_buy_life_water`) | `BuyLifeWaterReq` | Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): purchase life water. |
 | 2087 | `eEGS_BUY_LIFE_WATER_ACK` | 0x0078FF90 | — | `BuyLifeWaterAck` |  |
+| 2090 | `eEGS_QUEST_DISCARD_REQ` | — | `quests.py` (`handle_quest_discard`) | `QuestDiscardReq` | Opcode 2090 (eEGS_QUEST_DISCARD_REQ) -> 2091 (eEGS_QUEST_DISCARD_ACK): discard an active quest. |
+| 2091 | `eEGS_QUEST_DISCARD_ACK` | — | — | `QuestDiscardAck` |  |
 | 2092 | `eEGS_INVENTORY_UPDATED_NOT` | 0x0077F070 | — | `InventoryUpdatedNot` |  |
-| 2094 | `eEGS_NPC_FIRST_MEET_REQ` | — | `square.py` (`handle_npc_first_meet`) | — | Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK). |
+| 2094 | `eEGS_NPC_FIRST_MEET_REQ` | — | `square.py` (`handle_npc_first_meet`) | `NpcFirstMeetReq` | Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK). |
 | 2095 | `eEGS_NPC_FIRST_MEET_ACK` | 0x00752B60 | — | `NpcFirstMeetAck` |  |
+| 2098 | `eEGS_QUEST_ALIMI_CHANGE_NOT` | — | `quests.py` (`handle_quest_alimi_change`) | `QuestAlimiChangeNot` | Opcode 2098 (eEGS_QUEST_ALIMI_CHANGE_NOT): persist quest tracker (Alimi) checkbox state. |
 | 2100 | `eEGS_CHEAT_QUEST_START_ACK` | — | `social.py` (`handle_legacy_party_invite`) | — | Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK). |
 | 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | `social.py` (`handle_party_join`) | — | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
 | 2104 | `eEGS_CHEAT_INSERT_AR_ACK` | — | `social.py` (`handle_party_leave`) | — | Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK). |
@@ -106,7 +109,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2110 | `eEGS_INCREASING_STATUS_NOT` | 0x007743A0 | — | — |  |
 | 2111 | `eEGS_USE_LEARN_SKILL_ITEM_REQ` | — | `skills.py` (`handle_use_learn_skill_item`) | `UseLearnSkillItemReq` | eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0). |
 | 2112 | `eEGS_USE_LEARN_SKILL_ITEM_ACK` | 0x0078BCD0 | — | `UseLearnSkillItemAck` |  |
-| 2113 | `eEGS_QUEST_UPDATE_MISSION_REQ` | — | `quests.py` (`handle_quest_update_mission`) | — | Opcode 2113 (eEGS_QUEST_UPDATE_MISSION_REQ) -> 2114 (eEGS_QUEST_UPDATE_MISSION_ACK). |
+| 2113 | `eEGS_QUEST_UPDATE_MISSION_REQ` | — | `quests.py` (`handle_quest_update_mission`) | `QuestUpdateMissionReq` | Opcode 2113 (eEGS_QUEST_UPDATE_MISSION_REQ) -> 2114 (eEGS_QUEST_UPDATE_MISSION_ACK). |
+| 2114 | `eEGS_QUEST_UPDATE_MISSION_ACK` | — | — | `QuestUpdateMissionAck` |  |
 | 2115 | `eEGS_ITEM_UPGRADE_REQ` | — | `inventory/crafting.py` (`handle_item_upgrade`) | `ItemUpgradeReq` | Opcode 2115 (eEGS_ITEM_UPGRADE_REQ) -> 2116 (eEGS_ITEM_UPGRADE_ACK): upgrade equipment tier. |
 | 2116 | `eEGS_ITEM_UPGRADE_ACK` | 0x007909C0 | — | `ItemUpgradeAck` |  |
 | 2117 | `eEGS_UPDATE_SKILL_LOCKED_REQ` | — | `skills.py` (`handle_update_skill_locked`) | `UpdateSkillLockedReq` | eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390) -> 2118 eEGS_UPDATE_SKILL_LOCKED_ACK (0x00752C70). |
@@ -115,6 +119,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2120 | `eEGS_ALARM_UPDATE_ACK` | 0x00771150 | — | — |  |
 | 2121 | `eEGS_CONTRACT_UPDATE_REQ` | — | `commerce.py` (`handle_contract_update`) | `ContractUpdateReq` | eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80). |
 | 2122 | `eEGS_CONTRACT_UPDATE_ACK` | 0x00752D80 | — | `ContractUpdateAck` |  |
+| 2126 | `eEGS_GET_QUEST_TAG_REQ` | — | `quests.py` (`handle_get_quest_tag`) | `GetQuestTagReq` | Opcode 2126 (eEGS_GET_QUEST_TAG_REQ) -> 2127 (eEGS_GET_QUEST_TAG_ACK): return quest tag string. |
+| 2127 | `eEGS_GET_QUEST_TAG_ACK` | — | — | `GetQuestTagAck` |  |
 | 2128 | `eEGS_USE_SPEAKER_ITEM_REQ` | — | `social.py` (`handle_use_speaker_item`) | `UseSpeakerItemReq` | eEGS_USE_SPEAKER_ITEM_REQ (0x00790000.c:1992) -> 2129 eEGS_USE_SPEAKER_ITEM_ACK (0x0077F320). |
 | 2129 | `eEGS_USE_SPEAKER_ITEM_ACK` | 0x0077F320 | — | `UseSpeakerItemAck` |  |
 | 2131 | `eEGS_FRIEND_LIST_REQUEST_REQ` | — | `social.py` (`handle_friend_list`) | — | eEGS_FRIEND_LIST_REQUEST_REQ -> eEGS_FRIEND_LIST_REQUEST_ACK (2132), handler 0x7712E0: |
@@ -151,6 +157,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2172 | `eEGS_GUILD_FALLOUT_COMPLETE_NOT` | 0x00753280 | — | — |  |
 | 2174 | `eEGS_GUILD_GRADE_DELEGATION_ACK` | 0x0074B830 | — | — |  |
 | 2176 | `eEGS_GUILD_PERSON_EXPULSION_ACK` | 0x0074B830 | — | — |  |
+| 2177 | `eEGS_ACT_KAIRO_REQ` | — | `quests.py` (`handle_act_kairo`) | `ActKairoReq` | Opcode 2177 (eEGS_ACT_KAIRO_REQ) -> 2178 (eEGS_ACT_KAIRO_ACK): execute Kairo box/action. |
+| 2178 | `eEGS_ACT_KAIRO_ACK` | — | — | `ActKairoAck` |  |
 | 2179 | `eEGS_GUILD_MONEY_IN_REQ` | — | `social.py` (`handle_guild_money_in`) | `GuildMoneyInReq` | eEGS_GUILD_MONEY_IN_REQ (0x00790000.c:3031) -> 2180 eEGS_GUILD_MONEY_IN_ACK (0x00794250). |
 | 2180 | `eEGS_GUILD_MONEY_IN_ACK` | 0x00794250 | — | `GuildMoneyInAck` |  |
 | 2181 | `eEGS_GUILD_MONEY_OUT_REQ` | — | `social.py` (`handle_guild_money_out`) | `GuildMoneyOutReq` | eEGS_GUILD_MONEY_OUT_REQ (0x00790000.c:3141) -> 2182 eEGS_GUILD_MONEY_OUT_ACK (0x00794470). |
@@ -258,15 +266,16 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2341 | `eEGS_PERSONALSHOP_START_ACK` | — | — | `PersonalShopOpenAck` |  |
 | 2342 | `eEGS_PERSONALSHOP_CLOSE_REQ` | — | `commerce.py` (`handle_personal_shop_close`) | `PersonalShopCloseReq` | eEGS_PERSONALSHOP_CLOSE_REQ -> 2343 eEGS_PERSONALSHOP_CLOSE_ACK (0x00601F09) |
 | 2343 | `eEGS_PERSONALSHOP_CLOSE_ACK` | — | — | `PersonalShopCloseAck` |  |
-| 2344 | `eEGS_WAYPOINT_INSERT_REQ` | — | `square.py` (`handle_waypoint_insert`) | — | Opcode 2344 (eEGS_WAYPOINT_INSERT_REQ) -> 2345 (eEGS_WAYPOINT_INSERT_ACK). |
-| 2346 | `eEGS_TUTORIAL_QUEST_START_REQ` | — | `quests.py` (`handle_tutorial_quest_start`) | — | Opcode 2346 (eEGS_TUTORIAL_QUEST_START_REQ) -> 2347 (eEGS_TUTORIAL_QUEST_START_ACK). |
+| 2344 | `eEGS_WAYPOINT_INSERT_REQ` | — | `square.py` (`handle_waypoint_insert`) | `WaypointInsertReq` | Opcode 2344 (eEGS_WAYPOINT_INSERT_REQ) -> 2345 (eEGS_WAYPOINT_INSERT_ACK). |
+| 2345 | `eEGS_WAYPOINT_INSERT_ACK` | — | — | `WaypointInsertAck` |  |
+| 2346 | `eEGS_TUTORIAL_QUEST_START_REQ` | — | `quests.py` (`handle_tutorial_quest_start`) | `TutorialQuestStartReq` | Opcode 2346 (eEGS_TUTORIAL_QUEST_START_REQ) -> 2347 (eEGS_TUTORIAL_QUEST_START_ACK). |
 | 2347 | `eEGS_TUTORIAL_QUEST_START_ACK` | — | — | `TutorialQuestStartAck` |  |
 | 2348 | `eEGS_TAMEING_MONSTER_INSERT_REQ` | — | `pets.py` (`handle_taming_monster_insert`) | `TameingMonsterInsertReq` | eEGS_TAMEING_MONSTER_INSERT_REQ (0x00799BA0) -> 2349 eEGS_TAMEING_MONSTER_INSERT_ACK (0x00771A00) |
 | 2349 | `eEGS_TAMEING_MONSTER_INSERT_ACK` | 0x00771A00 | — | `TamingMonsterInsertAck` |  |
 | 2350 | `eEGS_TAMEING_MONSTER_DELETE_REQ` | — | `pets.py` (`handle_taming_monster_delete`) | `TameingMonsterDeleteReq` | eEGS_TAMEING_MONSTER_DELETE_REQ (0x00799D30) -> 2351 eEGS_TAMEING_MONSTER_DELETE_ACK (0x00771BB0) |
 | 2351 | `eEGS_TAMEING_MONSTER_DELETE_ACK` | 0x00771BB0 | — | `TamingMonsterDeleteAck` |  |
 | 2352 | `eEGS_IP_ADDRESS_NOT` | — | `social.py` (`handle_ip_address`) | — | eEGS_IP_ADDRESS_NOT: client LAN/WAN IP notification only. |
-| 2353 | `eEGS_TUTORIAL_MONSTER_DEAD_NOT` | — | `square.py` (`handle_tutorial_monster_dead`) | — | Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT). |
+| 2353 | `eEGS_TUTORIAL_MONSTER_DEAD_NOT` | — | `square.py` (`handle_tutorial_monster_dead`) | `TutorialMonsterDeadNot` | Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT). |
 | 2358 | `eEGS_GUIDE_BEGINNER_UPDATE_REQ` | — | `dungeon.py` (`handle_guide_beginner_update`) | `GuideBeginnerUpdateReq` | eEGS_GUIDE_BEGINNER_UPDATE_REQ (sender 0x79A3B0): ffffff7f + vector<u32> guide_ids. |
 | 2362 | `eEGS_AVATAR_ZAM_INSERT_REQ` | — | `inventory/crafting.py` (`handle_avatar_zam_insert`) | `AvatarZamInsertReq` | Opcode 2362 (eEGS_AVATAR_ZAM_INSERT_REQ) -> 2363: socket an Avatar Zam gem. |
 | 2363 | `eEGS_AVATAR_ZAM_INSERT_ACK` | 0x00782D00 | — | `AvatarZamInsertAck` |  |
@@ -309,9 +318,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2442 | `eEGS_CHARSLOT_EXTEND_ACK` | 0x00781000 | — | — |  |
 | 2443 | `eEGS_DAILY_DUN_CLEAR_COUNT_UPDATE_NOT` | 0x0079D0A0 | — | — |  |
 | 2444 | `eEGS_ACHIEVE_UPDATE_REQ` | — | `social.py` (`handle_achieve_update`) | `AchieveUpdateReq` | eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0): vector of u32 achievement |
-| 2445 | `eEGS_ACHIEVE_UPDATE_ACK` | 0x0074B830 | — | — |  |
+| 2445 | `eEGS_ACHIEVE_UPDATE_ACK` | 0x0074B830 | — | `AchieveUpdateAck` |  |
 | 2446 | `eEGS_ACHIEVE_DIV_UPDATE_REQ` | — | `social.py` (`handle_achieve_div_update`) | `AchieveDivUpdateReq` | eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447 |
-| 2447 | `eEGS_ACHIEVE_DIV_UPDATE_ACK` | 0x0074B830 | — | — |  |
+| 2447 | `eEGS_ACHIEVE_DIV_UPDATE_ACK` | 0x0074B830 | — | `AchieveDivUpdateAck` |  |
 | 2448 | `eEGS_DAILY_REBIRTH_COIN_USE_REQ` | — | `dungeon.py` (`handle_daily_rebirth_coin_use`) | `DailyRebirthCoinUseReq` | eEGS_DAILY_REBIRTH_COIN_USE_REQ -> 2449 (0x0079DC70) + 2286 (0x007983B0). |
 | 2449 | `eEGS_DAILY_REBIRTH_COIN_USE_ACK` | 0x0079DC70 | — | `DailyRebirthCoinUseAck` |  |
 | 2451 | `eEGS_GUILD_SIEGE_CHANGE_OFFICER_ACK` | 0x0076CA40 | — | — |  |
@@ -346,6 +355,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2491 | `eEGS_CHEAT_PET_EVOLUTION_ACK` | 0x007A0450 | — | — |  |
 | 2493 | `eEGS_PET_CASH_FOOD_EQUIP_ACK` | 0x007A0A20 | — | — |  |
 | 2495 | `eEGS_PET_CASH_FOOD_UNEQUIP_ACK` | 0x007A0C30 | — | — |  |
+| 2496 | `eEGS_NPC_MAKING_KAIRO_REQ` | — | `quests.py` (`handle_npc_making_kairo`) | `NpcMakingKairoReq` | Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting. |
+| 2497 | `eEGS_NPC_MAKING_KAIRO_ACK` | — | — | `NpcMakingKairoAck` |  |
 | 2499 | `eEGS_PET_EXTEND_DEPOT_ACK` | 0x00781990 | — | — |  |
 | 2501 | `eEGS_PET_SWITCH_STORAGE_ACK` | 0x007A0E30 | — | — |  |
 | 2502 | `eEGS_PET_DEPOT_EXTEND_EXPIRE_NOT` | 0x00775EA0 | — | — |  |
@@ -444,6 +455,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2712 | `eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT` | — | `commerce.py` (`handle_steam_init_buy_item`) | `SteamInitBuyItemNot` | eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT. On Steam the overlay then |
 | 2713 | `eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ` | — | `commerce.py` (`handle_steam_finalize_buy_item`) | — | eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id, |
 | 2714 | `eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_ACK` | — | — | `SteamFinalizeBuyItemAck` |  |
+| 2728 | `eEGS_NPC_SEAL_ITEM_REQ` | — | `quests.py` (`handle_npc_seal_item`) | `NpcSealItemReq` | Opcode 2728 (eEGS_NPC_SEAL_ITEM_REQ) -> 2729 (eEGS_NPC_SEAL_ITEM_ACK): seal an equipment item at NPC. |
+| 2729 | `eEGS_NPC_SEAL_ITEM_ACK` | — | — | `NpcSealItemAck` |  |
 
 ## Database and other services (3000-4999)
 
@@ -607,7 +620,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5365 | `eERC_GOLDGOBLIEN_DEAD_REQ` | — | `dungeon.py` (`handle_gold_goblin_dead`) | `GoldGoblinDeadReq` | eERC_GOLDGOBLIEN_DEAD_REQ -> 5366 eERC_GOLDGOBLIEN_DEAD_ACK (0x00784CA0). |
 | 5366 | `eERC_GOLDGOBLIEN_DEAD_ACK` | 0x00784CA0 | — | `GoldGoblinDeadAck` |  |
 | 5367 | `eERC_GOLDGOBLIEN_DISAPPEAR_NOT` | — | — | `GoldGoblinDisappearNot` |  |
-| 5383 | `eERC_QUESTITEM_DROP_ACK` | 0x007A78C0 | — | — |  |
+| 5382 | `eERC_QUESTITEM_DROP_REQ` | — | `quests.py` (`handle_quest_item_drop`) | `QuestItemDropReq` | Opcode 5382 (eERC_QUESTITEM_DROP_REQ) -> 5383 (eERC_QUESTITEM_DROP_ACK): spawn quest item floor drop. |
+| 5383 | `eERC_QUESTITEM_DROP_ACK` | 0x007A78C0 | — | `QuestItemDropAck` |  |
 | 5386 | `eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ` | — | `games/session.py` (`handle_authenticate_steam_user`) | — | Opcode 5386 (eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ) -> 5020 welcome. |
 
 ## Other (6000-99999)

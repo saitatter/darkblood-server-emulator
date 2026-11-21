@@ -220,30 +220,11 @@
 | `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:155 |  |
 | `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:168 |  |
 
-## quests (20 of 47 fields)
+## quests (1 of 104 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2074 QuestStartAck` | `i32` | quests.jsch:22 | jInfo |
-| `2074 QuestStartAck` | `u16` | quests.jsch:23 | jInfo |
-| `2074 QuestStartAck` | `i32` | quests.jsch:24 | jInfo |
-| `2074 QuestStartAck` | `i32` | quests.jsch:25 | jInfo |
-| `2074 QuestStartAck` | `i32` | quests.jsch:26 | jInfo |
-| `2074 QuestStartAck` | `vector<?>` | quests.jsch:27 | vecItem (0x004B9210) |
-| `2077 QuestCompleteAck` | `i32` | quests.jsch:47 | +0x04 index for 0x00A88560 (-1 skips its table; 0 observed safe) |
-| `2077 QuestCompleteAck` | `i32` | quests.jsch:48 | +0x08 jInfo; first i32 1/2 selects extra actions (2 = class change) |
-| `2077 QuestCompleteAck` | `u16` | quests.jsch:49 | jInfo |
-| `2077 QuestCompleteAck` | `i32` | quests.jsch:50 | jInfo |
-| `2077 QuestCompleteAck` | `i32` | quests.jsch:51 | jInfo |
-| `2077 QuestCompleteAck` | `i32` | quests.jsch:52 | jInfo |
-| `2077 QuestCompleteAck` | `i32` | quests.jsch:53 | +0x1A, not read by the consumer |
-| `2077 QuestCompleteAck` | `map<?>` | quests.jsch:56 | +0x36 (0x004B0310), meaning unknown |
-| `2079 QuestGiveupAck` | `raw[18]` | quests.jsch:76 | meaning unknown |
-| `2079 QuestGiveupAck` | `vector<?>` | quests.jsch:77 |  |
-| `2079 QuestGiveupAck` | `vector<?>` | quests.jsch:78 |  |
-| `2081 QuestFailAck` | `raw[18]` | quests.jsch:91 | meaning unknown |
-| `2081 QuestFailAck` | `vector<?>` | quests.jsch:92 |  |
-| `2081 QuestFailAck` | `vector<?>` | quests.jsch:93 |  |
+| `2077 QuestCompleteAck` | `i32` | quests.jsch:82 | +0x1A, not read by the consumer |
 
 ## skills (3 of 77 fields)
 
