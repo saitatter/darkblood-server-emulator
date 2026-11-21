@@ -420,6 +420,8 @@ class DungeonHandlers(BaseDomainService):
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
         if ack.result == 0:
+            self.in_dungeon = True
+            self.dungeon_cleared = False
             await self._consume_session_stress(self.session)
         room = self.room
         if ack.result == 0 and room is not None and room.host is self.session and room.info.name != '_singleplay':
@@ -430,6 +432,8 @@ class DungeonHandlers(BaseDomainService):
                 if member is self.session or member.dungeon.room is not room:
                     continue
                 member.dungeon.map_code = request.map_code
+                member.dungeon.in_dungeon = True
+                member.dungeon.dungeon_cleared = False
                 member.dungeon._reset_dungeon_stats()
                 try:
                     await member.transport.send_event(event(5014, ack.encode()),
@@ -673,6 +677,7 @@ class DungeonHandlers(BaseDomainService):
         rewards = {}
         member_ranks = []
         for member, char in members:
+            member.dungeon.dungeon_cleared = bool(req.is_clear)
             if req.is_clear:
                 member.dungeon._record_dungeon_clear(char, map_code)
             # EXP was already granted per kill (5063 -> 5086), so the result
@@ -836,10 +841,54 @@ class DungeonHandlers(BaseDomainService):
     @packet_handler(5005)
     async def handle_leave_room(self, correlation, body):
         # eERC_LEAVE_ROOM_REQ (0x0058B240) -> 5006 eERC_LEAVE_ROOM_ACK (0x00598A00).
-        # Acknowledges leaving game room before eERC_BACK_TO_SQUARE_REQ (5045).
+        # In town/gate this only leaves the party room. Inside a dungeon (eAS_GamePlay,
+        # JAppStateGamePlay__OnBtn_GamePlayExit 0x006CE740), the client sends 5005
+        # without 5045 and relies on 5046 (BackToSquareAck) to transition back to town,
+        # plus 2085 (ChangeDungeonPenaltyNot) when abandoning before dungeon clear.
+        was_in_dungeon = getattr(self, 'in_dungeon', False)
+        was_cleared = getattr(self, 'dungeon_cleared', False)
+        self.in_dungeon = False
+        self.dungeon_cleared = False
         await self.leave_room()
         ack = LeaveRoomAck(result=0).encode()
         await self.transport.send_event(event(5006, ack, correlation), note='leave room ack')
+        if was_in_dungeon:
+            from darkblood.games.handlers.square import _wire_square_uid
+            from darkblood.games.network.messages import BackToSquareAck, ChangeDungeonPenaltyNot
+            back_ack = BackToSquareAck(
+                square_uid=_wire_square_uid(self.session.square_id),
+                layer_net_id=self.session.square._town_layer(),
+                cur_ar=self.session.square._current_gold(),
+            ).encode()
+            await self.transport.send_event(event(5046, back_ack), note='back to square ack (dungeon exit)')
+            await self.session.square._sync_passive_stress()
+            if not was_cleared:
+                char = self.current_char()
+                if char is not None:
+                    import time
+                    now = int(time.time())
+                    prev_exp = int(char.get('leave_penalty_expires', 0) or 0)
+                    prev_cnt = int(char.get('leave_penalty_count', 0) or 0) if prev_exp > now else 0
+                    cnt = min(3, prev_cnt + 1)
+                    duration = 600  # DungeonPenalty.lua: 600s full recovery (5 steps: 40/90/210/450/600s)
+                    char['leave_penalty_count'] = cnt
+                    char['leave_penalty_expires'] = now + duration
+                    self.save_char()
+                    # 2085 On_eEGS_CHANGE_DUNGEON_PENALTY_NOT (0x0078FA70):
+                    #   in_dungeon=True -> show alarm popup (JAppPagePenaltyAlarm 0x2F) on town arrival
+                    #   is_penalty=False -> type 0 (LeavePenalty, player +0x2E8/+0x2E9)
+                    #   penalty_level=cnt (1..3 -> 60%/70%/80%), penalty_id=0 (step 0), duration=600s
+                    pen = ChangeDungeonPenaltyNot(
+                        in_dungeon=True,
+                        is_penalty=False,
+                        penalty_level=cnt,
+                        penalty_id=0,
+                        duration=duration,
+                    ).encode()
+                    await self.transport.send_event(
+                        event(2085, pen),
+                        note=f'change dungeon penalty not (leave count={cnt}, duration={duration}s)',
+                    )
 
     @packet_handler(ChoiceRewardPartyRankReq)
     async def handle_choice_reward_party_rank(self, correlation, body):

@@ -102,10 +102,26 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5091 = await client.expect_event(5091)
             self.assertEqual(struct.unpack_from('<iq', ack5091)[:2], (0, char['id']))
 
-            # 10b. Leave room (5005 -> 5006)
+            # 10b. Leave room outside dungeon (5005 -> 5006 only, no 5046)
             client.send_event(5005, b'')
             _, ack5006 = await client.expect_event(5006)
             self.assertEqual(struct.unpack_from('<i', ack5006)[0], 0)
+
+            # 10c. Mid-dungeon abandon before clear (5013 -> 5014, then 5005 -> 5006 + 5046 + 2085 penalty)
+            from darkblood.games.network.messages import ChangeDungeonPenaltyNot, StartGameReq
+            client.send_event(5013, StartGameReq(map_code='Act1_G1_A10').encode())
+            _, ack5014_ab = await client.expect_event(5014)
+            self.assertEqual(struct.unpack_from('<i', ack5014_ab)[0], 0)
+            await client.expect_event(2023)  # stress consumed on dungeon entry
+            client.send_event(5005, b'')
+            _, ack5006_ab = await client.expect_event(5006)
+            self.assertEqual(struct.unpack_from('<i', ack5006_ab)[0], 0)
+            _, ack5046_ab = await client.expect_event(5046)
+            self.assertEqual(struct.unpack_from('<i', ack5046_ab)[0], 0)
+            _, not2085 = await client.expect_event(2085)
+            pen = ChangeDungeonPenaltyNot.decode(not2085)
+            self.assertEqual((pen.in_dungeon, pen.is_penalty, pen.penalty_level, pen.penalty_id, pen.duration),
+                             (True, False, 1, 0, 600))
 
             # 11. Back to square (5045 -> 5046)
             client.send_event(5045, struct.pack('<i', 0x7fffffff))

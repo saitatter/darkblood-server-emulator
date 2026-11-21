@@ -144,6 +144,8 @@ class SquareHandlers(BaseDomainService):
         # solo room; a party survives the gate or a run and is open again. Leaving
         # it here sent 5036 for the host, and the member saw "all members left the
         # party" when the leader closed the dungeon gate (live 2026-11-21).
+        self.session.dungeon.in_dungeon = False
+        self.session.dungeon.dungeon_cleared = False
         room = self.session.dungeon.room
         party_members = []
         if room is not None and room.info.name == '_singleplay':
@@ -155,6 +157,9 @@ class SquareHandlers(BaseDomainService):
             # other party members to town as well so nobody is left stranded.
             if room.host is self.session:
                 party_members = [m for m in list(room.members) if m is not self.session]
+                for member in party_members:
+                    member.dungeon.in_dungeon = False
+                    member.dungeon.dungeon_cleared = False
         # Return to the layer the player left town from: after GamePlay the
         # client places the unit by that layer's waypoint (0x008EC230).
         ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=self._town_layer(),
