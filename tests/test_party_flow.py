@@ -53,7 +53,7 @@ class PartyWireMessagesTest(unittest.TestCase):
         self.assertEqual(inv_not, (
             bytes.fromhex('00 0400000000000000 0a1a000000000000 00000000 8e')
             + 'LeaderX'.encode('utf-16le')
-            + bytes.fromhex('00ffff00') + b'\xff' * 16 + b'\x00' * 83
+            + bytes.fromhex('00000000') + b'\xff' * 16 + b'\x00' * 83
             + b'\x80' + b'\xff' * 10
         ))
         dec_not = PartyInviteNot.decode(inv_not)
@@ -252,15 +252,13 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 self.assertEqual(set(party.members), {char_id1, char_id2})
 
                 # 3. Leader invites Client 3 by nickname via Opcode 5092
-                # (eERC_INVITE_USE_NICK_REQ, prefix + J-wstring); the result is a 5050.
+                # (eERC_INVITE_USE_NICK_REQ, prefix + J-wstring); errors reply with 5050,
+                # success delivers 5051 without 5050 (0x00758700 prints result=0 as error).
                 # J-wstring length is a byte-count varint (bit 7 ends it): 6 -> 0x86.
                 client1.send_event(5092, bytes.fromhex('ffffff7f') + bytes([0x86]) + 'Hero3'[:3].encode('utf-16le'))
                 _, unknown = await client1.expect_event(5050)
                 self.assertNotEqual(PartyInviteAck.decode(unknown).result, 0)  # "Her" is no character
                 client1.send_event(5092, bytes.fromhex('ffffff7f') + bytes([0x8a]) + 'Hero3'.encode('utf-16le'))
-                _, ack5050 = await client1.expect_event(5050)
-                inv_ack5050 = PartyInviteAck.decode(ack5050)
-                self.assertEqual(inv_ack5050.result, 0)
 
                 # Client 3 receives Opcode 5051
                 _, not5051_c3 = await client3.expect_event(5051)

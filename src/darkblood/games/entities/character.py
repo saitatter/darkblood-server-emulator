@@ -116,6 +116,10 @@ class Character:
     # (Type 3) to +0xD4. Values are the 2210 dye block; None = undyed.
     hair_dye: tuple = None
     skin_dye: tuple = None
+    # Details +0x7C / +0x7E / +0x80 (i16 x 3), applied by 0x0095A150 -> 0x009460A0 (SetStress).
+    stress: int = 0
+    stress_week: int = 0
+    stress_pcb: int = 0
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -166,6 +170,9 @@ class Character:
             daily_rebirth_recv=data.get('daily_rebirth_recv', 0),
             hair_dye=tuple(data['hair_dye']) if data.get('hair_dye') else None,
             skin_dye=tuple(data['skin_dye']) if data.get('skin_dye') else None,
+            stress=int(data.get('stress', 0)),
+            stress_week=int(data.get('stress_week', 0)),
+            stress_pcb=int(data.get('stress_pcb', 0)),
         )
 
     def to_dict(self) -> dict:
@@ -201,6 +208,9 @@ class Character:
             'daily_rebirth_recv': self.daily_rebirth_recv,
             'hair_dye': list(self.hair_dye) if self.hair_dye else None,
             'skin_dye': list(self.skin_dye) if self.skin_dye else None,
+            'stress': self.stress,
+            'stress_week': self.stress_week,
+            'stress_pcb': self.stress_pcb,
         }
 
     def encode_lobby_entry(self) -> bytes:
@@ -241,9 +251,16 @@ class Character:
         # Face, hair, and cosmetic parameter (Reader 0x00A52630 +0x35, +0x39, +0x3D)
         b += struct.pack('<III', self.visuals.face, self.visuals.hair, self.u2e)
         b += struct.pack('<B', self.level)
-        b += struct.pack('<IQIIHH', self.exp, self.u66, self.u6e, self.total_ap, 0, 0)
-        # Sub-struct 0xa488f0: untagged 24 bytes
-        b += (b'\x00' * 24)
+        # 0x00A52630: +0x41 u32 exp, +0x45 u64 gold, +0x4D u32 total_ap,
+        # +0x7C i16 stress, +0x7E i16 stress_week, +0x80 i16 stress_pcb, +0x82 i16 daily_post_send.
+        b += struct.pack('<IQIhhhh', self.exp, self.u66, self.total_ap,
+                         self.stress, self.stress_week, self.stress_pcb, 0)
+        # Sub-struct 0xa488f0: untagged 24-byte GameOption block (+0x84), copied
+        # by 0x00470D10 into 0x00F2DA28 +0xBE..+0xD5 on 2007 SelectCharacterAck.
+        # Defaults from client constructor 0x0045FD50 (+0xBE=1 AllowPartyInvite,
+        # +0xCB=1 AllowTrade/Guild, +0xCC=1 AllowWhisper, +0xCD/+0xD1=0.5f).
+        # Sending 24 zero bytes disabled party invites (+0xBE==0) and social options.
+        b += struct.pack('<15BffB', 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0.5, 0.5, 0)
         # Details +0x5F (u64) and +0x9C (bool), copied by 0x0095A150 into the
         # player object at +0xF0 and +0x80 respectively:
         #  * player+0xF0 is nJoinLayerNetID. JAppStateSquarePlay's CanEnter

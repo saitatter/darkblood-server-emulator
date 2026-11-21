@@ -266,12 +266,17 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatChangeStressReq)
     async def handle_cheat_change_stress(self, correlation: int, body: bytes):
         # 2130 -> 2023 StressChangedNot: stress
-        from darkblood.games.network.messages.system import StressChangedNot
+        from darkblood.games.progression import set_stress, stress_changed_not
         req = CheatChangeStressReq.decode(body)
-        await self.send_msg(
-            StressChangedNot(stress=req.stress, stress_pcb=req.stress_pcb, stress_week=req.stress_week),
-            note=f'cheat stress changed not ({req.stress})',
-        )
+        char = self.current_char()
+        if char is not None:
+            set_stress(char, req.stress, req.stress_pcb, req.stress_week)
+            self.save_char()
+            msg = stress_changed_not(char)
+        else:
+            from darkblood.games.network.messages.system import StressChangedNot
+            msg = StressChangedNot(stress=req.stress, stress_pcb=req.stress_pcb, stress_week=req.stress_week)
+        await self.send_msg(msg, note=f'cheat stress changed not ({msg.stress})')
 
     @packet_handler(CheatItemCallReq)
     async def handle_cheat_item_call(self, correlation: int, body: bytes):

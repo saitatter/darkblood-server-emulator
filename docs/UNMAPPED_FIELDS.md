@@ -227,14 +227,13 @@
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:162 | RMI id |
 | `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:183 | vecDuel |
 
-## party (9 of 104 fields)
+## party (8 of 104 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `5049 PartyInviteReq` | `bool` | party.jsch:45 | meaning unknown |
 | `5051 PartyInviteNot` | `bool` | party.jsch:62 |  |
 | `5051 PartyInviteNot` | `u32` | party.jsch:65 |  |
-| `5051 PartyInviteNot` | `u16` | party.jsch:68 |  |
 | `5051 PartyInviteNot` | `i64` | party.jsch:70 |  |
 | `5051 PartyInviteNot` | `i64` | party.jsch:71 |  |
 | `5051 PartyInviteNot` | `raw[74]` | party.jsch:72 |  |
@@ -273,33 +272,29 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (23 of 113 fields)
+## social (19 of 118 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `FriendEntry` | `wstr` | social.jsch:13 | +0x2E |
-| `FriendEntry` | `i64` | social.jsch:14 | +0x4A |
-| `FriendEntry` | `bool` | social.jsch:15 | +0x52 |
-| `5041 ChatAck` | `u8` | social.jsch:100 | meaning unknown |
-| `5041 ChatAck` | `u8` | social.jsch:101 |  |
-| `5041 ChatAck` | `vector<?>` | social.jsch:102 |  |
-| `5041 ChatAck` | `vector<?>` | social.jsch:103 |  |
-| `5041 ChatAck` | `i32` | social.jsch:104 |  |
-| `5041 ChatAck` | `i64` | social.jsch:105 |  |
-| `5041 ChatAck` | `i64` | social.jsch:106 |  |
-| `5041 ChatAck` | `i64` | social.jsch:107 |  |
-| `5041 ChatAck` | `i32` | social.jsch:108 |  |
-| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:122 | updated item |
-| `6011 RequestCharInfoReq` | `bool` | social.jsch:138 |  |
-| `6011 RequestCharInfoReq` | `i64` | social.jsch:140 |  |
-| `6012 RequestCharInfoAck` | `u8` | social.jsch:146 | meaning unknown |
-| `6012 RequestCharInfoAck` | `u8` | social.jsch:147 |  |
-| `6012 RequestCharInfoAck` | `raw[32]` | social.jsch:148 | summary |
-| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:149 | equipment |
-| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:150 | avatar |
-| `6028 RequestItemInfoReq` | `i32` | social.jsch:156 |  |
-| `6028 RequestItemInfoReq` | `i64` | social.jsch:158 |  |
-| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:166 |  |
+| `FriendEntry` | `i64` | social.jsch:19 | +0x4A |
+| `5041 ChatAck` | `bool` | social.jsch:109 | +0x55 sub-struct flag (0x00A52BD0) |
+| `5041 ChatAck` | `vector<?>` | social.jsch:110 |  |
+| `5041 ChatAck` | `vector<?>` | social.jsch:111 |  |
+| `5041 ChatAck` | `i64` | social.jsch:114 |  |
+| `5041 ChatAck` | `i64` | social.jsch:115 |  |
+| `5041 ChatAck` | `i32` | social.jsch:116 |  |
+| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:130 | updated item |
+| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:160 | 0x004DAE90 |
+| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:161 | 0x0076E9B0 |
+| `6012 RequestCharInfoAck` | `i32` | social.jsch:162 | 0x00A50B80 +0x00 |
+| `6012 RequestCharInfoAck` | `f32` | social.jsch:163 | +0x04 |
+| `6012 RequestCharInfoAck` | `raw[28]` | social.jsch:164 | +0x08..+0x23 (7 x i32) |
+| `6012 RequestCharInfoAck` | `raw[32]` | social.jsch:165 | 0x00A4A0C0 (+0x24..+0x43, 8 x i32) |
+| `6012 RequestCharInfoAck` | `map<?>` | social.jsch:166 | 0x00481E90 |
+| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:167 | 0x004B13E0 |
+| `6028 RequestItemInfoReq` | `i32` | social.jsch:173 |  |
+| `6028 RequestItemInfoReq` | `i64` | social.jsch:175 |  |
+| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:183 |  |
 
 ## stalls (20 of 97 fields)
 

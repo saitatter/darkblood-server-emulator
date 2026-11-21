@@ -380,8 +380,14 @@ class PartyManager:
         if not target_id or target_id == inviter_id:
             return 1, None
 
-        if target_id in self.player_party:
-            return 1, None
+        existing_target_party = self.get_player_party(target_id)
+        if existing_target_party is not None:
+            # A 1-member party is only an unaccepted outgoing invite, not an
+            # active multi-player party; dissolve it so the player can be invited.
+            if len(existing_target_party.members) <= 1:
+                self.leave_party(target_id)
+            else:
+                return 1, None
 
         party = self.get_player_party(inviter_id)
         if party is None:
@@ -409,8 +415,12 @@ class PartyManager:
             return 1, None
         if target_id <= 0 or target_id not in party.pending_invites:
             return 3, None
-        if self.get_player_party(target_id) is not None:
-            return 3, None
+        existing_target_party = self.get_player_party(target_id)
+        if existing_target_party is not None:
+            if len(existing_target_party.members) <= 1 and existing_target_party is not party:
+                self.leave_party(target_id)
+            else:
+                return 3, None
 
         if party.is_full():
             party.pending_invites.discard(target_id)

@@ -136,6 +136,7 @@ class PartyInviteNot(WireMessage):
     inviter_uid: i64 = 0
     inviter_name: wstr = ''
     inviter_class: u8 = 0
+    inviter_stress: i16 = 0  # +0x31: inviter's current stress (0x00756F40 gauge; -1 showed "-1/330")
     inviter_level: u8 = 0
     room_uid: i64 = 0  # +0x90 nInviteRoomUID
     room_name: wstr = ''  # +0x98
@@ -149,7 +150,7 @@ class PartyInviteNot(WireMessage):
         Const(u32, 0),
         'inviter_name',
         'inviter_class',
-        Const(u16, 0xFFFF),
+        'inviter_stress',
         'inviter_level',
         Const(i64, -1),
         Const(i64, -1),

@@ -112,10 +112,11 @@ class DungeonFlowTest(ServerTestCase):
             _, ack5046 = await client.expect_event(5046)
             self.assertEqual(struct.unpack_from('<i', ack5046)[0], 0)
 
-            # 12. Party invite (5049 -> 5050)
-            client.send_event(5049, PartyInviteReq(target_uid=12345).encode())
+            # 12. Party invite to self is rejected with 5050 (error-only ack;
+            # success sends no 5050 because 0x00758700 prints result=0 as an error).
+            client.send_event(5049, PartyInviteReq(target_uid=char_id).encode())
             _, ack5050 = await client.expect_event(5050)
-            self.assertEqual(struct.unpack_from('<i', ack5050)[0], 0)
+            self.assertNotEqual(struct.unpack_from('<i', ack5050)[0], 0)
 
             # 13. Accepting without an invitation is rejected (5054 -> 5055).
             client.send_event(5054, PartyAcceptInviteReq(host_uid=12345).encode())
@@ -355,6 +356,50 @@ class DungeonFlowTest(ServerTestCase):
             client.send_event(2719, GbbGiveupReq().encode())
             _, r = await client.expect_event(2720)
             self.assertEqual(GbbGiveupAck.decode(r).result, 0)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_stress_consumption_and_recovery(self):
+        """Verify dungeon stress consumption (5013 + 5095), passive recovery, and daily reset."""
+        from darkblood.games.network.messages.dungeon import StartGameReq
+        from darkblood.games.network.messages.system import StressChangedNot
+        from darkblood.games.progression import MAX_STRESS, consume_stress, refresh_stress
+
+        # Unit checks: consumption, clamping, passive 1/min recovery, and daily reset.
+        char = {'id': 1, 'stress': 0}
+        t0 = 1_700_000_000.0
+        self.assertTrue(consume_stress(char, 2, now=t0))
+        self.assertEqual(char['stress'], 2)
+        self.assertEqual(char['today_cronos_stress'], 2)
+        self.assertTrue(consume_stress(char, 500, now=t0))
+        self.assertEqual(char['stress'], MAX_STRESS)
+        self.assertTrue(refresh_stress(char, now=t0 + 185.0))  # 3 full minutes -> -3 stress
+        self.assertEqual(char['stress'], MAX_STRESS - 3)
+        self.assertTrue(refresh_stress(char, now=t0 + 90_000.0))  # next day -> reset to 0
+        self.assertEqual(char['stress'], 0)
+        self.assertEqual(char['today_cronos_stress'], 0)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('StressHero', char_class=1))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            # 5013 StartGame consumes initial room stress (+2 -> 2023 StressChangedNot)
+            client.send_event(5013, StartGameReq(map_code='Act1_G1_A10').encode())
+            await client.expect_event(5014)
+            _, n1 = await client.expect_event(2023)
+            self.assertEqual(StressChangedNot.decode(n1).stress, 2)
+
+            # First 5095 (initial layer 1) does not double-charge; second layer (2) charges +2 -> 4
+            map_hash = hashing.jhash('Act1_G1_A10')
+            client.send_event(5095, struct.pack('<iq', 0x7fffffff, (map_hash << 32) | 1))
+            client.send_event(5095, struct.pack('<iq', 0x7fffffff, (map_hash << 32) | 2))
+            _, n2 = await client.expect_event(2023)
+            self.assertEqual(StressChangedNot.decode(n2).stress, 4)
 
         self.run_async(self.with_server(scenario))
 

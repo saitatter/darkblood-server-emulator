@@ -65,7 +65,7 @@ message 5051 PartyInviteNot
   u32 _
   wstr inviter_name
   u8 inviter_class
-  u16 _ = 0xFFFF
+  i16 inviter_stress = 0     # +0x31: inviter's current stress (0x00756F40 gauge; -1 showed "-1/330")
   u8 inviter_level
   i64 _ = -1
   i64 _ = -1

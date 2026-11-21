@@ -292,14 +292,21 @@ class DungeonHandlers(BaseDomainService):
         char = room.members.pop(self.session)
         notice = event(5036, RoomMemberLeftNot(char['id']).encode())
         peers = list(room.members)
-        if self.session is room.host:
+        if not peers:
             self.transport.server.dungeon_rooms.pop(room.info.room_id, None)
-        await self._notify_room(room, peers, notice, 'room member left')
+            return
+        promoted_host_uid = None
         if self.session is room.host:
-            for peer in peers:
-                if peer.dungeon.room is room:
-                    peer.dungeon.room = None
-            room.members.clear()
+            new_host = peers[0]
+            room.host = new_host
+            promoted_host_uid = room.members[new_host]['id']
+            room.info.host_uid = promoted_host_uid
+        await self._notify_room(room, peers, notice, 'room member left')
+        if promoted_host_uid is not None:
+            # 5022 eERC_CHANGE_ROOMHOST_ACK (0x00599630): i32 result + i64 nChangeNewHostUID.
+            # Promotes the remaining member so they can edit party settings / start runs.
+            host_notice = event(5022, struct.pack('<Iq', 0, promoted_host_uid))
+            await self._notify_room(room, peers, host_notice, f'change room host ({promoted_host_uid})')
 
     @packet_handler(5043)
     async def handle_select_dungeon(self, correlation, body):
@@ -412,6 +419,8 @@ class DungeonHandlers(BaseDomainService):
                 self.room.floor_gold.clear()
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
+        if ack.result == 0:
+            await self._consume_session_stress(self.session)
         room = self.room
         if ack.result == 0 and room is not None and room.host is self.session and room.info.name != '_singleplay':
             # Shared dungeon, step 1: the members sit in the same gate (5044 at the
@@ -425,6 +434,7 @@ class DungeonHandlers(BaseDomainService):
                 try:
                     await member.transport.send_event(event(5014, ack.encode()),
                                                       note='start game (party, %s)' % request.map_code)
+                    await self._consume_session_stress(member)
                 except (ConnectionError, OSError):
                     pass
 
@@ -432,6 +442,20 @@ class DungeonHandlers(BaseDomainService):
         self.dungeon_kill_count = 0
         self.dungeon_score = 0
         self.dungeon_exp = 0
+        self.visited_dungeon_layers = set()
+
+    async def _consume_session_stress(self, session, amount=None):
+        from darkblood.games.progression import STRESS_PER_DUNGEON_ROOM, consume_stress, stress_changed_not
+        char = session.dungeon.current_char()
+        if char is None:
+            return
+        pts = STRESS_PER_DUNGEON_ROOM if amount is None else amount
+        if consume_stress(char, pts):
+            session.dungeon.save_char()
+            await session.transport.send_event(
+                event(2023, stress_changed_not(char).encode()),
+                note=f"stress changed not ({char['stress']})",
+            )
 
     @packet_handler(ChangeDungeonLayerNot)
     async def handle_change_dungeon_layer(self, correlation, body):
@@ -443,6 +467,15 @@ class DungeonHandlers(BaseDomainService):
             self.current_dungeon_layer = layer_id
             self.current_dungeon_map_hash = map_hash
             self.transport.record('dungeon-layer', body, layer_id=layer_id, map_hash='0x%08x' % map_hash)
+            visited = getattr(self, 'visited_dungeon_layers', None)
+            if visited is None:
+                visited = set()
+                self.visited_dungeon_layers = visited
+            if layer_id not in visited:
+                visited.add(layer_id)
+                # First layer of a run was already charged on 5013 StartGame; charge subsequent rooms.
+                if len(visited) > 1:
+                    await self._consume_session_stress(self.session)
         except (struct.error, ValueError):
             pass
 

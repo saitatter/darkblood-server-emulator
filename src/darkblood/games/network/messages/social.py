@@ -7,6 +7,8 @@ from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
+from darkblood.games.entities.character import Character
+from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.dungeon import RoomMemberInfo
 
 __all__ = [
@@ -54,21 +56,27 @@ __all__ = [
 
 @dataclass
 class FriendEntry(WireMessage):
-    """Friend struct, reader 0x00A49450 (2140 and the 2132 map)."""
+    """Friend struct, reader 0x00A49450 (2140 and the 2132 map).
+    UI layout verified in Lua_OnUpdateFriendList (0x00500000.c:2026):
+    +0x24 class, +0x25 level, +0x26 square_id (Page_SquareList lookup -> "Channel 1"),
+    +0x2E memo, +0x52 is_online (gray "Offline" when false).
+    """
     uid: i64 = 0  # +0x00 char uid
     name: wstr = ''  # +0x08
-    char_class: u8 = 0  # +0x24 (sent as class, like the lobby entry; not confirmed)
-    level: u8 = 1  # +0x25 (not confirmed)
-    location: i64 = -1  # +0x26: 0x00926800 counts the friend online when not -1
+    char_class: u8 = 0  # +0x24
+    level: u8 = 1  # +0x25
+    location: i64 = -1  # +0x26: square_id looked up in Page_SquareList (0x0062D540); -1 offline
+    memo: wstr = ''  # +0x2E: friend memo/comment
+    is_online: bool = True  # +0x52: online flag (filters "online only" & toggles "Offline")
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'uid',
         'name',
         'char_class',
         'level',
         'location',
-        Const(wstr, ''),
+        'memo',
         Const(i64, 0),
-        Const(bool, True),
+        'is_online',
     )
 
 
@@ -148,12 +156,13 @@ class FriendListUpdateReq(WireMessage):
 class FriendListUpdateAck(WireMessage):
     """Opcode 2134: eEGS_FRIEND_LIST_UPDATE_ACK (reply).
 
-    On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80.
+    On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80: reads i32 result, i64 uid (0x00B35430),
+    J-wstring memo (0x00B35AB0), then updates JFriendMgr via 0x00926B00.
     """
     OPCODE: ClassVar[int] = 2134
     result: i32 = 0
     char_uid: i64 = 0
-    comment: wstrz = ''  # null-terminated UTF-16 as sent so far; reader not checked
+    comment: wstr = ''
 
 
 @dataclass
@@ -202,12 +211,14 @@ class ChatReq(WireMessage):
     """Opcode 5040: eERC_CHAT_REQ (request).
 
     Sender 0x007AC570 writes one struct (0x00A4DC70). Captures carry no header:
-    01 80 80 8a "/bags" 00 1080 1080 01000000 ff... The tail is not decoded.
+    normal: 01 80 80 8a "/bags" 00 1080 1080 01000000 ff...
+    whisper: 02 90 "Warrior1" 80 8a "sadad" 00 1080 1080 01000000 ff...
+    Field order verified in 0x00544310: +0x01 is target, +0x1D is sender.
     """
     OPCODE: ClassVar[int] = 5040
     channel: u8 = 0
-    sender: wstr = ''
     target: wstr = ''
+    sender: wstr = ''
     message: wstr = ''
     tail: rest = b''
 
@@ -216,27 +227,29 @@ class ChatReq(WireMessage):
 class ChatAck(WireMessage):
     """Opcode 5041: eERC_CHAT_ACK (reply).
 
-    Handler 0x007AC890.
+    Handler 0x007AC890 -> 0x00A53490 -> 0x00A52BD0 (bool + 2 vectors + 5 ints).
+    Display 0x00544310 reads sender from +0x1D and target from +0x01.
     """
     OPCODE: ClassVar[int] = 5041
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     channel: u8 = 0
-    sender: wstr = 'System'
     target: wstr = ''
+    sender: wstr = 'System'
     message: wstr = ''
+    server_key: i32 = 31  # +0x76; must match local player's server key (0x1F) for whispers
+    sender_square_uid: i64 = 0x07C0000000000001  # +0x7A; bits 54-58 checked by 0x00544310 (else "(Other server)")
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'channel',
-        'sender',
         'target',
+        'sender',
         'message',
-        Const(u8, 0x0A),
-        Const(u8, 0),
+        Const(bool, False),
         Const(EmptyVector),
         Const(EmptyVector),
-        Const(i32, 0),
-        Const(i64, 0),
+        'server_key',
+        'sender_square_uid',
         Const(i64, 0),
         Const(i64, 0),
         Const(i32, 0),
@@ -298,36 +311,44 @@ class ContractUpdateAck(WireMessage):
 class RequestCharInfoReq(WireMessage):
     """Opcode 6011: eERT_REQUEST_CHAR_INFO_REQ (request).
 
-    Sender 0x00790C80: 0x00B35630, 0x00B353D0, 0x00B353D0. Which i64 is the
-    character uid is not confirmed.
+    Sender 0x00790C80: bool is_other, i64 target_char_uid, i64 requester_uid.
+    Live 2026-11-21 (View Info on Knight1 from Warrior1): 01 | 1 | 2.
     """
     OPCODE: ClassVar[int] = 6011
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
+    is_other: bool = False
     char_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'header',
-        Const(bool, False),
-        'char_uid',
-        Const(i64, 0),
-    )
+    requester_uid: i64 = 0
 
 
 @dataclass
 class RequestCharInfoAck(WireMessage):
     """Opcode 6012: eERT_REQUEST_CHAR_INFO_ACK (reply).
 
-    Handler 0x00790FA0. Summary struct not recovered (32 zero bytes).
+    Handler 0x00790FA0: i32 result, bool is_other, Character (0x00A52630),
+    vector<Item> (0x004B9210), 2 vectors (0x004DAE90, 0x0076E9B0),
+    0x00A50B80 (i32 + f32 + 7*i32 + 0x00A4A0C0(8*i32) + map 0x00481E90),
+    vector (0x004B13E0).
     """
     OPCODE: ClassVar[int] = 6012
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
+    is_other: bool = True
+    character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
-        Const(u8, 0x0A),
-        Const(u8, 0),
-        Const(Raw[32], bytes(32)),
+        'is_other',
+        'character',
+        'items',
         Const(EmptyVector),
+        Const(EmptyVector),
+        Const(i32, 0),
+        Const(f32, 0.0),
+        Const(Raw[28], bytes(28)),
+        Const(Raw[32], bytes(32)),
+        Const(EmptyMap),
         Const(EmptyVector),
     )
 

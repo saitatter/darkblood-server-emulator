@@ -257,6 +257,9 @@ class FrontendHandlers(BaseDomainService):
             await self.session.dungeon.leave_room()
             await world.remove_session_player(self.session)
         self.session.active_char_id = char_id
+        from darkblood.games.progression import refresh_stress
+        if refresh_stress(char):
+            self.save_char()
         ack = build_select_char_ack(char, account_chars=self.store().characters(self.account))
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)

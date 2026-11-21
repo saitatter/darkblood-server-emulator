@@ -46,9 +46,15 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertIn(wide('hello town'), heard)
                 whisper = ChatReq(channel=2, target='RoomHost', message='psst', tail=CHAT_TAIL).encode()
                 guest.send_event(5040, whisper)
-                await guest.expect_event(5041)
+                _, whisper_ack = await guest.expect_event(5041)
                 _, whispered = await host.expect_event(5041)
                 self.assertIn(wide('psst'), whispered)
+                self.assertEqual(whisper_ack, whispered)
+                from darkblood.games.network.messages import ChatAck
+                decoded_whisper = ChatAck.decode(whispered)
+                self.assertEqual(decoded_whisper.sender, 'RoomGuest')
+                self.assertEqual(decoded_whisper.target, 'RoomHost')
+                self.assertEqual(decoded_whisper.server_key, 31)
 
                 # Find user (2024, live body: low/high level, page, job 7, layer -1,
                 # square UID) lists the other player; a level range above it does not.
@@ -113,8 +119,6 @@ class SharedDungeonRoomTest(ServerTestCase):
                 # The host's Accept sends 5049 for the requester (AcceptJoinRoomREQ):
                 # the requester joins at once, answered on its 5047 correlation.
                 host.send_event(5049, struct.pack('<iq?q', 0x7fffffff, 1, False, guest_id))
-                _, accepted = await host.expect_event(5050)
-                self.assertEqual(struct.unpack_from('<i', accepted)[0], 0)
                 correlation, joined = await guest.expect_event(5004)
                 self.assertEqual((correlation, struct.unpack_from('<Iq', joined)), (36, (0, gate_room_id)))
                 await host.expect_event(5035)
@@ -249,6 +253,11 @@ class SharedDungeonRoomTest(ServerTestCase):
                 await host.expect_event(5006)
                 _, departure = await guest.expect_event(5036)
                 self.assertEqual(departure, struct.pack('<Iq', 0, host_id))
+                _, promoted = await guest.expect_event(5022)
+                self.assertEqual(promoted, struct.pack('<Iq', 0, guest_id))
+                # Guest leaves the room too, closing it.
+                guest.send_event(5005)
+                await guest.expect_event(5006)
                 guest.send_event(5003, struct.pack('<q', room_id))
                 _, error = await guest.expect_event(5004)
                 self.assertEqual(error, struct.pack('<I', results.ROOM_NOT_EXISTS))
@@ -262,8 +271,6 @@ class SharedDungeonRoomTest(ServerTestCase):
                 # Invite (5049: square UID, bool, char UID) carries the host's room as
                 # nInviteRoomUID; Accept without a room UID sends 5054, which joins it.
                 host.send_event(5049, struct.pack('<iq?q', 0x7fffffff, 1, False, guest_id))
-                _, invited = await host.expect_event(5050)
-                self.assertEqual(struct.unpack_from('<i', invited)[0], 0)
                 _, notice = await guest.expect_event(5051)
                 invite = PartyInviteNot.decode(notice)
                 self.assertEqual((invite.room_uid, invite.room_name, invite.inviter_uid),

@@ -229,7 +229,7 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack5261)[0], 0)
 
             # 41. Request char info (6011 -> 6012)
-            client.send_event(6011, RequestCharInfoReq(char_uid=8888).encode())
+            client.send_event(6011, RequestCharInfoReq(is_other=True, char_uid=char_id).encode())
             _, ack6012 = await client.expect_event(6012)
             self.assertEqual(struct.unpack_from('<i', ack6012[:4])[0], 0)
 

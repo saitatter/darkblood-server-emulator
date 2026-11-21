@@ -161,6 +161,7 @@ class SquareHandlers(BaseDomainService):
                               cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5046, ack, correlation),
                                         note='back to square ack')
+        await self._sync_passive_stress()
         for member in party_members:
             try:
                 m_ack = BackToSquareAck(
@@ -170,8 +171,17 @@ class SquareHandlers(BaseDomainService):
                 ).encode()
                 await member.transport.send_event(event(5046, m_ack),
                                                   note='back to square ack (party)')
+                await member.square._sync_passive_stress()
             except (ConnectionError, OSError):
                 pass
+
+    async def _sync_passive_stress(self):
+        """Apply passive town stress recovery (1/min) and daily reset, notifying client on change."""
+        from darkblood.games.progression import refresh_stress, stress_changed_not
+        char = self.current_char()
+        if char is not None and refresh_stress(char):
+            self.save_char()
+            await self.send_msg(stress_changed_not(char), note=f"stress recovery not ({char['stress']})")
 
     def _town_layer(self):
         char = self.current_char()
@@ -216,6 +226,7 @@ class SquareHandlers(BaseDomainService):
                               cur_ar=self._current_gold()).encode()
         await self.transport.send_event(event(5031, ack, correlation),
                                         note='join layer ack (%d)' % layer_id)
+        await self._sync_passive_stress()
         if previous_layer is not None:
             if previous_layer != layer_id:
                 await world.broadcast_layer_leave(player, previous_layer)

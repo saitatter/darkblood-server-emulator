@@ -28,11 +28,22 @@ class SocialHandlers(BaseDomainService):
         """FriendEntry for a character of any account, or None."""
         from darkblood.games.network.messages import FriendEntry
         from darkblood.games.world import GameWorldManager
+        world = GameWorldManager.get()
+        owner = self.current_char() or {}
+        memo = (owner.get('friend_memos') or {}).get(str(uid), '')
         for _, char in self.store().all_characters():
             if char.get('id') == uid:
-                return FriendEntry(uid=uid, name=char.get('name', ''), level=int(char.get('level', 1)),
-                                   char_class=int(char.get('char_class', 0)),
-                                   location=1 if uid in GameWorldManager.get().players else -1)
+                player = world.players.get(uid)
+                online = player is not None
+                return FriendEntry(
+                    uid=uid,
+                    name=char.get('name', ''),
+                    level=int(char.get('level', 1)),
+                    char_class=int(char.get('char_class', 0)),
+                    location=player.square_id if online else -1,
+                    memo=memo,
+                    is_online=online,
+                )
         return None
 
     @packet_handler(2569)
@@ -170,6 +181,10 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.network.messages import FriendListUpdateAck, FriendListUpdateReq
         req = FriendListUpdateReq.decode(body)
         self.transport.record('friend-update-req', body, char_uid=req.char_uid, comment=req.comment)
+        char = self.current_char()
+        if char is not None:
+            char.setdefault('friend_memos', {})[str(req.char_uid)] = req.comment
+            self.save_char()
         ack = FriendListUpdateAck(result=0, char_uid=req.char_uid, comment=req.comment).encode()
         await self.transport.send_event(event(2134, ack, correlation),
                                         note=f'friend list update ack (uid={req.char_uid})')
@@ -395,22 +410,23 @@ class SocialHandlers(BaseDomainService):
 
         reply_msg = system_reply if system_reply else msg
         sender = 'System' if system_reply else char_name
-        ack = ChatAck(result=0, channel=req.channel, sender=sender, target=req.target, message=reply_msg).encode()
+        target = req.target
+        ack = ChatAck(result=0, channel=req.channel, target=target, sender=sender, message=reply_msg).encode()
         await self.transport.send_event(event(5041, ack, correlation), note=f'chat ack ({reply_msg})')
         if system_reply or not msg:
             return
         # Other players receive the line as an unsolicited 5041 (global handler
         # 0x007AC890). Channel 1 is normal chat (live), 2 a whisper (the handler
-        # compares the target name); the party/guild/team values are not
-        # recovered yet, so any other channel goes to the sender's party room.
-        recipients = self._chat_recipients(req.channel, req.target)
+        # compares server_key at +0x76 against local bits 54-58 and target name);
+        # any other channel goes to the sender's party room.
+        recipients = self._chat_recipients(req.channel, target)
         packet = event(5041, ack)
         for session in recipients:
             try:
                 await session.transport.send_event(packet, note=f'chat from {char_name} (channel {req.channel})')
             except (ConnectionError, OSError):
                 pass
-        self.transport.record('chat-route', b'', channel=req.channel, target=req.target, recipients=len(recipients))
+        self.transport.record('chat-route', b'', channel=req.channel, target=target, recipients=len(recipients))
 
     def _chat_recipients(self, channel, target):
         """Sessions other than the sender that should see a chat line."""
@@ -581,13 +597,29 @@ class SocialHandlers(BaseDomainService):
         ack = SecondPassAuthAck(result=0).encode()
         await self.transport.send_event(event(5261, ack, correlation), note='second pass auth ack')
 
+    def _build_char_info_ack(self, target, is_other=True):
+        from darkblood.games.entities.character import Character
+        from darkblood.games.entities.items import Item
+        from darkblood.games.network.messages import RequestCharInfoAck
+        if target is None:
+            return RequestCharInfoAck(result=0xCE)
+        equipped = [Item.from_dict(it) for it in target.get('items', []) if it.get('container', 0) == 0]
+        return RequestCharInfoAck(
+            result=0,
+            is_other=bool(is_other),
+            character=Character.from_dict(target),
+            items=equipped,
+        )
+
     @packet_handler(6011)
     async def handle_request_char_info(self, correlation, body):
         # eERT_REQUEST_CHAR_INFO_REQ -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0).
-        from darkblood.games.network.messages import RequestCharInfoAck, RequestCharInfoReq
+        from darkblood.games.network.messages import RequestCharInfoReq
         req = RequestCharInfoReq.decode(body)
         self.transport.record('request-char-info-req', body, char_uid=req.char_uid)
-        ack = RequestCharInfoAck(result=0).encode()
+        target_id = self._char_id(req.char_uid)
+        target = next((c for _, c in self.store().all_characters() if c.get('id') == target_id), None)
+        ack = self._build_char_info_ack(target, is_other=req.is_other).encode()
         await self.transport.send_event(event(6012, ack, correlation), note=f'request char info ack (char={req.char_uid})')
 
     @packet_handler(6028)
@@ -681,24 +713,27 @@ class SocialHandlers(BaseDomainService):
         if pending is not None and room.host is self.session:
             # Host accepted a 5047 join request (OnBtn_Party_Accept on the host
             # calls AcceptJoinRoomREQ = 5049): the requester joins at once and gets
-            # 5004 for its pending 5047. A second invite/accept round never
-            # completed live (the requester's Accept handler did not run).
+            # 5004 for its pending 5047. Do not send 5050 on success: handler
+            # 0x00758700 unconditionally prints FUN_00ab29c0(result) as an error
+            # ("This is an unknown message" for result=0).
             requester, request_correlation = pending
-            await self.transport.send_event(event(ack_opcode, PartyInviteAck(result=0).encode(), correlation),
-                                            note=f'party invite ack (join request of {target_id} accepted)')
             if requester.dungeon.room is None:
                 await requester.dungeon.join_room(room, request_correlation)
             return
         res, _ = PartyManager.get().invite_player(char_id, target_id, char_name, char_class, level, session=self)
-        ack = PartyInviteAck(result=res).encode()
-        await self.transport.send_event(event(ack_opcode, ack, correlation),
-                                        note=f'party invite ack (res={res} target={target_id})')
+        # 5050 handler (0x00758700) has no result==0 guard and prints any result
+        # via FUN_00ab29c0(result) in red chat ("This is an unknown message" for 0).
+        # Send 5050 only on failure; legacy 2101 still replies unconditionally.
+        if ack_opcode != 5050 or res != 0:
+            ack = PartyInviteAck(result=res).encode()
+            await self.transport.send_event(event(ack_opcode, ack, correlation),
+                                            note=f'party invite ack (res={res} target={target_id})')
         if res == 0 and target_id:
             await self._send_party_invite_notice(char_id, char_name, target_id)
 
     async def _send_party_invite_notice(self, char_id, char_name, target_id):
         from darkblood.games.network.messages.party import PartyInviteNot
-        from darkblood.games.world import GameWorldManager
+        from darkblood.games.world import GameWorldManager, square_uid
 
         world = GameWorldManager.get()
         target = world.get_player(target_id)
@@ -707,8 +742,9 @@ class SocialHandlers(BaseDomainService):
         inviter = world.get_player(char_id)
         char = self.current_char() or {}
         notice = PartyInviteNot(inviter_uid=char_id, inviter_name=char_name,
-                                inviter_square_uid=inviter.square_id if inviter else 1,
+                                inviter_square_uid=square_uid(inviter.square_id if inviter else 1),
                                 inviter_class=int(char.get('char_class', 0)) & 0xFF,
+                                inviter_stress=int(char.get('stress', 0)),
                                 inviter_level=min(int(char.get('level', 1)), 0xFF))
         room = self.session.dungeon.room
         if room is not None and room.info.name != '_singleplay':
@@ -762,7 +798,7 @@ class SocialHandlers(BaseDomainService):
         from darkblood.games.world import GameWorldManager
         host = GameWorldManager.get().get_player(host_id)
         host_room = getattr(getattr(getattr(host, 'session', None), 'dungeon', None), 'room', None)
-        if host_room is not None:
+        if host_room is not None and self.session.dungeon.room is not host_room:
             # The client's party is the dungeon room (5004/5035 have handlers;
             # 5055/5056 do not): accepting joins the host's room.
             await self.session.dungeon.join_room(host_room, correlation)
@@ -780,6 +816,23 @@ class SocialHandlers(BaseDomainService):
         if res == 0 and party:
             notif = PartyAcceptInviteNot(party_id=party_id, member_uid=char_id, member_name=char_name).encode()
             await pm.broadcast_to_party(party_id, event(5056, notif), exclude_char_id=char_id, note='party accept invite not')
+            # Real client has no handlers for 5055/5056; its party IS a DungeonRoom.
+            # If the host had no room yet, create one on the host (5002) and join it (5004 + 5035).
+            if host and host.session and getattr(host.session, 'dungeon', None) and host.session.dungeon.room is None:
+                from darkblood.games.handlers.dungeon import DungeonRoom, relay_address
+                from darkblood.games.network.messages.dungeon import CreateRoomAck, RoomInfo
+                server = host.session.transport.server
+                host_char = host.session.dungeon.current_char() or host.char_data
+                info = RoomInfo(room_id=next(server.room_ids), name=f"{host_char.get('name', 'Party')}'s Party",
+                                gate_id=-1, map_id=-1, diff=-1, max_users=4, cur_users=1, host_uid=host_id)
+                new_room = DungeonRoom(info, host.session, {host.session: host_char})
+                host.session.dungeon.room = new_room
+                server.dungeon_rooms[info.room_id] = new_room
+                await host.session.transport.send_event(
+                    event(5002, CreateRoomAck(room=info, relay=relay_address()).encode()),
+                    note='create party room ack (auto on 5054)',
+                )
+                await self.session.dungeon.join_room(new_room, correlation)
 
     @packet_handler(2104)
     async def handle_party_leave(self, correlation, body):
@@ -925,14 +978,14 @@ class SocialHandlers(BaseDomainService):
     @packet_handler(6018)
     async def handle_request_char_info_by_nick(self, correlation, body):
         # eERT_REQUEST_CHAR_INFO_BY_NICK_REQ (0x00790E10) -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0).
-        from darkblood.games.network.messages.social import RequestCharInfoAck, RequestCharInfoByNickReq
+        from darkblood.games.network.messages.social import RequestCharInfoByNickReq
         req = RequestCharInfoByNickReq.decode(body)
         self.transport.record('request-char-info-by-nick', body, target_nick=req.target_nick)
         target = next((c for _, c in self.store().all_characters()
                        if c.get('name', '').lower() == req.target_nick.lower()), None)
-        res = 0 if target else 0xCE
-        await self.reply(RequestCharInfoAck(result=res), correlation,
-                         note=f'request char info by nick ack ({req.target_nick}, res={res})')
+        ack = self._build_char_info_ack(target, is_other=True)
+        await self.reply(ack, correlation,
+                         note=f'request char info by nick ack ({req.target_nick}, res={ack.result})')
 
     # =========================================================================
     # Extended Party / Teaching / Guide Handlers

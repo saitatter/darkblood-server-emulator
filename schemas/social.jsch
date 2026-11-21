@@ -1,18 +1,23 @@
 # Friends, chat, speaker items, contracts and remote inspection. Format: schemas/README.md.
 
 domain social Dark Blood protocol wire messages - Social domain.
+extern Character from darkblood.games.entities.character encode=encode_world_details
+extern Item from darkblood.games.entities.items
 extern RoomMemberInfo from darkblood.games.network.messages.dungeon readable
 
 struct FriendEntry
   ## Friend struct, reader 0x00A49450 (2140 and the 2132 map).
+  ## UI layout verified in Lua_OnUpdateFriendList (0x00500000.c:2026):
+  ## +0x24 class, +0x25 level, +0x26 square_id (Page_SquareList lookup -> "Channel 1"),
+  ## +0x2E memo, +0x52 is_online (gray "Offline" when false).
   i64 uid                    # +0x00 char uid
   wstr name                  # +0x08
-  u8 char_class              # +0x24 (sent as class, like the lobby entry; not confirmed)
-  u8 level = 1               # +0x25 (not confirmed)
-  i64 location = -1          # +0x26: 0x00926800 counts the friend online when not -1
-  wstr _                     # +0x2E
+  u8 char_class              # +0x24
+  u8 level = 1               # +0x25
+  i64 location = -1          # +0x26: square_id looked up in Page_SquareList (0x0062D540); -1 offline
+  wstr memo                  # +0x2E: friend memo/comment
   i64 _                      # +0x4A
-  bool _ = true              # +0x52
+  bool is_online = true      # +0x52: online flag (filters "online only" & toggles "Offline")
 end
 
 message 2132 FriendListAck
@@ -51,10 +56,11 @@ message 2133 FriendListUpdateReq header?
 end
 
 message 2134 FriendListUpdateAck
-  ## On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80.
+  ## On_eEGS_FRIEND_LIST_UPDATE_ACK 0x00752E80: reads i32 result, i64 uid (0x00B35430),
+  ## J-wstring memo (0x00B35AB0), then updates JFriendMgr via 0x00926B00.
   i32 result
   i64 char_uid
-  wstrz comment              # null-terminated UTF-16 as sent so far; reader not checked
+  wstr comment
 end
 
 message 5118 FriendMyConnectionNot
@@ -82,27 +88,29 @@ end
 
 message 5040 ChatReq
   ## Sender 0x007AC570 writes one struct (0x00A4DC70). Captures carry no header:
-  ## 01 80 80 8a "/bags" 00 1080 1080 01000000 ff... The tail is not decoded.
+  ## normal: 01 80 80 8a "/bags" 00 1080 1080 01000000 ff...
+  ## whisper: 02 90 "Warrior1" 80 8a "sadad" 00 1080 1080 01000000 ff...
+  ## Field order verified in 0x00544310: +0x01 is target, +0x1D is sender.
   u8 channel
-  wstr sender
   wstr target
+  wstr sender
   wstr message
   rest tail
 end
 
 message 5041 ChatAck ok_only
-  ## Handler 0x007AC890.
+  ## Handler 0x007AC890 -> 0x00A53490 -> 0x00A52BD0 (bool + 2 vectors + 5 ints).
+  ## Display 0x00544310 reads sender from +0x1D and target from +0x01.
   i32 result
   u8 channel
-  wstr sender = 'System'
   wstr target
+  wstr sender = 'System'
   wstr message
-  u8 _ = 0x0A                # meaning unknown
-  u8 _
+  bool _                     # +0x55 sub-struct flag (0x00A52BD0)
   vector<?> _
   vector<?> _
-  i32 _
-  i64 _
+  i32 server_key = 31        # +0x76; must match local player's server key (0x1F) for whispers
+  i64 sender_square_uid = 0x07C0000000000001 # +0x7A; bits 54-58 checked by 0x00544310 (else "(Other server)")
   i64 _
   i64 _
   i32 _
@@ -133,21 +141,30 @@ message 2122 ContractUpdateAck
 end
 
 message 6011 RequestCharInfoReq header?
-  ## Sender 0x00790C80: 0x00B35630, 0x00B353D0, 0x00B353D0. Which i64 is the
-  ## character uid is not confirmed.
-  bool _
+  ## Sender 0x00790C80: bool is_other, i64 target_char_uid, i64 requester_uid.
+  ## Live 2026-11-21 (View Info on Knight1 from Warrior1): 01 | 1 | 2.
+  bool is_other
   i64 char_uid
-  i64 _
+  i64 requester_uid
 end
 
 message 6012 RequestCharInfoAck ok_only
-  ## Handler 0x00790FA0. Summary struct not recovered (32 zero bytes).
+  ## Handler 0x00790FA0: i32 result, bool is_other, Character (0x00A52630),
+  ## vector<Item> (0x004B9210), 2 vectors (0x004DAE90, 0x0076E9B0),
+  ## 0x00A50B80 (i32 + f32 + 7*i32 + 0x00A4A0C0(8*i32) + map 0x00481E90),
+  ## vector (0x004B13E0).
   i32 result
-  u8 _ = 0x0A                # meaning unknown
-  u8 _
-  raw[32] _                  # summary
-  vector<?> _                # equipment
-  vector<?> _                # avatar
+  bool is_other = true
+  Character character = Character()
+  vector<Item> items
+  vector<?> _                # 0x004DAE90
+  vector<?> _                # 0x0076E9B0
+  i32 _                      # 0x00A50B80 +0x00
+  f32 _                      # +0x04
+  raw[28] _                  # +0x08..+0x23 (7 x i32)
+  raw[32] _                  # 0x00A4A0C0 (+0x24..+0x43, 8 x i32)
+  map<?> _                   # 0x00481E90
+  vector<?> _                # 0x004B13E0
 end
 
 message 6028 RequestItemInfoReq header?

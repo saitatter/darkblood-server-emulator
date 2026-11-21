@@ -1,5 +1,26 @@
 # Session handoff — 2026-11-21
 
+## Live 2-client social, party, inspect & stress fixes — saita machine, 2026-11-21
+
+- **Chat & Whisper (`5040 ChatReq` / `5041 ChatAck`, `schemas/social.jsch`, `src/darkblood/games/handlers/social.py`)**:
+  - Removed the bogus extra `u8 _ = 0x0A` byte before `0x00A52BD0` (`bool` + 2 vectors) in `5041 ChatAck`, which shifted every `5041` by +1 byte and caused `0x007AC890` to drop all chat/whisper messages.
+  - Swapped `target` (`+0x01`) and `sender` (`+0x1D`) in both `5040 ChatReq` and `5041 ChatAck` per `0x00544310` (`+0x1D` is sender, `+0x01` is target), fixing missing sender names in normal chat and reversed `"Whisper to"` on recipients.
+  - Mapped `server_key = 31` (`+0x76`, checked by `0x007AC890`) and `sender_square_uid = 0x07C0000000000001` (`+0x7A`, checked by `0x00544310`), removing the `"(Other server)"` suffix on whispers. **Live-confirmed.**
+- **GameOption defaults in `2007 SelectCharacterAck` (`src/darkblood/games/entities/character.py`)**:
+  - `Character.encode_world_details()` previously sent 24 zero bytes at `+0x84` (`0x00A488F0`), which `0x00470D10` copied into `0x00F2DA28 +0xBE..+0xD5`, disabling `+0xBE` (`AllowPartyInvite`), `+0xCB` (`AllowTrade/Guild`), and `+0xCC` (`AllowWhisper`). Replaced with client constructor `0x0045FD50` defaults (`1,1,1,1,1,0,1,1,0,0,1,1,1,1,1, 0.5f, 0.5f, 0`). **Live-confirmed**: party invites now appear on the target client.
+- **Party Invite, Promotion & Inspect (`5050`, `5051`, `5054`, `5022`, `6011/6012`)**:
+  - `5050 PartyInviteAck` (`0x00758700`) has no `result == 0` guard and unconditionally prints `FUN_00ab29c0(result)` (`"This is an unknown message"` for `0`); now sent only on errors (`res != 0`). **Live-confirmed.**
+  - `5051 PartyInviteNot`: packed `inviter_square_uid` with `square_uid(...)`, mapped `+0x31` as `i16 inviter_stress = 0` (was `0xFFFF` = `-1`, showing `"-1/330"`).
+  - `5054 PartyAcceptInviteReq`: when the host has no `DungeonRoom` yet, auto-creates a party room (`5002` + `5004` + `5035`). `PartyManager` now dissolves stale 1-member solo parties from unaccepted outgoing invites so Community tab invites succeed.
+  - `5005 LeaveRoomReq` (`src/darkblood/games/handlers/dungeon.py`): when the party leader leaves with remaining members, keeps the room alive, promotes `peers[0]` to `room.host`, and sends `5022 eERC_CHANGE_ROOMHOST_ACK` (`0x00599630`: `i32 result`, `i64 nChangeNewHostUID`).
+  - `6011/6018 -> 6012 RequestCharInfoAck` (`0x00790FA0`): recovered full struct (`result`, `bool is_other`, `Character`, `vector<Item>`, 2 vectors, `0x00A50B80` PvP stats, trailing vector) and wired real character + equipped items.
+- **Friend Memo & Online Flag (`2132`, `2133/2134`)**:
+  - Fixed `2134 FriendListUpdateAck` (`0x00752E80`) to encode `comment` as J-wstring (`wstr`) instead of `wstrz`, persisted `friend_memos` per character, and mapped `FriendEntry.memo` (`+0x2E`) and `FriendEntry.is_online` (`+0x52`, from `Lua_OnUpdateFriendList` `0x00500000.c:2026`).
+- **Stress (Fatigue) System (`src/darkblood/games/progression.py`, `character.py`, `dungeon.py`, `square.py`, `frontend.py`, `gm.py`)**:
+  - Fixed `Character.encode_world_details()` `+0x4D/+0x7C/+0x7E/+0x80` (`<IQIhhhh`: `total_ap`, `stress`, `stress_week`, `stress_pcb`, `daily_post_send`; previously `u6e` was in `+0x4D` and `total_ap` overflowed into `+0x7C stress`).
+  - Implemented dungeon stress consumption (`+2` on `5013 StartGameReq` and each newly visited room on `5095 ChangeDungeonLayerNot`, clamped to `0..330`), passive town/offline recovery (`1` per minute on `2006`, `5030`, `5045`), daily midnight reset, persistent GM cheat `2130`, and `2023 StressChangedNot` broadcasts.
+- **Verification**: 200/200 headless tests pass (`test_stress_consumption_and_recovery` added), `gen_messages.py --check` and `gen_progress.py --check` pass. Live check of stress, 6012 View Info, 5022 host promotion, and 2134 memo pending.
+
 ## Native GM Console & Cheats sweep — saita machine, 2026-11-21
 
 - **GM Mode Option (`src/darkblood/core/options.py`, `src/darkblood/games/handlers/frontend.py`)**:
