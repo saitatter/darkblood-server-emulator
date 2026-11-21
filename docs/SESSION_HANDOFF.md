@@ -1,5 +1,18 @@
 # Session handoff — 2026-11-21
 
+## Inventory domain sweep (31 opcodes + 6 unmapped fields) — saita machine, 2026-11-21
+
+- Recovered 6 previously unmapped fields in `schemas/inventory.jsch` from client readers/asserts:
+  - `ItemDropEntry`: `u16 quality` (`+8`, `0x008842C0` -> `0x009E5560`) and `set<i64> owner_uids` (`+0xE`, `0x006B9200` / `0x00A4C7A0` loot rights).
+  - `2146 DurabilityRepairAck` (`0x007930D0`): `map<i64,f32> repaired_items` (`0x00763A50` -> `0x0074D5B0`).
+  - `2144 DurabilityChangeAck` (`0x00774AE0`): `vector<i64> changed_item_uids` (`0x004AFD30`).
+  - `2364 AvatarZamEraseReq` (`0x007A47F0`): `h32 zam_item_id` (assert `nTargetItemUID << nZamItemID`).
+  - `2092 InventoryUpdatedNot` (`0x0077F070`): `vector<AddedItemNotice> added_notices` (`0x0076E900` -> `0x00AC82A0`, 12 bytes) and `vector<Item> items` (`0x004B9210`).
+- Recovered schemas for all 31 live missing inventory opcodes from `unpacked.analysis.exe` (the remaining 8 in `opcodes.tsv` — `2034/2035`, `2382/2383`, `2705..2708` — have no senders or handlers in this client build):
+  - Bags & notices: `2029 CloseBagAck`, `2593 BagChangeSellEnableAck`, `2287 NotEnoughInvenSpaceNot`, `2620 MarkItemActiveNot`, `2621 MarkTabActiveNot`, `2703 DecreaseUsageLimitNot`.
+  - Requests & ACKs (wired in `src/darkblood/games/handlers/inventory.py` + `on_2028` now replies with `2029`): `2147/2148 SealItem`, `2154 DurabilityRepairByItemReq`, `2408/2409 AvatarZamMerge`, `2428/2429 UseSelectedSkillChangeItem`, `2432/2433 AvatarMerge`, `2543/2544 AvatarChanger`, `2545/2546 ItemDecompose`, `2547/2548 RandomOptionChange`, `2573/2574 UseItemLeaguePointAdd`, `2583/2584 RareAvatarChangeLook`, `2597/2598 AvatarZamSeparate`, `2629/2630 ItemClassSmelting`, `2701/2702 MarkOptionChange`.
+- Regenerated `messages/inventory.py`, `README.md`, `docs/UNMAPPED_FIELDS.md`, and `docs/OPCODE_REGISTRY.md`. All 186 headless tests pass (`test_extended_inventory_opcodes_and_recovered_fields`). Live client check pending.
+
 ## Custom launcher and modular client hook — saita machine, 2026-11-21
 
 - **Modular client hook (`client_hook/`)**: split `steam_api_hook.c` into shared core (`common.h`/`common.c`, Steam API exports + VEH dispatcher in `steam_api_hook.c`) and one file per patch/hook under `client_hook/patches/`:

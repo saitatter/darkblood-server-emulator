@@ -6,6 +6,8 @@ domain inventory Dark Blood protocol wire messages - Inventory domain.
 
 extern Item from darkblood.games.entities.items
 extern Bag from darkblood.games.entities.items
+extern QuickSlot from darkblood.games.network.messages.lobby
+extern LearnedSkill from darkblood.games.network.messages.skills
 
 struct ItemDropEntry
   ## Dropped item (0x1A bytes, ctor 0x00A4FBA0, reader 0x00A509E0). The element
@@ -13,9 +15,9 @@ struct ItemDropEntry
   ## at the source monster (5064 header id, 0x00859C60), so no position is sent.
   u32 drop_uid               # +0
   h32 item_id                # +4 item code (jhash)
-  u16 _                      # +8 (ctor 0)
+  u16 quality                # +8 (ctor 0; passed to 0x009E5560 item name formatter in 0x008842C0)
   u16 count = 1              # +10 (ctor 0xFFFF; passed to 0x004C8CA0 as the amount)
-  set<?> _                   # +0xE (0x006B9F80), meaning not recovered
+  set<i64> owner_uids        # +0xE (0x006B9F80 -> 0x006B9200; checked by 0x00A4C7A0 for loot rights)
   u16 _ = 0xFFFF             # +0xC (ctor 0xFFFF)
 end
 
@@ -42,6 +44,13 @@ end
 message 2028 CloseBagReq header
   ## Sender 0x005520B0.
   i64 bag_id
+end
+
+message 2029 CloseBagAck ok_only
+  ## Handler 0x00558050 (page dispatch 0x00558830): jInsertBagItem >> vecBagInfo.
+  i32 result
+  Item bag_item = Item('', 0)
+  vector<Bag> bags
 end
 
 message 2036 DragItemReq
@@ -201,10 +210,16 @@ message 2145 DurabilityRepairReq header?
 end
 
 message 2146 DurabilityRepairAck ok_only
-  ## On_eEGS_DURABILITY_REPAIR_ACK 0x007930D0.
+  ## On_eEGS_DURABILITY_REPAIR_ACK 0x007930D0: mapRepairItem >> nCurAr.
+  ## Map reader 0x00763A50 -> 0x00751DB0 -> 0x0074D5B0 reads (i64 item_uid, f32 durability).
   i32 result
-  map<?> _
+  map<i64,f32> repaired_items
   i64 remain_gold
+end
+
+message 2154 DurabilityRepairByItemReq header?
+  ## Sender 0x00792E40 writes map<i64,f32> + i64 repair_item_uid; kept raw like 2145.
+  rest raw_payload
 end
 
 message 2115 ItemUpgradeReq header?
@@ -226,9 +241,9 @@ message 2143 DurabilityChangeReq header?
 end
 
 message 2144 DurabilityChangeAck
-  ## On_eEGS_DURABILITY_CHANGE_ACK 0x00774AE0.
+  ## On_eEGS_DURABILITY_CHANGE_ACK 0x00774AE0: vecChangeItem (0x004AFD30 vector<i64>).
   i32 result
-  vector<?> _                # items
+  vector<i64> changed_item_uids
 end
 
 message 2254 MagicEnchantEnchantReq header?
@@ -347,9 +362,9 @@ message 2363 AvatarZamInsertAck ok_only
 end
 
 message 2364 AvatarZamEraseReq header?
-  ## Sender 0x007A47F0: 0x00B353D0 uid, 0x00B352B0 (4 bytes, meaning unknown).
+  ## Sender 0x007A47F0: nTargetItemUID << nZamItemID.
   i64 avatar_item_uid
-  i32 _
+  h32 zam_item_id
 end
 
 message 2365 AvatarZamEraseAck ok_only
@@ -372,10 +387,19 @@ message 2251 DivideItemAck ok_only
   vector<Item> items
 end
 
+struct AddedItemNotice
+  ## 12-byte element of 2092 vecItemAdd (ctor 0x00AC8250, reader 0x00AC82A0,
+  ## consumer 0x0075FE60 -> 0x00758B80 chat obtain notice).
+  h32 item_id                # +0
+  u16 quality                # +4 passed to 0x009E5560
+  u16 count = 1              # +6 passed to 0x00758B80
+  u32 _                      # +8 (u16 zero + 2 bytes struct padding)
+end
+
 message 2092 InventoryUpdatedNot
-  ## Handler 0x0077F070.
-  vector<?> _                # deleted items
-  vector<?> _                # added items
+  ## Handler 0x0077F070: vecItemAdd >> vecItemInfo (0x0076E900, 0x004B9210).
+  vector<AddedItemNotice> added_notices
+  vector<Item> items
 end
 
 message 2321 ItemRemainTimeNot
@@ -409,4 +433,199 @@ message 2462 DepotSlotExtendAck ok_only
   i16 slot_index             # sSlotIndex
   i64 expire_time            # tExtendExpireTime
   vector<Item> items         # 0x004B9210
+end
+
+message 2147 SealItemReq header?
+  ## Sender 0x0062D1F0 (JAppPageSealing).
+  i64 item_uid
+end
+
+message 2148 SealItemAck ok_only
+  ## Handler 0x00639C90 (JAppPageSealing::OneEGS_SEAL_ITEM_ACK).
+  i32 result
+  vector<Item> items         # 0x004B9210
+end
+
+message 2287 NotEnoughInvenSpaceNot
+  ## Handler 0x00771790: vecNotEnoughInven (0x004D6E60 vector<h32>).
+  vector<h32> item_ids
+end
+
+message 2408 AvatarZamMergeReq header?
+  ## Sender 0x0079B100: three 0x00B353D0 values.
+  i64 zam1_uid
+  i64 zam2_uid
+  i64 catalyst_uid
+end
+
+message 2409 AvatarZamMergeAck ok_only
+  ## Handler 0x00780AF0: vecItemOut >> nResultZamID.
+  i32 result
+  vector<Item> items         # 0x004B9210
+  h32 result_zam_id
+end
+
+message 2428 UseSelectedSkillChangeItemReq header?
+  ## Sender 0x0079C490: 0x00B353D0, 0x00B35190, 0x00B35100.
+  i64 item_uid
+  u16 skill_index
+  u8 skill_level
+end
+
+message 2429 UseSelectedSkillChangeItemAck ok_only
+  ## Handler 0x0079C5E0: nMarginAP >> mapLearnSkill >> vecItemOut >> vecQuickSlot.
+  i32 result
+  i32 margin_ap
+  map<u16,LearnedSkill> learned_skills
+  vector<Item> items         # 0x004B9210
+  vector<QuickSlot> quickslots
+end
+
+message 2432 AvatarMergeReq header?
+  ## Sender 0x004A6C10 (JAppPageAvatarMerge): three 0x00B353D0 + 0x00B352B0.
+  i64 merge_item_uid
+  i64 avatar1_uid
+  i64 avatar2_uid
+  i32 merge_option
+end
+
+message 2433 AvatarMergeAck ok_only
+  ## Handler 0x004B9DA0 (JAppPageAvatarMerge::OneEGS_AVATAR_MERGE_ACK):
+  ## vecItemOut >> nResultAvatarUID >> vecZamID (0x004AFD30 vector<i64>).
+  i32 result
+  vector<Item> items         # 0x004B9210
+  i64 result_avatar_uid
+  vector<i64> zam_uids
+end
+
+message 2543 AvatarChangerReq header?
+  ## Sender 0x004A5B90 (JAppPageAvatarChange): four 0x00B353D0 values.
+  i64 changer_item_uid
+  i64 target_avatar_uid
+  i64 material_uid
+  i64 extra_uid = -1
+end
+
+message 2544 AvatarChangerAck ok_only
+  ## Handler 0x004B99D0 (JAppPageAvatarChange::OneEGS_AVATAR_CHANGER_ACK):
+  ## vecItemOut >> nTargetItemUID >> nResultItemID.
+  i32 result
+  vector<Item> items         # 0x004B9210
+  i64 target_item_uid
+  h32 result_item_id
+end
+
+message 2545 ItemDecomposeReq header?
+  ## Sender 0x007A26D0.
+  i64 item_uid
+end
+
+message 2546 ItemDecomposeAck ok_only
+  ## Handler 0x00782300 (OneEGS_ITEM_DECOMPOSE_ACK).
+  i32 result
+  vector<Item> items         # 0x004B9210
+end
+
+message 2547 RandomOptionChangeReq header?
+  ## Sender 0x007A2800.
+  i64 item_uid
+end
+
+message 2548 RandomOptionChangeAck ok_only
+  ## Handler 0x00782830: nTargetItemUID >> vecOutItem >> nCurrentAr.
+  i32 result
+  i64 target_item_uid
+  vector<Item> items         # 0x004B9210
+  i64 current_gold
+end
+
+message 2573 UseItemLeaguePointAddReq header?
+  ## Sender at 0x0083DCC2.
+  i64 item_uid
+end
+
+message 2574 UseItemLeaguePointAddAck ok_only
+  ## Handler 0x007A3140: vecItem >> nLeaguePoint.
+  i32 result
+  vector<Item> items         # 0x004B9210
+  i32 league_point
+end
+
+message 2583 RareAvatarChangeLookReq header?
+  ## Sender 0x0063A120 (JAppPageRareAvatarChange): two 0x00B353D0 values.
+  i64 target_avatar_uid
+  i64 look_item_uid = -1
+end
+
+message 2584 RareAvatarChangeLookAck ok_only
+  ## Handler 0x006395D0 (JAppPageRareAvatarChange::OneEGS_RAREAVATAR_CHANGE_LOOK_ACK):
+  ## nTargetItemUID >> vecItemOut.
+  i32 result
+  i64 target_item_uid
+  vector<Item> items         # 0x004B9210
+end
+
+message 2593 BagChangeSellEnableAck ok_only
+  ## Handler 0x00557DD0 (JAppPageGameMenuInventory): nBagUID >> bEnble.
+  i32 result
+  i64 bag_uid
+  bool enabled
+end
+
+message 2597 AvatarZamSeparateReq header?
+  ## Sender 0x007A4C30: nTargetItemUID << nZamID << nUseItemID.
+  i64 target_item_uid
+  h32 zam_id
+  h32 use_item_id
+end
+
+message 2598 AvatarZamSeparateAck ok_only
+  ## Handler 0x00783190 (OneEGS_AVATAR_ZAM_SEPARATE_ACK).
+  i32 result
+  vector<Item> items         # 0x004B9210
+end
+
+message 2620 MarkItemActiveNot
+  ## Handler 0x00776600: sBaseCnt >> sBonusCnt.
+  u16 base_count
+  u16 bonus_count
+end
+
+message 2621 MarkTabActiveNot
+  ## Handler 0x007767E0: bActiveMark.
+  bool active_mark
+end
+
+message 2629 ItemClassSmeltingReq header?
+  ## Sender 0x007A5440: nUseItemUID << nGetItemID.
+  i64 use_item_uid
+  h32 get_item_id
+end
+
+message 2630 ItemClassSmeltingAck ok_only
+  ## Handler 0x00783790: vecItemOut >> nCurrentAr.
+  i32 result
+  vector<Item> items         # 0x004B9210
+  i64 current_gold
+end
+
+message 2701 MarkOptionChangeReq header?
+  ## Sender 0x005E1360 (JAppPageMarkOptionChange): two 0x00B353D0 values.
+  i64 target_item_uid
+  i64 catalyst_item_uid
+end
+
+message 2702 MarkOptionChangeAck ok_only
+  ## Handler 0x005FADE0 (JAppPageMarkOptionChange::OneEGS_MARK_OPTION_CHANGE_ACK):
+  ## nTargetItemUID >> vecItemOut >> nCurAr.
+  i32 result
+  i64 target_item_uid
+  vector<Item> items         # 0x004B9210
+  i64 current_gold
+end
+
+message 2703 DecreaseUsageLimitNot
+  ## Handler 0x00766EA0: nGroupID >> sUsageCount.
+  h32 group_id
+  u16 usage_count
 end

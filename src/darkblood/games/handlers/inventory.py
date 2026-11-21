@@ -9,10 +9,18 @@ from darkblood.games.network import results
 from darkblood.games.network.messages import (
     AssignQuickslotAck,
     AssignQuickslotReq,
+    AvatarChangerAck,
+    AvatarChangerReq,
+    AvatarMergeAck,
+    AvatarMergeReq,
     AvatarZamEraseAck,
     AvatarZamEraseReq,
     AvatarZamInsertAck,
     AvatarZamInsertReq,
+    AvatarZamMergeAck,
+    AvatarZamMergeReq,
+    AvatarZamSeparateAck,
+    AvatarZamSeparateReq,
     BuyLifeWaterAck,
     BuyLifeWaterReq,
     ChangeBagNameAck,
@@ -20,6 +28,7 @@ from darkblood.games.network.messages import (
     ChangeBagPropertyAck,
     ChangeBagPropertyReq,
     CharVerifyStatAck,
+    CloseBagAck,
     CloseBagReq,
     DeleteItemAck,
     DeleteItemReq,
@@ -32,6 +41,7 @@ from darkblood.games.network.messages import (
     DivideItemAck,
     DivideItemReq,
     DurabilityRepairAck,
+    DurabilityRepairByItemReq,
     DurabilityRepairReq,
     DragItemAck,
     DragItemReq,
@@ -41,6 +51,10 @@ from darkblood.games.network.messages import (
     EquipItemReq,
     FixItemUpgradeAck,
     FixItemUpgradeReq,
+    ItemClassSmeltingAck,
+    ItemClassSmeltingReq,
+    ItemDecomposeAck,
+    ItemDecomposeReq,
     ItemUpgradeAck,
     ItemUpgradeReq,
     ItemRemainTimeNot,
@@ -52,8 +66,16 @@ from darkblood.games.network.messages import (
     MagicEnchantEraseOptionReq,
     MagicEnchantExpendSlotAck,
     MagicEnchantExpendSlotReq,
+    MarkOptionChangeAck,
+    MarkOptionChangeReq,
     RandomItemUpgradeAck,
     RandomItemUpgradeReq,
+    RandomOptionChangeAck,
+    RandomOptionChangeReq,
+    RareAvatarChangeLookAck,
+    RareAvatarChangeLookReq,
+    SealItemAck,
+    SealItemReq,
     SwitchBagAck,
     SwitchBagReq,
     SwitchQuickslotAck,
@@ -61,9 +83,13 @@ from darkblood.games.network.messages import (
     UseArenaSpItemAck,
     UseArenaSpItemReq,
     UseItemAck,
+    UseItemLeaguePointAddAck,
+    UseItemLeaguePointAddReq,
     UseItemReq,
     UseDyeingItemAck,
     UseDyeingItemReq,
+    UseSelectedSkillChangeItemAck,
+    UseSelectedSkillChangeItemReq,
     OpenBagAck,
     OpenBagReq,
 )
@@ -108,9 +134,29 @@ class InventoryHandlers(BaseDomainService):
                                         note=f'open bag ack ({item["code"]} uid={req.item_uid} size={size} slot={free[0]})')
 
     async def on_2028(self, correlation, body):
-        # eEGS_CLOSE_BAG_REQ (0x00550000.c:1773).
+        # eEGS_CLOSE_BAG_REQ (0x005520B0) -> 2029 eEGS_CLOSE_BAG_ACK (0x00558050).
+        from darkblood.games.entities.items import Bag
         req = CloseBagReq.decode(body)
         self.transport.record('close-bag', body, bag_id=req.bag_id)
+        char = self.current_char()
+        bags = char.get('bags', []) if char else []
+        bag = next((b for b in bags if b.get('bag_id') == req.bag_id), None)
+        items = char.get('items', []) if char else []
+        if not bag or any(i.get('container') == req.bag_id for i in items):
+            await self.transport.send_event(event(2029, CloseBagAck(result=1).encode(), correlation),
+                                            note=f'close bag fail (bag_id={req.bag_id})')
+            return
+        bags.remove(bag)
+        stored = add_reward_items(char, [(bag.get('code', 'Ibaga0004'), 1)])
+        if stored:
+            stored[0]['uid'] = req.bag_id
+            bag_item = Item(owner=UPDATE_OWNER, **stored[0])
+        else:
+            bag_item = Item(owner=UPDATE_OWNER, uid=req.bag_id, code=bag.get('code', ''), container=INVENTORY_BAG_CONTAINER, slot=0, count=1)
+        self.store().save()
+        ack = CloseBagAck(result=0, bag_item=bag_item, bags=[Bag(**b) for b in bags]).encode()
+        await self.transport.send_event(event(2029, ack, correlation),
+                                        note=f'close bag ack (bag_id={req.bag_id})')
 
     async def on_2036(self, correlation, body):
         # eEGS_DRAG_ITEM_REQ (0x00790000.c:4212) -> 2037 eEGS_DRAG_ITEM_ACK (0x0077F570).
@@ -615,3 +661,160 @@ class InventoryHandlers(BaseDomainService):
         ack = DepotSlotExtendAck(result=0, slot_index=req.slot_index, expire_time=0, items=[]).encode()
         await self.transport.send_event(event(2462, ack, correlation),
                                         note=f'depot slot extend ack (slot={req.slot_index})')
+
+    async def on_2147(self, correlation, body):
+        # eEGS_SEAL_ITEM_REQ (0x0062D1F0) -> 2148 eEGS_SEAL_ITEM_ACK (0x00639C90).
+        req = SealItemReq.decode(body)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target:
+            await self.transport.send_event(
+                event(2148, SealItemAck(result=results.INVEN_ITEM_NOT_FOUND).encode(), correlation),
+                note=f'seal item fail (uid={req.item_uid} not found)')
+            return
+        ack = SealItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **target)]).encode()
+        await self.transport.send_event(event(2148, ack, correlation),
+                                        note=f'seal item ack (uid={req.item_uid})')
+
+    async def on_2154(self, correlation, body):
+        # eEGS_DURABILITY_REPAIR_BY_ITEM_REQ (0x00792E40) -> 2146 eEGS_DURABILITY_REPAIR_ACK.
+        DurabilityRepairByItemReq.decode(body)
+        self.transport.record('durability-repair-by-item-req', body)
+        char = self.current_char()
+        gold = char.get('gold', 100000) if char else 100000
+        ack = DurabilityRepairAck(result=0, repaired_items={}, remain_gold=gold).encode()
+        await self.transport.send_event(event(2146, ack, correlation),
+                                        note='durability repair by item ack')
+
+    async def on_2408(self, correlation, body):
+        # eEGS_AVATAR_ZAM_MERGE_REQ (0x0079B100) -> 2409 eEGS_AVATAR_ZAM_MERGE_ACK (0x00780AF0).
+        req = AvatarZamMergeReq.decode(body)
+        self.transport.record('avatar-zam-merge-req', body, zam1=req.zam1_uid, zam2=req.zam2_uid)
+        ack = AvatarZamMergeAck(result=0, items=[], result_zam_id=0).encode()
+        await self.transport.send_event(event(2409, ack, correlation),
+                                        note=f'avatar zam merge ack (zam1={req.zam1_uid})')
+
+    async def on_2428(self, correlation, body):
+        # eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ (0x0079C490) -> 2429 (0x0079C5E0).
+        req = UseSelectedSkillChangeItemReq.decode(body)
+        char = self.current_char()
+        sp = char.get('sp', 0) if char else 0
+        ack = UseSelectedSkillChangeItemAck(
+            result=0, margin_ap=sp, learned_skills={}, items=[], quickslots=[]).encode()
+        await self.transport.send_event(event(2429, ack, correlation),
+                                        note=f'use selected skill change item ack (item={req.item_uid})')
+
+    async def on_2432(self, correlation, body):
+        # eEGS_AVATAR_MERGE_REQ (0x004A6C10) -> 2433 eEGS_AVATAR_MERGE_ACK (0x004B9DA0).
+        req = AvatarMergeReq.decode(body)
+        self.transport.record('avatar-merge-req', body, avatar1=req.avatar1_uid, avatar2=req.avatar2_uid)
+        ack = AvatarMergeAck(result=0, items=[], result_avatar_uid=req.avatar1_uid, zam_uids=[]).encode()
+        await self.transport.send_event(event(2433, ack, correlation),
+                                        note=f'avatar merge ack (avatar1={req.avatar1_uid})')
+
+    async def on_2543(self, correlation, body):
+        # eEGS_AVATAR_CHANGER_REQ (0x004A5B90) -> 2544 eEGS_AVATAR_CHANGER_ACK (0x004B99D0).
+        req = AvatarChangerReq.decode(body)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.target_avatar_uid), None)
+        res_id = jhash(target.get('code', '')) if target else 0
+        ack = AvatarChangerAck(
+            result=0, items=[], target_item_uid=req.target_avatar_uid, result_item_id=res_id).encode()
+        await self.transport.send_event(event(2544, ack, correlation),
+                                        note=f'avatar changer ack (target={req.target_avatar_uid})')
+
+    async def on_2545(self, correlation, body):
+        # eEGS_ITEM_DECOMPOSE_REQ (0x007A26D0) -> 2546 eEGS_ITEM_DECOMPOSE_ACK (0x00782300).
+        req = ItemDecomposeReq.decode(body)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target:
+            await self.transport.send_event(
+                event(2546, ItemDecomposeAck(result=results.INVEN_ITEM_NOT_FOUND).encode(), correlation),
+                note=f'item decompose fail (uid={req.item_uid} not found)')
+            return
+        items.remove(target)
+        self.store().save()
+        vacated = Item(owner=UPDATE_OWNER, uid=0, code='', container=target['container'],
+                       slot=target['slot'], count=0)
+        ack = ItemDecomposeAck(result=0, items=[vacated]).encode()
+        await self.transport.send_event(event(2546, ack, correlation),
+                                        note=f'item decompose ack (uid={req.item_uid})')
+
+    async def on_2547(self, correlation, body):
+        # eEGS_RANDOM_OPTION_CHANGE_REQ (0x007A2800) -> 2548 (0x00782830).
+        req = RandomOptionChangeReq.decode(body)
+        char = self.current_char()
+        gold = char.get('gold', 0) if char else 0
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        out = [Item(owner=UPDATE_OWNER, **target)] if target else []
+        ack = RandomOptionChangeAck(
+            result=0, target_item_uid=req.item_uid, items=out, current_gold=gold).encode()
+        await self.transport.send_event(event(2548, ack, correlation),
+                                        note=f'random option change ack (uid={req.item_uid})')
+
+    async def on_2573(self, correlation, body):
+        # eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ (0x0083DCC2) -> 2574 (0x007A3140).
+        req = UseItemLeaguePointAddReq.decode(body)
+        char = self.current_char()
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.item_uid), None)
+        if not target:
+            await self.transport.send_event(
+                event(2574, UseItemLeaguePointAddAck(result=results.INVEN_ITEM_NOT_FOUND).encode(), correlation),
+                note=f'use league point item fail (uid={req.item_uid} not found)')
+            return
+        count = target.get('count', 1) - 1
+        if count <= 0:
+            items.remove(target)
+            update = Item(owner=UPDATE_OWNER, uid=0, code='', container=target['container'],
+                          slot=target['slot'], count=0)
+        else:
+            target['count'] = count
+            update = Item(owner=UPDATE_OWNER, **target)
+        char['league_points'] = char.get('league_points', 0) + 100
+        self.store().save()
+        ack = UseItemLeaguePointAddAck(
+            result=0, items=[update], league_point=char['league_points']).encode()
+        await self.transport.send_event(event(2574, ack, correlation),
+                                        note=f'use league point item ack (uid={req.item_uid} pts={char["league_points"]})')
+
+    async def on_2583(self, correlation, body):
+        # eEGS_RAREAVATAR_CHANGE_LOOK_REQ (0x0063A120) -> 2584 (0x006395D0).
+        req = RareAvatarChangeLookReq.decode(body)
+        ack = RareAvatarChangeLookAck(result=0, target_item_uid=req.target_avatar_uid, items=[]).encode()
+        await self.transport.send_event(event(2584, ack, correlation),
+                                        note=f'rare avatar change look ack (target={req.target_avatar_uid})')
+
+    async def on_2597(self, correlation, body):
+        # eEGS_AVATAR_ZAM_SEPARATE_REQ (0x007A4C30) -> 2598 (0x00783190).
+        req = AvatarZamSeparateReq.decode(body)
+        ack = AvatarZamSeparateAck(result=0, items=[]).encode()
+        await self.transport.send_event(event(2598, ack, correlation),
+                                        note=f'avatar zam separate ack (target={req.target_item_uid} zam={req.zam_id:08x})')
+
+    async def on_2629(self, correlation, body):
+        # eEGS_ITEM_CLASS_SMELTING_REQ (0x007A5440) -> 2630 (0x00783790).
+        req = ItemClassSmeltingReq.decode(body)
+        char = self.current_char()
+        gold = char.get('gold', 0) if char else 0
+        ack = ItemClassSmeltingAck(result=0, items=[], current_gold=gold).encode()
+        await self.transport.send_event(event(2630, ack, correlation),
+                                        note=f'item class smelting ack (item={req.use_item_uid})')
+
+    async def on_2701(self, correlation, body):
+        # eEGS_MARK_OPTION_CHANGE_REQ (0x005E1360) -> 2702 (0x005FADE0).
+        req = MarkOptionChangeReq.decode(body)
+        char = self.current_char()
+        gold = char.get('gold', 0) if char else 0
+        items = char.get('items', []) if char else []
+        target = next((i for i in items if i.get('uid') == req.target_item_uid), None)
+        out = [Item(owner=UPDATE_OWNER, **target)] if target else []
+        ack = MarkOptionChangeAck(
+            result=0, target_item_uid=req.target_item_uid, items=out, current_gold=gold).encode()
+        await self.transport.send_event(event(2702, ack, correlation),
+                                        note=f'mark option change ack (target={req.target_item_uid})')

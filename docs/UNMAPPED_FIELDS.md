@@ -116,19 +116,13 @@
 | `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:149 | guild members |
 | `2205 GuildSkillNot` | `vector<?>` | guild.jsch:168 |  |
 
-## inventory (9 of 149 fields)
+## inventory (3 of 232 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `ItemDropEntry` | `u16` | inventory.jsch:16 | +8 (ctor 0) |
-| `ItemDropEntry` | `set<?>` | inventory.jsch:18 | +0xE (0x006B9F80), meaning not recovered |
-| `ItemDropEntry` | `u16` | inventory.jsch:19 | +0xC (ctor 0xFFFF) |
-| `2146 DurabilityRepairAck` | `map<?>` | inventory.jsch:206 |  |
-| `2144 DurabilityChangeAck` | `vector<?>` | inventory.jsch:231 | items |
-| `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:250 |  |
-| `2364 AvatarZamEraseReq` | `i32` | inventory.jsch:352 |  |
-| `2092 InventoryUpdatedNot` | `vector<?>` | inventory.jsch:377 | deleted items |
-| `2092 InventoryUpdatedNot` | `vector<?>` | inventory.jsch:378 | added items |
+| `ItemDropEntry` | `u16` | inventory.jsch:21 | +0xC (ctor 0xFFFF) |
+| `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:265 |  |
+| `AddedItemNotice` | `u32` | inventory.jsch:396 | +8 (u16 zero + 2 bytes struct padding) |
 
 ## lobby (72 of 122 fields)
 

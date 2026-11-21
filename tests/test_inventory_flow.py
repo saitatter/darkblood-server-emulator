@@ -62,8 +62,9 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2031 = await client.expect_event(2031)
             self.assertEqual(struct.unpack_from('<iHH', ack2031), (0, 0, 1))
 
-            # 6. Close bag (2028: fire and forget)
+            # 6. Close bag (2028 -> 2029)
             client.send_event(2028, struct.pack('<iq', 0x7fffffff, 2))
+            await client.expect_event(2029)
 
             # 7. Assign quickslot (2044 -> 2045)
             # Live body: prefix + type 1, slot 1, ref 0x19a, ref_uid -1.
@@ -372,5 +373,124 @@ class SkillCostTest(ServerTestCase):
             client.send_event(2210, bytes.fromhex('2800000000000000ffffffffffffffff0000ffffffff4c5a94ff00'))
             _, ack2211 = await client.expect_event(2211)
             self.assertEqual(struct.unpack_from('<i', ack2211)[0], 63)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_extended_inventory_opcodes_and_recovered_fields(self):
+        from darkblood.games.network.messages import (
+            AddedItemNotice, AvatarChangerReq, AvatarMergeReq, AvatarZamMergeReq,
+            AvatarZamSeparateReq, BagChangeSellEnableAck, DecreaseUsageLimitNot,
+            DurabilityChangeAck, DurabilityRepairAck, InventoryUpdatedNot,
+            ItemClassSmeltingReq, ItemDecomposeReq, ItemDropEntry,
+            MarkItemActiveNot, MarkOptionChangeReq, MarkTabActiveNot,
+            NotEnoughInvenSpaceNot, RandomOptionChangeReq, RareAvatarChangeLookReq,
+            SealItemReq, UseItemLeaguePointAddReq, UseSelectedSkillChangeItemReq,
+        )
+
+        # Verify recovered wire encodings for notices and formerly unmapped fields.
+        drop = ItemDropEntry(drop_uid=10, item_id=0x11223344, quality=2, count=3, owner_uids=[1, 2])
+        self.assertIn(struct.pack('<IIHH', 10, 0x11223344, 2, 3), drop.encode())
+        self.assertEqual(DurabilityRepairAck(result=0, repaired_items={5: 80.0}, remain_gold=99).encode()[:6],
+                         struct.pack('<iB', 0, 0x17) + b'\x81')
+        self.assertEqual(DurabilityChangeAck(result=0, changed_item_uids=[5, 6]).encode(),
+                         struct.pack('<iBBqq', 0, 0x10, 0x82, 5, 6))
+        self.assertIn(struct.pack('<IHH', 0xAABBCCDD, 1, 4),
+                      InventoryUpdatedNot(added_notices=[AddedItemNotice(item_id=0xAABBCCDD, quality=1, count=4)]).encode())
+        self.assertEqual(NotEnoughInvenSpaceNot(item_ids=[0x1234]).encode(), struct.pack('<BBI', 0x10, 0x81, 0x1234))
+        self.assertEqual(BagChangeSellEnableAck(result=0, bag_uid=7, enabled=True).encode(), struct.pack('<iq?', 0, 7, True))
+        self.assertEqual(MarkItemActiveNot(base_count=3, bonus_count=1).encode(), struct.pack('<HH', 3, 1))
+        self.assertEqual(MarkTabActiveNot(active_mark=True).encode(), struct.pack('<?', True))
+        self.assertEqual(DecreaseUsageLimitNot(group_id=0x55, usage_count=2).encode(), struct.pack('<IH', 0x55, 2))
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('ExtInv', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['items'] = [
+                dict(code='AbodT1N', uid=10, container=3, slot=0, count=1),
+                dict(code='AbodT1N', uid=11, container=3, slot=1, count=1),
+                dict(code='Ihppa0000', uid=12, container=3, slot=2, count=2),
+            ]
+            char['bags'].append(dict(bag_id=50, code='Ibaga0004', b28=0, b29=8, w2a=1))
+            char['gold'] = 1234
+            session.GameSession.store().save()
+
+            # 2028 -> 2029 CloseBagAck (empty bag removed & returned to inventory)
+            client.send_event(2028, struct.pack('<iq', 0x7fffffff, 50))
+            _, ack2029 = await client.expect_event(2029)
+            self.assertEqual(struct.unpack_from('<i', ack2029)[0], 0)
+            self.assertFalse(any(b['bag_id'] == 50 for b in char['bags']))
+
+            # 2147 -> 2148 SealItem
+            client.send_event(2147, SealItemReq(item_uid=10).encode())
+            _, ack2148 = await client.expect_event(2148)
+            self.assertEqual(struct.unpack_from('<i', ack2148)[0], 0)
+
+            # 2154 -> 2146 DurabilityRepairByItem
+            client.send_event(2154, b'\x17\x80' + struct.pack('<q', 10))
+            _, ack2146 = await client.expect_event(2146)
+            self.assertEqual(struct.unpack_from('<i', ack2146)[0], 0)
+
+            # 2408 -> 2409 AvatarZamMerge
+            client.send_event(2408, AvatarZamMergeReq(zam1_uid=10, zam2_uid=11, catalyst_uid=12).encode())
+            _, ack2409 = await client.expect_event(2409)
+            self.assertEqual(struct.unpack_from('<i', ack2409)[0], 0)
+
+            # 2428 -> 2429 UseSelectedSkillChangeItem
+            client.send_event(2428, UseSelectedSkillChangeItemReq(item_uid=10, skill_index=5, skill_level=1).encode())
+            _, ack2429 = await client.expect_event(2429)
+            self.assertEqual(struct.unpack_from('<i', ack2429)[0], 0)
+
+            # 2432 -> 2433 AvatarMerge
+            client.send_event(2432, AvatarMergeReq(merge_item_uid=12, avatar1_uid=10, avatar2_uid=11, merge_option=0).encode())
+            _, ack2433 = await client.expect_event(2433)
+            self.assertEqual(struct.unpack_from('<i', ack2433)[0], 0)
+
+            # 2543 -> 2544 AvatarChanger
+            client.send_event(2543, AvatarChangerReq(changer_item_uid=12, target_avatar_uid=10, material_uid=11).encode())
+            _, ack2544 = await client.expect_event(2544)
+            self.assertEqual(struct.unpack_from('<i', ack2544)[0], 0)
+
+            # 2545 -> 2546 ItemDecompose (removes item 11)
+            client.send_event(2545, ItemDecomposeReq(item_uid=11).encode())
+            _, ack2546 = await client.expect_event(2546)
+            self.assertEqual(struct.unpack_from('<i', ack2546)[0], 0)
+            self.assertFalse(any(i['uid'] == 11 for i in char['items']))
+
+            # 2547 -> 2548 RandomOptionChange
+            client.send_event(2547, RandomOptionChangeReq(item_uid=10).encode())
+            _, ack2548 = await client.expect_event(2548)
+            self.assertEqual(struct.unpack_from('<iq', ack2548), (0, 10))
+
+            # 2573 -> 2574 UseItemLeaguePointAdd (consumes 1 of item 12)
+            client.send_event(2573, UseItemLeaguePointAddReq(item_uid=12).encode())
+            _, ack2574 = await client.expect_event(2574)
+            self.assertEqual(struct.unpack_from('<i', ack2574)[0], 0)
+            self.assertEqual(struct.unpack_from('<i', ack2574[-4:])[0], 100)
+
+            # 2583 -> 2584 RareAvatarChangeLook
+            client.send_event(2583, RareAvatarChangeLookReq(target_avatar_uid=10, look_item_uid=12).encode())
+            _, ack2584 = await client.expect_event(2584)
+            self.assertEqual(struct.unpack_from('<iq', ack2584), (0, 10))
+
+            # 2597 -> 2598 AvatarZamSeparate
+            client.send_event(2597, AvatarZamSeparateReq(target_item_uid=10, zam_id=1, use_item_id=2).encode())
+            _, ack2598 = await client.expect_event(2598)
+            self.assertEqual(struct.unpack_from('<i', ack2598)[0], 0)
+
+            # 2629 -> 2630 ItemClassSmelting
+            client.send_event(2629, ItemClassSmeltingReq(use_item_uid=10, get_item_id=0x1234).encode())
+            _, ack2630 = await client.expect_event(2630)
+            self.assertEqual(struct.unpack_from('<i', ack2630)[0], 0)
+
+            # 2701 -> 2702 MarkOptionChange
+            client.send_event(2701, MarkOptionChangeReq(target_item_uid=10, catalyst_item_uid=12).encode())
+            _, ack2702 = await client.expect_event(2702)
+            self.assertEqual(struct.unpack_from('<iq', ack2702), (0, 10))
 
         self.run_async(self.with_server(scenario))
