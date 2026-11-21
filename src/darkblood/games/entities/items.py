@@ -1,9 +1,9 @@
 """Items and bag containers (client structs 0x00A53F50 / 0x00A1EC30)."""
 from dataclasses import dataclass
-import struct
 
 from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import to_i32 as _i32, varuint, wide_string
+from darkblood.core.serialization.jser import to_i32 as _i32
+from darkblood.core.serialization.wire import JSerBufferWriter
 
 
 EQUIPPED = 1  # item container id treated as "worn" by 0x008354D0
@@ -62,31 +62,47 @@ class Item:
         return float(int(maximum)) if maximum is not None else 100.0
 
     def encode(self) -> bytes:
+        w = JSerBufferWriter()
         # 0x00A4B250 x2 (+0x0C, +0x6B): varint count (max 2) of 10-byte
         # 0x00A49BB0 entries (u16, u32, u32); sent empty.
-        b = varuint(0) + varuint(0)
-        # +4 Quality must be >= 0: 0x00984A40 maps it to a tier (q/10*5 +
-        # q%10) only when non-negative, and 0x009D7A50 returns -1.0 for every
-        # item stat while the tier is unset ((tier + 75) / 75 * base
-        # otherwise). Quality 0xFFFF made each armour piece -1 defense and the
-        # weapon -1 attack (live: Defense -44, 2 damage). 0 = base tier.
-        # +2 UpgStep stays 0xFFFF (0x00AB2750: <= 0 -> multiplier 1).
-        b += struct.pack('<HHHf?H', self.count, 0xFFFF, 0, self.current_durability(), False, 0xFFFF)
-        b += b'\x10' + varuint(0) + b'\x10' + varuint(0)
-        b += struct.pack('<Iqq', 0, 0, 0)
-        b += struct.pack('<?', False) + b'\x10' + varuint(0)
-        b += b'\x10' + varuint(0)
-        b += struct.pack('<iiififiiB', -1, -1, -1, -1.0, -1, -1.0, -1, -1, 0)
+        w.write_varuint(0)
+        w.write_varuint(0)
+        # +4 Quality must be >= 0 (0 = base tier); +2 UpgStep stays 0xFFFF.
+        w.write_u16(self.count)
+        w.write_u16(0xFFFF)
+        w.write_u16(0)
+        w.write_f32(self.current_durability())
+        w.write_bool(False)
+        w.write_u16(0xFFFF)
+        w.write_empty_container(0x10)
+        w.write_empty_container(0x10)
+        w.write_u32(0)
+        w.write_i64(0)
+        w.write_i64(0)
+        w.write_bool(False)
+        w.write_empty_container(0x10)
+        w.write_empty_container(0x10)
+        w.write_i32(-1)
+        w.write_i32(-1)
+        w.write_i32(-1)
+        w.write_f32(-1.0)
+        w.write_i32(-1)
+        w.write_f32(-1.0)
+        w.write_i32(-1)
+        w.write_i32(-1)
+        w.write_u8(0)
         if self.code:
             uid, code_hash = self.uid, jhash(self.code) & 0xFFFFFFFF
         else:
-            # Empty cell (vacated slot in a move/equip diff): the outer
-            # constructor 0x004AAB20 marks an empty item with uid -1 and code
-            # -1. uid 0 / code 0 was kept as an item in bag cells (live: each
-            # equip left a ghost copy behind until the bag reported full).
+            # Empty cell (vacated slot): outer ctor 0x004AAB20 uses uid -1 / code -1.
             uid, code_hash = -1, 0xFFFFFFFF
-        b += struct.pack('<qqIqB', self.owner, uid, code_hash, self.container, self.slot)
-        return b + wide_string('')
+        w.write_i64(self.owner)
+        w.write_i64(uid)
+        w.write_h32(code_hash)
+        w.write_i64(self.container)
+        w.write_u8(self.slot)
+        w.write_wstring('')
+        return w.to_bytes()
 
 
 @dataclass
@@ -113,6 +129,14 @@ class Bag:
 
     def encode(self) -> bytes:
         code = jhash(self.code) if isinstance(self.code, str) else self.code
-        return (struct.pack('<qi', self.bag_id, _i32(code) if code != -1 else -1)
-                + wide_string('') + struct.pack('<BBH???', self.b28, self.b29, self.w2a,
-                                                self.f2c, self.f2d, self.f2e))
+        w = JSerBufferWriter()
+        w.write_i64(self.bag_id)
+        w.write_i32(_i32(code) if code != -1 else -1)
+        w.write_wstring('')
+        w.write_u8(self.b28)
+        w.write_u8(self.b29)
+        w.write_u16(self.w2a)
+        w.write_bool(self.f2c)
+        w.write_bool(self.f2d)
+        w.write_bool(self.f2e)
+        return w.to_bytes()

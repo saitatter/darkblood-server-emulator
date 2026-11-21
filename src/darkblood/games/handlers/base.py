@@ -24,6 +24,13 @@ class BaseDomainService:
     def store(self):
         return self.session.store()
 
+    def save_char(self):
+        """Persist only the active character when one is selected, else fall back to full save."""
+        if self.session.active_char_id is not None:
+            self.store().save_char(self.account, self.session.active_char_id)
+        else:
+            self.store().save()
+
     async def reply(self, message, correlation: int = 0, note: str = None, compress: bool = False):
         """Encode a typed WireMessage (using its OPCODE) and send it as a JEvent reply."""
         await self.transport.send_event(

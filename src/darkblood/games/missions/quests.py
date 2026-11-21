@@ -1,8 +1,8 @@
 """Quest state carried in 2007 (active-quest map 0x00A3E450)."""
 from dataclasses import dataclass, field
-import struct
 
-from darkblood.core.serialization.jser import to_i32 as _i32, varuint
+from darkblood.core.serialization.jser import to_i32 as _i32
+from darkblood.core.serialization.wire import JSerBufferWriter
 
 
 @dataclass
@@ -25,11 +25,18 @@ class ActiveQuest:
 
     def encode_entry(self) -> bytes:
         qid = _i32(self.quest_id)
-        out = b'\x0f' + struct.pack('<i', qid)
-        out += struct.pack('<qqi?', self.uid, self.start_time, qid, self.tracked)
+        w = JSerBufferWriter()
+        w.write_u8(0x0F)
+        w.write_i32(qid)
+        w.write_i64(self.uid)
+        w.write_i64(self.start_time)
+        w.write_i32(qid)
+        w.write_bool(self.tracked)
         counters = list(self.counters)[:5]
-        out += varuint(len(counters)) + b''.join(struct.pack('<i', c) for c in counters)
-        return out
+        w.write_varuint(len(counters))
+        for c in counters:
+            w.write_i32(c)
+        return w.to_bytes()
 
     @classmethod
     def from_store(cls, quest_id, record) -> 'ActiveQuest':
