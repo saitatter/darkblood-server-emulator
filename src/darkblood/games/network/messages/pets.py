@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
-from darkblood.core.serialization.wire import Const, EmptyMap, EmptyVector, Raw, WireMessage, i32, i64, u16, u32, u8, wstr
+from darkblood.core.serialization.wire import *  # noqa: F403
 
 __all__ = [
     'TameingMonsterInsertReq',

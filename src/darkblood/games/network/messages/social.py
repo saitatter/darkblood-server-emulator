@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
-from darkblood.core.serialization.wire import Const, EmptyVector, Map, Raw, Vector, WireMessage, i32, i64, rest, u32, u8, wstr, wstrz
+from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.network.messages.dungeon import RoomMemberInfo
 
 __all__ = [

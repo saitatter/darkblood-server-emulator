@@ -328,12 +328,24 @@ class LitStep:
     cond: str = ''
 
 
+@dataclass(frozen=True)
+class ComputedStep:
+    codec: WireCodec
+    fn: object
+    cond: str = ''
+
+
 def Const(wire_type, value=None, cond: str = '') -> ConstStep:
     return ConstStep(resolve_codec(wire_type), value, cond)
 
 
 def Lit(data: bytes, cond: str = '') -> LitStep:
     return LitStep(data, cond)
+
+
+def Computed(wire_type, fn, cond: str = '') -> ComputedStep:
+    """Encode-only wire step whose value is computed from the instance (`fn(self)`)."""
+    return ComputedStep(resolve_codec(wire_type), fn, cond)
 
 
 def _cond_holds(cond: str, getter) -> bool:
@@ -363,9 +375,9 @@ def _compile_plan(cls):
     steps = []
 
     if raw_layout is not None:
-        # Explicit layout tuple containing field names, (name, cond), Const(...), Lit(...)
+        # Explicit layout tuple containing field names, (name, cond), Const(...), Lit(...), Computed(...)
         for item in raw_layout:
-            if isinstance(item, (ConstStep, LitStep)):
+            if isinstance(item, (ConstStep, LitStep, ComputedStep)):
                 steps.append(item)
             elif isinstance(item, tuple):
                 fname, cond = item
@@ -384,8 +396,9 @@ def _compile_plan(cls):
 
     plan = tuple(steps)
     cls._WIRE_PLAN = plan
-    cls._WIRE_READABLE = all(
-        s.codec.readable for s in plan if isinstance(s, FieldStep)
+    cls._WIRE_READABLE = (
+        all(s.codec.readable for s in plan if isinstance(s, FieldStep))
+        and not any(isinstance(s, ComputedStep) for s in plan)
     )
     return plan
 
@@ -420,6 +433,8 @@ class WireMessage:
                 step.codec.write(w, getattr(self, step.name))
             elif isinstance(step, ConstStep):
                 step.codec.write(w, step.value)
+            elif isinstance(step, ComputedStep):
+                step.codec.write(w, step.fn(self))
             else:
                 w.write_bytes(step.data)
             if ok_index is not None and idx == ok_index - 1 and self.result != 0:
@@ -457,7 +472,7 @@ class WireMessage:
 
 
 __all__ = [
-    'Array', 'Const', 'EmptyArray', 'EmptyMap', 'EmptySet', 'EmptyVector',
+    'Array', 'Computed', 'Const', 'EmptyArray', 'EmptyMap', 'EmptySet', 'EmptyVector',
     'Extern', 'JSerBufferWriter', 'Lit', 'Map', 'Pairs', 'Raw', 'Set',
     'Vector', 'WireCodec', 'WireMessage', 'boolean', 'f32', 'f64', 'h32',
     'i16', 'i32', 'i64', 'i8', 'ipv4', 'rest', 'u16', 'u32', 'u64', 'u8',

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
-from darkblood.core.serialization.wire import Const, Extern, Map, Set, Vector, WireMessage, f32, h32, i16, i32, i64, rest, u16, u32, u8, wrest, wstrz
+from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.network.messages.lobby import QuickSlot
 from darkblood.games.network.messages.skills import LearnedSkill

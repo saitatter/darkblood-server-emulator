@@ -1,42 +1,39 @@
 """Quest state carried in 2007 (active-quest map 0x00A3E450)."""
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 from darkblood.core.serialization.jser import to_i32 as _i32
-from darkblood.core.serialization.wire import JSerBufferWriter
+from darkblood.core.serialization.wire import *  # noqa: F403
 
 
 @dataclass
-class ActiveQuest:
+class ActiveQuest(WireMessage):
     """One entry of the active-quest map in 2007 (reader 0x00A3E450 -> 0x00A209B0).
 
     Element: tag 0x0F, u32 key (0xB35300) = quest id, then the implicit value
-    struct 0x00A49BE0 (0x29 bytes, initialised by 0x00A5CF80): i64 quest UID,
-    i64 start time, u32 quest id, bool tracked, u32 array 0x00A48E50 (varint
-    count, max 5) of mission counters. Layout confirmed against 0x00A60960,
-    which the 2074 handler calls with (UID, server time from 0x00946570,
-    quest id) and sets tracked = (tracked quests < 5, counted by 0x00A5E250).
-    The start time's unit is not recovered; 0 is sent.
+    struct 0x00A49BE0 (0x29 bytes): i64 quest UID, i64 start time, u32 quest id,
+    bool tracked, u32 array 0x00A48E50 (varint count, max 5) of mission counters.
     """
     quest_id: int
-    uid: int
+    uid: i64
     tracked: bool = True
     counters: list = field(default_factory=list)
-    start_time: int = 0
+    start_time: i64 = 0
+
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Lit(b'\x0f'),
+        Computed(i32, lambda s: _i32(s.quest_id)),
+        'uid',
+        'start_time',
+        Computed(i32, lambda s: _i32(s.quest_id)),
+        'tracked',
+        Computed(Array[i32], lambda s: list(s.counters)[:5]),
+    )
 
     def encode_entry(self) -> bytes:
-        qid = _i32(self.quest_id)
-        w = JSerBufferWriter()
-        w.write_u8(0x0F)
-        w.write_i32(qid)
-        w.write_i64(self.uid)
-        w.write_i64(self.start_time)
-        w.write_i32(qid)
-        w.write_bool(self.tracked)
-        counters = list(self.counters)[:5]
-        w.write_varuint(len(counters))
-        for c in counters:
-            w.write_i32(c)
-        return w.to_bytes()
+        return self.encode()
 
     @classmethod
     def from_store(cls, quest_id, record) -> 'ActiveQuest':

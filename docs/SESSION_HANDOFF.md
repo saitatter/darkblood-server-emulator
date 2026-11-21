@@ -3,8 +3,10 @@
 ## Typed wire serialization & project audit refactors — saita machine, 2026-11-21
 
 - **Typed wire serialization (`src/darkblood/core/serialization/wire.py`, `tools/gen_messages.py`)**:
-  - Added `WireMessage` + `JSerBufferWriter` and nominal wire types (`i8..u64`, `h32`, `f32`, `f64`, `bool`, `wstr`, `wstrz`, `wrest`, `ipv4`, `rest`, `Raw[N]`, `Vector[T]`, `Set[T]`, `Map[K, V]`, `Array[T]`, `Pairs[T]`, `Extern[...]`, `Const`, `Lit`).
-  - Updated `PythonBackend` in `tools/gen_messages.py` to emit declarative typed `WireMessage` dataclasses with **0** `struct.pack`/`struct.unpack` calls across all 15 `messages/*.py` modules (verified 0 diffs against a 434-class byte-for-byte snapshot).
+  - Added `WireMessage` + `JSerBufferWriter` and nominal wire types (`i8..u64`, `h32`, `f32`, `f64`, `bool`, `wstr`, `wstrz`, `wrest`, `ipv4`, `rest`, `Raw[N]`, `Vector[T]`, `Set[T]`, `Map[K, V]`, `Array[T]`, `Pairs[T]`, `Extern[...]`, `Const`, `Lit`, `Computed`).
+  - Updated `PythonBackend` in `tools/gen_messages.py` to emit declarative typed `WireMessage` dataclasses with a single `from darkblood.core.serialization.wire import *` line and **0** `struct.pack`/`struct.unpack` calls across all 15 `messages/*.py` modules (verified 0 diffs against a 434-class byte-for-byte snapshot).
+  - Migrated `Item`, `Bag` (`entities/items.py`) and `ActiveQuest` (`missions/quests.py`) onto declarative `WireMessage` layouts.
+  - Split `handlers/inventory.py` into `handlers/inventory/` (`bags.py`, `items.py`, `crafting.py`, `depot.py`, `__init__.py`) using `self.reply()` and `self.save_char()`.
 - **Server & persistence cleanups**:
   - Removed duplicate zlib decompression in `src/darkblood/games/session.py` (`jser.parse_event` already handles it).
   - Added `BaseDomainService.reply()` and `send_msg()` helpers in `src/darkblood/games/handlers/base.py`.
