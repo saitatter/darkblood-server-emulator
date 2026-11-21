@@ -92,8 +92,8 @@ message 5004 JoinRoomAck ok_only
   i64 host_uid
   vector<RoomMember> members
   raw[6] relay
-  bool _
-  bool _
+  bool free_item_obtain = true   # bFreeItemObtain: looting mode (5088 mode 1 = free for all, 0 = random)
+  bool _                         # bIsAllCharSameRate
 end
 
 message 5035 RoomMemberJoinedNot
@@ -385,6 +385,8 @@ message 5089 ChangeItemObtainAck
   ## Live trace 2026-11-21: the control flips itself before 0x0054F86C reads it, so
   ## the button sends 1 after an inverse ack every time. Echoing the request leaves
   ## the box opposite to it, and the next click sends the other mode.
+  ## 0x00584460 prints UI_1468 "Random looting" when +0xB4 != 0 and UI_1467 "Free for
+  ## all" otherwise: mode 0 = random looting, mode 1 = free for all.
   i32 result
   bool mode
 end

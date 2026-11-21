@@ -255,6 +255,7 @@ class JoinRoomAck:
     host_uid: int = 0
     members: list[RoomMember] = field(default_factory=list)
     relay: bytes = bytes(6)
+    free_item_obtain: bool = True  # bFreeItemObtain: looting mode (5088 mode 1 = free for all, 0 = random)
 
     def encode(self) -> bytes:
         b = bytearray()
@@ -265,7 +266,7 @@ class JoinRoomAck:
         b += struct.pack('<q', self.host_uid)
         b += b'\x10' + varuint(len(self.members)) + b''.join(e0.encode() for e0 in self.members)
         b += bytes(self.relay).ljust(6, b'\x00')[:6]
-        b += struct.pack('<??', False, False)
+        b += struct.pack('<??', self.free_item_obtain, False)
         return bytes(b)
 
 
@@ -1157,6 +1158,8 @@ class ChangeItemObtainAck:
     Live trace 2026-11-21: the control flips itself before 0x0054F86C reads it, so
     the button sends 1 after an inverse ack every time. Echoing the request leaves
     the box opposite to it, and the next click sends the other mode.
+    0x00584460 prints UI_1468 "Random looting" when +0xB4 != 0 and UI_1467 "Free for
+    all" otherwise: mode 0 = random looting, mode 1 = free for all.
     """
     OPCODE: ClassVar[int] = 5089
     result: int = 0

@@ -710,7 +710,11 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   instance), drops are rolled once into a room pool and 5064 goes to all, the first picker wins (5068 to
   all; 5114 result 0 to the picker and nonzero to the others, because `0x00792700` adds the AR to the local
   player only for result 0, after removing the drop), and the host's 5017 sends 5018 with every member's
-  reward entry to all. Random looting is not applied (which 5088 value means random is unknown).
+  reward entry to all. Looting modes: `0x00584460` prints UI_1468 "Random looting" for +0xB4 != 0 and
+  UI_1467 "Free for all" otherwise, so 5088/5089 mode 0 = random, 1 = free for all (fresh page default).
+  Random: a pickup goes to a random run member (item or AR). 5004 `bFreeItemObtain` now carries the mode.
+  Chat: 5040 was only echoed; 5041 now reaches the square (channel 1), the named player (2 = whisper) or
+  the party room (other channels, values not recovered; `chat-route` records them).
   The quest-item check after a pickup never ran (`hasattr` on the wrong object); fixed.
 - **Reconnect from town, two clients (open)**: with the 0x0076F98D and 0x0059C161 recoveries both
   clients get past the lobby and character select, then stop on a modal error box ("오류") from

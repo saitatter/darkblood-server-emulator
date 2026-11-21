@@ -66,7 +66,7 @@ class DungeonRoom:
     next_drop_uid: int = 0
     # 5047 join requests waiting for the host: char id -> (session, correlation).
     join_requests: dict = field(default_factory=dict)
-    loot_mode: bool = False  # 5088 looting mode (which value is random looting is unverified)
+    loot_mode: int = 1  # 5088 mode: 1 = free for all (fresh page default), 0 = random looting (0x00584460)
 
 
 class DungeonHandlers(BaseDomainService):
@@ -172,7 +172,7 @@ class DungeonHandlers(BaseDomainService):
         if room is not None:
             if room.host is not self.session:
                 return
-            room.loot_mode = mode
+            room.loot_mode = int(mode)
         ack = ChangeItemObtainAck(mode=mode).encode()
         await self.transport.send_event(event(5089, ack, correlation), note='change item obtain ack (mode=%d)' % mode)
         if room is not None:
@@ -261,7 +261,8 @@ class DungeonHandlers(BaseDomainService):
         room.members[self.session] = char
         self.room = room
         roster = [RoomMember(Character.from_dict(record)) for record in room.members.values()]
-        ack = JoinRoomAck(room=self._room_info(room), host_uid=room.info.host_uid, members=roster, relay=relay_address())
+        ack = JoinRoomAck(room=self._room_info(room), host_uid=room.info.host_uid, members=roster, relay=relay_address(),
+                         free_item_obtain=room.loot_mode == 1)
         await self.transport.send_event(event(5004, ack.encode(), correlation), note='join room ack')
         if is_new and self.room is room:
             joined = RoomMemberJoinedNot(RoomMember(Character.from_dict(char)))
@@ -793,7 +794,15 @@ class DungeonHandlers(BaseDomainService):
         self.transport.record('pick-up-item-req', body, drop_uid=req.drop_uid, code=code or '')
         if not code or char is None:
             return
-        others = [member for member, _ in self._run_members() if member is not self.session]
+        run = self._run_members()
+        room = self._shared_run()
+        if room is not None and room.loot_mode == 0 and run:
+            # Random looting: whoever picks it up, a random member of the run gets it.
+            import random
+            winner, char = random.choice(run)
+        else:
+            winner = self.session
+        others = [member for member, _ in run if member is not winner]
         from darkblood.games.game_data.client_dict import money_drops
         money = money_drops().get(code)
         if money:
@@ -811,13 +820,14 @@ class DungeonHandlers(BaseDomainService):
             char['u66'] = char['gold']
             self.store().save()
             ack = GetDropArNot(result=0, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
-            await self.transport.send_event(event(5114, ack),
-                                            note='picked AR (%s: +%d, total %d)' % (code, amount, char['gold']))
+            await winner.transport.send_event(event(5114, ack),
+                                              note='picked AR (%s: +%d, total %d)' % (code, amount, char['gold']))
             seen = GetDropArNot(result=1, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
             await self._send_to(others, event(5114, seen), 'AR picked by %s' % char.get('name'))
             return
         free = free_bag_slots(char)
         if free is not None and slots_needed([(code, 1)]) > free:
+            # The winner's bag is full: the drop stays on the floor.
             await self.transport.send_event(event(5068, PickUpItemResultAck(result=results.INVEN_FULL, picker_uid=char['id']).encode()),
                                             note='pick up item refused (bag full, drop %d)' % req.drop_uid)
             return
@@ -826,12 +836,12 @@ class DungeonHandlers(BaseDomainService):
         self.store().save()
         entry = ItemDropEntry(drop_uid=req.drop_uid, item_id=jhash(code))
         result = event(5068, PickUpItemResultAck(result=0, picker_uid=char['id'], drop=entry).encode())
-        await self.transport.send_event(result, note='pick up item result (drop %d: %s)' % (req.drop_uid, code))
-        # The bag update (2037) goes to the picker only; 5068 removes the drop for all.
+        await winner.transport.send_event(result, note='pick up item result (drop %d: %s)' % (req.drop_uid, code))
+        # The bag update (2037) goes to the winner only; 5068 removes the drop for all.
         await self._send_to(others, result, 'item picked by %s' % char.get('name'))
-        await self.transport.send_event(event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
+        await winner.transport.send_event(event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
                                         note='picked item into bag (%s)' % code)
-        await self.session.quests.check_quest_item_objectives(char)
+        await winner.quests.check_quest_item_objectives(char)
 
     @staticmethod
     async def _send_to(sessions, packet, note):

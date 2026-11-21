@@ -145,7 +145,7 @@ class SharedDungeonRoomTest(ServerTestCase):
                 at = 8 + len(wide('Shared test')) + 2
                 joined_info = room_info[:at] + struct.pack('<h', 2) + room_info[at + 2:]
                 self.assertEqual(joined, (b'\0' * 4 + joined_info + struct.pack('<q', host_id) + b'\x10\x82'
-                                          + member_bytes(host_id) + member_bytes(guest_id) + relay + b'\0\0'))
+                                          + member_bytes(host_id) + member_bytes(guest_id) + relay + b'\x01\0'))  # free for all
                 _, notice = await host.expect_event(5035)
                 self.assertEqual(notice, member_bytes(guest_id) + b'\0')
 
