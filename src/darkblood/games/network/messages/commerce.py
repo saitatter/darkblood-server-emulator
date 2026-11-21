@@ -120,18 +120,19 @@ class BuyItemAck(WireMessage):
     """Opcode 2068: eEGS_BUY_ITEM_ACK (reply).
 
     On_eEGS_BUY_ITEM_ACK 0x0077E2F0.
+    Assert 0x00CF5D40: jModifyGoods >> nNPCID >> nCurAr >> vecItem >> nItemID >> sItemNum >> nCurPvPPoint >> nCurLeaguePoint.
     """
     OPCODE: ClassVar[int] = 2068
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    store_record: Raw[32] = bytes(32)  # StoreRecord bytes (0x00A489D0)
-    u32_1: i32 = 0  # meaning unknown
-    gold: i64 = 0  # player gold, written to +0x70
-    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B94C0
-    u32_2: i32 = 0  # meaning unknown
-    u16_1: u16 = 0  # meaning unknown
-    i64_1: i64 = 0  # meaning unknown
-    u32_3: i32 = 0  # meaning unknown
+    store_record: Raw[32] = bytes(32)  # jModifyGoods: StoreRecord bytes (0x00A489D0)
+    npc_id: h32 = 0  # nNPCID
+    gold: i64 = 0  # nCurAr: player gold, written to +0x70
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem (0x004B94C0)
+    item_id: h32 = 0  # nItemID: jhash(item_code), looked up via 0x009E5440 (0 crashes!)
+    item_num: u16 = 0  # sItemNum: bought count
+    pvp_point: i64 = 0  # nCurPvPPoint, written to +0x268
+    league_point: i32 = 0  # nCurLeaguePoint, written to +0x27C
 
 
 @dataclass
@@ -412,68 +413,52 @@ class FinallyAcceptTradeAck(WireMessage):
 class DepotSaveArReq(WireMessage):
     """Opcode 2228: eEGS_DEPOT_SAVE_AR_REQ (request).
 
-    Sender 0x007950A0: two 0x00B353D0 values.
+    Sender 0x007950A0 (caller 0x006513C0): depot_uid (selected depot char UID), gold (AR amount).
     """
     OPCODE: ClassVar[int] = 2228
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
+    depot_uid: i64 = 0
     gold: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'header',
-        'gold',
-        Const(i64, 0),
-    )
 
 
 @dataclass
 class DepotSaveArAck(WireMessage):
     """Opcode 2229: eEGS_DEPOT_SAVE_AR_ACK (reply).
 
-    Handler 0x00795220.
+    Handler 0x00795220. Assert 0x00CFB720: mapCurDepotAr >> nCurAr.
     """
     OPCODE: ClassVar[int] = 2229
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    new_gold: i64 = 0  # new storage gold
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyMap),
-        'new_gold',
-    )
+    depot_ar: Map[i64, i64] = field(default_factory=dict)  # mapCurDepotAr (0x00765610 -> 0x0074D640): depot_uid -> stored AR
+    new_gold: i64 = 0  # nCurAr: remaining player AR (+0x70)
 
 
 @dataclass
 class DepotLoadArReq(WireMessage):
     """Opcode 2230: eEGS_DEPOT_LOAD_AR_REQ (request).
 
-    Sender 0x00795160: two 0x00B353D0 values.
+    Sender 0x00795160 (caller 0x006458A0): depot_uid (selected depot char UID), gold (AR amount).
     """
     OPCODE: ClassVar[int] = 2230
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
+    depot_uid: i64 = 0
     gold: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'header',
-        'gold',
-        Const(i64, 0),
-    )
 
 
 @dataclass
 class DepotLoadArAck(WireMessage):
     """Opcode 2231: eEGS_DEPOT_LOAD_AR_ACK (reply).
 
-    Handler 0x00795490.
+    Handler 0x00795490. Assert 0x00CFB720: mapCurDepotAr >> nCurAr.
     """
     OPCODE: ClassVar[int] = 2231
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    new_gold: i64 = 0  # new storage gold
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyMap),
-        'new_gold',
-    )
+    depot_ar: Map[i64, i64] = field(default_factory=dict)  # mapCurDepotAr (0x00765610 -> 0x0074D640): depot_uid -> stored AR
+    new_gold: i64 = 0  # nCurAr: updated player AR (+0x70)
 
 
 @dataclass

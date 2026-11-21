@@ -747,15 +747,19 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<q', not_del), (123,))
 
     def test_depot_save_and_load_currency(self):
-        req_save = messages.DepotSaveArReq.decode(struct.pack('<qq', 10000, 0))
-        self.assertEqual(req_save.gold, 10000)
-        ack_save = messages.DepotSaveArAck(result=0, new_gold=10000).encode()
+        req_save = messages.DepotSaveArReq.decode(struct.pack('<qq', 1, 10000))
+        self.assertEqual((req_save.depot_uid, req_save.gold), (1, 10000))
+        ack_save = messages.DepotSaveArAck(result=0, depot_ar={1: 10000}, new_gold=5000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_save[:4])[0], 0)
+        self.assertEqual(ack_save[4:7], b'\x17\x81\x0f')
+        self.assertEqual(struct.unpack_from('<qqq', ack_save, 7), (1, 10000, 5000))
 
-        req_load = messages.DepotLoadArReq.decode(struct.pack('<qq', 5000, 0))
-        self.assertEqual(req_load.gold, 5000)
-        ack_load = messages.DepotLoadArAck(result=0, new_gold=5000).encode()
+        req_load = messages.DepotLoadArReq.decode(struct.pack('<qq', 1, 5000))
+        self.assertEqual((req_load.depot_uid, req_load.gold), (1, 5000))
+        ack_load = messages.DepotLoadArAck(result=0, depot_ar={1: 5000}, new_gold=10000).encode()
         self.assertEqual(struct.unpack_from('<i', ack_load[:4])[0], 0)
+        self.assertEqual(ack_load[4:7], b'\x17\x81\x0f')
+        self.assertEqual(struct.unpack_from('<qqq', ack_load, 7), (1, 5000, 10000))
 
     def test_depot_slot_extend_messages(self):
         req = messages.DepotSlotExtendReq.decode(struct.pack('<qh', 987654321, 5))

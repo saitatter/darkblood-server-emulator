@@ -112,7 +112,8 @@ class CommerceHandlers(BaseDomainService):
                                         note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 
     async def on_2067(self, correlation, body):
-        # eEGS_BUY_ITEM_REQ (0x00780000.c:10667) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
+        # eEGS_BUY_ITEM_REQ (0x0078F720) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
+        from darkblood.games.network import results
         req = BuyItemReq.decode(body)
         self.transport.record('buy-item-req', body, store_id=req.store_id, item_id=req.item_id, count=req.count)
         char = self.current_char()
@@ -123,27 +124,55 @@ class CommerceHandlers(BaseDomainService):
 
         from darkblood.games.game_data import client_dict
         item_code = None
-        for s_items in client_dict.store_items().values():
-            for code, _ in s_items:
-                if jhash(code) == req.item_id:
-                    item_code = code
-                    break
-            if item_code:
+        item_stock = -1
+        req_hash = req.item_id & 0xFFFFFFFF
+        _, npc_items = client_dict.items_for_npc(req.store_id & 0xFFFFFFFF)
+        for code, stock in npc_items:
+            if jhash(code) == req_hash:
+                item_code = code
+                item_stock = stock
                 break
+        if not item_code:
+            for s_items in client_dict.store_items().values():
+                for code, stock in s_items:
+                    if jhash(code) == req_hash:
+                        item_code = code
+                        item_stock = stock
+                        break
+                if item_code:
+                    break
         if not item_code:
             item_code = 'Ihppa0001'
 
         count = max(1, req.count)
-        cost = client_dict.item_field(item_code, 'BuyPrice', 0) * count
+        free = free_bag_slots(char)
+        if free is not None and slots_needed([(item_code, count)]) > free:
+            ack = BuyItemAck(result=results.INVEN_FULL).encode()
+            await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (inventory full)')
+            return
+
+        unit_price = client_dict.item_field(item_code, 'BuyPrice', 0)
+        cost = unit_price * count
         char_gold = char.get('gold', 100000)
         if char_gold >= cost:
             char_gold -= cost
             char['gold'] = char_gold
             char['u66'] = char_gold
             new_items = add_reward_items(char, [(item_code, count)])
-            self.store().save()
+            self.save_char()
             wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
-            ack = BuyItemAck(result=0, gold=char_gold, items=wire_items).encode()
+            rec = store_record(item_code, stock=item_stock, price=unit_price)
+            ack = BuyItemAck(
+                result=0,
+                store_record=rec.encode(),
+                npc_id=req.store_id & 0xFFFFFFFF,
+                gold=char_gold,
+                items=wire_items,
+                item_id=jhash(item_code),
+                item_num=count,
+                pvp_point=char.get('pvp_points', 0),
+                league_point=char.get('league_points', 0),
+            ).encode()
             await self.transport.send_event(event(2068, ack, correlation),
                                             note=f'buy item ack (code={item_code} count={count} gold={char_gold})')
         else:

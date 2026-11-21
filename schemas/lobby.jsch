@@ -40,6 +40,27 @@ struct QuickSlot
   u16 _ = 0xFFFF             # meaning unknown
 end
 
+struct DepotSlotInfo
+  ## Extended storage tab info (reader 0x00A1EBF0, 0x1B bytes in memory).
+  ## 0x00942EE0 converts remain_sec to expiry ms; 0x00936990 indexes slots[0..1]
+  ## for storage groups 2 and 3 (group 1 = slots 0..19 is always unlocked).
+  bool active
+  u16 slot_index = 0xFFFF
+  u64 expire_date
+  i64 remain_sec
+end
+
+struct DepotInfo
+  ## Per-character depot record in 2007 map 0x00A40720 (reader 0x00A40380).
+  i64 char_uid               # +0x00 m_nCharUID (passed to 2036 DragItemReq on storage drop)
+  i64 gold                   # +0x08 m_nAr (displayed in Page_Storage depot_ar)
+  wstr char_name             # +0x10 m_strCharName (shown in Page_Storage char_division)
+  vector<Item> items         # +0x2C stored items (container=2, owner=char_uid)
+  vector<DepotSlotInfo> slots # +0x3C MUST contain 2 entries (groups 2 & 3)
+  u64 share_expire_time      # +0x4C shared depot expiration
+  i64 _                      # +0x54 unknown
+end
+
 message 2007 SelectCharacterAck
   ## Handler 0x007AA4B0: untagged struct 0x00A40760 starting with the result (the
   ## handler peeks it with 0x00A1EA20(1) and the reader rereads the same word),
@@ -55,7 +76,7 @@ message 2007 SelectCharacterAck
   u64 _
   u8 _
   u8 _
-  map<?> _                   # 0x00A40720
+  map<i64,DepotInfo> depots  # 0x00A40720 -> 0x00A40590 -> 0x00A40380, consumed by JDepotMgr 0x00942EE0
   vector<Bag> bags           # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
   vector<Item> items         # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
   vector<QuickSlot> quickslots  # 0x004B2C30 (+0x2B3)

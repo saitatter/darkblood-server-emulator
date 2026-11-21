@@ -121,9 +121,20 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<iH', ack2056), (0, 101))
 
             # 13. Store buy item (2067 -> 2068)
-            client.send_event(2067, struct.pack('<iiH', 1, 99999, 1))
+            from darkblood.core.hashing import jhash
+            from darkblood.games.network.messages import BuyItemAck
+            client.send_event(2067, struct.pack('<iiH', 1, jhash('Ihppa0001') & 0x7FFFFFFF, 1))
             _, ack2068 = await client.expect_event(2068)
             self.assertEqual(struct.unpack_from('<i', ack2068)[0], 0)
+            # Verify store_record item_hash, npc_id, and trailing nItemID/sItemNum (0 crashes client 0x0077E2F0)
+            rec_hash = struct.unpack_from('<I', ack2068, 4)[0]
+            npc_id = struct.unpack_from('<I', ack2068, 36)[0]
+            self.assertEqual(npc_id, 1)
+            self.assertEqual(rec_hash, jhash('Ihppa0001') & 0xFFFFFFFF)
+            # Trailing 18 bytes: h32 item_id, u16 item_num, i64 pvp_point, i32 league_point
+            buy_item_id, buy_item_num = struct.unpack_from('<IH', ack2068, len(ack2068) - 18)
+            self.assertEqual(buy_item_id, jhash('Ihppa0001') & 0xFFFFFFFF)
+            self.assertEqual(buy_item_num, 1)
 
             # 14. Store sell item (2069 -> 2070)
             client.send_event(2069, bytes.fromhex('ffffff7f6d03416f') + struct.pack('<qH', 1, 1))
@@ -267,14 +278,40 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2112[:4])[0], 0)
 
             # 42. Depot save AR (2228 -> 2229)
-            client.send_event(2228, DepotSaveArReq(gold=10000).encode())
+            from darkblood.games.session import GameSession
+            from darkblood.games.entities.items import DEPOT_CONTAINER
+            char_for_depot = GameSession.store().get('OfflinePlayer', char_id)
+            char_for_depot['gold'] = 25000
+            char_for_depot['u66'] = 25000
+            char_for_depot['depot_gold'] = 0
+            client.send_event(2228, DepotSaveArReq(depot_uid=char_id, gold=10000).encode())
             _, ack2229 = await client.expect_event(2229)
             self.assertEqual(struct.unpack_from('<i', ack2229[:4])[0], 0)
+            # mapCurDepotAr (tag 0x17, count 1, 0x0f, i64 char_id, i64 10000) + i64 remaining player gold (15000)
+            self.assertEqual(ack2229[4:7], b'\x17\x81\x0f')
+            self.assertEqual(struct.unpack_from('<qqq', ack2229, 7), (char_id, 10000, 15000))
 
             # 43. Depot load AR (2230 -> 2231)
-            client.send_event(2230, DepotLoadArReq(gold=5000).encode())
+            client.send_event(2230, DepotLoadArReq(depot_uid=char_id, gold=4000).encode())
             _, ack2231 = await client.expect_event(2231)
             self.assertEqual(struct.unpack_from('<i', ack2231[:4])[0], 0)
+            self.assertEqual(ack2231[4:7], b'\x17\x81\x0f')
+            self.assertEqual(struct.unpack_from('<qqq', ack2231, 7), (char_id, 6000, 19000))
+
+            # 43b. Drag item from bag into depot (to_container = char_id) and back to bag
+            bag_item = next(i for i in char_for_depot['items'] if i.get('container') == 3)
+            bag_item_uid = bag_item['uid']
+            client.send_event(2036, struct.pack('<qqi', bag_item_uid, char_id, 0))
+            _, ack2037_in = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', ack2037_in[:4])[0], 0)
+            self.assertEqual(bag_item['container'], DEPOT_CONTAINER)
+            self.assertEqual(bag_item['slot'], 0)
+
+            client.send_event(2036, struct.pack('<qqi', bag_item_uid, 3, 2))
+            _, ack2037_out = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', ack2037_out[:4])[0], 0)
+            self.assertEqual(bag_item['container'], 3)
+            self.assertEqual(bag_item['slot'], 2)
 
             # 44. Depot share expire time get (2242 -> 2243)
             client.send_event(2242, b'')
@@ -282,9 +319,9 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2243)[0], 0)
 
             # 45. Depot slot extend (2461 -> 2462)
-            client.send_event(2461, struct.pack('<qh', 1, 5))
+            client.send_event(2461, struct.pack('<qh', 1, 0))
             _, ack2462 = await client.expect_event(2462)
-            self.assertEqual(struct.unpack_from('<ihq', ack2462[:14]), (0, 5, 0))
+            self.assertEqual(struct.unpack_from('<ihq', ack2462[:14]), (0, 0, 30 * 86400))
 
             # 46. Durability loss (2143 -> 2144), AR repair (2145 -> 2146), and repair-by-item (2154 -> 2146)
             from darkblood.games.network.messages import (

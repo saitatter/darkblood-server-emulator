@@ -5,7 +5,7 @@ import time
 
 from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character, delete_seconds_left
-from darkblood.games.entities.items import EQUIPPED, Bag, Item
+from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.frontend.relay import RELAY_PORT
@@ -13,6 +13,8 @@ from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, squar
 from darkblood.games.network.messages import (
     DeleteCharacterAck,
     DeleteCharacterReq,
+    DepotInfo,
+    DepotSlotInfo,
     JoinSquareAck,
     QuestHistoryNot,
     RelayAddressNot,
@@ -73,19 +75,51 @@ def build_char_details(char):
     return c.encode_world_details()
 
 
-def build_select_char_ack(char):
+def _build_depot_info(char_dict: dict) -> DepotInfo:
+    """Build a DepotInfo entry for 2007 SelectCharacterAck (0x00A40380)."""
+    char_uid = int(char_dict.get('id', 1))
+    extend_remain = list(char_dict.get('depot_extend_remain', [0, 0]))
+    while len(extend_remain) < 2:
+        extend_remain.append(0)
+    slots = [
+        DepotSlotInfo(active=remain > 0, slot_index=idx if remain > 0 else 0xFFFF,
+                      expire_date=0, remain_sec=max(0, int(remain)))
+        for idx, remain in enumerate(extend_remain[:2])
+    ]
+    depot_items = [
+        Item(owner=char_uid, **i)
+        for i in char_dict.get('items', [])
+        if i.get('container') == DEPOT_CONTAINER
+    ]
+    return DepotInfo(
+        char_uid=char_uid,
+        gold=int(char_dict.get('depot_gold', 0)),
+        char_name=char_dict.get('name', ''),
+        items=depot_items,
+        slots=slots,
+        share_expire_time=0,
+    )
+
+
+def build_select_char_ack(char, account_chars=None):
     """Serialize eEGS_SELECT_CHAR_ACK (2007) using SelectCharacterAck model."""
     c = char if isinstance(char, Character) else Character.from_dict(char)
     active = []
     if isinstance(char, dict):
         active = [ActiveQuest.from_store(q, r) for q, r in char.get('quests_active', {}).items()]
-    bags, items = [], []
+    bags, items, depots = [], [], {}
     if isinstance(char, dict):
         bags = [Bag(**b) for b in char.get('bags', [])]
-        items = [Item(owner=char.get('id', -1), **i) for i in char.get('items', [])]
+        items = [Item(owner=char.get('id', -1), **i) for i in char.get('items', [])
+                 if i.get('container') != DEPOT_CONTAINER]
+        depot_sources = account_chars if account_chars is not None else [char]
+        for entry in depot_sources:
+            if isinstance(entry, dict) and 'id' in entry:
+                depots[int(entry['id'])] = _build_depot_info(entry)
     return SelectCharacterAck(
         result=0,
         character=c,
+        depots=depots,
         active_quests=sorted(active, key=lambda q: q.uid),
         bags=bags,
         items=items,
@@ -213,7 +247,7 @@ class FrontendHandlers(BaseDomainService):
             await self.session.dungeon.leave_room()
             await world.remove_session_player(self.session)
         self.session.active_char_id = char_id
-        ack = build_select_char_ack(char)
+        ack = build_select_char_ack(char, account_chars=self.store().characters(self.account))
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)
         done = [int(q) for q in char.get('quests_done', [])]

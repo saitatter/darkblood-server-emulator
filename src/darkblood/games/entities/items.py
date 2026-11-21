@@ -10,6 +10,7 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 
 
 EQUIPPED = 1  # item container id treated as "worn" by 0x008354D0
+DEPOT_CONTAINER = 2  # item container id handled by JDepotMgr (0x009411A0) and skipped by inventory (0x008354D0)
 
 # Owner for item records in incremental updates (2037, 2039, 2043, rewards,
 # shop). Per-item apply 0x008354D0 ignores a record whose i64 owner (+0xAB)

@@ -16,6 +16,8 @@ __all__ = [
     'GameServer',
     'ChannelSquare',
     'QuickSlot',
+    'DepotSlotInfo',
+    'DepotInfo',
     'SelectCharacterAck',
     'JoinSquareAck',
     'RelayAddressNot',
@@ -73,6 +75,38 @@ class QuickSlot(WireMessage):
 
 
 @dataclass
+class DepotSlotInfo(WireMessage):
+    """Extended storage tab info (reader 0x00A1EBF0, 0x1B bytes in memory).
+    0x00942EE0 converts remain_sec to expiry ms; 0x00936990 indexes slots[0..1]
+    for storage groups 2 and 3 (group 1 = slots 0..19 is always unlocked).
+    """
+    active: bool = False
+    slot_index: u16 = 0xFFFF
+    expire_date: u64 = 0
+    remain_sec: i64 = 0
+
+
+@dataclass
+class DepotInfo(WireMessage):
+    """Per-character depot record in 2007 map 0x00A40720 (reader 0x00A40380)."""
+    char_uid: i64 = 0  # +0x00 m_nCharUID (passed to 2036 DragItemReq on storage drop)
+    gold: i64 = 0  # +0x08 m_nAr (displayed in Page_Storage depot_ar)
+    char_name: wstr = ''  # +0x10 m_strCharName (shown in Page_Storage char_division)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # +0x2C stored items (container=2, owner=char_uid)
+    slots: Vector[DepotSlotInfo] = field(default_factory=list)  # +0x3C MUST contain 2 entries (groups 2 & 3)
+    share_expire_time: u64 = 0  # +0x4C shared depot expiration
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'char_uid',
+        'gold',
+        'char_name',
+        'items',
+        'slots',
+        'share_expire_time',
+        Const(i64, 0),
+    )
+
+
+@dataclass
 class SelectCharacterAck(WireMessage):
     """Opcode 2007: eEGS_SELECT_CHAR_ACK (reply).
 
@@ -84,6 +118,7 @@ class SelectCharacterAck(WireMessage):
     OPCODE: ClassVar[int] = 2007
     result: u32 = 0
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
+    depots: Map[i64, DepotInfo] = field(default_factory=dict)  # 0x00A40720 -> 0x00A40590 -> 0x00A40380, consumed by JDepotMgr 0x00942EE0
     bags: Vector[Extern[Bag, 'encode', False]] = field(default_factory=list)  # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
     quickslots: Vector[QuickSlot] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
@@ -100,7 +135,7 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         Const(u8, 0),
         Const(u8, 0),
-        Const(EmptyMap),
+        'depots',
         'bags',
         'items',
         'quickslots',

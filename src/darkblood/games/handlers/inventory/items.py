@@ -5,7 +5,7 @@ import struct
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.entities.items import EQUIPPED, Item, UPDATE_OWNER
+from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
     BuyLifeWaterAck,
@@ -50,31 +50,60 @@ class ItemHandlersMixin:
 
     @packet_handler(DragItemReq)
     async def handle_drag_item(self, correlation, body):
-        """Opcode 2036 (eEGS_DRAG_ITEM_REQ) -> 2037 (eEGS_DRAG_ITEM_ACK): move or swap an item between cells."""
+        """Opcode 2036 (eEGS_DRAG_ITEM_REQ) -> 2037 (eEGS_DRAG_ITEM_ACK): move or swap an item between bags/depot."""
         req = DragItemReq.decode(body)
         char = self.current_char()
         if not char:
             await self.reply(DragItemAck(result=1), correlation, note='drag item fail (no char)')
             return
-        items = char.get('items', [])
-        dragged = next((i for i in items if i.get('uid') == req.item_uid), None)
+        account_chars = {int(c['id']): c for c in self.store().characters(self.account) if 'id' in c}
+        src_char = char
+        dragged = next((i for i in char.get('items', []) if i.get('uid') == req.item_uid), None)
+        if not dragged:
+            # Item may reside in another account character's depot.
+            for other in account_chars.values():
+                if other is char:
+                    continue
+                found = next((i for i in other.get('items', [])
+                              if i.get('uid') == req.item_uid and i.get('container') == DEPOT_CONTAINER), None)
+                if found:
+                    src_char = other
+                    dragged = found
+                    break
         if not dragged:
             await self.reply(DragItemAck(result=1), correlation, note='drag item fail (not found)')
             return
+
         old_container, old_slot = dragged.get('container'), dragged.get('slot')
+        bag_ids = {b.get('bag_id') for b in char.get('bags', [])
+                   if b.get('bag_id') not in (EQUIPPED, DEPOT_CONTAINER)}
 
-        if req.to_container == 2:
-            await self.reply(DragItemAck(result=1), correlation, note='drag item fail (invalid container 2)')
-            return
+        # JAppPageStorage::OnDragItem (0x00650D00) sends to_container = pjDepot->m_nCharUID
+        # (whereas JAppPageInven sends bag_id and equipment uses 2042 EquipItemReq).
+        dest_char = char
+        if req.to_container == DEPOT_CONTAINER:
+            dest_container = DEPOT_CONTAINER
+            dest_char = account_chars.get(DEPOT_CONTAINER, char)
+        elif req.to_container in account_chars and req.to_container not in bag_ids:
+            dest_container = DEPOT_CONTAINER
+            dest_char = account_chars[req.to_container]
+        else:
+            dest_container = req.to_container
 
-        if req.to_container == EQUIPPED and not fits_equip_slot(dragged.get('code', ''), req.to_slot):
+        if dest_container == EQUIPPED and not fits_equip_slot(dragged.get('code', ''), req.to_slot):
             await self.reply(DragItemAck(result=1), correlation,
                              note='drag item fail (item does not fit equip slot %d)' % req.to_slot)
             return
 
-        target = next((i for i in items if i.get('container') == req.to_container and i.get('slot') == req.to_slot), None)
+        def _wire_owner(container, owner_char):
+            return int(owner_char['id']) if container == DEPOT_CONTAINER else UPDATE_OWNER
+
+        dest_items = dest_char.setdefault('items', [])
+        src_items = src_char.setdefault('items', [])
+        target = next((i for i in dest_items
+                       if i.get('container') == dest_container and i.get('slot') == req.to_slot), None)
         if target is dragged:
-            await self.reply(DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **dragged)]),
+            await self.reply(DragItemAck(result=0, items=[Item(owner=_wire_owner(dest_container, dest_char), **dragged)]),
                              correlation, note='drag item ack (no move)')
             return
         if target:
@@ -82,19 +111,35 @@ class ItemHandlersMixin:
                 await self.reply(DragItemAck(result=1), correlation,
                                  note='drag item fail (displaced item does not fit equip slot %d)' % old_slot)
                 return
+            if src_char is not dest_char:
+                src_items.remove(dragged)
+                dest_items.remove(target)
+                src_items.append(target)
+                dest_items.append(dragged)
             target['container'], target['slot'] = old_container, old_slot
-            dragged['container'], dragged['slot'] = req.to_container, req.to_slot
-            self.save_char()
-            wire_items = [Item(owner=UPDATE_OWNER, **target), Item(owner=UPDATE_OWNER, **dragged)]
-        else:
-            dragged['container'], dragged['slot'] = req.to_container, req.to_slot
-            self.save_char()
+            dragged['container'], dragged['slot'] = dest_container, req.to_slot
+            self.store().save_char(self.account, src_char['id'])
+            if dest_char is not src_char:
+                self.store().save_char(self.account, dest_char['id'])
             wire_items = [
-                Item(owner=UPDATE_OWNER, **dragged),
-                Item(owner=UPDATE_OWNER, uid=0, code='', container=old_container, slot=old_slot, count=0),
+                Item(owner=_wire_owner(old_container, src_char), **target),
+                Item(owner=_wire_owner(dest_container, dest_char), **dragged),
+            ]
+        else:
+            if src_char is not dest_char:
+                src_items.remove(dragged)
+                dest_items.append(dragged)
+            dragged['container'], dragged['slot'] = dest_container, req.to_slot
+            self.store().save_char(self.account, src_char['id'])
+            if dest_char is not src_char:
+                self.store().save_char(self.account, dest_char['id'])
+            wire_items = [
+                Item(owner=_wire_owner(dest_container, dest_char), **dragged),
+                Item(owner=_wire_owner(old_container, src_char), uid=0, code='',
+                     container=old_container, slot=old_slot, count=0),
             ]
         await self.reply(DragItemAck(result=0, items=wire_items), correlation,
-                         note='drag item ack (uid=%d to c=%d s=%d)' % (req.item_uid, req.to_container, req.to_slot))
+                         note='drag item ack (uid=%d to c=%d s=%d)' % (req.item_uid, dest_container, req.to_slot))
 
     @packet_handler(UseItemReq)
     async def handle_use_item(self, correlation, body):

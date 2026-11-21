@@ -44,15 +44,16 @@ end
 
 message 2068 BuyItemAck ok_only
   ## On_eEGS_BUY_ITEM_ACK 0x0077E2F0.
+  ## Assert 0x00CF5D40: jModifyGoods >> nNPCID >> nCurAr >> vecItem >> nItemID >> sItemNum >> nCurPvPPoint >> nCurLeaguePoint.
   i32 result
-  raw[32] store_record       # StoreRecord bytes (0x00A489D0)
-  i32 u32_1                  # meaning unknown
-  i64 gold                   # player gold, written to +0x70
-  vector<Item> items         # 0x004B94C0
-  i32 u32_2                  # meaning unknown
-  u16 u16_1                  # meaning unknown
-  i64 i64_1                  # meaning unknown
-  i32 u32_3                  # meaning unknown
+  raw[32] store_record       # jModifyGoods: StoreRecord bytes (0x00A489D0)
+  h32 npc_id                 # nNPCID
+  i64 gold                   # nCurAr: player gold, written to +0x70
+  vector<Item> items         # vecItem (0x004B94C0)
+  h32 item_id                # nItemID: jhash(item_code), looked up via 0x009E5440 (0 crashes!)
+  u16 item_num               # sItemNum: bought count
+  i64 pvp_point              # nCurPvPPoint, written to +0x268
+  i32 league_point           # nCurLeaguePoint, written to +0x27C
 end
 
 message 2069 SellItemReq header?
@@ -189,29 +190,29 @@ message 5084 FinallyAcceptTradeAck
 end
 
 message 2228 DepotSaveArReq header?
-  ## Sender 0x007950A0: two 0x00B353D0 values.
+  ## Sender 0x007950A0 (caller 0x006513C0): depot_uid (selected depot char UID), gold (AR amount).
+  i64 depot_uid
   i64 gold
-  i64 _                      # meaning unknown
 end
 
 message 2229 DepotSaveArAck ok_only
-  ## Handler 0x00795220.
+  ## Handler 0x00795220. Assert 0x00CFB720: mapCurDepotAr >> nCurAr.
   i32 result
-  map<?> _
-  i64 new_gold               # new storage gold
+  map<i64,i64> depot_ar      # mapCurDepotAr (0x00765610 -> 0x0074D640): depot_uid -> stored AR
+  i64 new_gold               # nCurAr: remaining player AR (+0x70)
 end
 
 message 2230 DepotLoadArReq header?
-  ## Sender 0x00795160: two 0x00B353D0 values.
+  ## Sender 0x00795160 (caller 0x006458A0): depot_uid (selected depot char UID), gold (AR amount).
+  i64 depot_uid
   i64 gold
-  i64 _                      # meaning unknown
 end
 
 message 2231 DepotLoadArAck ok_only
-  ## Handler 0x00795490.
+  ## Handler 0x00795490. Assert 0x00CFB720: mapCurDepotAr >> nCurAr.
   i32 result
-  map<?> _
-  i64 new_gold               # new storage gold
+  map<i64,i64> depot_ar      # mapCurDepotAr (0x00765610 -> 0x0074D640): depot_uid -> stored AR
+  i64 new_gold               # nCurAr: updated player AR (+0x70)
 end
 
 message 2712 SteamInitBuyItemNot header

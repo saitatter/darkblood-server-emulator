@@ -1,5 +1,18 @@
 # Session handoff — 2026-11-21
 
+## Storage / Depot & NPC Shop Buy Crash fixes — saita machine, 2026-11-21
+
+- **NPC Shop Buy Crash (`2067 -> 2068`, `schemas/commerce.jsch`, `src/darkblood/games/handlers/commerce.py`)**:
+  - Recovered `On_eEGS_BUY_ITEM_ACK` (`0x0077E2F0`, assert `0x00CF5D40`): `jModifyGoods >> nNPCID >> nCurAr >> vecItem >> nItemID >> sItemNum >> nCurPvPPoint >> nCurLeaguePoint`.
+  - Previously `nItemID` (`u32_2`) was sent as `0`, causing `FUN_009e5440(0)` to return NULL and crash on dereference (`*puVar6`).
+  - `on_2067` now checks free bag space (`results.INVEN_FULL = 67`) before deducting AR, populates `store_record` (`StoreRecord`), `npc_id`, `gold`, `items`, `item_id = jhash(item_code)`, `item_num = count`, `pvp_point`, and `league_point`.
+- **Storage / Depot (`2007`, `2036/2037`, `2228/2229`, `2230/2231`, `2461/2462`)**:
+  - Recovered `SelectCharacterAck` (`2007`) map `0x00A40720` -> `0x00A40590` -> `0x00A40380` (`DepotInfo`) and `0x00A1EBF0` (`DepotSlotInfo`), loaded into `JDepotMgr` (`0x00942EE0`). Previously sent empty (`17 80`), leaving `Page_Storage` on its XML placeholder (`"3,000,000 Ar"`) with all 3 slot groups locked.
+  - `build_select_char_ack` now populates `depots` for all characters on the account, each with 2 `DepotSlotInfo` entries (required by `0x00936990` which indexes `slots[0..1]` without bounds checking; group 1 = slots `0..19` is always unlocked).
+  - Recovered `0x009411A0` (`2037 DragItemAck` depot apply): items with `container == 2` (`DEPOT_CONTAINER`) are stored in `JDepotMgr` keyed by `item.owner == depot_char_uid`. `JAppPageStorage::OnDragItem` (`0x00650D00`) sends `2036 DragItemReq` with `to_container = pjDepot->m_nCharUID`. Updated `handle_drag_item` (`items.py`) to move/swap items between bags and depots and emit `owner = depot_char_uid` for `container == 2`.
+  - Fixed `2228 DepotSaveArReq` (`0x007950A0`) and `2230 DepotLoadArReq` (`0x00795160`) field order (`depot_uid` first, `gold` second) and populated `map<i64,i64> depot_ar` (`mapCurDepotAr`, `0x00765610 -> 0x0074D640`) in `2229`/`2231` ACKs alongside remaining player gold (`nCurAr`). Updated `2461 -> 2462` (`handle_depot_slot_extend`) to return non-zero remaining seconds (`30 * 86400`).
+  - Verification: 190/190 headless tests pass, `gen_messages.py --check` and `gen_progress.py --check` pass. Live client retest pending.
+
 ## Live 2-client co-op dungeon bugfixes — saita machine, 2026-11-21
 
 - **Party Rank & User Rank (`schemas/dungeon.jsch`, `src/darkblood/games/handlers/dungeon.py`)**:
