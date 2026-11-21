@@ -703,7 +703,15 @@ summarized below; detailed protocol notes live in `docs/PROTOCOL.md` and `docs/S
   handler (`0x007702E0`, global) changes the state itself, so the server now sends 5044 to every
   room member when the host opens the gate, and forwards the host's 5010. Not yet confirmed live;
   Leaving the gate (5045) is still per player. Shared dungeon step 1: the host's 5013 also sends its 5014
-  (same map) to the room members in the gate. Relay groups in the dungeon and monster sync: next.
+  (same map) to the room members in the gate. Live: both clients loaded the map and stayed linked through
+  the room relay group (kind 2); the member fought (2143). Only the host's client sent 5063 kills, 5017 and
+  5095, so EXP, drops and the result reached only the host. Step 2: the room shares the run (`room.started`,
+  same map code): every member gets each kill's EXP/score/quest kills (deduplicated by monster id +
+  instance), drops are rolled once into a room pool and 5064 goes to all, the first picker wins (5068 to
+  all; 5114 result 0 to the picker and nonzero to the others, because `0x00792700` adds the AR to the local
+  player only for result 0, after removing the drop), and the host's 5017 sends 5018 with every member's
+  reward entry to all. Random looting is not applied (which 5088 value means random is unknown).
+  The quest-item check after a pickup never ran (`hasattr` on the wrong object); fixed.
 - **Reconnect from town, two clients (open)**: with the 0x0076F98D and 0x0059C161 recoveries both
   clients get past the lobby and character select, then stop on a modal error box ("오류") from
   `JAppStateSquarePlay::LoadMap` (0x006F9920, MessageBox call 0x006F9C00): the local user's square UID

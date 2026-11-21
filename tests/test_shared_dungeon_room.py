@@ -3,6 +3,7 @@
 import struct
 
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
+from darkblood.core.hashing import jhash
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
 from darkblood.games.network.messages import ChangeRoomInfoAck, GetInviteListAck
@@ -185,6 +186,21 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, member_started = await guest.expect_event(5014)
                 self.assertEqual(member_started, started)
                 self.assertIn(wide('Act1_G1_A10'), started)
+                # Only the host's client reports kills and the finish: both members
+                # get the kill's EXP and the result screen with an entry for each.
+                kill = struct.pack('<iII', 0x7fffffff, jhash('1npi01n0') & 0xFFFFFFFF, 0x03000fa2)
+                host.send_event(5063, kill)
+                _, host_exp = await host.expect_event(5086)
+                _, guest_exp = await guest.expect_event(5086)
+                self.assertEqual(struct.unpack_from('<i', host_exp, 12), struct.unpack_from('<i', guest_exp, 12))
+                self.assertGreater(struct.unpack_from('<i', guest_exp, 12)[0], 0)
+                host.send_event(5017, b'\x01', correlation=56)
+                correlation, result = await host.expect_event(5018)
+                self.assertEqual(correlation, 56)
+                _, member_result = await guest.expect_event(5018)
+                self.assertEqual(member_result, result)
+                for uid in (host_id, guest_id):
+                    self.assertIn(b'\x0f' + struct.pack('<q', uid), result)
 
                 # Closing the dungeon gate (5045, back to square) keeps the party:
                 # both members are still listed and the guest gets no 5036.

@@ -58,6 +58,12 @@ class DungeonRoom:
     host: object
     members: dict = field(default_factory=dict)
     started: bool = False
+    # Shared run state (reset at the host's 5013): monster kills already credited
+    # ((monster id, instance) from 5063) and the floor drops all members see.
+    dead: set = field(default_factory=set)
+    floor_drops: dict = field(default_factory=dict)
+    floor_gold: dict = field(default_factory=dict)
+    next_drop_uid: int = 0
     # 5047 join requests waiting for the host: char id -> (session, correlation).
     join_requests: dict = field(default_factory=dict)
     loot_mode: bool = False  # 5088 looting mode (which value is random looting is unverified)
@@ -389,6 +395,9 @@ class DungeonHandlers(BaseDomainService):
             self._reset_dungeon_stats()
             if self.room is not None and self.room.host is self.session:
                 self.room.started = True
+                self.room.dead.clear()
+                self.room.floor_drops.clear()
+                self.room.floor_gold.clear()
         await self.transport.send_event(event(5014, ack.encode(), correlation),
                                         note='start game ack')
         room = self.room
@@ -453,6 +462,41 @@ class DungeonHandlers(BaseDomainService):
         except (struct.error, ValueError):
             pass
 
+    def _shared_run(self):
+        """The party room this session plays a dungeon in with others, or None.
+
+        The host's client runs the monsters: only it sends 5063 and 5017 (live
+        2026-11-21), so kills, drops and the result are shared through the room.
+        """
+        room = self.room
+        if room is None or not room.started or room.info.name == '_singleplay':
+            return None
+        return room
+
+    def _run_members(self):
+        """(session, character) of every member in this session's dungeon run."""
+        room = self._shared_run()
+        if room is None:
+            char = self._current_char()
+            return [(self.session, char)] if char is not None else []
+        code = getattr(self, 'map_code', '')
+        out = []
+        for member, record in room.members.items():
+            if member.dungeon.room is room and getattr(member.dungeon, 'map_code', '') == code:
+                char = member.current_char()
+                if char is not None:
+                    out.append((member, char))
+        return out
+
+    def _loot_holder(self):
+        """Where the floor drops live: the shared room, or this session alone."""
+        room = self._shared_run()
+        if room is not None:
+            return room
+        if not hasattr(self, 'floor_drops'):
+            self.floor_drops, self.floor_gold, self.next_drop_uid = {}, {}, 0
+        return self
+
     async def on_5063(self, correlation, body):
         # eERC_MONSTER_DEAD_REQ (sender 0x78A690): ffffff7f + u32 monster_id + u32 param.
         try:
@@ -460,22 +504,32 @@ class DungeonHandlers(BaseDomainService):
         except (struct.error, ValueError):
             return
         self.transport.record('monster-dead', body, monster_id=msg.monster_id, param=msg.param)
-        self.dungeon_kill_count = getattr(self, 'dungeon_kill_count', 0) + 1
+        room = self._shared_run()
+        if room is not None:
+            key = (msg.monster_id, msg.param)
+            if key in room.dead:
+                return  # already credited from another member's report
+            room.dead.add(key)
         from darkblood.games.game_data.client_dict import monsters
         info = monsters().get(msg.monster_id)
         exp = round(info['exp']) if info else 0
-        if info:
-            self.dungeon_score = getattr(self, 'dungeon_score', 0) + max(1, exp) * 10
-        char = self._current_char()
-        if exp > 0 and char is not None:
-            self.dungeon_exp = getattr(self, 'dungeon_exp', 0) + exp
-            await self.session.quests.grant_exp(char, exp)
-            self.store().save()
-        if char is not None:
+        mon_target = info['id'] if info else msg.monster_id
+        members = self._run_members()
+        # Every member of the run gets the kill's EXP, score and quest progress.
+        for member, char in members:
+            run = member.dungeon
+            run.dungeon_kill_count = getattr(run, 'dungeon_kill_count', 0) + 1
             if info:
-                await self._drop_loot(msg.param, info, char)
-            mon_target = info['id'] if info else msg.monster_id
-            await self._update_quest_monsters(mon_target, char)
+                run.dungeon_score = getattr(run, 'dungeon_score', 0) + max(1, exp) * 10
+            if exp > 0:
+                run.dungeon_exp = getattr(run, 'dungeon_exp', 0) + exp
+                await member.quests.grant_exp(char, exp)
+            await run._update_quest_monsters(mon_target, char)
+        if members:
+            self.store().save()
+        char = self._current_char()
+        if char is not None and info:
+            await self._drop_loot(msg.param, info, char)
 
     async def _update_quest_monsters(self, mon_code, char):
         """Advance kill counters for active quests targeting mon_code."""
@@ -507,19 +561,30 @@ class DungeonHandlers(BaseDomainService):
         req = FinishGameReq.decode(body)
         self.transport.record('finish-game-req', body, is_clear=req.is_clear)
         map_code = getattr(self, 'map_code', '')
-        char = self.current_char()
+        room = self._shared_run()
+        # Only the host's client sends 5017 in a party run (live 2026-11-21): its
+        # result goes to every member. A member's own 5017 stays a solo result.
+        if room is not None and room.host is self.session:
+            members = self._run_members()
+        else:
+            char = self._current_char()
+            members = [(self.session, char)] if char is not None else []
         # The player's UID is the character id (2007 details +0x1C, copied to
         # player +0x10 by 0x0095A150). Characters have no 'char_uid' key, so
         # mapSingleReward used to go out empty and the result screen froze.
-        char_uid = char.get('id', 0) if char else 0
-        if char is not None and req.is_clear:
-            self._record_dungeon_clear(char, map_code)
+        rewards = {}
+        for member, char in members:
+            if req.is_clear:
+                member.dungeon._record_dungeon_clear(char, map_code)
+            # EXP was already granted per kill (5063 -> 5086), so the result
+            # screen only reports it. No extra boxes are offered.
+            gained = getattr(member.dungeon, 'dungeon_exp', 0)
+            rewards[int(char.get('id', 0))] = SingleReward(total=gained, exp=gained)
+        if members and req.is_clear:
             self.store().save()
 
         kill_count = getattr(self, 'dungeon_kill_count', 0)
         score = getattr(self, 'dungeon_score', 0)
-        dungeon_exp = getattr(self, 'dungeon_exp', 0)
-
         # Server-side rank heuristic. Ranks: 1=SSS, 2=SS, 3=S, 4=A.
         if score >= 50000 or kill_count >= 20:
             rank, box_grade = 1, 4
@@ -530,14 +595,11 @@ class DungeonHandlers(BaseDomainService):
         else:
             rank, box_grade = 4, 1
 
-        # EXP was already granted per kill (5063 -> 5086), so the result
-        # screen only reports it. No extra boxes are offered.
-        reward = SingleReward(total=dungeon_exp, exp=dungeon_exp)
         ack = FinishGameAck(
             result=0,
             is_clear=req.is_clear,
             map_code=map_code,
-            rewards={char_uid: reward} if char_uid else {},
+            rewards={uid: reward for uid, reward in rewards.items() if uid},
             rank_first=rank,
             rank_final=rank,
             box_grade=box_grade,
@@ -545,13 +607,16 @@ class DungeonHandlers(BaseDomainService):
         ).encode()
         await self.transport.send_event(event(5018, ack, correlation),
                                         note=f'finish game ack ({map_code} clear={req.is_clear} rank={rank})')
+        await self._send_to([member for member, _ in members if member is not self.session], event(5018, ack),
+                            f'finish game (party, {map_code} rank={rank})')
 
     async def _drop_loot(self, source_id, monster, char):
         """Roll itemlooting.lua drops for a kill and announce them with 5064.
 
         source_id is the 5063 instance id: 0x0078A870 looks the monster up by
-        it (0x00859C60) and spawns the drops there. Drop uids are kept per
-        session until picked up (5065).
+        it (0x00859C60) and spawns the drops there. In a party run the drops
+        are rolled once, kept in the room and shown to every member; the first
+        to pick one up gets it (free for all; random looting is not applied yet).
         """
         from darkblood.games import loot
         from darkblood.games.network.messages import DropItemNot, ItemDropEntry
@@ -560,12 +625,12 @@ class DungeonHandlers(BaseDomainService):
             return
         import random
         from darkblood.games.game_data.client_dict import money_drops
-        drops = self.__dict__.setdefault('floor_drops', {})
-        gold = self.__dict__.setdefault('floor_gold', {})
+        holder = self._loot_holder()
         entries = []
         for code in codes:
-            self.next_drop_uid = getattr(self, 'next_drop_uid', 0) + 1
-            drops[self.next_drop_uid] = code
+            holder.next_drop_uid += 1
+            uid = holder.next_drop_uid
+            holder.floor_drops[uid] = code
             count = 1
             money = money_drops().get(code)
             if money:
@@ -573,10 +638,14 @@ class DungeonHandlers(BaseDomainService):
                 # 0x004C8CA0 as the amount) matches what 5114 awards.
                 low = int(money[0])
                 count = min(0xFFFF, random.randint(low, max(low, int(money[1]))))
-                gold[self.next_drop_uid] = count
-            entries.append(ItemDropEntry(drop_uid=self.next_drop_uid, item_id=jhash(code), count=count))
-        await self.transport.send_event(event(5064, DropItemNot(source_id=source_id, drops=entries).encode()),
-                                        note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
+                holder.floor_gold[uid] = count
+            entries.append(ItemDropEntry(drop_uid=uid, item_id=jhash(code), count=count))
+        packet = event(5064, DropItemNot(source_id=source_id, drops=entries).encode())
+        for member, _ in self._run_members():
+            try:
+                await member.transport.send_event(packet, note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
+            except (ConnectionError, OSError):
+                pass
 
     @staticmethod
     def _room_info(room):
@@ -717,20 +786,24 @@ class DungeonHandlers(BaseDomainService):
         from darkblood.games.network.messages import DragItemAck, ItemDropEntry, PickUpItemReq, PickUpItemResultAck
         from darkblood.player_management.characters import add_reward_items, free_bag_slots, slots_needed
         req = PickUpItemReq.decode(body)
-        drops = getattr(self, 'floor_drops', {})
+        holder = self._loot_holder()
+        drops = holder.floor_drops
         code = drops.get(req.drop_uid)
         char = self._current_char()
         self.transport.record('pick-up-item-req', body, drop_uid=req.drop_uid, code=code or '')
         if not code or char is None:
             return
+        others = [member for member, _ in self._run_members() if member is not self.session]
         from darkblood.games.game_data.client_dict import money_drops
         money = money_drops().get(code)
         if money:
-            # AR drop: 5114 eERC_GET_DROP_AR_NOT (0x00792700) adds the amount
-            # to player +0x70, removes the drop (0x0086AFF0) and prints it.
+            # AR drop: 5114 eERC_GET_DROP_AR_NOT (0x00792700) removes the drop
+            # (0x0086AFF0) and plays the picker's pickup before it checks the
+            # result; only result 0 adds the amount to the *local* player +0x70.
+            # The other members get the same notice with a nonzero result.
             from darkblood.games.network.messages import GetDropArNot
             del drops[req.drop_uid]
-            amount = getattr(self, 'floor_gold', {}).pop(req.drop_uid, None)
+            amount = holder.floor_gold.pop(req.drop_uid, None)
             if amount is None:
                 import random
                 amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
@@ -740,6 +813,8 @@ class DungeonHandlers(BaseDomainService):
             ack = GetDropArNot(result=0, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
             await self.transport.send_event(event(5114, ack),
                                             note='picked AR (%s: +%d, total %d)' % (code, amount, char['gold']))
+            seen = GetDropArNot(result=1, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
+            await self._send_to(others, event(5114, seen), 'AR picked by %s' % char.get('name'))
             return
         free = free_bag_slots(char)
         if free is not None and slots_needed([(code, 1)]) > free:
@@ -750,12 +825,21 @@ class DungeonHandlers(BaseDomainService):
         stored = add_reward_items(char, [(code, 1)])
         self.store().save()
         entry = ItemDropEntry(drop_uid=req.drop_uid, item_id=jhash(code))
-        await self.transport.send_event(event(5068, PickUpItemResultAck(result=0, picker_uid=char['id'], drop=entry).encode()),
-                                        note='pick up item result (drop %d: %s)' % (req.drop_uid, code))
+        result = event(5068, PickUpItemResultAck(result=0, picker_uid=char['id'], drop=entry).encode())
+        await self.transport.send_event(result, note='pick up item result (drop %d: %s)' % (req.drop_uid, code))
+        # The bag update (2037) goes to the picker only; 5068 removes the drop for all.
+        await self._send_to(others, result, 'item picked by %s' % char.get('name'))
         await self.transport.send_event(event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
                                         note='picked item into bag (%s)' % code)
-        if hasattr(self, 'check_quest_item_objectives'):
-            await self.check_quest_item_objectives(char)
+        await self.session.quests.check_quest_item_objectives(char)
+
+    @staticmethod
+    async def _send_to(sessions, packet, note):
+        for member in sessions:
+            try:
+                await member.transport.send_event(packet, note=note)
+            except (ConnectionError, OSError):
+                pass
 
     async def on_5363(self, correlation, body):
         # eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10).
