@@ -951,4 +951,55 @@ class DungeonHandlers(BaseDomainService):
         ack = GoldGoblinDeadAck(result=0, goblin_id=req.goblin_id, items=[]).encode()
         await self.transport.send_event(event(5366, ack, correlation), note=f'gold goblin dead ack (goblin={req.goblin_id})')
 
+    @packet_handler(5052)
+    async def handle_again_select_dungeon(self, correlation, body):
+        # eERC_AGAIN_SELECT_DUNGEON_REQ (0x007AC480) -> 5053 eERC_AGAIN_SELECT_DUNGEON_ACK (0x00770A80).
+        from darkblood.games.network.messages.dungeon import AgainSelectDungeonAck, DungeonHistory
+        char = self.current_char() or {}
+        gate_id = getattr(self, 'gate_id', '') or 'Act1_G1'
+        history = {}
+        for dun_id, info in (char.get('dungeon_history') or {}).items():
+            if isinstance(info, dict):
+                history[dun_id] = DungeonHistory(
+                    map_id=info.get('map_id', ''),
+                    max_diff=int(info.get('max_diff', 0)) & 0xFF,
+                    cleared=int(info.get('cleared', 1)) & 0xFF,
+                )
+        active_quests = sorted({int(q['id']) for q in char.get('quests', []) if 'id' in q})
+        await self.reply(
+            AgainSelectDungeonAck(result=0, history=history, min_citadel_history=[],
+                                  gate_id=gate_id, active_quests=active_quests),
+            correlation, note=f'again select dungeon ack (gate={gate_id}, history={len(history)})',
+        )
+
+    @packet_handler(5236)
+    async def handle_training_join_room(self, correlation, body):
+        # eERC_TRAINING_JOIN_ROOM_REQ (0x00798F80) -> 5237 eERC_TRAINING_JOIN_ROOM_ACK (0x0075AEC0).
+        from darkblood.games.network.messages.dungeon import TrainingJoinRoomAck
+        await self.reply(TrainingJoinRoomAck(result=0), correlation, note='training join room ack')
+
+    @packet_handler(5238)
+    async def handle_training_leave_room(self, correlation, body):
+        # eERC_TRAINING_LEAVE_ROOM_REQ (0x007990D0) -> 5239 eERC_TRAINING_LEAVE_ROOM_ACK (0x0074B830).
+        from darkblood.games.network.messages.dungeon import TrainingLeaveRoomAck
+        await self.reply(TrainingLeaveRoomAck(result=0), correlation, note='training leave room ack')
+
+    @packet_handler(5240)
+    async def handle_monster_regen(self, correlation, body):
+        # eERC_MONSTER_REGEN_REQ (0x00799150) -> 5241 eERC_MONSTER_REGEN_ACK (0x0074B830).
+        from darkblood.games.network.messages.dungeon import MonsterRegenAck, MonsterRegenReq
+        req = MonsterRegenReq.decode(body)
+        self.transport.record('monster-regen-req', body, mob_id=req.regen_mob_id, slot_id=req.slot_id)
+        await self.reply(MonsterRegenAck(result=0), correlation,
+                         note=f'monster regen ack (mob={req.regen_mob_id} slot={req.slot_id})')
+
+    @packet_handler(5342)
+    async def handle_treasure_find(self, correlation, body):
+        # eERC_TREASURE_FIND_REQ (0x007A4580) -> 5343 eERC_TREASURE_FIND_ACK (0x00782A80).
+        from darkblood.games.network.messages.dungeon import TreasureFindAck, TreasureFindReq
+        req = TreasureFindReq.decode(body)
+        self.transport.record('treasure-find-req', body, treasure_id=req.treasure_id)
+        await self.reply(TreasureFindAck(result=0, items=[], success=True), correlation,
+                         note=f'treasure find ack (id={req.treasure_id})')
+
 

@@ -29,6 +29,16 @@ __all__ = [
     'UndeleteCharacterAck',
     'ArenaBackToSquareReq',
     'ArenaBackToSquareAck',
+    'CharNickChangeByIntegrateReq',
+    'CharNickChangeByIntegrateAck',
+    'EventDeleteCharacterReq',
+    'EventDeleteCharacterAck',
+    'CharSlotExtendReq',
+    'CharSlotExtendAck',
+    'ImpliedJoinLayerReq',
+    'LeaveSquareAck',
+    'LeaveLayerAck',
+    'LeaveLayerNot',
 ]
 
 
@@ -318,3 +328,123 @@ class ArenaBackToSquareAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 5166
     result: i32 = 0
+
+
+@dataclass
+class CharNickChangeByIntegrateReq(WireMessage):
+    """Opcode 2323: eEGS_CHAR_NICK_CHANGE_BY_INTEGRATE_REQ (request).
+
+    Sender 0x00798EC0.
+    """
+    OPCODE: ClassVar[int] = 2323
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+    old_nick: wstr = ''
+    new_nick: wstr = ''
+
+
+@dataclass
+class CharNickChangeByIntegrateAck(WireMessage):
+    """Opcode 2324: eEGS_CHAR_NICK_CHANGE_BY_INTEGRATE_ACK (reply).
+
+    Handler 0x0075AD10 (assert: nCharUID >> strNewNick).
+    """
+    OPCODE: ClassVar[int] = 2324
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    char_uid: i64 = 0
+    new_nick: wstr = ''
+
+
+@dataclass
+class EventDeleteCharacterReq(WireMessage):
+    """Opcode 2404: eEGS_EVENT_DELETE_CHARACTER_REQ (request).
+
+    Sender 0x0079AAC0.
+    """
+    OPCODE: ClassVar[int] = 2404
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0
+
+
+@dataclass
+class EventDeleteCharacterAck(WireMessage):
+    """Opcode 2405: eEGS_EVENT_DELETE_CHARACTER_ACK (reply).
+
+    Handler 0x0075AF00 (assert: nDeleteCharUID).
+    """
+    OPCODE: ClassVar[int] = 2405
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    delete_char_uid: i64 = 0
+
+
+@dataclass
+class CharSlotExtendReq(WireMessage):
+    """Opcode 2441: eEGS_CHARSLOT_EXTEND_REQ (request).
+
+    Sender 0x0079CF70.
+    """
+    OPCODE: ClassVar[int] = 2441
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+
+
+@dataclass
+class CharSlotExtendAck(WireMessage):
+    """Opcode 2442: eEGS_CHARSLOT_EXTEND_ACK (reply).
+
+    Handler 0x00781000 (assert: ucLimitCreateChar >> vecOutItem).
+    """
+    OPCODE: ClassVar[int] = 2442
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    limit_create_char: u8 = 6
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class ImpliedJoinLayerReq(WireMessage):
+    """Opcode 5128: eERC_IMPLIED_JOIN_LAYER_REQ (request).
+
+    Sender 0x00797480 -> replies with 5031 JoinLayerAck.
+    """
+    OPCODE: ClassVar[int] = 5128
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    layer_net_id: i64 = 0
+    flag: bool = False
+
+
+@dataclass
+class LeaveSquareAck(WireMessage):
+    """Opcode 5033: eERC_LEAVE_SQUARE_ACK (reply).
+
+    Handler 0x00757960 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5033
+    result: u32 = 0
+
+
+@dataclass
+class LeaveLayerAck(WireMessage):
+    """Opcode 5038: eERC_LEAVE_LAYER_ACK (reply).
+
+    Handler 0x007895C0 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5038
+    result: u32 = 0
+
+
+@dataclass
+class LeaveLayerNot(WireMessage):
+    """Opcode 5039: eERC_LEAVE_LAYER_NOT (reply).
+
+    Handler 0x00789450: u32 result, i64 char_uid.
+    """
+    OPCODE: ClassVar[int] = 5039
+    result: u32 = 0
+    char_uid: i64 = 0

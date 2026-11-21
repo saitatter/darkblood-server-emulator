@@ -330,3 +330,49 @@ class FrontendHandlers(BaseDomainService):
         ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid).encode()
         await self.transport.send_event(event(2247, ack, correlation),
                                         note=f'undelete character ack ({req.char_uid})')
+
+    @packet_handler(2323)
+    async def handle_char_nick_change_by_integrate(self, correlation: int, body: bytes):
+        """Opcode 2323 (eEGS_CHAR_NICK_CHANGE_BY_INTEGRATE_REQ) -> 2324 (0x0075AD10)."""
+        from darkblood.games.network.messages.lobby import (
+            CharNickChangeByIntegrateAck, CharNickChangeByIntegrateReq,
+        )
+        req = CharNickChangeByIntegrateReq.decode(body)
+        new_nick = req.new_nick.strip()
+        char = self.store().get(self.account, req.char_uid)
+        if not char or not new_nick:
+            await self.reply(CharNickChangeByIntegrateAck(result=1), correlation,
+                             note='char nick change by integrate fail')
+            return
+        char['name'] = new_nick
+        self.store().save_char(self.account, req.char_uid)
+        await self.reply(CharNickChangeByIntegrateAck(result=0, char_uid=req.char_uid, new_nick=new_nick),
+                         correlation, note=f'char nick change by integrate ack ({new_nick})')
+
+    @packet_handler(2404)
+    async def handle_event_delete_character(self, correlation: int, body: bytes):
+        """Opcode 2404 (eEGS_EVENT_DELETE_CHARACTER_REQ) -> 2405 (0x0075AF00)."""
+        from darkblood.games.network.messages.lobby import EventDeleteCharacterAck, EventDeleteCharacterReq
+        req = EventDeleteCharacterReq.decode(body)
+        deleted = self.store().delete(self.account, req.char_uid)
+        await self.reply(
+            EventDeleteCharacterAck(result=0 if deleted else 1, delete_char_uid=req.char_uid),
+            correlation, note=f'event delete character ack ({req.char_uid}, deleted={deleted})',
+        )
+
+    @packet_handler(2441)
+    async def handle_char_slot_extend(self, correlation: int, body: bytes):
+        """Opcode 2441 (eEGS_CHARSLOT_EXTEND_REQ) -> 2442 (0x00781000)."""
+        from darkblood.games.network.messages.lobby import CharSlotExtendAck, CharSlotExtendReq
+        req = CharSlotExtendReq.decode(body)
+        self.transport.record('char-slot-extend-req', body, item_uid=req.item_uid)
+        await self.reply(CharSlotExtendAck(result=0, limit_create_char=6, items=[]), correlation,
+                         note='char slot extend ack')
+
+    @packet_handler(5128)
+    async def handle_implied_join_layer(self, correlation: int, body: bytes):
+        """Opcode 5128 (eERC_IMPLIED_JOIN_LAYER_REQ, 0x00797480) -> 5031 JoinLayerAck."""
+        from darkblood.games.network.messages.lobby import ImpliedJoinLayerReq
+        req = ImpliedJoinLayerReq.decode(body)
+        layer_body = struct.pack('<iq', 0x7FFFFFFF, req.layer_net_id)
+        await self.session.square.handle_join_layer(correlation, layer_body)

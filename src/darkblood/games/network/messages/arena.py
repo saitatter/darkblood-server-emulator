@@ -46,6 +46,15 @@ __all__ = [
     'LeagueSeasonArenaGetRankAck',
     'LeagueSeasonArenaGetMyRankReq',
     'LeagueSeasonArenaGetMyRankAck',
+    'LeagueSeasonCharAwardNot',
+    'LeagueSeasonGuildAwardNot',
+    'MinigameGbbStartReq',
+    'MinigameGbbStartAck',
+    'GbbChallengeReq',
+    'GbbChallengeAck',
+    'GbbGiveupReq',
+    'GbbGiveupAck',
+    'ArenaSquareChangeRelayAddressNot',
 ]
 
 
@@ -563,3 +572,107 @@ class LeagueSeasonArenaGetMyRankAck(WireMessage):
     OPCODE: ClassVar[int] = 2553
     result: u32 = 0
     my_rank: i32 = 1
+
+
+@dataclass
+class LeagueSeasonCharAwardNot(WireMessage):
+    """Opcode 2537: eEGS_LEAGUE_SEASON_CHAR_AWARD_NOT (reply).
+
+    Handler 0x007A22D0.
+    """
+    OPCODE: ClassVar[int] = 2537
+    season_id: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'season_id',
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class LeagueSeasonGuildAwardNot(WireMessage):
+    """Opcode 2538: eEGS_LEAGUE_SEASON_GUILD_AWARD_NOT (reply).
+
+    Handler 0x007A2560.
+    """
+    OPCODE: ClassVar[int] = 2538
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class MinigameGbbStartReq(WireMessage):
+    """Opcode 2715: eEGS_MINIGAME_GBB_START_REQ (request).
+
+    Sender 0x007A8280 writes no fields (Rock-Paper-Scissors minigame).
+    """
+    OPCODE: ClassVar[int] = 2715
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class MinigameGbbStartAck(WireMessage):
+    """Opcode 2716: eEGS_MINIGAME_GBB_START_ACK (reply).
+
+    Reply to 2715.
+    """
+    OPCODE: ClassVar[int] = 2716
+    result: u32 = 0
+
+
+@dataclass
+class GbbChallengeReq(WireMessage):
+    """Opcode 2717: eEGS_GBB_CHALLENGE_REQ (request).
+
+    Sender 0x007A8300: choice (0/1/2).
+    """
+    OPCODE: ClassVar[int] = 2717
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    choice: i16 = 0
+
+
+@dataclass
+class GbbChallengeAck(WireMessage):
+    """Opcode 2718: eEGS_GBB_CHALLENGE_ACK (reply).
+
+    Reply to 2717.
+    """
+    OPCODE: ClassVar[int] = 2718
+    result: u32 = 0
+    server_choice: i16 = 0
+    outcome: i16 = 0
+
+
+@dataclass
+class GbbGiveupReq(WireMessage):
+    """Opcode 2719: eEGS_GBB_GIVEUP_REQ (request).
+
+    Sender 0x007A83A0 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 2719
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class GbbGiveupAck(WireMessage):
+    """Opcode 2720: eEGS_GBB_GIVEUP_ACK (reply).
+
+    Reply to 2719.
+    """
+    OPCODE: ClassVar[int] = 2720
+    result: u32 = 0
+
+
+@dataclass
+class ArenaSquareChangeRelayAddressNot(WireMessage):
+    """Opcode 5135: eERC_ARENA_SQUARE_CHANGE_RELAY_ADDRESS_NOT (reply).
+
+    Handler 0x0075AC00 (assert: *m_spArenaSquareP2PAddr, struct 0x00A48910).
+    """
+    OPCODE: ClassVar[int] = 5135
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(Raw[24], bytes(24)),
+    )

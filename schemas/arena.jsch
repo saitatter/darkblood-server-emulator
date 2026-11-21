@@ -276,3 +276,49 @@ message 2553 LeagueSeasonArenaGetMyRankAck
   u32 result
   i32 my_rank = 1
 end
+
+message 2537 LeagueSeasonCharAwardNot
+  ## Handler 0x007A22D0.
+  i32 season_id
+  map<?> _                   # awards (0x007682A0)
+end
+
+message 2538 LeagueSeasonGuildAwardNot
+  ## Handler 0x007A2560.
+  map<?> _                   # guild awards (0x007682A0)
+end
+
+message 2715 MinigameGbbStartReq header?
+  ## Sender 0x007A8280 writes no fields (Rock-Paper-Scissors minigame).
+end
+
+message 2716 MinigameGbbStartAck
+  ## Reply to 2715.
+  u32 result
+end
+
+message 2717 GbbChallengeReq header?
+  ## Sender 0x007A8300: choice (0/1/2).
+  i16 choice
+end
+
+message 2718 GbbChallengeAck
+  ## Reply to 2717.
+  u32 result
+  i16 server_choice
+  i16 outcome
+end
+
+message 2719 GbbGiveupReq header?
+  ## Sender 0x007A83A0 writes no fields.
+end
+
+message 2720 GbbGiveupAck
+  ## Reply to 2719.
+  u32 result
+end
+
+message 5135 ArenaSquareChangeRelayAddressNot
+  ## Handler 0x0075AC00 (assert: *m_spArenaSquareP2PAddr, struct 0x00A48910).
+  raw[24] _                  # P2P address struct
+end

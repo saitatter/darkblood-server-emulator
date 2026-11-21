@@ -209,3 +209,62 @@ message 5166 ArenaBackToSquareAck
   ## Handler 0x00758550.
   i32 result
 end
+
+message 2323 CharNickChangeByIntegrateReq header?
+  ## Sender 0x00798EC0.
+  i64 char_uid
+  wstr old_nick
+  wstr new_nick
+end
+
+message 2324 CharNickChangeByIntegrateAck ok_only
+  ## Handler 0x0075AD10 (assert: nCharUID >> strNewNick).
+  u32 result
+  i64 char_uid
+  wstr new_nick
+end
+
+message 2404 EventDeleteCharacterReq header?
+  ## Sender 0x0079AAC0.
+  i64 char_uid
+end
+
+message 2405 EventDeleteCharacterAck ok_only
+  ## Handler 0x0075AF00 (assert: nDeleteCharUID).
+  u32 result
+  i64 delete_char_uid
+end
+
+message 2441 CharSlotExtendReq header?
+  ## Sender 0x0079CF70.
+  i64 item_uid
+end
+
+message 2442 CharSlotExtendAck ok_only
+  ## Handler 0x00781000 (assert: ucLimitCreateChar >> vecOutItem).
+  u32 result
+  u8 limit_create_char = 6
+  vector<Item> items
+end
+
+message 5128 ImpliedJoinLayerReq header?
+  ## Sender 0x00797480 -> replies with 5031 JoinLayerAck.
+  i64 layer_net_id
+  bool flag
+end
+
+message 5033 LeaveSquareAck
+  ## Handler 0x00757960 (reads u32 result only).
+  u32 result
+end
+
+message 5038 LeaveLayerAck
+  ## Handler 0x007895C0 (reads u32 result only).
+  u32 result
+end
+
+message 5039 LeaveLayerNot
+  ## Handler 0x00789450: u32 result, i64 char_uid.
+  u32 result
+  i64 char_uid
+end

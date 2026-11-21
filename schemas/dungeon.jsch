@@ -390,3 +390,159 @@ message 5089 ChangeItemObtainAck
   i32 result
   bool mode
 end
+
+message 2110 IncreasingStatusNot
+  ## Handler 0x007743A0: 8 x i16 bonus stat points written to player +0x110..+0x11E.
+  i16 stat_0
+  i16 stat_1
+  i16 stat_2
+  i16 stat_3
+  i16 stat_4
+  i16 stat_5
+  i16 stat_6
+  i16 stat_7
+end
+
+message 2288 DungeonExpBonusFinishNot bare
+  ## Handler 0x007986F0 (empty body).
+end
+
+message 2301 DungeonBonusExpChangeNot
+  ## Handler 0x007987D0 (assert: fDunBonusExpRate >> nDunBonusExpRemainTime).
+  f32 bonus_exp_rate
+  i64 remain_time
+end
+
+message 2318 DailyDunEnterCountUpdateNot
+  ## Handler 0x00798D20 (assert: mapDailyDunEnterCount, map<wstr, i16> 0x00481110).
+  map<wstr,i16> enter_counts
+end
+
+message 2418 ServerBuffAddNot
+  ## Handler 0x0079B880 (assert: mapNewBuffList, 0x005F6640).
+  map<?> _                   # mapNewBuffList
+end
+
+message 2419 ServerBuffDeleteNot
+  ## Handler 0x0079BD10 (assert: mapEndBuffList, 0x005F6640).
+  map<?> _                   # mapEndBuffList
+end
+
+message 2421 MonsterDeadNot
+  ## Handler 0x0076A000 (assert: nDeadMobID >> strMapID >> nSlotID).
+  i32 dead_mob_id
+  wstr map_id
+  i32 slot_id
+end
+
+message 2443 DailyDunClearCountUpdateNot
+  ## Handler 0x0079D0A0 (assert: mapDailyDunClearCount, map<wstr, i16> 0x00481110).
+  map<wstr,i16> clear_counts
+end
+
+message 2517 KeepBuffInsertNot
+  ## Handler 0x007A17F0 (assert: vecKeepBuffChange >> jKeepCooltimeInfo).
+  vector<?> _                # vecKeepBuffChange (0x0076EB20)
+  raw[24] _                  # jKeepCooltimeInfo (0x00A4A070)
+end
+
+message 2518 KeepBuffDeleteNot
+  ## Handler 0x007A1C20 (assert: vecKeepBuffUIDDelete).
+  vector<i64> keep_buff_uids
+end
+
+message 2519 KeepBuffClearNot bare
+  ## Handler 0x007A1EE0 (empty body).
+end
+
+message 2520 KeepCooltimeDeleteNot
+  ## Handler 0x00771FD0 (assert: vecExpireCooltimeList).
+  vector<i32> expire_cooltime_list
+end
+
+message 2521 KeepCooltimeClearNot bare
+  ## Handler 0x007641C0 (empty body).
+end
+
+message 2585 TreasureCountChangeNot
+  ## Handler 0x0075BE20 (assert: iAvailableCnt).
+  i32 available_count
+end
+
+message 2641 ServerBuffAdditionFishingNot
+  ## Handler 0x00779500 (assert: vecFishingInfo, 0x0076EBD0).
+  vector<?> _                # vecFishingInfo
+end
+
+message 2704 ClearUsageLimitNot bare
+  ## Handler 0x0075FEA0 (empty body).
+end
+
+message 5052 AgainSelectDungeonReq header?
+  ## Sender 0x007AC480 writes no fields.
+end
+
+message 5053 AgainSelectDungeonAck ok_only
+  ## Handler 0x00770A80 (assert: mapMaxDunHistory >> setMinCitadelHistory >> strGateID >> setPerformingQuest).
+  u32 result
+  map<wstr,DungeonHistory> history
+  set<wstr> min_citadel_history
+  wstr gate_id
+  set<i32> active_quests
+end
+
+message 5136 FailDungeonEnterItemNot
+  ## Handler 0x00797550 (assert: nFailCharUID).
+  i64 fail_char_uid
+end
+
+message 5222 FailDungeonEnterLimitNot
+  ## Handler 0x00798B30 (assert: nFailCharUID).
+  i64 fail_char_uid
+end
+
+message 5236 TrainingJoinRoomReq header?
+  ## Sender 0x00798F80 writes no fields.
+end
+
+message 5237 TrainingJoinRoomAck
+  ## Handler 0x0075AEC0 (reads u32 result only).
+  u32 result
+end
+
+message 5238 TrainingLeaveRoomReq header?
+  ## Sender 0x007990D0 writes no fields.
+end
+
+message 5239 TrainingLeaveRoomAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  u32 result
+end
+
+message 5240 MonsterRegenReq header?
+  ## Sender 0x00799150 (assert: nRegenMobID << nSlotID).
+  i32 regen_mob_id
+  i32 slot_id
+end
+
+message 5241 MonsterRegenAck
+  ## Handler 0x0074B830 (reads u32 result only).
+  u32 result
+end
+
+message 5326 FailDungeonHackDoubtNot
+  ## Handler 0x007A1340 (assert: nHackDoubtCharUID).
+  i64 hack_doubt_char_uid
+end
+
+message 5342 TreasureFindReq header?
+  ## Sender 0x007A4580.
+  i32 treasure_id
+end
+
+message 5343 TreasureFindAck ok_only
+  ## Handler 0x00782A80 (assert: vecItemOut >> bSuccess).
+  u32 result
+  vector<Item> items
+  bool success = true
+end

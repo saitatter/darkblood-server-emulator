@@ -1,5 +1,12 @@
 # Session handoff — 2026-11-21
 
+## Lobby, Dungeon & Arena live opcode sweep — saita machine, 2026-11-21
+
+- **Lobby (`schemas/lobby.jsch`, `src/darkblood/games/handlers/frontend.py`)**: recovered and implemented `2323/2324 CharNickChangeByIntegrate`, `2404/2405 EventDeleteCharacter`, `2441/2442 CharSlotExtend`, `5128 ImpliedJoinLayerReq` (delegates to `handle_join_layer`), plus schema definitions for `5033 LeaveSquareAck`, `5038 LeaveLayerAck`, `5039 LeaveLayerNot`.
+- **Dungeon (`schemas/dungeon.jsch`, `src/darkblood/games/handlers/dungeon.py`)**: recovered and implemented `5052/5053 AgainSelectDungeon` (also confirming `setMinCitadelHistory` in gate replies), `5236/5237 TrainingJoinRoom`, `5238/5239 TrainingLeaveRoom`, `5240/5241 MonsterRegen`, `5342/5343 TreasureFind`, plus 18 live dungeon/buff/daily-count notices (`2110`, `2288`, `2301`, `2318`, `2418`, `2419`, `2421`, `2443`, `2517-2521`, `2585`, `2641`, `2704`, `5136`, `5222`, `5326`).
+- **Arena (`schemas/arena.jsch`, `src/darkblood/games/handlers/arena.py`)**: recovered and implemented GBB Rock-Paper-Scissors minigame (`2715-2720`) plus `2537/2538 LeagueSeasonChar/GuildAwardNot` and `5135 ArenaSquareChangeRelayAddressNot`.
+- **Verification**: 194/194 headless tests pass (`test_extended_lobby_dungeon_and_arena_opcodes`), `gen_messages.py --check` and `gen_progress.py --check` pass. Total progress crossed 50% overall (646/1098 opcodes = 59%, 87% fields). Live client retest pending.
+
 ## Fishing, System, Inventory, Stalls, Commerce & Pets sweep — saita machine, 2026-11-21
 
 - **Fishing (`schemas/fishing.jsch`, `src/darkblood/games/handlers/square.py`)**: recovered and implemented all 9 fishing opcodes (`2523/2524 FishingStart`, `2525/2526 FishingStop`, `2527 FishingResultNot`, `2528 FishingFailedNot`, `2529 FishingProficiencyNot`, `2541 FishingLicenseChangeNot`, `2542 FishingLicenseExpireNot`). Fishing jumped from 0% to **100% (9/9 opcodes, 100% fields)**.

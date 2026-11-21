@@ -49,6 +49,35 @@ __all__ = [
     'ChangeRoomInfoAck',
     'ChangeItemObtainReq',
     'ChangeItemObtainAck',
+    'IncreasingStatusNot',
+    'DungeonExpBonusFinishNot',
+    'DungeonBonusExpChangeNot',
+    'DailyDunEnterCountUpdateNot',
+    'ServerBuffAddNot',
+    'ServerBuffDeleteNot',
+    'MonsterDeadNot',
+    'DailyDunClearCountUpdateNot',
+    'KeepBuffInsertNot',
+    'KeepBuffDeleteNot',
+    'KeepBuffClearNot',
+    'KeepCooltimeDeleteNot',
+    'KeepCooltimeClearNot',
+    'TreasureCountChangeNot',
+    'ServerBuffAdditionFishingNot',
+    'ClearUsageLimitNot',
+    'AgainSelectDungeonReq',
+    'AgainSelectDungeonAck',
+    'FailDungeonEnterItemNot',
+    'FailDungeonEnterLimitNot',
+    'TrainingJoinRoomReq',
+    'TrainingJoinRoomAck',
+    'TrainingLeaveRoomReq',
+    'TrainingLeaveRoomAck',
+    'MonsterRegenReq',
+    'MonsterRegenAck',
+    'FailDungeonHackDoubtNot',
+    'TreasureFindReq',
+    'TreasureFindAck',
 ]
 
 
@@ -727,3 +756,324 @@ class ChangeItemObtainAck(WireMessage):
     OPCODE: ClassVar[int] = 5089
     result: i32 = 0
     mode: bool = False
+
+
+@dataclass
+class IncreasingStatusNot(WireMessage):
+    """Opcode 2110: eEGS_INCREASING_STATUS_NOT (reply).
+
+    Handler 0x007743A0: 8 x i16 bonus stat points written to player +0x110..+0x11E.
+    """
+    OPCODE: ClassVar[int] = 2110
+    stat_0: i16 = 0
+    stat_1: i16 = 0
+    stat_2: i16 = 0
+    stat_3: i16 = 0
+    stat_4: i16 = 0
+    stat_5: i16 = 0
+    stat_6: i16 = 0
+    stat_7: i16 = 0
+
+
+@dataclass
+class DungeonExpBonusFinishNot(WireMessage):
+    """Opcode 2288: eEGS_DUNGEON_EXP_BONUS_FINISH_NOT (reply).
+
+    Handler 0x007986F0 (empty body).
+    """
+    OPCODE: ClassVar[int] = 2288
+
+
+@dataclass
+class DungeonBonusExpChangeNot(WireMessage):
+    """Opcode 2301: eEGS_DUNGEON_BONUS_EXP_CHANGE_NOT (reply).
+
+    Handler 0x007987D0 (assert: fDunBonusExpRate >> nDunBonusExpRemainTime).
+    """
+    OPCODE: ClassVar[int] = 2301
+    bonus_exp_rate: f32 = 0.0
+    remain_time: i64 = 0
+
+
+@dataclass
+class DailyDunEnterCountUpdateNot(WireMessage):
+    """Opcode 2318: eEGS_DAILY_DUN_ENTER_COUNT_UPDATE_NOT (reply).
+
+    Handler 0x00798D20 (assert: mapDailyDunEnterCount, map<wstr, i16> 0x00481110).
+    """
+    OPCODE: ClassVar[int] = 2318
+    enter_counts: Map[wstr, i16] = field(default_factory=dict)
+
+
+@dataclass
+class ServerBuffAddNot(WireMessage):
+    """Opcode 2418: eEGS_SERVERBUFF_ADD_NOT (reply).
+
+    Handler 0x0079B880 (assert: mapNewBuffList, 0x005F6640).
+    """
+    OPCODE: ClassVar[int] = 2418
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class ServerBuffDeleteNot(WireMessage):
+    """Opcode 2419: eEGS_SERVERBUFF_DELETE_NOT (reply).
+
+    Handler 0x0079BD10 (assert: mapEndBuffList, 0x005F6640).
+    """
+    OPCODE: ClassVar[int] = 2419
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class MonsterDeadNot(WireMessage):
+    """Opcode 2421: eEGS_MONSTER_DEAD_NOT (reply).
+
+    Handler 0x0076A000 (assert: nDeadMobID >> strMapID >> nSlotID).
+    """
+    OPCODE: ClassVar[int] = 2421
+    dead_mob_id: i32 = 0
+    map_id: wstr = ''
+    slot_id: i32 = 0
+
+
+@dataclass
+class DailyDunClearCountUpdateNot(WireMessage):
+    """Opcode 2443: eEGS_DAILY_DUN_CLEAR_COUNT_UPDATE_NOT (reply).
+
+    Handler 0x0079D0A0 (assert: mapDailyDunClearCount, map<wstr, i16> 0x00481110).
+    """
+    OPCODE: ClassVar[int] = 2443
+    clear_counts: Map[wstr, i16] = field(default_factory=dict)
+
+
+@dataclass
+class KeepBuffInsertNot(WireMessage):
+    """Opcode 2517: eEGS_KEEP_BUFF_INSERT_NOT (reply).
+
+    Handler 0x007A17F0 (assert: vecKeepBuffChange >> jKeepCooltimeInfo).
+    """
+    OPCODE: ClassVar[int] = 2517
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyVector),
+        Const(Raw[24], bytes(24)),
+    )
+
+
+@dataclass
+class KeepBuffDeleteNot(WireMessage):
+    """Opcode 2518: eEGS_KEEP_BUFF_DELETE_NOT (reply).
+
+    Handler 0x007A1C20 (assert: vecKeepBuffUIDDelete).
+    """
+    OPCODE: ClassVar[int] = 2518
+    keep_buff_uids: Vector[i64] = field(default_factory=list)
+
+
+@dataclass
+class KeepBuffClearNot(WireMessage):
+    """Opcode 2519: eEGS_KEEP_BUFF_CLEAR_NOT (reply).
+
+    Handler 0x007A1EE0 (empty body).
+    """
+    OPCODE: ClassVar[int] = 2519
+
+
+@dataclass
+class KeepCooltimeDeleteNot(WireMessage):
+    """Opcode 2520: eEGS_KEEP_COOLTIME_DELETE_NOT (reply).
+
+    Handler 0x00771FD0 (assert: vecExpireCooltimeList).
+    """
+    OPCODE: ClassVar[int] = 2520
+    expire_cooltime_list: Vector[i32] = field(default_factory=list)
+
+
+@dataclass
+class KeepCooltimeClearNot(WireMessage):
+    """Opcode 2521: eEGS_KEEP_COOLTIME_CLEAR_NOT (reply).
+
+    Handler 0x007641C0 (empty body).
+    """
+    OPCODE: ClassVar[int] = 2521
+
+
+@dataclass
+class TreasureCountChangeNot(WireMessage):
+    """Opcode 2585: eEGS_TREASURE_COUNT_CHANGE_NOT (reply).
+
+    Handler 0x0075BE20 (assert: iAvailableCnt).
+    """
+    OPCODE: ClassVar[int] = 2585
+    available_count: i32 = 0
+
+
+@dataclass
+class ServerBuffAdditionFishingNot(WireMessage):
+    """Opcode 2641: eEGS_SERVERBUFF_ADDITION_FISHING_NOT (reply).
+
+    Handler 0x00779500 (assert: vecFishingInfo, 0x0076EBD0).
+    """
+    OPCODE: ClassVar[int] = 2641
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyVector),
+    )
+
+
+@dataclass
+class ClearUsageLimitNot(WireMessage):
+    """Opcode 2704: eEGS_CLEAR_USAGELIMIT_NOT (reply).
+
+    Handler 0x0075FEA0 (empty body).
+    """
+    OPCODE: ClassVar[int] = 2704
+
+
+@dataclass
+class AgainSelectDungeonReq(WireMessage):
+    """Opcode 5052: eERC_AGAIN_SELECT_DUNGEON_REQ (request).
+
+    Sender 0x007AC480 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 5052
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class AgainSelectDungeonAck(WireMessage):
+    """Opcode 5053: eERC_AGAIN_SELECT_DUNGEON_ACK (reply).
+
+    Handler 0x00770A80 (assert: mapMaxDunHistory >> setMinCitadelHistory >> strGateID >> setPerformingQuest).
+    """
+    OPCODE: ClassVar[int] = 5053
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    history: Map[wstr, DungeonHistory] = field(default_factory=dict)
+    min_citadel_history: Set[wstr] = field(default_factory=list)
+    gate_id: wstr = ''
+    active_quests: Set[i32] = field(default_factory=list)
+
+
+@dataclass
+class FailDungeonEnterItemNot(WireMessage):
+    """Opcode 5136: eERC_FAIL_DUNGEON_ENTER_ITEM_NOT (reply).
+
+    Handler 0x00797550 (assert: nFailCharUID).
+    """
+    OPCODE: ClassVar[int] = 5136
+    fail_char_uid: i64 = 0
+
+
+@dataclass
+class FailDungeonEnterLimitNot(WireMessage):
+    """Opcode 5222: eERC_FAIL_DUNGEON_ENTER_LIMIT_NOT (reply).
+
+    Handler 0x00798B30 (assert: nFailCharUID).
+    """
+    OPCODE: ClassVar[int] = 5222
+    fail_char_uid: i64 = 0
+
+
+@dataclass
+class TrainingJoinRoomReq(WireMessage):
+    """Opcode 5236: eERC_TRAINING_JOIN_ROOM_REQ (request).
+
+    Sender 0x00798F80 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 5236
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class TrainingJoinRoomAck(WireMessage):
+    """Opcode 5237: eERC_TRAINING_JOIN_ROOM_ACK (reply).
+
+    Handler 0x0075AEC0 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5237
+    result: u32 = 0
+
+
+@dataclass
+class TrainingLeaveRoomReq(WireMessage):
+    """Opcode 5238: eERC_TRAINING_LEAVE_ROOM_REQ (request).
+
+    Sender 0x007990D0 writes no fields.
+    """
+    OPCODE: ClassVar[int] = 5238
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class TrainingLeaveRoomAck(WireMessage):
+    """Opcode 5239: eERC_TRAINING_LEAVE_ROOM_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5239
+    result: u32 = 0
+
+
+@dataclass
+class MonsterRegenReq(WireMessage):
+    """Opcode 5240: eERC_MONSTER_REGEN_REQ (request).
+
+    Sender 0x00799150 (assert: nRegenMobID << nSlotID).
+    """
+    OPCODE: ClassVar[int] = 5240
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    regen_mob_id: i32 = 0
+    slot_id: i32 = 0
+
+
+@dataclass
+class MonsterRegenAck(WireMessage):
+    """Opcode 5241: eERC_MONSTER_REGEN_ACK (reply).
+
+    Handler 0x0074B830 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5241
+    result: u32 = 0
+
+
+@dataclass
+class FailDungeonHackDoubtNot(WireMessage):
+    """Opcode 5326: eERC_FAIL_DUNGEON_HACKDOUBT_NOT (reply).
+
+    Handler 0x007A1340 (assert: nHackDoubtCharUID).
+    """
+    OPCODE: ClassVar[int] = 5326
+    hack_doubt_char_uid: i64 = 0
+
+
+@dataclass
+class TreasureFindReq(WireMessage):
+    """Opcode 5342: eERC_TREASURE_FIND_REQ (request).
+
+    Sender 0x007A4580.
+    """
+    OPCODE: ClassVar[int] = 5342
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    treasure_id: i32 = 0
+
+
+@dataclass
+class TreasureFindAck(WireMessage):
+    """Opcode 5343: eERC_TREASURE_FIND_ACK (reply).
+
+    Handler 0x00782A80 (assert: vecItemOut >> bSuccess).
+    """
+    OPCODE: ClassVar[int] = 5343
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    success: bool = True

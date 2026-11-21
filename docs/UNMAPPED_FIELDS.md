@@ -4,7 +4,7 @@
 > as zero or a default because its meaning is not recovered. Fix it by recovering the client
 > reader/writer, naming the field in `schemas/<domain>.jsch`, and regenerating.
 
-## arena (13 of 132 fields)
+## arena (16 of 142 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -21,6 +21,9 @@
 | `ArenaTeamInfo` | `map<?>` | arena.jsch:198 |  |
 | `5275 ArenaTeamLeaveAck` | `raw[14]` | arena.jsch:240 |  |
 | `2551 LeagueSeasonArenaGetRankAck` | `raw[12]` | arena.jsch:267 | footer |
+| `2537 LeagueSeasonCharAwardNot` | `map<?>` | arena.jsch:283 | awards (0x007682A0) |
+| `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:288 | guild awards (0x007682A0) |
+| `5135 ArenaSquareChangeRelayAddressNot` | `raw[24]` | arena.jsch:323 | P2P address struct |
 
 ## commerce (17 of 125 fields)
 
@@ -44,7 +47,7 @@
 | `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:251 | album (0x004D6E60) |
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:302 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
 
-## dungeon (42 of 162 fields)
+## dungeon (47 of 202 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -90,6 +93,11 @@
 | `RoomMemberInfo` | `raw[74]` | dungeon.jsch:328 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
 | `RoomMemberInfo` | `bool` | dungeon.jsch:329 | +0x8E, meaning not recovered |
 | `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:338 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
+| `2418 ServerBuffAddNot` | `map<?>` | dungeon.jsch:423 | mapNewBuffList |
+| `2419 ServerBuffDeleteNot` | `map<?>` | dungeon.jsch:428 | mapEndBuffList |
+| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:445 | vecKeepBuffChange (0x0076EB20) |
+| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:446 | jKeepCooltimeInfo (0x00A4A070) |
+| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:474 | vecFishingInfo |
 
 ## events (8 of 35 fields)
 
@@ -120,7 +128,7 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (69 of 126 fields)
+## lobby (69 of 145 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

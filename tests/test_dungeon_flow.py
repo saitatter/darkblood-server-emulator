@@ -267,6 +267,97 @@ class DungeonFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_extended_lobby_dungeon_and_arena_opcodes(self):
+        """Test newly recovered Lobby, Dungeon (again/training/treasure), and Arena (GBB) opcodes."""
+        from darkblood.games.network.messages.lobby import (
+            CharNickChangeByIntegrateAck, CharNickChangeByIntegrateReq,
+            CharSlotExtendReq, EventDeleteCharacterAck, EventDeleteCharacterReq,
+            ImpliedJoinLayerReq,
+        )
+        from darkblood.games.network.messages.dungeon import (
+            AgainSelectDungeonAck, AgainSelectDungeonReq,
+            MonsterRegenAck, MonsterRegenReq,
+            TrainingJoinRoomAck, TrainingJoinRoomReq,
+            TrainingLeaveRoomAck, TrainingLeaveRoomReq,
+            TreasureFindReq,
+        )
+        from darkblood.games.network.messages.arena import (
+            GbbChallengeAck, GbbChallengeReq, GbbGiveupAck, GbbGiveupReq,
+            MinigameGbbStartAck, MinigameGbbStartReq,
+        )
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('RunnerOne'))
+            _, c1 = await client.expect_event(2013)
+            char1_id = struct.unpack_from('<Q', c1, 10)[0]
+
+            client.send_event(2012, create_request('TempDel'))
+            _, c2 = await client.expect_event(2013)
+            char2_id = struct.unpack_from('<Q', c2, 10)[0]
+
+            # Lobby: nick change by integrate (2323), event delete (2404), char slot extend (2441)
+            client.send_event(2323, CharNickChangeByIntegrateReq(char_uid=char1_id, old_nick='RunnerOne', new_nick='RunnerNew').encode())
+            _, r = await client.expect_event(2324)
+            ack = CharNickChangeByIntegrateAck.decode(r)
+            self.assertEqual((ack.result, ack.char_uid, ack.new_nick), (0, char1_id, 'RunnerNew'))
+
+            client.send_event(2404, EventDeleteCharacterReq(char_uid=char2_id).encode())
+            _, r = await client.expect_event(2405)
+            ack = EventDeleteCharacterAck.decode(r)
+            self.assertEqual((ack.result, ack.delete_char_uid), (0, char2_id))
+
+            client.send_event(2441, CharSlotExtendReq(item_uid=900).encode())
+            _, r = await client.expect_event(2442)
+            self.assertEqual(struct.unpack_from('<IB', r), (0, 6))
+
+            # Select char and enter town
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char1_id))
+            await client.expect_event(2007)
+
+            # Implied join layer (5128 -> 5031)
+            client.send_event(5128, ImpliedJoinLayerReq(layer_net_id=(0x20846A << 32) | 1, flag=True).encode())
+            _, r = await client.expect_event(5031)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+            # Dungeon: again select (5052 -> 5053), training room (5236/5238/5240), treasure (5342)
+            client.send_event(5052, AgainSelectDungeonReq().encode())
+            _, r = await client.expect_event(5053)
+            self.assertEqual(AgainSelectDungeonAck.decode(r).result, 0)
+
+            client.send_event(5236, TrainingJoinRoomReq().encode())
+            _, r = await client.expect_event(5237)
+            self.assertEqual(TrainingJoinRoomAck.decode(r).result, 0)
+
+            client.send_event(5240, MonsterRegenReq(regen_mob_id=101, slot_id=0).encode())
+            _, r = await client.expect_event(5241)
+            self.assertEqual(MonsterRegenAck.decode(r).result, 0)
+
+            client.send_event(5238, TrainingLeaveRoomReq().encode())
+            _, r = await client.expect_event(5239)
+            self.assertEqual(TrainingLeaveRoomAck.decode(r).result, 0)
+
+            client.send_event(5342, TreasureFindReq(treasure_id=7).encode())
+            _, r = await client.expect_event(5343)
+            self.assertEqual(struct.unpack_from('<I', r)[0], 0)
+
+            # Arena GBB Minigame (2715-2720)
+            client.send_event(2715, MinigameGbbStartReq().encode())
+            _, r = await client.expect_event(2716)
+            self.assertEqual(MinigameGbbStartAck.decode(r).result, 0)
+
+            client.send_event(2717, GbbChallengeReq(choice=1).encode())
+            _, r = await client.expect_event(2718)
+            ack = GbbChallengeAck.decode(r)
+            self.assertEqual(ack.result, 0)
+            self.assertIn(ack.outcome, (0, 1, 2))
+
+            client.send_event(2719, GbbGiveupReq().encode())
+            _, r = await client.expect_event(2720)
+            self.assertEqual(GbbGiveupAck.decode(r).result, 0)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()
