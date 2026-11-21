@@ -2,11 +2,11 @@
 
 import struct
 
-from tests.common import ServerTestCase, create_request, lobby_flow, wide
+from tests.common import CHAT_TAIL, ServerTestCase, chat_request, create_request, lobby_flow, wide
 from darkblood.core.hashing import jhash
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
-from darkblood.games.network.messages import ChangeRoomInfoAck, GetInviteListAck
+from darkblood.games.network.messages import ChangeRoomInfoAck, ChatReq, GetInviteListAck
 from darkblood.games.network.messages.party import PartyInviteNot
 from darkblood.games.session import GameSession
 from headless_client import HeadlessClient
@@ -34,6 +34,21 @@ class SharedDungeonRoomTest(ServerTestCase):
             try:
                 host_id = await enter(host, 'RoomHost')
                 guest_id = await enter(guest, 'RoomGuest')
+
+                # Town chat (channel 1) reaches the other player in the square; a
+                # whisper (channel 2) reaches only the named player.
+                host.send_event(5040, chat_request('hello town', channel=1), correlation=40)
+                correlation, echo = await host.expect_event(5041)
+                self.assertEqual(correlation, 40)
+                _, heard = await guest.expect_event(5041)
+                self.assertEqual(heard, echo)
+                self.assertIn(wide('RoomHost'), heard)
+                self.assertIn(wide('hello town'), heard)
+                whisper = ChatReq(channel=2, target='RoomHost', message='psst', tail=CHAT_TAIL).encode()
+                guest.send_event(5040, whisper)
+                await guest.expect_event(5041)
+                _, whispered = await host.expect_event(5041)
+                self.assertIn(wide('psst'), whispered)
 
                 # Find user (2024, live body: low/high level, page, job 7, layer -1,
                 # square UID) lists the other player; a level range above it does not.

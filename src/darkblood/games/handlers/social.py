@@ -351,8 +351,40 @@ class SocialHandlers(BaseDomainService):
 
         reply_msg = system_reply if system_reply else msg
         sender = 'System' if system_reply else char_name
-        ack = ChatAck(result=0, channel=req.channel, sender=sender, message=reply_msg).encode()
+        ack = ChatAck(result=0, channel=req.channel, sender=sender, target=req.target, message=reply_msg).encode()
         await self.transport.send_event(event(5041, ack, correlation), note=f'chat ack ({reply_msg})')
+        if system_reply or not msg:
+            return
+        # Other players receive the line as an unsolicited 5041 (global handler
+        # 0x007AC890). Channel 1 is normal chat (live), 2 a whisper (the handler
+        # compares the target name); the party/guild/team values are not
+        # recovered yet, so any other channel goes to the sender's party room.
+        recipients = self._chat_recipients(req.channel, req.target)
+        packet = event(5041, ack)
+        for session in recipients:
+            try:
+                await session.transport.send_event(packet, note=f'chat from {char_name} (channel {req.channel})')
+            except (ConnectionError, OSError):
+                pass
+        self.transport.record('chat-route', b'', channel=req.channel, target=req.target, recipients=len(recipients))
+
+    def _chat_recipients(self, channel, target):
+        """Sessions other than the sender that should see a chat line."""
+        from darkblood.games.world import GameWorldManager
+        world = GameWorldManager.get()
+        me = self.session
+        if channel == 2:
+            wanted = (target or '').strip().lower()
+            return [p.session for p in world.players.values()
+                    if p.session is not me and p.char_data.get('name', '').lower() == wanted]
+        room = me.dungeon.room
+        in_party = room is not None and room.info.name != '_singleplay'
+        if channel != 1 or (in_party and room.started):
+            # Party channel, or normal chat inside a shared dungeon run.
+            return [m for m in room.members if m is not me] if in_party else []
+        player = world.get_player(me.active_char_id) if me.active_char_id else None
+        square = player.square_id if player else me.square_id
+        return [p.session for p in world.get_players_in_square(square) if p.session is not me]
 
     async def on_2310(self, correlation, body):
         # eEGS_CHAR_NICK_CHANGE_REQ -> 2311 eEGS_CHAR_NICK_CHANGE_ACK (0x00780200).
