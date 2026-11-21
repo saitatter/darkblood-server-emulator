@@ -240,6 +240,87 @@ class ArenaFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_extended_arena_room_team_and_league_opcodes(self):
+        """Test newly recovered Arena square, room, team, random matching, and league charstat opcodes."""
+        from darkblood.games.network.messages.arena import (
+            ArenaBanishUserAck, ArenaBanishUserReq,
+            ArenaChangeRoomCharInfoAck, ArenaChangeRoomCharInfoReq,
+            ArenaChangeRoomHostAck, ArenaChangeRoomHostReq,
+            ArenaChangeSlotCharInfoAck, ArenaChangeSlotCharInfoReq,
+            ArenaChangeTeamInfoAck, ArenaChangeTeamInfoReq,
+            ArenaJoinLayerAck, ArenaJoinLayerReq,
+            ArenaRandomMatchingRequestAck, ArenaRandomMatchingRequestReq,
+            ArenaReadyGameAck, ArenaReadyGameReq,
+            ArenaStartGameAck, ArenaStartGameReq,
+            ArenaTeamBanishAck, ArenaTeamBanishReq,
+            ArenaTeamChangeHostAck, ArenaTeamChangeHostReq,
+            LeagueSeasonArenaCharStatInitAck, LeagueSeasonArenaCharStatInitReq,
+            LeagueSeasonArenaCharStatUpdateAck, LeagueSeasonArenaCharStatUpdateReq,
+        )
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('ArenaHero', char_class=1))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            client.send_event(5142, ArenaJoinLayerReq(layer_net_id=10).encode())
+            _, r = await client.expect_event(5143)
+            self.assertEqual(ArenaJoinLayerAck.decode(r).join_layer_net_id, 10)
+
+            client.send_event(5163, ArenaBanishUserReq(target_uid=99).encode())
+            _, r = await client.expect_event(5164)
+            self.assertEqual(ArenaBanishUserAck.decode(r).result, 0)
+
+            client.send_event(5168, ArenaChangeRoomHostReq(new_host_uid=99).encode())
+            _, r = await client.expect_event(5169)
+            self.assertEqual(ArenaChangeRoomHostAck.decode(r).new_host_uid, 99)
+
+            client.send_event(5172, ArenaStartGameReq().encode())
+            _, r = await client.expect_event(5173)
+            self.assertEqual(ArenaStartGameAck.decode(r).result, 0)
+
+            client.send_event(5182, ArenaReadyGameReq(is_ready=True).encode())
+            _, r = await client.expect_event(5183)
+            self.assertTrue(ArenaReadyGameAck.decode(r).is_ready)
+
+            client.send_event(5202, ArenaRandomMatchingRequestReq(match_type=1).encode())
+            _, r = await client.expect_event(5203)
+            self.assertEqual(ArenaRandomMatchingRequestAck.decode(r).result, 0)
+
+            client.send_event(5265, ArenaChangeRoomCharInfoReq(team_id=2, is_ready=True).encode())
+            _, r = await client.expect_event(5266)
+            self.assertEqual(ArenaChangeRoomCharInfoAck.decode(r).team_id, 2)
+
+            client.send_event(5267, ArenaChangeSlotCharInfoReq(slot_idx=1).encode())
+            _, r = await client.expect_event(5268)
+            self.assertEqual(ArenaChangeSlotCharInfoAck.decode(r).result, 0)
+
+            client.send_event(5282, ArenaTeamBanishReq(target_uid=99).encode())
+            _, r = await client.expect_event(5283)
+            self.assertEqual(ArenaTeamBanishAck.decode(r).result, 0)
+
+            client.send_event(5286, ArenaTeamChangeHostReq(new_host_uid=99).encode())
+            _, r = await client.expect_event(5287)
+            self.assertEqual(ArenaTeamChangeHostAck.decode(r).new_host_uid, 99)
+
+            client.send_event(5301, ArenaChangeTeamInfoReq(team_type=2, team_name='Titans').encode())
+            _, r = await client.expect_event(5302)
+            ack = ArenaChangeTeamInfoAck.decode(r)
+            self.assertEqual((ack.result, ack.team_type, ack.team_name), (0, 2, 'Titans'))
+
+            client.send_event(2556, LeagueSeasonArenaCharStatUpdateReq(season_stat={'STR': 5}).encode())
+            _, r = await client.expect_event(2557)
+            self.assertEqual(LeagueSeasonArenaCharStatUpdateAck.decode(r).season_stat.get('STR'), 5)
+
+            client.send_event(2561, LeagueSeasonArenaCharStatInitReq().encode())
+            _, r = await client.expect_event(2562)
+            self.assertEqual(LeagueSeasonArenaCharStatInitAck.decode(r).result, 0)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

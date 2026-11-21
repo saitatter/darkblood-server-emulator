@@ -7,6 +7,8 @@ from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
+from darkblood.games.network.messages.dungeon import RoomMemberInfo
+from darkblood.games.network.messages.lobby import PageCharTemp
 
 __all__ = [
     'DuelRequestReq',
@@ -55,6 +57,40 @@ __all__ = [
     'GbbGiveupReq',
     'GbbGiveupAck',
     'ArenaSquareChangeRelayAddressNot',
+    'ArenaRandomMatchingUserCntNot',
+    'LeagueSeasonArenaCharStatUpdateReq',
+    'LeagueSeasonArenaCharStatUpdateAck',
+    'LeagueSeasonArenaCharStatInitReq',
+    'LeagueSeasonArenaCharStatInitAck',
+    'ArenaLeaveSquareAck',
+    'ArenaLeaveLayerNot',
+    'ArenaJoinLayerReq',
+    'ArenaJoinLayerAck',
+    'ArenaJoinLayerNot',
+    'ArenaLeaveRoomNot',
+    'ArenaBanishUserReq',
+    'ArenaBanishUserAck',
+    'ArenaChangeRoomHostReq',
+    'ArenaChangeRoomHostAck',
+    'ArenaStartGameReq',
+    'ArenaStartGameAck',
+    'ArenaReadyGameReq',
+    'ArenaReadyGameAck',
+    'ArenaRandomMatchingRequestReq',
+    'ArenaRandomMatchingRequestAck',
+    'ArenaRandomMatchingInitAck',
+    'ArenaSelectSubCharAck',
+    'ArenaChangeRoomCharInfoReq',
+    'ArenaChangeRoomCharInfoAck',
+    'ArenaChangeSlotCharInfoReq',
+    'ArenaChangeSlotCharInfoAck',
+    'ArenaTeamLeaveNot',
+    'ArenaTeamBanishReq',
+    'ArenaTeamBanishAck',
+    'ArenaTeamChangeHostReq',
+    'ArenaTeamChangeHostAck',
+    'ArenaChangeTeamInfoReq',
+    'ArenaChangeTeamInfoAck',
 ]
 
 
@@ -676,3 +712,433 @@ class ArenaSquareChangeRelayAddressNot(WireMessage):
     _WIRE_LAYOUT: ClassVar[tuple] = (
         Const(Raw[24], bytes(24)),
     )
+
+
+@dataclass
+class ArenaRandomMatchingUserCntNot(WireMessage):
+    """Opcode 2472: eEGS_ARENA_RANDOM_MATCHING_USER_CNT_NOT (reply).
+
+    Handler 0x0048A7A0 (assert: m_vecSeasonRankTop >> m_jSeasonBeginTime).
+    """
+    OPCODE: ClassVar[int] = 2472
+    season_begin_time: Raw[12] = bytes(12)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(EmptyVector),
+        'season_begin_time',
+    )
+
+
+@dataclass
+class LeagueSeasonArenaCharStatUpdateReq(WireMessage):
+    """Opcode 2556: eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_REQ (request).
+
+    Update league arena season char stats -> 2557.
+    """
+    OPCODE: ClassVar[int] = 2556
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    season_stat: Map[wstr, i16] = field(default_factory=dict)
+
+
+@dataclass
+class LeagueSeasonArenaCharStatUpdateAck(WireMessage):
+    """Opcode 2557: eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_ACK (reply).
+
+    Handler 0x00499980 (assert: jInfo.m_mapSeasonStat, map<wstr, i16> 0x00481110).
+    """
+    OPCODE: ClassVar[int] = 2557
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    season_stat: Map[wstr, i16] = field(default_factory=dict)
+
+
+@dataclass
+class LeagueSeasonArenaCharStatInitReq(WireMessage):
+    """Opcode 2561: eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_REQ (request).
+
+    Reset league arena season char stats -> 2562.
+    """
+    OPCODE: ClassVar[int] = 2561
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class LeagueSeasonArenaCharStatInitAck(WireMessage):
+    """Opcode 2562: eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_ACK (reply).
+
+    Handler 0x00492BF0 (assert: nCurAr >> nSeasonInitStatCnt).
+    """
+    OPCODE: ClassVar[int] = 2562
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cur_ar: i64 = 0
+    season_init_stat_cnt: i32 = 0
+
+
+@dataclass
+class ArenaLeaveSquareAck(WireMessage):
+    """Opcode 5140: eERC_ARENA_LEAVE_SQUARE_ACK (reply).
+
+    Handler 0x006A3C50 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5140
+    result: u32 = 0
+
+
+@dataclass
+class ArenaLeaveLayerNot(WireMessage):
+    """Opcode 5141: eERC_ARENA_LEAVE_LAYER_NOT (reply).
+
+    Handler 0x006A4370 (assert: nLeaveCharUID).
+    """
+    OPCODE: ClassVar[int] = 5141
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    leave_char_uid: i64 = 0
+
+
+@dataclass
+class ArenaJoinLayerReq(WireMessage):
+    """Opcode 5142: eERC_ARENA_JOIN_LAYER_REQ (request).
+
+    Join arena square layer -> 5143.
+    """
+    OPCODE: ClassVar[int] = 5142
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    layer_net_id: i64 = 0
+
+
+@dataclass
+class ArenaJoinLayerAck(WireMessage):
+    """Opcode 5143: eERC_ARENA_JOIN_LAYER_ACK (reply).
+
+    Handler 0x006A3E50 (assert: nJoinArenaSquareUID >> nJoinLayerNetID >> nJoinSquareUID).
+    """
+    OPCODE: ClassVar[int] = 5143
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    arena_square_uid: i64 = 0
+    join_layer_net_id: i64 = 0
+    join_square_uid: i64 = 0
+
+
+@dataclass
+class ArenaJoinLayerNot(WireMessage):
+    """Opcode 5144: eERC_ARENA_JOIN_LAYER_NOT (reply).
+
+    Handler 0x006A4170 (assert: vecPageCharTemp).
+    """
+    OPCODE: ClassVar[int] = 5144
+    players: Vector[PageCharTemp] = field(default_factory=list)
+
+
+@dataclass
+class ArenaLeaveRoomNot(WireMessage):
+    """Opcode 5150: eERC_ARENA_LEAVE_ROOM_NOT (reply).
+
+    Handler 0x004C3B50 (assert: jNot, struct 0x00A1E720: 14 raw bytes).
+    """
+    OPCODE: ClassVar[int] = 5150
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    leave_info: Raw[14] = bytes(14)
+
+
+@dataclass
+class ArenaBanishUserReq(WireMessage):
+    """Opcode 5163: eERC_ARENA_BANISH_USER_REQ (request).
+
+    Kick member from arena room -> 5164.
+    """
+    OPCODE: ClassVar[int] = 5163
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0
+
+
+@dataclass
+class ArenaBanishUserAck(WireMessage):
+    """Opcode 5164: eERC_ARENA_BANISH_USER_ACK (reply).
+
+    Handler 0x004BBC80 (assert: jNot, struct 0x00A1E720: 14 raw bytes).
+    """
+    OPCODE: ClassVar[int] = 5164
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    banish_info: Raw[14] = bytes(14)
+
+
+@dataclass
+class ArenaChangeRoomHostReq(WireMessage):
+    """Opcode 5168: eERC_ARENA_CHANGE_ROOMHOST_REQ (request).
+
+    Change arena room host -> 5169.
+    """
+    OPCODE: ClassVar[int] = 5168
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    new_host_uid: i64 = 0
+
+
+@dataclass
+class ArenaChangeRoomHostAck(WireMessage):
+    """Opcode 5169: eERC_ARENA_CHANGE_ROOMHOST_ACK (reply).
+
+    Handler 0x004C40C0 (assert: nChangeNewHostUID).
+    """
+    OPCODE: ClassVar[int] = 5169
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    new_host_uid: i64 = 0
+
+
+@dataclass
+class ArenaStartGameReq(WireMessage):
+    """Opcode 5172: eERC_ARENA_START_GAME_REQ (request).
+
+    Start arena match -> 5173.
+    """
+    OPCODE: ClassVar[int] = 5172
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class ArenaStartGameAck(WireMessage):
+    """Opcode 5173: eERC_ARENA_START_GAME_ACK (reply).
+
+    Handler 0x004C0160 (assert: nRandSync >> nPlayedMapID >> mapLearnSkill >> mapSubCharInfo >> mapQuickSlot >> mapLeagueArenaCharInfo >> mapProficiency).
+    """
+    OPCODE: ClassVar[int] = 5173
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    rand_sync: i32 = 0
+    played_map_id: i32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'rand_sync',
+        'played_map_id',
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class ArenaReadyGameReq(WireMessage):
+    """Opcode 5182: eERC_ARENA_READY_GAME_REQ (request).
+
+    Toggle arena match ready -> 5183.
+    """
+    OPCODE: ClassVar[int] = 5182
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    is_ready: bool = True
+
+
+@dataclass
+class ArenaReadyGameAck(WireMessage):
+    """Opcode 5183: eERC_ARENA_READY_GAME_ACK (reply).
+
+    Handler 0x004C3F40 (assert: nCharUID >> bIsReady).
+    """
+    OPCODE: ClassVar[int] = 5183
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    char_uid: i64 = 0
+    is_ready: bool = False
+
+
+@dataclass
+class ArenaRandomMatchingRequestReq(WireMessage):
+    """Opcode 5202: eERC_ARENA_RANDOM_MATCHING_REQUEST_REQ (request).
+
+    Queue for arena random matching -> 5203.
+    """
+    OPCODE: ClassVar[int] = 5202
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    match_type: i32 = 1
+
+
+@dataclass
+class ArenaRandomMatchingRequestAck(WireMessage):
+    """Opcode 5203: eERC_ARENA_RANDOM_MATCHING_REQUEST_ACK (reply).
+
+    Handler 0x0049BC80 (reads u32 result only).
+    """
+    OPCODE: ClassVar[int] = 5203
+    result: u32 = 0
+
+
+@dataclass
+class ArenaRandomMatchingInitAck(WireMessage):
+    """Opcode 5220: eERC_ARENA_RANDOM_MATCHING_INIT_ACK (reply).
+
+    Handler 0x0049BE30 (empty body).
+    """
+    OPCODE: ClassVar[int] = 5220
+
+
+@dataclass
+class ArenaSelectSubCharAck(WireMessage):
+    """Opcode 5226: eERC_ARENA_SELECT_SUB_CHAR_ACK (reply).
+
+    Handler 0x004C5CC0 (assert: nSessionUID >> jSubCharInfo, 0x00A49600).
+    """
+    OPCODE: ClassVar[int] = 5226
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    session_uid: i64 = 0
+    sub_char_info: RoomMemberInfo = field(default_factory=RoomMemberInfo)
+
+
+@dataclass
+class ArenaChangeRoomCharInfoReq(WireMessage):
+    """Opcode 5265: eERC_ARENA_CHANGE_ROOMCHAR_INFO_REQ (request).
+
+    Change arena room team/ready -> 5266.
+    """
+    OPCODE: ClassVar[int] = 5265
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    team_id: i32 = 0
+    is_ready: bool = False
+
+
+@dataclass
+class ArenaChangeRoomCharInfoAck(WireMessage):
+    """Opcode 5266: eERC_ARENA_CHANGE_ROOMCHAR_INFO_ACK (reply).
+
+    Handler 0x004C4A20 (assert: nCharUID >> nTeamID >> mapSlotInfo >> bIsReady).
+    """
+    OPCODE: ClassVar[int] = 5266
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    char_uid: i64 = 0
+    team_id: i32 = 0
+    is_ready: bool = False
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'char_uid',
+        'team_id',
+        Const(EmptyMap),
+        'is_ready',
+    )
+
+
+@dataclass
+class ArenaChangeSlotCharInfoReq(WireMessage):
+    """Opcode 5267: eERC_ARENA_CHANGE_SLOTCHAR_INFO_REQ (request).
+
+    Change arena room slot -> 5268.
+    """
+    OPCODE: ClassVar[int] = 5267
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    slot_idx: i16 = 0
+
+
+@dataclass
+class ArenaChangeSlotCharInfoAck(WireMessage):
+    """Opcode 5268: eERC_ARENA_CHANGE_SLOTCHAR_INFO_ACK (reply).
+
+    Handler 0x004C5010 (assert: m_spCurRoom->m_mapSlotInfo).
+    """
+    OPCODE: ClassVar[int] = 5268
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+    )
+
+
+@dataclass
+class ArenaTeamLeaveNot(WireMessage):
+    """Opcode 5276: eERC_ARENA_TEAM_LEAVE_NOT (reply).
+
+    Handler 0x0049C110 (assert: jNotInfo, struct 0x00A1E720: 14 raw bytes).
+    """
+    OPCODE: ClassVar[int] = 5276
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    not_info: Raw[14] = bytes(14)
+
+
+@dataclass
+class ArenaTeamBanishReq(WireMessage):
+    """Opcode 5282: eERC_ARENA_TEAM_BANISH_REQ (request).
+
+    Kick member from arena team -> 5283.
+    """
+    OPCODE: ClassVar[int] = 5282
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_uid: i64 = 0
+
+
+@dataclass
+class ArenaTeamBanishAck(WireMessage):
+    """Opcode 5283: eERC_ARENA_TEAM_BANISH_ACK (reply).
+
+    Handler 0x00490320 (assert: jNotInfo, struct 0x00A1E720: 14 raw bytes).
+    """
+    OPCODE: ClassVar[int] = 5283
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    not_info: Raw[14] = bytes(14)
+
+
+@dataclass
+class ArenaTeamChangeHostReq(WireMessage):
+    """Opcode 5286: eERC_ARENA_TEAM_CHANGE_HOST_REQ (request).
+
+    Change arena team leader -> 5287.
+    """
+    OPCODE: ClassVar[int] = 5286
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    new_host_uid: i64 = 0
+
+
+@dataclass
+class ArenaTeamChangeHostAck(WireMessage):
+    """Opcode 5287: eERC_ARENA_TEAM_CHANGE_HOST_ACK (reply).
+
+    Handler 0x0049B050 (assert: nNewHostUID).
+    """
+    OPCODE: ClassVar[int] = 5287
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    new_host_uid: i64 = 0
+
+
+@dataclass
+class ArenaChangeTeamInfoReq(WireMessage):
+    """Opcode 5301: eERC_ARENA_CHANGE_TEAMINFO_REQ (request).
+
+    Change arena team name/type -> 5302.
+    """
+    OPCODE: ClassVar[int] = 5301
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    team_type: i32 = 0
+    team_name: wstr = ''
+
+
+@dataclass
+class ArenaChangeTeamInfoAck(WireMessage):
+    """Opcode 5302: eERC_ARENA_CHANGE_TEAMINFO_ACK (reply).
+
+    Handler 0x0049CBB0.
+    """
+    OPCODE: ClassVar[int] = 5302
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    team_type: i32 = 0
+    team_name: wstr = ''

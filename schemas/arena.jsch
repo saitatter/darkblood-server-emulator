@@ -8,6 +8,9 @@
 
 domain arena Dark Blood protocol wire messages - Arena, PvP Duels, and League domain.
 
+extern PageCharTemp from darkblood.games.network.messages.lobby readable
+extern RoomMemberInfo from darkblood.games.network.messages.dungeon readable
+
 message 5100 DuelRequestReq header?
   ## Sender 0x006B7410.
   i64 target_uid
@@ -321,4 +324,205 @@ end
 message 5135 ArenaSquareChangeRelayAddressNot
   ## Handler 0x0075AC00 (assert: *m_spArenaSquareP2PAddr, struct 0x00A48910).
   raw[24] _                  # P2P address struct
+end
+
+message 2472 ArenaRandomMatchingUserCntNot
+  ## Handler 0x0048A7A0 (assert: m_vecSeasonRankTop >> m_jSeasonBeginTime).
+  vector<?> _                # m_vecSeasonRankTop (0x00487F40)
+  raw[12] season_begin_time
+end
+
+message 2556 LeagueSeasonArenaCharStatUpdateReq header?
+  ## Update league arena season char stats -> 2557.
+  map<wstr,i16> season_stat
+end
+
+message 2557 LeagueSeasonArenaCharStatUpdateAck ok_only
+  ## Handler 0x00499980 (assert: jInfo.m_mapSeasonStat, map<wstr, i16> 0x00481110).
+  u32 result
+  map<wstr,i16> season_stat
+end
+
+message 2561 LeagueSeasonArenaCharStatInitReq header?
+  ## Reset league arena season char stats -> 2562.
+end
+
+message 2562 LeagueSeasonArenaCharStatInitAck ok_only
+  ## Handler 0x00492BF0 (assert: nCurAr >> nSeasonInitStatCnt).
+  u32 result
+  i64 cur_ar
+  i32 season_init_stat_cnt
+end
+
+message 5140 ArenaLeaveSquareAck
+  ## Handler 0x006A3C50 (reads u32 result only).
+  u32 result
+end
+
+message 5141 ArenaLeaveLayerNot ok_only
+  ## Handler 0x006A4370 (assert: nLeaveCharUID).
+  u32 result
+  i64 leave_char_uid
+end
+
+message 5142 ArenaJoinLayerReq header?
+  ## Join arena square layer -> 5143.
+  i64 layer_net_id
+end
+
+message 5143 ArenaJoinLayerAck ok_only
+  ## Handler 0x006A3E50 (assert: nJoinArenaSquareUID >> nJoinLayerNetID >> nJoinSquareUID).
+  u32 result
+  i64 arena_square_uid
+  i64 join_layer_net_id
+  i64 join_square_uid
+end
+
+message 5144 ArenaJoinLayerNot
+  ## Handler 0x006A4170 (assert: vecPageCharTemp).
+  vector<PageCharTemp> players
+end
+
+message 5150 ArenaLeaveRoomNot ok_only
+  ## Handler 0x004C3B50 (assert: jNot, struct 0x00A1E720: 14 raw bytes).
+  u32 result
+  raw[14] leave_info
+end
+
+message 5163 ArenaBanishUserReq header?
+  ## Kick member from arena room -> 5164.
+  i64 target_uid
+end
+
+message 5164 ArenaBanishUserAck ok_only
+  ## Handler 0x004BBC80 (assert: jNot, struct 0x00A1E720: 14 raw bytes).
+  u32 result
+  raw[14] banish_info
+end
+
+message 5168 ArenaChangeRoomHostReq header?
+  ## Change arena room host -> 5169.
+  i64 new_host_uid
+end
+
+message 5169 ArenaChangeRoomHostAck ok_only
+  ## Handler 0x004C40C0 (assert: nChangeNewHostUID).
+  u32 result
+  i64 new_host_uid
+end
+
+message 5172 ArenaStartGameReq header?
+  ## Start arena match -> 5173.
+end
+
+message 5173 ArenaStartGameAck ok_only
+  ## Handler 0x004C0160 (assert: nRandSync >> nPlayedMapID >> mapLearnSkill >> mapSubCharInfo >> mapQuickSlot >> mapLeagueArenaCharInfo >> mapProficiency).
+  u32 result
+  i32 rand_sync
+  i32 played_map_id
+  map<?> _                   # mapLearnSkill (0x004B8B80)
+  map<?> _                   # mapSubCharInfo (0x004BA530)
+  map<?> _                   # mapQuickSlot (0x004B7460)
+  map<?> _                   # mapLeagueArenaCharInfo (0x0048B380)
+  map<?> _                   # mapProficiency (0x004B7550)
+end
+
+message 5182 ArenaReadyGameReq header?
+  ## Toggle arena match ready -> 5183.
+  bool is_ready = true
+end
+
+message 5183 ArenaReadyGameAck ok_only
+  ## Handler 0x004C3F40 (assert: nCharUID >> bIsReady).
+  u32 result
+  i64 char_uid
+  bool is_ready
+end
+
+message 5202 ArenaRandomMatchingRequestReq header?
+  ## Queue for arena random matching -> 5203.
+  i32 match_type = 1
+end
+
+message 5203 ArenaRandomMatchingRequestAck
+  ## Handler 0x0049BC80 (reads u32 result only).
+  u32 result
+end
+
+message 5220 ArenaRandomMatchingInitAck bare
+  ## Handler 0x0049BE30 (empty body).
+end
+
+message 5226 ArenaSelectSubCharAck ok_only
+  ## Handler 0x004C5CC0 (assert: nSessionUID >> jSubCharInfo, 0x00A49600).
+  u32 result
+  i64 session_uid
+  RoomMemberInfo sub_char_info = RoomMemberInfo()
+end
+
+message 5265 ArenaChangeRoomCharInfoReq header?
+  ## Change arena room team/ready -> 5266.
+  i32 team_id
+  bool is_ready
+end
+
+message 5266 ArenaChangeRoomCharInfoAck ok_only
+  ## Handler 0x004C4A20 (assert: nCharUID >> nTeamID >> mapSlotInfo >> bIsReady).
+  u32 result
+  i64 char_uid
+  i32 team_id
+  map<?> _                   # mapSlotInfo (0x004AA240)
+  bool is_ready
+end
+
+message 5267 ArenaChangeSlotCharInfoReq header?
+  ## Change arena room slot -> 5268.
+  i16 slot_idx
+end
+
+message 5268 ArenaChangeSlotCharInfoAck ok_only
+  ## Handler 0x004C5010 (assert: m_spCurRoom->m_mapSlotInfo).
+  u32 result
+  map<?> _                   # m_mapSlotInfo (0x004AA240)
+end
+
+message 5276 ArenaTeamLeaveNot ok_only
+  ## Handler 0x0049C110 (assert: jNotInfo, struct 0x00A1E720: 14 raw bytes).
+  u32 result
+  raw[14] not_info
+end
+
+message 5282 ArenaTeamBanishReq header?
+  ## Kick member from arena team -> 5283.
+  i64 target_uid
+end
+
+message 5283 ArenaTeamBanishAck ok_only
+  ## Handler 0x00490320 (assert: jNotInfo, struct 0x00A1E720: 14 raw bytes).
+  u32 result
+  raw[14] not_info
+end
+
+message 5286 ArenaTeamChangeHostReq header?
+  ## Change arena team leader -> 5287.
+  i64 new_host_uid
+end
+
+message 5287 ArenaTeamChangeHostAck ok_only
+  ## Handler 0x0049B050 (assert: nNewHostUID).
+  u32 result
+  i64 new_host_uid
+end
+
+message 5301 ArenaChangeTeamInfoReq header?
+  ## Change arena team name/type -> 5302.
+  i32 team_type
+  wstr team_name
+end
+
+message 5302 ArenaChangeTeamInfoAck ok_only
+  ## Handler 0x0049CBB0.
+  u32 result
+  i32 team_type
+  wstr team_name
 end

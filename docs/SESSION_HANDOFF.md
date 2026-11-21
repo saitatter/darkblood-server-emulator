@@ -1,5 +1,14 @@
 # Session handoff — 2026-11-21
 
+## Arena room, square, team, random matching & league charstat sweep — saita machine, 2026-11-21
+
+- **Arena (`schemas/arena.jsch`, `src/darkblood/games/handlers/arena.py`)**: recovered and implemented 34 Arena opcodes from `JAppPageArena` (`0x004C6110`), `JAppPageArenaLeague` (`0x0049D180`), and `JAppStateArenaSquare` (`0x006A9F70`):
+  - Arena Square & Layers: `5140 ArenaLeaveSquareAck`, `5141 ArenaLeaveLayerNot`, `5142/5143 ArenaJoinLayer`, `5144 ArenaJoinLayerNot`.
+  - Arena Room lifecycle: `5150 ArenaLeaveRoomNot`, `5163/5164 ArenaBanishUser`, `5168/5169 ArenaChangeRoomHost`, `5172/5173 ArenaStartGame`, `5182/5183 ArenaReadyGame`, `5226 ArenaSelectSubCharAck`, `5265/5266 ArenaChangeRoomCharInfo`, `5267/5268 ArenaChangeSlotCharInfo`.
+  - Arena Teams & Random Matching: `2472 ArenaRandomMatchingUserCntNot`, `5202/5203 ArenaRandomMatchingRequest`, `5220 ArenaRandomMatchingInitAck`, `5276 ArenaTeamLeaveNot`, `5282/5283 ArenaTeamBanish`, `5286/5287 ArenaTeamChangeHost`, `5301/5302 ArenaChangeTeamInfo`.
+  - League Season CharStats: `2556/2557 LeagueSeasonArenaCharStatUpdate`, `2561/2562 LeagueSeasonArenaCharStatInit`.
+- **Verification**: 196/196 headless tests pass (`test_extended_arena_room_team_and_league_opcodes`), `gen_messages.py --check` and `gen_progress.py --check` pass.
+
 ## Monster Card, Roulette, Cronos, Explore & Clear Rank sweep — saita machine, 2026-11-21
 
 - **Monster Card (`schemas/pets.jsch`, `src/darkblood/games/handlers/pets.py`)**: recovered all 23 Monster Card & Card Lotto opcodes from `JAppPageMonsterCard` (`0x0060B500`), including `MonsterCardInfo` (`0x00A52DB0`) and `MonsterCardLottoEntry` (`0x00A51C20`), and wired `2604`, `2606`, `2610`, `2613`, `2615`, `2633`, `2636`, `2638`. Pets reached **72/74 (97%)**.
