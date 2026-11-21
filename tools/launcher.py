@@ -132,12 +132,36 @@ def extract_client_icon_bytes(exe_path=CLIENT_EXE):
             pe.close()
 
 
+# Map local git author emails/names to GitHub usernames so offline `git log`
+# displays GitHub handles instead of local real names.
+_GITHUB_USERNAMES = {
+    'andrei.voicu133@gmail.com': 'saitatter',
+    'voicu andrei-daniel': 'saitatter',
+    'cri999sti@gmail.com': 'CristianVita',
+}
+
+
+def _resolve_github_username(name: str, email: str = '', login: str = '') -> str:
+    if login:
+        return login
+    email_low = (email or '').strip().lower()
+    if email_low in _GITHUB_USERNAMES:
+        return _GITHUB_USERNAMES[email_low]
+    if email_low.endswith('@users.noreply.github.com'):
+        local_part = email_low.split('@', 1)[0]
+        return local_part.split('+', 1)[-1]
+    name_low = (name or '').strip().lower()
+    if name_low in _GITHUB_USERNAMES:
+        return _GITHUB_USERNAMES[name_low]
+    return name or 'unknown'
+
+
 def fetch_recent_commits(limit=25):
     """Return list of dicts {sha, short, date, author, subject} from local git or GitHub."""
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     try:
         proc = subprocess.run(
-            ['git', 'log', f'-n{limit}', '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%s', '--date=short'],
+            ['git', 'log', f'-n{limit}', '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short'],
             cwd=str(ROOT), capture_output=True, text=True, encoding='utf-8',
             errors='replace', timeout=5, creationflags=flags,
         )
@@ -145,10 +169,12 @@ def fetch_recent_commits(limit=25):
             commits = []
             for line in proc.stdout.splitlines():
                 parts = line.split('\x1f')
-                if len(parts) == 5:
+                if len(parts) == 6:
                     commits.append({
                         'sha': parts[0], 'short': parts[1],
-                        'date': parts[2], 'author': parts[3], 'subject': parts[4],
+                        'date': parts[2],
+                        'author': _resolve_github_username(parts[3], parts[4]),
+                        'subject': parts[5],
                     })
             if commits:
                 return commits, 'local git'
@@ -165,8 +191,14 @@ def fetch_recent_commits(limit=25):
         for item in data[:limit]:
             sha = item.get('sha', '')
             c = item.get('commit', {})
-            author = (c.get('author') or {}).get('name', 'unknown')
-            date = ((c.get('author') or {}).get('date', '') or '')[:10]
+            gh_author = item.get('author') or {}
+            c_author = c.get('author') or {}
+            author = _resolve_github_username(
+                c_author.get('name', ''),
+                c_author.get('email', ''),
+                gh_author.get('login', ''),
+            )
+            date = (c_author.get('date', '') or '')[:10]
             subject = (c.get('message', '') or '').splitlines()[0]
             commits.append({
                 'sha': sha, 'short': sha[:7],
