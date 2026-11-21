@@ -5,6 +5,7 @@ from darkblood.games.handlers.arena import ArenaHandlers
 from darkblood.games.handlers.commerce import CommerceHandlers
 from darkblood.games.handlers.dungeon import DungeonHandlers
 from darkblood.games.handlers.frontend import DEFAULT_ACCOUNT, FrontendHandlers, account_from_auth, welcome
+from darkblood.games.handlers.gm import GmHandlers
 from darkblood.games.handlers.inventory import InventoryHandlers
 from darkblood.games.handlers.mail import MailHandlers
 from darkblood.games.handlers.pets import PetHandlers
@@ -26,6 +27,7 @@ CONTROLLERS = (
     ('dungeon', DungeonHandlers),
     ('arena', ArenaHandlers),
     ('pets', PetHandlers),
+    ('gm', GmHandlers),
 )
 
 

@@ -60,8 +60,10 @@ def welcome(account=DEFAULT_ACCOUNT, account_uid=1):
     body = struct.pack('<IQ', 0, account_uid) + wide_string(account)
     # Flag tuple: (nAccountID, nAuthLevel, bFlag1, m_bAdultUser, bFlag3, nReserved)
     # m_bAdultUser=True unlocks the Blood Effect in client options (JNetUserMgr+0x4C / 0x00577860).
+    # nAuthLevel=1 unlocks the native GM console (JAppPageCheat / 0x004EF790).
     from darkblood.core import options
-    body += struct.pack('<II???Q', 0, 0, False, options.get('adult_content'), False, 0)
+    auth_level = 1 if options.get('gm_mode') else 0
+    body += struct.pack('<II???Q', 0, auth_level, False, options.get('adult_content'), False, 0)
     body += b'\x17' + varuint(0)
     body += struct.pack('<IIB', 0, 0, 0) + wide_string('')
     body += struct.pack('<6H', now.year, now.month, now.day, now.hour, now.minute, now.second)

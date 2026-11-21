@@ -128,6 +128,15 @@
 | `5366 GoldGoblinDeadAck` | `i16` | events.jsch:93 | meaning unknown |
 | `5366 GoldGoblinDeadAck` | `i16` | events.jsch:94 | meaning unknown |
 
+## gm (4 of 94 fields)
+
+| Message / struct | Type | Line | Note |
+| :--- | :--- | ---: | :--- |
+| `2060 CheatItemDropAck` | `vector<?>` | gm.jsch:28 | vecDropItem (0x004E3AD0) |
+| `2062 CheatLearnAllSkillAck` | `vector<?>` | gm.jsch:39 | vecCheatSkill (0x004DCC60) |
+| `2064 CheatLearnSkillAck` | `vector<?>` | gm.jsch:51 | vecCheatSkill (0x004DCC60) |
+| `2491 CheatPetEvolutionAck` | `vector<?>` | gm.jsch:267 | vecSkill (0x0076D610) |
+
 ## guild (3 of 153 fields)
 
 | Message / struct | Type | Line | Note |

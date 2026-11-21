@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 770  
+**Tracked opcodes**: 826  
 **Client handlers mapped**: 298  
-**Server handlers**: 323  
+**Server handlers**: 361  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -72,6 +72,14 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2054 | `eEGS_MODIFY_SKILL_SPEECH_ACK` | 0x0078E090 | — | `ModifySkillSpeechAck` |  |
 | 2055 | `eEGS_DELETE_SKILL_SPEECH_REQ` | — | `skills.py` (`handle_delete_skill_speech`) | `DeleteSkillSpeechReq` | eEGS_DELETE_SKILL_SPEECH_REQ (0x00780000.c:9708) -> 2056 eEGS_DELETE_SKILL_SPEECH_ACK (0x0078E270). |
 | 2056 | `eEGS_DELETE_SKILL_SPEECH_ACK` | 0x0078E270 | — | `DeleteSkillSpeechAck` |  |
+| 2057 | `eEGS_CHEAT_LEVEL_UP_REQ` | — | `gm.py` (`handle_cheat_level_up`) | `CheatLevelUpReq` | 2057 -> 2058 (0x004EC120): lv <level> |
+| 2058 | `eEGS_CHEAT_LEVEL_UP_ACK` | — | — | `CheatLevelUpAck` |  |
+| 2059 | `eEGS_CHEAT_ITEM_DROP_REQ` | — | `gm.py` (`handle_cheat_item_drop`) | `CheatItemDropReq` | 2059 -> 2060 (0x004EC5D0): itemdrop <item_id> |
+| 2060 | `eEGS_CHEAT_ITEM_DROP_ACK` | — | — | `CheatItemDropAck` |  |
+| 2061 | `eEGS_CHEAT_LEARN_ALL_SKILL_REQ` | — | `gm.py` (`handle_cheat_learn_all_skill`) | `CheatLearnAllSkillReq` | 2061 -> 2062 (0x004EC950): allskill |
+| 2062 | `eEGS_CHEAT_LEARN_ALL_SKILL_ACK` | — | — | `CheatLearnAllSkillAck` |  |
+| 2063 | `eEGS_CHEAT_LEARN_SKILL_REQ` | — | `gm.py` (`handle_cheat_learn_skill`) | `CheatLearnSkillReq` | 2063 -> 2064 (0x004EC950): skill <id> <lv> |
+| 2064 | `eEGS_CHEAT_LEARN_SKILL_ACK` | — | — | `CheatLearnSkillAck` |  |
 | 2065 | `eEGS_GET_STORE_INFO_REQ` | — | `commerce.py` (`handle_get_store_info`) | — | eEGS_GET_STORE_INFO_REQ (i32, u32 npc id; observed when talking to a |
 | 2066 | `eEGS_GET_STORE_INFO_ACK` | 0x007842C0 | — | `StoreInfoAck` |  |
 | 2067 | `eEGS_BUY_ITEM_REQ` | — | `commerce.py` (`handle_buy_item`) | `BuyItemReq` | eEGS_BUY_ITEM_REQ (0x0078F720) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0). |
@@ -95,16 +103,27 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2085 | `eEGS_CHANGE_DUNGEON_PENALTY_NOT` | 0x0078FA70 | — | `ChangeDungeonPenaltyNot` |  |
 | 2086 | `eEGS_BUY_LIFE_WATER_REQ` | — | `inventory/items.py` (`handle_buy_life_water`) | `BuyLifeWaterReq` | Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): purchase life water. |
 | 2087 | `eEGS_BUY_LIFE_WATER_ACK` | 0x0078FF90 | — | `BuyLifeWaterAck` |  |
+| 2088 | `eEGS_CHEAT_PLEASE_REQ` | — | `gm.py` (`handle_cheat_please`) | `CheatPleaseReq` | 2088 -> 2089 (0x004ED150): generic GM cheat router |
+| 2089 | `eEGS_CHEAT_PLEASE_ACK` | — | — | `CheatPleaseAck` |  |
 | 2090 | `eEGS_QUEST_DISCARD_REQ` | — | `quests.py` (`handle_quest_discard`) | `QuestDiscardReq` | Opcode 2090 (eEGS_QUEST_DISCARD_REQ) -> 2091 (eEGS_QUEST_DISCARD_ACK): discard an active quest. |
 | 2091 | `eEGS_QUEST_DISCARD_ACK` | — | — | `QuestDiscardAck` |  |
 | 2092 | `eEGS_INVENTORY_UPDATED_NOT` | 0x0077F070 | — | `InventoryUpdatedNot` |  |
+| 2093 | `eEGS_CHEAT_QUEST_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_quest_complete`) | `CheatQuestCompleteReq` | 2093 -> 2077: questclear |
 | 2094 | `eEGS_NPC_FIRST_MEET_REQ` | — | `square.py` (`handle_npc_first_meet`) | `NpcFirstMeetReq` | Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK). |
 | 2095 | `eEGS_NPC_FIRST_MEET_ACK` | 0x00752B60 | — | `NpcFirstMeetAck` |  |
+| 2096 | `eEGS_CHEAT_QUEST_RESET_REQ` | — | `gm.py` (`handle_cheat_quest_reset`) | `CheatQuestResetReq` | 2096 -> 2097: questcancel / questreset |
+| 2097 | `eEGS_CHEAT_QUEST_RESET_ACK` | — | — | `CheatQuestResetAck` |  |
 | 2098 | `eEGS_QUEST_ALIMI_CHANGE_NOT` | — | `quests.py` (`handle_quest_alimi_change`) | `QuestAlimiChangeNot` | Opcode 2098 (eEGS_QUEST_ALIMI_CHANGE_NOT): persist quest tracker (Alimi) checkbox state. |
+| 2099 | `eEGS_CHEAT_QUEST_START_REQ` | — | `gm.py` (`handle_cheat_quest_start`) | `CheatQuestStartReq` | 2099 -> 2074: queststart |
 | 2100 | `eEGS_CHEAT_QUEST_START_ACK` | — | `social.py` (`handle_legacy_party_invite`) | — | Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK). |
+| 2101 | `eEGS_CHEAT_INSERT_COIN_REQ` | — | `gm.py` (`handle_cheat_insert_coin`) | `CheatInsertCoinReq` | 2101 -> 2102 (0x004ECD30: u32 result, i16 sTotalRebirthCoin) + 2286 |
 | 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | `social.py` (`handle_party_join`) | — | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
+| 2103 | `eEGS_CHEAT_INSERT_AR_REQ` | — | `gm.py` (`handle_cheat_insert_ar`) | `CheatInsertArReq` | 2103 -> 2104 (0x004ECEA0: u32 result, i64 nCurAr): ar <amount> |
 | 2104 | `eEGS_CHEAT_INSERT_AR_ACK` | — | `social.py` (`handle_party_leave`) | — | Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK). |
+| 2105 | `eEGS_CHEAT_INSERT_AP_REQ` | — | `gm.py` (`handle_cheat_insert_ap`) | `CheatInsertApReq` | 2105 -> 2106 (0x004CE620: u32 result): ap <amount> |
 | 2106 | `eEGS_CHEAT_INSERT_AP_ACK` | — | `social.py` (`handle_party_kick`) | — | Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK). |
+| 2107 | `eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_REQ` | — | `gm.py` (`handle_cheat_delete_all_inven_item`) | `CheatDeleteAllInvenItemReq` | 2107 -> 2108 (0x004E4430): clearbag |
+| 2108 | `eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_ACK` | — | — | `CheatDeleteAllInvenItemAck` |  |
 | 2109 | `eEGS_INSERT_AP_NOT` | 0x00790480 | — | `InsertApNot` |  |
 | 2110 | `eEGS_INCREASING_STATUS_NOT` | 0x007743A0 | — | `IncreasingStatusNot` |  |
 | 2111 | `eEGS_USE_LEARN_SKILL_ITEM_REQ` | — | `skills.py` (`handle_use_learn_skill_item`) | `UseLearnSkillItemReq` | eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0). |
@@ -119,18 +138,26 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2120 | `eEGS_ALARM_UPDATE_ACK` | 0x00771150 | — | `AlarmUpdateAck` |  |
 | 2121 | `eEGS_CONTRACT_UPDATE_REQ` | — | `commerce.py` (`handle_contract_update`) | `ContractUpdateReq` | eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80). |
 | 2122 | `eEGS_CONTRACT_UPDATE_ACK` | 0x00752D80 | — | `ContractUpdateAck` |  |
+| 2123 | `eEGS_CHEAT_ITEM_UPGRADE_REQ` | — | `gm.py` (`handle_cheat_item_upgrade`) | `CheatItemUpgradeReq` | 2123 -> 2116 (UpgradeItemAck): forceupgrade |
+| 2124 | `eEGS_CHEAT_PROMOTION_REQ` | — | `gm.py` (`handle_cheat_promotion`) | `CheatPromotionReq` | 2124 -> 2125 (0x004ED2E0) |
+| 2125 | `eEGS_CHEAT_PROMOTION_ACK` | — | — | `CheatPromotionAck` |  |
 | 2126 | `eEGS_GET_QUEST_TAG_REQ` | — | `quests.py` (`handle_get_quest_tag`) | `GetQuestTagReq` | Opcode 2126 (eEGS_GET_QUEST_TAG_REQ) -> 2127 (eEGS_GET_QUEST_TAG_ACK): return quest tag string. |
 | 2127 | `eEGS_GET_QUEST_TAG_ACK` | — | — | `GetQuestTagAck` |  |
 | 2128 | `eEGS_USE_SPEAKER_ITEM_REQ` | — | `social.py` (`handle_use_speaker_item`) | `UseSpeakerItemReq` | eEGS_USE_SPEAKER_ITEM_REQ (0x00790000.c:1992) -> 2129 eEGS_USE_SPEAKER_ITEM_ACK (0x0077F320). |
 | 2129 | `eEGS_USE_SPEAKER_ITEM_ACK` | 0x0077F320 | — | `UseSpeakerItemAck` |  |
+| 2130 | `eEGS_CHEAT_CHANGE_STRESS_REQ` | — | `gm.py` (`handle_cheat_change_stress`) | `CheatChangeStressReq` | 2130 -> 2023 StressChangedNot: stress |
 | 2131 | `eEGS_FRIEND_LIST_REQUEST_REQ` | — | `social.py` (`handle_friend_list`) | — | eEGS_FRIEND_LIST_REQUEST_REQ -> eEGS_FRIEND_LIST_REQUEST_ACK (2132), handler 0x7712E0: |
 | 2132 | `eEGS_FRIEND_LIST_REQUEST_ACK` | 0x007712E0 | — | `FriendListAck` |  |
 | 2133 | `eEGS_FRIEND_LIST_UPDATE_REQ` | — | `social.py` (`handle_friend_list_update`) | `FriendListUpdateReq` | eEGS_FRIEND_LIST_UPDATE_REQ (0x00790000.c:1735) -> 2134 eEGS_FRIEND_LIST_UPDATE_ACK (0x00752E80). |
 | 2134 | `eEGS_FRIEND_LIST_UPDATE_ACK` | 0x00752E80 | — | `FriendListUpdateAck` |  |
 | 2135 | `eEGS_FRIEND_LIST_DELETE_REQ` | — | `social.py` (`handle_friend_list_delete`) | `FriendListDeleteReq` | eEGS_FRIEND_LIST_DELETE_REQ (0x00790000.c:1824) -> 2136 eEGS_FRIEND_LIST_DELETE_ACK (0x00759560). |
 | 2136 | `eEGS_FRIEND_LIST_DELETE_ACK` | 0x00759560 | — | `FriendListDeleteAck` |  |
+| 2137 | `eEGS_CHEAT_ITEM_CALL_REQ` | — | `gm.py` (`handle_cheat_item_call`) | `CheatItemCallReq` | 2137 -> 2138 (0x004E3F90): itemcall <item_id> <count> |
+| 2138 | `eEGS_CHEAT_ITEM_CALL_ACK` | — | — | `CheatItemCallAck` |  |
 | 2139 | `eEGS_FRIEND_LIST_ADD_REQ` | — | `social.py` (`handle_friend_list_add`) | `FriendListAddReq` | eEGS_FRIEND_LIST_ADD_REQ (0x00790000.c:1595) -> 2140 eEGS_FRIEND_LIST_ADD_ACK (0x007591A0). |
 | 2140 | `eEGS_FRIEND_LIST_ADD_ACK` | 0x007591A0 | — | `FriendListAddAck` |  |
+| 2141 | `eEGS_CHEAT_CHANGE_ITEM_QUALITY_REQ` | — | `gm.py` (`handle_cheat_change_item_quality`) | `CheatChangeItemQualityReq` | 2141 -> 2142 (0x004E46F0): quality |
+| 2142 | `eEGS_CHEAT_CHANGE_ITEM_QUALITY_ACK` | — | — | `CheatChangeItemQualityAck` |  |
 | 2143 | `eEGS_DURABILITY_CHANGE_REQ` | — | `commerce.py` (`handle_durability_change`) | `DurabilityChangeReq` | eEGS_DURABILITY_CHANGE_REQ (0x00792AC0) -> 2144 eEGS_DURABILITY_CHANGE_ACK (0x00774AE0). |
 | 2144 | `eEGS_DURABILITY_CHANGE_ACK` | 0x00774AE0 | — | `DurabilityChangeAck` |  |
 | 2145 | `eEGS_DURABILITY_REPAIR_REQ` | — | `inventory/crafting.py` (`handle_durability_repair`) | `DurabilityRepairReq` | Opcode 2145 (eEGS_DURABILITY_REPAIR_REQ) -> 2146 (eEGS_DURABILITY_REPAIR_ACK): repair equipment with AR. |
@@ -156,6 +183,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2167 | `eEGS_GUILD_FALLOUT_START_ACK` | 0x00759D60 | — | `GuildFalloutStartAck` |  |
 | 2168 | `eEGS_GUILD_FALLOUT_STOP_REQ` | — | `social.py` (`handle_guild_fallout_stop`) | `GuildFalloutStopReq` | eEGS_GUILD_FALLOUT_STOP_REQ (0x00793FA0) -> 2169 eEGS_GUILD_FALLOUT_STOP_ACK (0x0074B830). |
 | 2169 | `eEGS_GUILD_FALLOUT_STOP_ACK` | 0x0074B830 | — | `GuildFalloutStopAck` |  |
+| 2170 | `eEGS_CHEAT_GUILD_FALLOUT_FINISH_REQ` | — | `gm.py` (`handle_cheat_guild_fallout_finish`) | `CheatGuildFalloutFinishReq` |  |
+| 2171 | `eEGS_CHEAT_GUILD_FALLOUT_FINISH_ACK` | — | — | `CheatGuildFalloutFinishAck` |  |
 | 2172 | `eEGS_GUILD_FALLOUT_COMPLETE_NOT` | 0x00753280 | — | `GuildFalloutCompleteNot` |  |
 | 2173 | `eEGS_GUILD_GRADE_DELEGATION_REQ` | — | `social.py` (`handle_guild_grade_delegation`) | `GuildGradeDelegationReq` | eEGS_GUILD_GRADE_DELEGATION_REQ (0x00794020) -> 2174 eEGS_GUILD_GRADE_DELEGATION_ACK (0x0074B830). |
 | 2174 | `eEGS_GUILD_GRADE_DELEGATION_ACK` | 0x0074B830 | — | `GuildGradeDelegationAck` |  |
@@ -178,9 +207,13 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2191 | `eEGS_GUILD_DISMISSAL_START_ACK` | 0x0074B830 | — | `GuildDismissalStartAck` |  |
 | 2192 | `eEGS_GUILD_DISMISSAL_STOP_REQ` | — | `social.py` (`handle_guild_dismissal_stop`) | `GuildDismissalStopReq` | eEGS_GUILD_DISMISSAL_STOP_REQ (0x00794820) -> 2193 eEGS_GUILD_DISMISSAL_STOP_ACK (0x0074B830). |
 | 2193 | `eEGS_GUILD_DISMISSAL_STOP_ACK` | 0x0074B830 | — | `GuildDismissalStopAck` |  |
+| 2194 | `eEGS_CHEAT_GUILD_DISMISSAL_FINISH_REQ` | — | `gm.py` (`handle_cheat_guild_dismissal_finish`) | `CheatGuildDismissalFinishReq` |  |
+| 2195 | `eEGS_CHEAT_GUILD_DISMISSAL_FINISH_ACK` | — | — | `CheatGuildDismissalFinishAck` |  |
 | 2196 | `eEGS_RANDOMBOX_RESULT_ITEM_NOT` | 0x0075A2E0 | — | `RandomboxResultItemNot` |  |
-| 2198 | `eEGS_CHEAT_GUILD_ADD_POINT_ACK` | 0x0074B820 | — | — |  |
-| 2200 | `eEGS_CHEAT_GUILD_LEVEL_ACK` | 0x00753490 | — | — |  |
+| 2197 | `eEGS_CHEAT_GUILD_ADD_POINT_REQ` | — | `gm.py` (`handle_cheat_guild_add_point`) | `CheatGuildAddPointReq` |  |
+| 2198 | `eEGS_CHEAT_GUILD_ADD_POINT_ACK` | 0x0074B820 | — | `CheatGuildAddPointAck` |  |
+| 2199 | `eEGS_CHEAT_GUILD_LEVEL_REQ` | — | `gm.py` (`handle_cheat_guild_level`) | `CheatGuildLevelReq` |  |
+| 2200 | `eEGS_CHEAT_GUILD_LEVEL_ACK` | 0x00753490 | — | `CheatGuildLevelAck` |  |
 | 2203 | `eEGS_COMPUTER_STAT_NOT` | — | `social.py` (`handle_computer_stat`) | — | eEGS_COMPUTER_STAT_NOT: client hardware report; notification only. |
 | 2204 | `eEGS_FRAME_STAT_NOT` | — | `dungeon.py` (`handle_frame_stat`) | — | eEGS_FRAME_STAT_NOT: client frame-rate telemetry sent after dungeon |
 | 2205 | `eEGS_GUILD_SKILL_NOT` | 0x00779390 | — | `GuildSkillNot` |  |
@@ -190,6 +223,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2209 | `eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK` | 0x0074B820 | — | `GuildSkillChangeUseStateAck` |  |
 | 2210 | `eEGS_USE_DYEING_ITEM_REQ` | — | `inventory/items.py` (`handle_use_dyeing_item`) | `UseDyeingItemReq` | Opcode 2210 (eEGS_USE_DYEING_ITEM_REQ) -> 2211 (eEGS_USE_DYEING_ITEM_ACK): apply hair/skin/item dye and consume it. |
 | 2211 | `eEGS_USE_DYEING_ITEM_ACK` | — | — | `UseDyeingItemAck` |  |
+| 2212 | `eEGS_CHEAT_GUILD_ALL_SKILL_INIT_REQ` | — | `gm.py` (`handle_cheat_guild_all_skill_init`) | `CheatGuildAllSkillInitReq` |  |
+| 2213 | `eEGS_CHEAT_GUILD_ALL_SKILL_INIT_ACK` | — | — | `CheatGuildAllSkillInitAck` |  |
 | 2214 | `eEGS_GUILD_ALL_SKILL_INIT_REQ` | — | `social.py` (`handle_guild_all_skill_init`) | `GuildAllSkillInitReq` | eEGS_GUILD_ALL_SKILL_INIT_REQ -> 2215 eEGS_GUILD_ALL_SKILL_INIT_ACK (0x00752D80). |
 | 2215 | `eEGS_GUILD_ALL_SKILL_INIT_ACK` | — | — | `GuildAllSkillInitAck` |  |
 | 2216 | `eEGS_PLAY_OPTION_UPDATE_REQ` | — | `commerce.py` (`handle_play_option_update`) | `PlayOptionUpdateReq` | eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729) - fire and forget. |
@@ -207,10 +242,14 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2229 | `eEGS_DEPOT_SAVE_AR_ACK` | 0x00795220 | — | `DepotSaveArAck` |  |
 | 2230 | `eEGS_DEPOT_LOAD_AR_REQ` | — | `inventory/depot.py` (`handle_depot_load_ar`) | `DepotLoadArReq` | Opcode 2230 (eEGS_DEPOT_LOAD_AR_REQ) -> 2231 (eEGS_DEPOT_LOAD_AR_ACK): withdraw AR from depot. |
 | 2231 | `eEGS_DEPOT_LOAD_AR_ACK` | 0x00795490 | — | `DepotLoadArAck` |  |
+| 2232 | `eEGS_CHEAT_DEPOT_SIZE_INCREASE_REQ` | — | `gm.py` (`handle_cheat_depot_size_increase`) | `CheatDepotSizeIncreaseReq` |  |
+| 2233 | `eEGS_CHEAT_DEPOT_SIZE_INCREASE_ACK` | — | — | `CheatDepotSizeIncreaseAck` |  |
 | 2234 | `eEGS_POST_RETURN_REQ` | — | `mail.py` (`handle_post_return`) | `PostReturnReq` | eEGS_POST_RETURN_REQ (0x00A33907) -> 2235 eEGS_POST_RETURN_ACK (0x00771470). |
 | 2235 | `eEGS_POST_RETURN_ACK` | 0x00771470 | — | `PostReturnAck` |  |
 | 2236 | `eEGS_POST_DELETE_REQ` | — | `mail.py` (`handle_post_delete`) | `PostDeleteReq` | eEGS_POST_DELETE_REQ (0x007964EC) -> 2237 eEGS_POST_DELETE_ACK (0x007715F0). |
 | 2237 | `eEGS_POST_DELETE_ACK` | 0x007715F0 | — | `PostDeleteAck` |  |
+| 2238 | `eEGS_CHEAT_PROFICIENCY_CHANGE_REQ` | — | `gm.py` (`handle_cheat_proficiency_change`) | `CheatProficiencyChangeReq` |  |
+| 2239 | `eEGS_CHEAT_PROFICIENCY_CHANGE_ACK` | — | — | `CheatProficiencyChangeAck` |  |
 | 2242 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ` | — | `inventory/depot.py` (`handle_depot_share_expire_time`) | — | Opcode 2242 (eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ) -> 2243: return shared depot expiration map. |
 | 2243 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_ACK` | 0x0076C040 | — | `DepotShareExpireTimeGetAck` |  |
 | 2245 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_ACK` | 0x0075A9C0 | — | — |  |
@@ -396,8 +435,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2484 | `eEGS_PET_EVOLUTION_REQ` | — | `pets.py` (`handle_pet_evolution`) | `PetEvolutionReq` | eEGS_PET_EVOLUTION_REQ (0x0079FE20) -> 2485 eEGS_PET_EVOLUTION_ACK (0x0079FEF0) |
 | 2485 | `eEGS_PET_EVOLUTION_ACK` | 0x0079FEF0 | — | `PetEvolutionAck` |  |
 | 2487 | `eEGS_CHEAT_PET_LEVEL_ACK` | 0x00775AA0 | — | — |  |
-| 2489 | `eEGS_CHEAT_PET_SATIETY_ACK` | 0x007A0280 | — | — |  |
-| 2491 | `eEGS_CHEAT_PET_EVOLUTION_ACK` | 0x007A0450 | — | — |  |
+| 2488 | `eEGS_CHEAT_PET_SATIETY_REQ` | — | `gm.py` (`handle_cheat_pet_satiety`) | `CheatPetSatietyReq` |  |
+| 2489 | `eEGS_CHEAT_PET_SATIETY_ACK` | 0x007A0280 | — | `CheatPetSatietyAck` |  |
+| 2490 | `eEGS_CHEAT_PET_EVOLUTION_REQ` | — | `gm.py` (`handle_cheat_pet_evolution`) | `CheatPetEvolutionReq` |  |
+| 2491 | `eEGS_CHEAT_PET_EVOLUTION_ACK` | 0x007A0450 | — | `CheatPetEvolutionAck` |  |
 | 2492 | `eEGS_PET_CASH_FOOD_EQUIP_REQ` | — | `pets.py` (`handle_pet_cash_food_equip`) | `PetCashFoodEquipReq` | eEGS_PET_CASH_FOOD_EQUIP_REQ (0x007A07C0) -> 2493 eEGS_PET_CASH_FOOD_EQUIP_ACK (0x007A0A20) |
 | 2493 | `eEGS_PET_CASH_FOOD_EQUIP_ACK` | 0x007A0A20 | — | `PetCashFoodEquipAck` |  |
 | 2494 | `eEGS_PET_CASH_FOOD_UNEQUIP_REQ` | — | `pets.py` (`handle_pet_cash_food_unequip`) | `PetCashFoodUnequipReq` | eEGS_PET_CASH_FOOD_UNEQUIP_REQ (0x007A0930) -> 2495 eEGS_PET_CASH_FOOD_UNEQUIP_ACK (0x007A0C30) |
@@ -412,12 +453,15 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2509 | `eEGS_MONSTER_LAYER_MOVE_NOT` | — | `dungeon.py` (`handle_monster_layer_move`) | — | eEGS_MONSTER_LAYER_MOVE_NOT: notification without an ACK opcode |
 | 2510 | `eEGS_PET_NICK_CHANGE_REQ` | — | `pets.py` (`handle_pet_nick_change`) | `PetNickChangeReq` | eEGS_PET_NICK_CHANGE_REQ (0x007A16DA) -> 2511 eEGS_PET_NICK_CHANGE_AKC (0x00781CD0) |
 | 2511 | `eEGS_PET_NICK_CHANGE_AKC` | 0x00781CD0 | — | `PetNickChangeAck` |  |
+| 2512 | `eEGS_CHEAT_TITLE_GET_ALL_REQ` | — | `gm.py` (`handle_cheat_title_get_all`) | `CheatTitleGetAllReq` |  |
+| 2514 | `eEGS_CHEAT_TITLE_CHANGE_REQ` | — | `gm.py` (`handle_cheat_title_change`) | `CheatTitleChangeReq` |  |
 | 2516 | `eEGS_PET_DYEING_NOT` | 0x00776080 | — | `PetDyeingNot` |  |
 | 2517 | `eEGS_KEEP_BUFF_INSERT_NOT` | 0x007A17F0 | — | `KeepBuffInsertNot` |  |
 | 2518 | `eEGS_KEEP_BUFF_DELETE_NOT` | 0x007A1C20 | — | `KeepBuffDeleteNot` |  |
 | 2519 | `eEGS_KEEP_BUFF_CLEAR_NOT` | 0x007A1EE0 | — | `KeepBuffClearNot` |  |
 | 2520 | `eEGS_KEEP_COOLTIME_DELETE_NOT` | 0x00771FD0 | — | `KeepCooltimeDeleteNot` |  |
 | 2521 | `eEGS_KEEP_COOLTIME_CLEAR_NOT` | 0x007641C0 | — | `KeepCooltimeClearNot` |  |
+| 2522 | `eEGS_CHEAT_ACHIEVE_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_achieve_complete`) | `CheatAchieveCompleteReq` |  |
 | 2523 | `eEGS_FISHING_START_REQ` | — | `square.py` (`handle_fishing_start`) | `FishingStartReq` | Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0). |
 | 2524 | `eEGS_FISHING_START_ACK` | 0x0075B0B0 | — | `FishingStartAck` |  |
 | 2525 | `eEGS_FISHING_STOP_REQ` | — | `square.py` (`handle_fishing_stop`) | `FishingStopReq` | Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0). |
@@ -501,7 +545,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2621 | `eEGS_MARK_TAB_ACTIVE_NOT` | 0x007767E0 | — | `MarkTabActiveNot` |  |
 | 2622 | `eEGS_CASH_PAINT_EXPIRE_NOT` | — | — | `CashPaintExpireNot` |  |
 | 2623 | `eEGS_CASH_PAINT_ACTIVE_NOT` | — | — | `CashPaintActiveNot` |  |
+| 2624 | `eEGS_CHEAT_MONSTERCARD_CLEAR_REQ` | — | `gm.py` (`handle_cheat_monster_card_clear`) | `CheatMonsterCardClearReq` |  |
+| 2625 | `eEGS_CHEAT_MONSTERCARD_CLEAR_ACK` | — | — | `CheatMonsterCardClearAck` |  |
 | 2626 | `eEGS_INDULGENCE_NOT` | 0x0075C090 | — | `IndulgenceNot` |  |
+| 2627 | `eEGS_CHEAT_INDULGENCE_TIME_CHANGE_REQ` | — | `gm.py` (`handle_cheat_indulgence_time_change`) | `CheatIndulgenceTimeChangeReq` |  |
 | 2629 | `eEGS_ITEM_CLASS_SMELTING_REQ` | — | `inventory/crafting.py` (`handle_item_class_smelting`) | `ItemClassSmeltingReq` | Opcode 2629 (eEGS_ITEM_CLASS_SMELTING_REQ) -> 2630: smelt an item into a target class item. |
 | 2630 | `eEGS_ITEM_CLASS_SMELTING_ACK` | 0x00783790 | — | `ItemClassSmeltingAck` |  |
 | 2631 | `eEGS_CIDADEL_PLAY_COUNT_UPDATE_NOT` | 0x007A5580 | — | `CitadelPlayCountUpdateNot` |  |
@@ -531,6 +578,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2657 | `eEGS_EXPLORE_GET_REWARD_ACK` | — | — | `ExploreGetRewardAck` |  |
 | 2658 | `eEGS_TEACHING_GRADUATION_REWARD_REQ` | — | `social.py` (`handle_teaching_graduation_reward`) | `TeachingGraduationRewardReq` | eEGS_TEACHING_GRADUATION_REWARD_REQ (0x007A6180) -> 2659 eEGS_TEACHING_GRADUATION_REWARD_ACK (0x0075C8E0). |
 | 2659 | `eEGS_TEACHING_GRADUATION_REWARD_ACK` | 0x0075C8E0 | — | `TeachingGraduationRewardAck` |  |
+| 2660 | `eEGS_CHEAT_EXPLORE_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_explore_complete`) | `CheatExploreCompleteReq` |  |
+| 2661 | `eEGS_CHEAT_EXPLORE_COMPLETE_ACK` | — | — | `CheatExploreCompleteAck` |  |
 | 2662 | `eEGS_EXPLORE_CANCEL_BY_USERUID_REQ` | — | `dungeon.py` (`handle_explore_cancel_by_user_uid`) | `ExploreCancelByUserUidReq` |  |
 | 2663 | `eEGS_EXPLORE_CANCEL_BY_USERUID_ACK` | — | — | `ExploreCancelByUserUidAck` |  |
 | 2672 | `eEGS_FIX_ITEM_UPGRADE_REQ` | — | `inventory/crafting.py` (`handle_fix_item_upgrade`) | `FixItemUpgradeReq` | Opcode 2672 (eEGS_FIX_ITEM_UPGRADE_REQ) -> 2673: perform a guaranteed fixed-tier upgrade. |
@@ -548,9 +597,12 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2684 | `eEGS_GUILD_SUPPLY_GET_REWARD_REQ` | — | `social.py` (`handle_guild_supply_get_reward`) | `GuildSupplyGetRewardReq` | eEGS_GUILD_SUPPLY_GET_REWARD_REQ (0x007A6AF0) -> 2685 eEGS_GUILD_SUPPLY_GET_REWARD_ACK (0x00783F70). |
 | 2685 | `eEGS_GUILD_SUPPLY_GET_REWARD_ACK` | 0x00783F70 | — | `GuildSupplyGetRewardAck` |  |
 | 2686 | `eEGS_GUILD_SUPPLY_LIST_NOT` | 0x00772920 | — | `GuildSupplyListNot` |  |
-| 2688 | `eEGS_CHEAT_GUILD_BROKER_EXIT_ACK` | 0x00759D60 | — | — |  |
-| 2690 | `eEGS_CHEAT_GUILD_BROKER_REWARD_ACK` | 0x00759D60 | — | — |  |
-| 2692 | `eEGS_CHEAT_CHANGE_VALIDGUILD_COUNT_ACK` | 0x00759D60 | — | — |  |
+| 2687 | `eEGS_CHEAT_GUILD_BROKER_EXIT_REQ` | — | `gm.py` (`handle_cheat_guild_broker_exit`) | `CheatGuildBrokerExitReq` |  |
+| 2688 | `eEGS_CHEAT_GUILD_BROKER_EXIT_ACK` | 0x00759D60 | — | `CheatGuildBrokerExitAck` |  |
+| 2689 | `eEGS_CHEAT_GUILD_BROKER_REWARD_REQ` | — | `gm.py` (`handle_cheat_guild_broker_reward`) | `CheatGuildBrokerRewardReq` |  |
+| 2690 | `eEGS_CHEAT_GUILD_BROKER_REWARD_ACK` | 0x00759D60 | — | `CheatGuildBrokerRewardAck` |  |
+| 2691 | `eEGS_CHEAT_CHANGE_VALIDGUILD_COUNT_REQ` | — | `gm.py` (`handle_cheat_change_valid_guild_count`) | `CheatChangeValidGuildCountReq` |  |
+| 2692 | `eEGS_CHEAT_CHANGE_VALIDGUILD_COUNT_ACK` | 0x00759D60 | — | `CheatChangeValidGuildCountAck` |  |
 | 2693 | `eEGS_WATCH_EVENTSEEN_REQ` | — | `social.py` (`handle_watch_event_seen`) | `WatchEventSeenReq` | eEGS_WATCH_EVENTSEEN_REQ -> 2694 eEGS_WATCH_EVENTSEEN_ACK (0x00655800). |
 | 2694 | `eEGS_WATCH_EVENTSEEN_ACK` | — | — | `WatchEventSeenAck` |  |
 | 2697 | `eEGS_LEARN_SKILL_LIST_REQ` | — | `skills.py` (`handle_learn_skill_list`) | `LearnSkillListReq` | eEGS_LEARN_SKILL_LIST_REQ (0x007A73D0) -> 2698 eEGS_LEARN_SKILL_LIST_ACK (0x007A74A0). |
@@ -680,7 +732,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5112 | `eERC_DUEL_REFUSE_REQ` | — | `arena.py` (`handle_duel_refuse`) | `DuelRefuseReq` | Opcode 5112 (eERC_DUEL_REFUSE_REQ) -> 5113 (eERC_DUEL_REFUSE_ACK). |
 | 5113 | `eERC_DUEL_REFUSE_ACK` | — | — | `DuelRefuseAck` |  |
 | 5114 | `eERC_GET_DROP_AR_NOT` | 0x00792700 | — | `GetDropArNot` |  |
-| 5117 | `eERC_CHEAT_VIEW_ITEM_DROP_LOG_NOT` | 0x00758E20 | — | — |  |
+| 5117 | `eERC_CHEAT_VIEW_ITEM_DROP_LOG_NOT` | 0x00758E20 | — | `CheatViewItemDropLogNot` |  |
 | 5118 | `eERC_FRIEND_MY_CONNECTION_NOT` | 0x0077A8A0 | — | `FriendMyConnectionNot` |  |
 | 5119 | `eERC_FRIEND_MY_DISCONNECTION_NOT` | 0x00758FA0 | — | `FriendMyDisconnectionNot` |  |
 | 5121 | `eERC_GUILD_CREATE_PROPOSAL_REQ` | — | `social.py` (`handle_guild_create_proposal`) | `GuildCreateProposalReq` | eERC_GUILD_CREATE_PROPOSAL_REQ (0x00790000.c:2514) -> 5122 eERC_GUILD_CREATE_PROPOSAL_ACK (0x00759750). |
@@ -690,6 +742,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5125 | `eERC_GTARGET_LIST_ACK` | — | — | `GTargetListAck` |  |
 | 5127 | `eERC_CURRENT_GUILD_SKILL_NOT` | 0x00794CE0 | — | `CurrentGuildSkillNot` |  |
 | 5128 | `eERC_IMPLIED_JOIN_LAYER_REQ` | — | `frontend.py` (`handle_implied_join_layer`) | `ImpliedJoinLayerReq` | Opcode 5128 (eERC_IMPLIED_JOIN_LAYER_REQ, 0x00797480) -> 5031 JoinLayerAck. |
+| 5129 | `eERC_CHEAT_SUMMON_REQUEST_NOT` | — | `gm.py` (`handle_cheat_summon_request`) | `CheatSummonRequestNot` |  |
 | 5130 | `eERC_SUMMON_ACKNOWLEDGE_REQ` | — | `social.py` (`handle_summon_acknowledge`) | `SummonAcknowledgeReq` | eERC_SUMMON_ACKNOWLEDGE_REQ (0x004D31D0) -> 5131 eERC_SUMMON_ACKNOWLEDGE_ACK. |
 | 5131 | `eERC_SUMMON_ACKNOWLEDGE_ACK` | — | — | `SummonAcknowledgeAck` |  |
 | 5134 | `eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT` | 0x0075AAE0 | — | `RelayAddressNot` |  |
@@ -734,6 +787,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5242 | `eERC_PERSONALSHOP_BUYITEM_REQ` | — | `commerce.py` (`handle_personal_shop_buy`) | `PersonalShopBuyReq` | eERC_PERSONALSHOP_BUYITEM_REQ -> 5243 eERC_PERSONALSHOP_BUYITEM_ACK (0x006022AC) |
 | 5243 | `eERC_PERSONALSHOP_BUYITEM_ACK` | — | — | `PersonalShopBuyAck` |  |
 | 5250 | `eERC_PERSONALSHOP_CHANGE_NOT` | — | — | `PersonalShopChangeNot` |  |
+| 5252 | `eERC_CHEAT_FORCE_ITEM_DROP_NOT` | — | `gm.py` (`handle_cheat_force_item_drop`) | `CheatForceItemDropNot` |  |
 | 5254 | `eERC_PERSONALSHOP_START_NOT` | — | — | `PersonalShopStartNot` |  |
 | 5255 | `eERC_PERSONALSHOP_CLOSE_NOT` | — | — | `PersonalShopCloseNot` |  |
 | 5256 | `eERC_SECOND_PASS_CREATE_REQ` | — | `social.py` (`handle_second_pass_create`) | `SecondPassCreateReq` | eERC_SECOND_PASS_CREATE_REQ -> 5257 eERC_SECOND_PASS_CREATE_ACK (0x0075B020). |
@@ -742,6 +796,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5259 | `eERC_SECOND_PASS_MODIFY_ACK` | 0x0075B050 | — | `SecondPassModifyAck` |  |
 | 5260 | `eERC_SECOND_PASS_AUTH_REQ` | — | `social.py` (`handle_second_pass_auth`) | `SecondPassAuthReq` | eERC_SECOND_PASS_AUTH_REQ -> 5261 eERC_SECOND_PASS_AUTH_ACK (0x0075B080). |
 | 5261 | `eERC_SECOND_PASS_AUTH_ACK` | 0x0075B080 | — | `SecondPassAuthAck` |  |
+| 5262 | `eERC_CHEAT_SECOND_PASS_DELETE_REQ` | — | `gm.py` (`handle_cheat_second_pass_delete`) | `CheatSecondPassDeleteReq` |  |
+| 5263 | `eERC_CHEAT_SECOND_PASS_DELETE_ACK` | — | — | `CheatSecondPassDeleteAck` |  |
 | 5265 | `eERC_ARENA_CHANGE_ROOMCHAR_INFO_REQ` | — | `arena.py` (`handle_arena_change_room_char_info`) | `ArenaChangeRoomCharInfoReq` |  |
 | 5266 | `eERC_ARENA_CHANGE_ROOMCHAR_INFO_ACK` | — | — | `ArenaChangeRoomCharInfoAck` |  |
 | 5267 | `eERC_ARENA_CHANGE_SLOTCHAR_INFO_REQ` | — | `arena.py` (`handle_arena_change_slot_char_info`) | `ArenaChangeSlotCharInfoReq` |  |

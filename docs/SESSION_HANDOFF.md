@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-21
 
+## Native GM Console & Cheats sweep — saita machine, 2026-11-21
+
+- **GM Mode Option (`src/darkblood/core/options.py`, `src/darkblood/games/handlers/frontend.py`)**:
+  - Added `[server] gm_mode` option (default `True`), setting `nAuthLevel = 1` in `5020 WelcomeNot` so the client's native GM console (`JAppPageCheat`, `0x004EF790`) is unlocked out of the box.
+- **GM Cheat Opcodes (`schemas/gm.jsch`, `src/darkblood/games/handlers/gm.py`, `src/darkblood/games/session.py`)**:
+  - Recovered and implemented all live `eEGS_CHEAT_*` / `eERC_CHEAT_*` opcodes (`2057–2064`, `2088/2089`, `2093`, `2096/2097`, `2099`, `2101`, `2103`, `2105`, `2107/2108`, `2123–2125`, `2130`, `2137/2138`, `2141/2142`, `2170/2171`, `2194/2195`, `2197–2200`, `2212/2213`, `2232/2233`, `2238/2239`, `2488–2491`, `2512`, `2514`, `2522`, `2624/2625`, `2627`, `2660/2661`, `2687–2692`, `5117`, `5129`, `5252`, `5262/5263`), with server-side effects for level-up, AR/AP/coins, itemcall, clearbag, upgrade, quality, promotion, stress, quests, guild, pet, card, explore, broker, and achievements.
+- **GM Command Documentation (`docs/GM_COMMANDS.md`)**:
+  - Extracted and documented all **123 native GM console commands** from `JAppPageCheat` (`0x00CA0000..0x00CA3200`) and `cheat_st.dat` (syntax, parameters, and wire opcodes), plus the server's chat slash commands.
+- **Verification**: 199/199 headless tests pass (`tests/test_gm_flow.py`), `gen_messages.py --check` and `gen_progress.py --check` pass.
+
 ## Arena room, square, team, random matching & league charstat sweep — saita machine, 2026-11-21
 
 - **Arena (`schemas/arena.jsch`, `src/darkblood/games/handlers/arena.py`)**: recovered and implemented 34 Arena opcodes from `JAppPageArena` (`0x004C6110`), `JAppPageArenaLeague` (`0x0049D180`), and `JAppStateArenaSquare` (`0x006A9F70`):

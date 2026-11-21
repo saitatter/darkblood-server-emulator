@@ -1,0 +1,360 @@
+# Native GM console & cheat commands (eEGS_CHEAT_* / eERC_CHEAT_*). Format: schemas/README.md.
+
+domain gm Dark Blood protocol wire messages - GM Console & Cheat domain.
+
+extern Character from darkblood.games.entities.character encode=encode_world_details
+extern Item from darkblood.games.entities.items
+
+message 2057 CheatLevelUpReq header?
+  ## Sender 0x004D2510 (console: lv <level>).
+  u8 target_level = 1
+end
+
+message 2058 CheatLevelUpAck ok_only
+  ## Handler 0x004EC120 (assert: jChar, 0x00A52630).
+  u32 result
+  Character character = Character()
+end
+
+message 2059 CheatItemDropReq header?
+  ## Sender 0x004D2AF0 (console: itemdrop <item_id>).
+  u32 item_id
+end
+
+message 2060 CheatItemDropAck ok_only
+  ## Handler 0x004EC5D0 (assert: nDropCharUID >> vecDropItem).
+  u32 result
+  i64 drop_char_uid
+  vector<?> _                # vecDropItem (0x004E3AD0)
+end
+
+message 2061 CheatLearnAllSkillReq header?
+  ## Sender 0x004D2C60 (console: allskill).
+  bool flag = true
+end
+
+message 2062 CheatLearnAllSkillAck ok_only
+  ## Handler 0x004EC950 (assert: vecCheatSkill).
+  u32 result
+  vector<?> _                # vecCheatSkill (0x004DCC60)
+end
+
+message 2063 CheatLearnSkillReq header?
+  ## Sender 0x004D2D10 (console: skill <id> <lv>).
+  i16 skill_id
+  u8 skill_level = 1
+end
+
+message 2064 CheatLearnSkillAck ok_only
+  ## Handler 0x004EC950 (assert: vecCheatSkill).
+  u32 result
+  vector<?> _                # vecCheatSkill (0x004DCC60)
+end
+
+struct CheatPleaseData
+  ## Shared struct for 2088/2089 (writer 0x00A497E0, reader 0x00A49860).
+  i64 char_uid
+  i16 cheat_index
+  wstr str_arg1
+  wstr str_arg2
+  i64 int_arg1
+  i64 int_arg2
+  i64 int_arg3
+  i64 time_arg
+end
+
+message 2088 CheatPleaseReq header?
+  ## Sender 0x004D25C0 (assert: jREQ.m_sCheatIndex >= 0 && < eCHI_MAX).
+  CheatPleaseData cheat = CheatPleaseData()
+end
+
+message 2089 CheatPleaseAck ok_only
+  ## Handler 0x004ED150 (assert: jAck, reader 0x00A49860).
+  u32 result
+  CheatPleaseData cheat = CheatPleaseData()
+end
+
+message 2093 CheatQuestCompleteReq header?
+  ## Console: questclear.
+  u32 quest_id
+end
+
+message 2096 CheatQuestResetReq header?
+  ## Console: questcancel / questreset.
+end
+
+message 2097 CheatQuestResetAck
+  ## Reply to 2096.
+  u32 result
+end
+
+message 2099 CheatQuestStartReq header?
+  ## Console: queststart.
+  u32 quest_id
+end
+
+message 2101 CheatInsertCoinReq header?
+  ## Sender 0x004D2780 (console: coin <amount>; assert: sRebirthCoin > 0).
+  i16 coins = 1
+end
+
+message 2103 CheatInsertArReq header?
+  ## Sender 0x004D28A0 (console: ar <amount>).
+  i64 amount
+end
+
+message 2105 CheatInsertApReq header?
+  ## Sender 0x004D2950 (console: ap <amount>; assert: nInsertAP > 0).
+  i32 amount = 1
+end
+
+message 2107 CheatDeleteAllInvenItemReq header?
+  ## Sender 0x004D2A70 (console: clearbag; empty body).
+end
+
+message 2108 CheatDeleteAllInvenItemAck ok_only
+  ## Handler 0x004E4430 (assert: vecItem).
+  u32 result
+  vector<Item> items
+end
+
+message 2123 CheatItemUpgradeReq header?
+  ## Sender 0x00790860 (assert: nUpgItemUID << nUpgStoneUID << nSubItemUID).
+  i64 upg_item_uid
+  i64 upg_stone_uid
+  i64 sub_item_uid
+end
+
+message 2124 CheatPromotionReq header?
+  ## Promotion cheat request.
+  u8 target_job = 1
+end
+
+message 2125 CheatPromotionAck ok_only
+  ## Handler 0x004ED2E0 (assert: ucJob).
+  u32 result
+  u8 job = 1
+end
+
+message 2130 CheatChangeStressReq header?
+  ## Sender 0x004D2DC0 (console: stress).
+  i32 stress
+  i32 stress_pcb
+  i32 stress_week
+  bool is_all
+end
+
+message 2137 CheatItemCallReq header?
+  ## Sender 0x004D2BA0 (console: itemcall <item_id> <count>).
+  u32 item_id
+  i16 count = 1
+  i32 param
+end
+
+message 2138 CheatItemCallAck ok_only
+  ## Handler 0x004E3F90 (assert: nCharUID >> vecCallItem).
+  u32 result
+  i64 char_uid
+  vector<Item> items
+end
+
+message 2141 CheatChangeItemQualityReq header?
+  ## Console: quality.
+  i64 item_uid
+  i16 quality
+end
+
+message 2142 CheatChangeItemQualityAck ok_only
+  ## Handler 0x004E46F0 (assert: vecItem).
+  u32 result
+  vector<Item> items
+end
+
+message 2170 CheatGuildFalloutFinishReq header?
+  ## Sender 0x00793F20 (console: falloutend).
+end
+
+message 2171 CheatGuildFalloutFinishAck
+  ## Reply to 2170.
+  u32 result
+end
+
+message 2194 CheatGuildDismissalFinishReq header?
+  ## Sender 0x007948A0 (console: dismissalend).
+end
+
+message 2195 CheatGuildDismissalFinishAck
+  ## Reply to 2194.
+  u32 result
+end
+
+message 2197 CheatGuildAddPointReq header?
+  ## Sender 0x00794920 (console: guildpoint <pts>).
+  i32 points
+end
+
+message 2198 CheatGuildAddPointAck
+  ## Handler 0x0074B820.
+  u32 result
+end
+
+message 2199 CheatGuildLevelReq header?
+  ## Sender 0x007949C0 (console: guildlv <lv>).
+  i16 level = 1
+end
+
+message 2200 CheatGuildLevelAck ok_only
+  ## Handler 0x00753490 (assert: sLv).
+  u32 result
+  i16 level = 1
+end
+
+message 2212 CheatGuildAllSkillInitReq header?
+  ## Sender 0x00794C60 (console: guildskillinit).
+end
+
+message 2213 CheatGuildAllSkillInitAck
+  ## Reply to 2212.
+  u32 result
+end
+
+message 2232 CheatDepotSizeIncreaseReq header?
+  ## Sender 0x00795CC0 (console: incdepot).
+end
+
+message 2233 CheatDepotSizeIncreaseAck
+  ## Reply to 2232.
+  u32 result
+end
+
+message 2238 CheatProficiencyChangeReq header?
+  ## Console: proficiency <type> <value>.
+  i32 prof_type
+  f32 value
+end
+
+message 2239 CheatProficiencyChangeAck ok_only
+  ## Handler 0x004DC510 (assert: iType >> fValue).
+  u32 result
+  i32 prof_type
+  f32 value
+end
+
+message 2488 CheatPetSatietyReq header?
+  ## Sender 0x004EBDA0 (console: petsatiety).
+  i16 satiety = 100
+  bool is_cash_food
+end
+
+message 2489 CheatPetSatietyAck ok_only
+  ## Handler 0x007A0280 (assert: sSatiety >> bCashFood).
+  u32 result
+  i16 satiety = 100
+  bool is_cash_food
+end
+
+message 2490 CheatPetEvolutionReq header?
+  ## Sender 0x004EBEB0 (console: petevolution).
+  i32 pet_id
+  i32 param
+end
+
+message 2491 CheatPetEvolutionAck ok_only
+  ## Handler 0x007A0450 (assert: nPetUID >> nNewPetID >> vecSkill).
+  u32 result
+  i64 pet_uid
+  i32 new_pet_id
+  vector<?> _                # vecSkill (0x0076D610)
+end
+
+message 2512 CheatTitleGetAllReq header?
+  ## Console: title get all.
+end
+
+message 2514 CheatTitleChangeReq header?
+  ## Console: title change.
+  i32 title_id
+end
+
+message 2522 CheatAchieveCompleteReq header?
+  ## Console: achieve complete.
+  i32 achieve_id
+end
+
+message 2624 CheatMonsterCardClearReq header?
+  ## Clear monster card inventory.
+end
+
+message 2625 CheatMonsterCardClearAck
+  ## Reply to 2624.
+  u32 result
+end
+
+message 2627 CheatIndulgenceTimeChangeReq header?
+  ## Sender 0x007A5310 (assert: nTime).
+  i64 time_val
+end
+
+message 2660 CheatExploreCompleteReq header?
+  ## Instant-complete explore.
+  i64 char_uid
+end
+
+message 2661 CheatExploreCompleteAck
+  ## Reply to 2660.
+  u32 result
+end
+
+message 2687 CheatGuildBrokerExitReq header?
+  ## Sender 0x007A6C10.
+end
+
+message 2688 CheatGuildBrokerExitAck
+  ## Handler 0x00759D60.
+  u32 result
+end
+
+message 2689 CheatGuildBrokerRewardReq header?
+  ## Sender 0x007A6C90.
+end
+
+message 2690 CheatGuildBrokerRewardAck
+  ## Handler 0x00759D60.
+  u32 result
+end
+
+message 2691 CheatChangeValidGuildCountReq header?
+  ## Sender 0x007A72B0.
+  i32 count
+end
+
+message 2692 CheatChangeValidGuildCountAck
+  ## Handler 0x00759D60.
+  u32 result
+end
+
+message 5117 CheatViewItemDropLogNot
+  ## Handler 0x00758E20 (assert: strLog).
+  wstr log
+end
+
+message 5129 CheatSummonRequestNot header?
+  ## Sender 0x004ED640 (console: usercall <nick> <x> <y>).
+  wstr target_nick
+  f32 pos_x
+  f32 pos_y
+end
+
+message 5252 CheatForceItemDropNot header?
+  ## Console: forcedrop.
+  i32 item_id
+end
+
+message 5262 CheatSecondPassDeleteReq header?
+  ## Delete second password PIN.
+end
+
+message 5263 CheatSecondPassDeleteAck
+  ## Reply to 5262.
+  u32 result
+end

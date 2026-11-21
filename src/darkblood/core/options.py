@@ -52,6 +52,10 @@ OPTIONS = {
         'server', True, 'Adult content (blood effect)',
         'Sets m_bAdultUser in the welcome (5020); unlocks the Blood Effect option.',
     ),
+    'gm_mode': (
+        'server', True, 'GM console & cheat commands',
+        'Sets nAuthLevel=1 in welcome (5020), unlocking the native in-game GM console.',
+    ),
     'diagnostic_hooks': (
         'client', True, 'Protocol & handler diagnostics',
         'Logs ProudNet join/welcome/messages and writes handler_map.txt on connect.',
@@ -70,6 +74,7 @@ PATCH_META = {
     'skip_logos':            ('hack',        'patches/skip_logos.c'),
     'skip_tutorial_always':  ('hack',        'patches/skip_tutorial_always.c'),
     'adult_content':         ('server',      'server/frontend.py'),
+    'gm_mode':               ('server',      'server/gm.py'),
     'diagnostic_hooks':      ('diagnostic',  'patches/diagnostic_hooks.c'),
     'debug_tools':           ('diagnostic',  'patches/debug_tools.c'),
 }

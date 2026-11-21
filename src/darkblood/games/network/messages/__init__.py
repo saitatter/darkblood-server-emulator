@@ -15,3 +15,4 @@ from .mail import *
 from .party import *
 from .stalls import *
 from .fishing import *
+from .gm import *
