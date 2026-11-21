@@ -75,6 +75,7 @@ from darkblood.player_management.characters import (
     free_bag_slots,
     slots_needed,
 )
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 MONSTER_CARD_ACKS = {2602: MonsterCardListAck, 2609: MonsterCardDeckAck, 2618: MonsterCardAlbumAck}
@@ -101,7 +102,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(opcode, MONSTER_CARD_ACKS[opcode]().encode(), correlation),
                                         note=f'monster card ack {opcode} (empty)')
 
-    async def on_2065(self, correlation, body):
+    @packet_handler(2065)
+    async def handle_get_store_info(self, correlation, body):
         # eEGS_GET_STORE_INFO_REQ (i32, u32 npc id; observed when talking to a
         # shop NPC) -> eEGS_GET_STORE_INFO_ACK 2066: empty store.
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
@@ -111,7 +113,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2066, ack, correlation),
                                         note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 
-    async def on_2067(self, correlation, body):
+    @packet_handler(BuyItemReq)
+    async def handle_buy_item(self, correlation, body):
         # eEGS_BUY_ITEM_REQ (0x0078F720) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
         from darkblood.games.network import results
         req = BuyItemReq.decode(body)
@@ -179,7 +182,8 @@ class CommerceHandlers(BaseDomainService):
             ack = BuyItemAck(result=1).encode()
             await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (insufficient gold)')
 
-    async def on_2069(self, correlation, body):
+    @packet_handler(SellItemReq)
+    async def handle_sell_item(self, correlation, body):
         # eEGS_SELL_ITEM_REQ (0x00780000.c:10700) -> 2070 eEGS_SELL_ITEM_ACK (0x0077E8E0).
         req = SellItemReq.decode(body)
         self.transport.record('sell-item-req', body, npc_id=req.npc_id, item_uid=req.item_uid, count=req.count)
@@ -216,7 +220,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2070, ack, correlation),
                                         note=f'sell item ack (uid={req.item_uid} del={del_cnt} gold={char_gold})')
 
-    async def on_2071(self, correlation, body):
+    @packet_handler(RepurchaseItemReq)
+    async def handle_repurchase_item(self, correlation, body):
         # eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30).
         req = RepurchaseItemReq.decode(body)
         self.transport.record('repurchase-item-req', body, item_uid=req.item_uid)
@@ -226,14 +231,16 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2072, ack, correlation),
                                         note=f'repurchase item ack (item={req.item_uid})')
 
-    async def on_2369(self, correlation, body):
+    @packet_handler(2369)
+    async def handle_get_current_cash(self, correlation, body):
         # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: result, u64 cash, u32 mileage.
         # Cash is per account (store meta, set from the dashboard); mileage 0.
         cash = self.store().account_cash(self.account)
         await self.transport.send_event(event(2370, CurrentCashAck(cash=cash).encode(), correlation),
                                         note='current cash ack (%d)' % cash)
 
-    async def on_2712(self, correlation, body):
+    @packet_handler(SteamInitBuyItemNot)
+    async def handle_steam_init_buy_item(self, correlation, body):
         # eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT. On Steam the overlay then
         # authorizes the order, the MicroTxnAuthorizationResponse callback
         # (0x004E6440) sends 2713 and waits for 2714. Offline there is no
@@ -270,25 +277,30 @@ class CommerceHandlers(BaseDomainService):
                                         note='cash shop items (%s)' % ', '.join(i['code'] for i in stored))
         return 0, f'{len(stored)} items'
 
-    async def on_2713(self, correlation, body):
+    @packet_handler(2713)
+    async def handle_steam_finalize_buy_item(self, correlation, body):
         # eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id,
         # bool authorized). Not reached offline; acknowledge without items.
         await self.transport.send_event(event(2714, SteamFinalizeBuyItemAck(applied=False).encode(), correlation),
                                         note='steam finalize ack (no order)')
 
-    async def on_2601(self, correlation, body):
+    @packet_handler(2601)
+    async def handle_monster_card_list(self, correlation, body):
         # eEGS_MONSTERCARD_GET_LIST_REQ -> 2602.
         await self._monster_card_empty(correlation, 2602)
 
-    async def on_2608(self, correlation, body):
+    @packet_handler(2608)
+    async def handle_monster_card_deck(self, correlation, body):
         # eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609.
         await self._monster_card_empty(correlation, 2609)
 
-    async def on_2617(self, correlation, body):
+    @packet_handler(2617)
+    async def handle_monster_card_album(self, correlation, body):
         # eEGS_MONSTERCARD_GET_ALBUM_REQ -> 2618.
         await self._monster_card_empty(correlation, 2618)
 
-    async def on_2592(self, correlation, body):
+    @packet_handler(2592)
+    async def handle_bag_change_sell_enable(self, correlation, body):
         # eEGS_BAG_CHANGE_SELL_ENABLE_REQ.
         body = strip_prefix(body)
         if len(body) >= 9:
@@ -299,22 +311,26 @@ class CommerceHandlers(BaseDomainService):
                 self.store().save()
             self.transport.record('bag-sell-enable', body, bag=bag_id, enabled=enabled)
 
-    async def on_2390(self, correlation, body):
+    @packet_handler(2390)
+    async def handle_roulette_manager_info(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0.
         ack = RouletteManagerInfoAck().encode()
         await self.transport.send_event(event(2391, ack, correlation), note='roulette manager info ack')
 
-    async def on_2594(self, correlation, body):
+    @packet_handler(2594)
+    async def handle_http_notice_check(self, correlation, body):
         # eEGS_HTTPNOTICE_CHECK_REQ -> 2595 eEGS_HTTPNOTICE_CHECK_ACK (0x005A5110).
         ack = HttpNoticeCheckAck(result=0, watch=False).encode()
         await self.transport.send_event(event(2595, ack, correlation), note='http notice check ack')
 
-    async def on_2216(self, correlation, body):
+    @packet_handler(PlayOptionUpdateReq)
+    async def handle_play_option_update(self, correlation, body):
         # eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729) - fire and forget.
         req = PlayOptionUpdateReq.decode(body)
         self.transport.record('play-option-update', body, char_uid=req.char_uid)
 
-    async def on_2121(self, correlation, body):
+    @packet_handler(ContractUpdateReq)
+    async def handle_contract_update(self, correlation, body):
         # eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80).
         req = ContractUpdateReq.decode(body)
         self.transport.record('contract-update-req', body, contract_id=req.contract_id)
@@ -322,7 +338,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2122, ack, correlation),
                                         note=f'contract update ack (contract={req.contract_id})')
 
-    async def on_2143(self, correlation, body):
+    @packet_handler(DurabilityChangeReq)
+    async def handle_durability_change(self, correlation, body):
         # eEGS_DURABILITY_CHANGE_REQ (0x00792AC0) -> 2144 eEGS_DURABILITY_CHANGE_ACK (0x00774AE0).
         from darkblood.games.game_data.client_dict import item_max_durability
         req = DurabilityChangeReq.decode(body)
@@ -351,14 +368,16 @@ class CommerceHandlers(BaseDomainService):
                                         note=f'durability change ack (updated={len(req.durabilities)}, broken={len(broken_uids)})')
 
     # Trade handlers (5069 - 5083)
-    async def on_5069(self, correlation, body):
+    @packet_handler(RequestTradeReq)
+    async def handle_request_trade(self, correlation, body):
         # eERC_REQUEST_TRADE_REQ -> 5070 eERC_REQUEST_TRADE_ACK (0x00770E50).
         req = RequestTradeReq.decode(body)
         self.transport.record('trade-request-req', body, target=req.target_uid)
         ack = RequestTradeAck(result=0, target_uid=req.target_uid, target_name='Partner').encode()
         await self.transport.send_event(event(5070, ack, correlation), note=f'trade request ack (target={req.target_uid})')
 
-    async def on_5071(self, correlation, body):
+    @packet_handler(AcceptRequestTradeReq)
+    async def handle_accept_request_trade(self, correlation, body):
         # eERC_ACCEPT_REQUEST_TRADE_REQ -> 5072 eERC_ACCEPT_REQUEST_TRADE_ACK (0x007587B0).
         req = AcceptRequestTradeReq.decode(body)
         self.transport.record('trade-accept-request-req', body, source=req.source_uid)
@@ -366,27 +385,31 @@ class CommerceHandlers(BaseDomainService):
         ack = AcceptRequestTradeAck(result=0, source_uid=req.source_uid, target_uid=my_uid).encode()
         await self.transport.send_event(event(5072, ack, correlation), note='trade accept request ack')
 
-    async def on_5073(self, correlation, body):
+    @packet_handler(5073)
+    async def handle_cancel_trade(self, correlation, body):
         # eERC_CANCEL_TRADE_REQ -> 5074 eERC_CANCEL_TRADE_ACK (0x0077DE00).
         self.transport.record('trade-cancel-req', body)
         ack = CancelTradeAck(result=0, items=[]).encode()
         await self.transport.send_event(event(5074, ack, correlation), note='trade cancel ack')
 
-    async def on_5075(self, correlation, body):
+    @packet_handler(InsertTradeItemReq)
+    async def handle_insert_trade_item(self, correlation, body):
         # eERC_INSERT_TRADE_ITEM_REQ -> 5076 eERC_INSERT_TRADE_ITEM_ACK (0x0077D980).
         req = InsertTradeItemReq.decode(body)
         self.transport.record('trade-insert-item-req', body, item_uid=req.item_uid, slot=req.slot)
         ack = InsertTradeItemAck(result=0, items=[]).encode()
         await self.transport.send_event(event(5076, ack, correlation), note=f'trade insert item ack (item={req.item_uid})')
 
-    async def on_5077(self, correlation, body):
+    @packet_handler(DeleteTradeItemReq)
+    async def handle_delete_trade_item(self, correlation, body):
         # eERC_DELETE_TRADE_ITEM_REQ -> 5078 eERC_DELETE_TRADE_ITEM_ACK (0x0077DBB0).
         req = DeleteTradeItemReq.decode(body)
         self.transport.record('trade-delete-item-req', body, item_uid=req.item_uid)
         ack = DeleteTradeItemAck(result=0, items=[]).encode()
         await self.transport.send_event(event(5078, ack, correlation), note=f'trade delete item ack (item={req.item_uid})')
 
-    async def on_5079(self, correlation, body):
+    @packet_handler(UpdateTradeArReq)
+    async def handle_update_trade_ar(self, correlation, body):
         # eERC_UPDATE_TRADE_AR_REQ -> 5080 eERC_UPDATE_TRADE_AR_ACK (0x00758940).
         req = UpdateTradeArReq.decode(body)
         self.transport.record('trade-update-ar-req', body, gold=req.gold)
@@ -394,14 +417,16 @@ class CommerceHandlers(BaseDomainService):
         ack = UpdateTradeArAck(result=0, char_uid=my_uid, gold=req.gold).encode()
         await self.transport.send_event(event(5080, ack, correlation), note=f'trade update ar ack (gold={req.gold})')
 
-    async def on_5081(self, correlation, body):
+    @packet_handler(5081)
+    async def handle_accept_trade(self, correlation, body):
         # eERC_ACCEPT_TRADE_REQ -> 5082 eERC_ACCEPT_TRADE_ACK (0x0078EB40).
         self.transport.record('trade-accept-req', body)
         my_uid = self.char_id
         ack = AcceptTradeAck(result=0, char_uid=my_uid, accepted=True).encode()
         await self.transport.send_event(event(5082, ack, correlation), note='trade accept ack')
 
-    async def on_5083(self, correlation, body):
+    @packet_handler(5083)
+    async def handle_finally_accept_trade(self, correlation, body):
         # eERC_FINALLY_ACCEPT_TRADE_REQ -> 5084 eERC_FINALLY_ACCEPT_TRADE_ACK.
         self.transport.record('trade-finally-accept-req', body)
         ack = FinallyAcceptTradeAck(result=0).encode()
@@ -418,7 +443,8 @@ class CommerceHandlers(BaseDomainService):
         except Exception:
             pass
 
-    async def on_2340(self, correlation, body):
+    @packet_handler(PersonalShopOpenReq)
+    async def handle_personal_shop_open(self, correlation, body):
         # eEGS_PERSONALSHOP_START_REQ -> 2341 eEGS_PERSONALSHOP_START_ACK (0x00601AA0)
         req = PersonalShopOpenReq.decode(body)
         char = self.current_char()
@@ -450,7 +476,8 @@ class CommerceHandlers(BaseDomainService):
             await self.transport.send_event(event(2341, ack, correlation),
                                             note=f'personal shop open fail ({msg})')
 
-    async def on_5242(self, correlation, body):
+    @packet_handler(PersonalShopBuyReq)
+    async def handle_personal_shop_buy(self, correlation, body):
         # eERC_PERSONALSHOP_BUYITEM_REQ -> 5243 eERC_PERSONALSHOP_BUYITEM_ACK (0x006022AC)
         req = PersonalShopBuyReq.decode(body)
         char = self.current_char()
@@ -488,7 +515,8 @@ class CommerceHandlers(BaseDomainService):
             await self.transport.send_event(event(5243, ack, correlation),
                                             note=f'personal shop buy fail ({msg})')
 
-    async def on_2342(self, correlation, body):
+    @packet_handler(PersonalShopCloseReq)
+    async def handle_personal_shop_close(self, correlation, body):
         # eEGS_PERSONALSHOP_CLOSE_REQ -> 2343 eEGS_PERSONALSHOP_CLOSE_ACK (0x00601F09)
         char = self.current_char()
         char_uid = char.get('id', self.char_id) if char else self.char_id
@@ -501,7 +529,8 @@ class CommerceHandlers(BaseDomainService):
             notif = event(5255, PersonalShopCloseNot(seller_uid=char_uid).encode())
             await self._broadcast_square(notif)
 
-    async def on_6021(self, correlation, body):
+    @packet_handler(PersonalShopGetProductsReq)
+    async def handle_personal_shop_get_products(self, correlation, body):
         # eERT_PERSONALSHOP_GET_PRODUCTS_REQ -> 6022 eERT_PERSONALSHOP_GET_PRODUCTS_ACK (0x006029D6)
         req = PersonalShopGetProductsReq.decode(body)
         mgr = PersonalShopManager.get()
@@ -521,7 +550,8 @@ class CommerceHandlers(BaseDomainService):
 
     # --- Broker (Marketplace / Auction House) Handlers ---
 
-    async def on_2262(self, correlation, body):
+    @packet_handler(BrokerListReq)
+    async def handle_broker_list(self, correlation, body):
         # eEGS_BROKER_LIST_REQ -> 2263 eEGS_BROKER_LIST_ACK (0x005ADAC0)
         req = BrokerListReq.decode(body)
         mgr = BrokerManager.get()
@@ -530,7 +560,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2263, ack, correlation),
                                         note=f'broker list ack (page={req.page} count={len(products)} total={total})')
 
-    async def on_2264(self, correlation, body):
+    @packet_handler(BrokerMyListReq)
+    async def handle_broker_my_list(self, correlation, body):
         # eEGS_BROKER_MYLIST_REQ -> 2265 eEGS_BROKER_MYLIST_ACK (0x005ADFF0)
         char = self.current_char()
         char_uid = char.get('id', self.char_id) if char else self.char_id
@@ -540,7 +571,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2265, ack, correlation),
                                         note=f'broker mylist ack (uid={char_uid} count={len(my_products)})')
 
-    async def on_2266(self, correlation, body):
+    @packet_handler(BrokerRegistItemReq)
+    async def handle_broker_regist_item(self, correlation, body):
         # eEGS_BROKER_REGIST_ITEM_REQ -> 2267 eEGS_BROKER_REGIST_ITEM_ACK (0x005AFBAC)
         req = BrokerRegistItemReq.decode(body)
         char = self.current_char()
@@ -557,7 +589,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2267, ack, correlation),
                                         note=f'broker regist item ack (success={success} msg={msg})')
 
-    async def on_2268(self, correlation, body):
+    @packet_handler(BrokerBuyItemReq)
+    async def handle_broker_buy_item(self, correlation, body):
         # eEGS_BROKER_BUY_ITEM_REQ -> 2269 eEGS_BROKER_BUY_ITEM_ACK (0x005B005C)
         req = BrokerBuyItemReq.decode(body)
         char = self.current_char()
@@ -575,7 +608,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2269, ack, correlation),
                                         note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
 
-    async def on_2270(self, correlation, body):
+    @packet_handler(BrokerCancelReq)
+    async def handle_broker_cancel(self, correlation, body):
         # eEGS_BROKER_CANCEL_REQ -> 2271 eEGS_BROKER_CANCEL_ACK (0x00789882)
         req = BrokerCancelReq.decode(body)
         char = self.current_char()
@@ -590,7 +624,8 @@ class CommerceHandlers(BaseDomainService):
         await self.transport.send_event(event(2271, ack, correlation),
                                         note=f'broker cancel ack (success={success} msg={msg})')
 
-    async def on_2272(self, correlation, body):
+    @packet_handler(BrokerPriceReq)
+    async def handle_broker_price(self, correlation, body):
         # eEGS_BROKER_PRICE_REQ -> 2273 eEGS_BROKER_PRICE_ACK
         req = BrokerPriceReq.decode(body)
         from darkblood.games.game_data import client_dict

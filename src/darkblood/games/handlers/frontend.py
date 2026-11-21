@@ -132,12 +132,14 @@ def build_select_char_ack(char, account_chars=None):
     ).encode()
 
 
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
 class FrontendHandlers(BaseDomainService):
     """Server/channel lists, character list, creation and selection."""
 
+    @packet_handler(2402)
     async def handle_get_server_list(self, correlation: int, body: bytes):
         """Opcode 2402 (eEGS_DB_LIST_GET_REQ) -> 2403 (eEGS_DB_LIST_GET_ACK).
 
@@ -154,6 +156,7 @@ class FrontendHandlers(BaseDomainService):
             ack += b'\x0f' + struct.pack('<I', key) + db_entry(**dict(entry, u16=char_count))
         await self.transport.send_event(event(2403, ack, correlation), note='DB list ack')
 
+    @packet_handler(2001)
     async def handle_knock_square_list(self, correlation: int, body: bytes):
         """Opcode 2001 (eEGS_KNOCK_SQUARELIST_REQ) -> 2002 (eEGS_KNOCK_SQUARELIST_ACK).
 
@@ -163,6 +166,7 @@ class FrontendHandlers(BaseDomainService):
         await self.transport.send_event(event(2002, struct.pack('<I', 0), correlation),
                                         note='knock square list ack')
 
+    @packet_handler(2021)
     async def handle_get_square_list(self, correlation: int, body: bytes):
         """Opcode 2021 (eEGS_SQUARELIST_REQ) -> 2022 (eEGS_SQUARELIST_ACK).
 
@@ -174,6 +178,7 @@ class FrontendHandlers(BaseDomainService):
             ack += square_entry(**square)
         await self.transport.send_event(event(2022, ack, correlation), note='square list ack')
 
+    @packet_handler(5028)
     async def handle_join_square(self, correlation: int, body: bytes):
         """Opcode 5028 (eERC_JOIN_SQUARE_REQ) -> 5029 (eERC_JOIN_SQUARE_ACK).
 
@@ -200,6 +205,7 @@ class FrontendHandlers(BaseDomainService):
             await world.broadcast_player_spawn(player)
             await world.broadcast_user_join(player)
 
+    @packet_handler(2008)
     async def handle_get_char_list(self, correlation: int, body: bytes):
         """Opcode 2008 (eEGS_GET_CHARLIST_REQ) -> 2009 (eEGS_GET_CHARLIST_ACK).
 
@@ -228,6 +234,7 @@ class FrontendHandlers(BaseDomainService):
         await self.transport.send_event(event(2009, ack, correlation),
                                         note='char list ack (%d)' % len(chars))
 
+    @packet_handler(2006)
     async def handle_select_character(self, correlation: int, body: bytes):
         """Opcode 2006 (eEGS_SELECT_CHAR_REQ) -> 2007 (eEGS_SELECT_CHAR_ACK).
 
@@ -262,6 +269,7 @@ class FrontendHandlers(BaseDomainService):
         except Exception:
             pass
 
+    @packet_handler(2012)
     async def handle_create_character(self, correlation: int, body: bytes):
         """Opcode 2012 (eEGS_CREATE_CHARACTER_REQ) -> 2013 (eEGS_CREATE_CHARACTER_ACK).
 
@@ -279,6 +287,7 @@ class FrontendHandlers(BaseDomainService):
             ack = struct.pack('<I', 0) + encode_character(char) + struct.pack('<B', 0)
         await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
 
+    @packet_handler(DeleteCharacterReq)
     async def handle_delete_character(self, correlation: int, body: bytes):
         """Opcode 2014 (eEGS_DELETE_CHARACTER_REQ) -> 2015 (eEGS_DELETE_CHARACTER_ACK).
 
@@ -304,6 +313,7 @@ class FrontendHandlers(BaseDomainService):
         await self.transport.send_event(event(2015, ack, correlation),
                                         note=f'delete character ack ({req.char_uid}, {complete_time} s left)')
 
+    @packet_handler(2246)
     async def handle_undelete_character(self, correlation: int, body: bytes):
         """Opcode 2246 (eEGS_UNDELETE_CHARACTER_REQ) -> 2247 (eEGS_UNDELETE_CHARACTER_ACK).
 
@@ -319,14 +329,3 @@ class FrontendHandlers(BaseDomainService):
         ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid).encode()
         await self.transport.send_event(event(2247, ack, correlation),
                                         note=f'undelete character ack ({req.char_uid})')
-
-    # Client opcode bindings
-    on_2402 = handle_get_server_list
-    on_2001 = handle_knock_square_list
-    on_2021 = handle_get_square_list
-    on_5028 = handle_join_square
-    on_2008 = handle_get_char_list
-    on_2006 = handle_select_character
-    on_2012 = handle_create_character
-    on_2014 = handle_delete_character
-    on_2246 = handle_undelete_character

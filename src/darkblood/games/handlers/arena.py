@@ -52,6 +52,7 @@ from darkblood.games.network.messages import (
     LeagueSeasonArenaGetRankAck,
     LeagueSeasonArenaGetRankReq,
 )
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
@@ -105,6 +106,7 @@ class ArenaHandlers(BaseDomainService):
     # 1v1 Town Duels (Opcodes 5097 - 5113)
     # ==========================================================================
 
+    @packet_handler(DuelRequestReq)
     async def handle_duel_request(self, correlation: int, body: bytes):
         """Opcode 5100 (eERC_DUEL_REQUEST_REQ) -> 5101 (eERC_DUEL_REQUEST_ACK).
 
@@ -123,6 +125,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(5101, ack, correlation),
                                         note=f'duel request ack (target={req.target_uid})')
 
+    @packet_handler(DuelStartReq)
     async def handle_duel_start(self, correlation: int, body: bytes):
         """Opcode 5097 (eERC_DUEL_START_REQ) -> 5098 (eERC_DUEL_START_ACK) & 5099 (DuelStartNot).
 
@@ -138,6 +141,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(5099, not_start),
                                         note=f'duel start not (opponent={req.opponent_uid})')
 
+    @packet_handler(DuelResultReq)
     async def handle_duel_result(self, correlation: int, body: bytes):
         """Opcode 5105 (eERC_DUEL_RESULT_REQ) -> 5106 (eERC_DUEL_RESULT_ACK).
 
@@ -149,6 +153,7 @@ class ArenaHandlers(BaseDomainService):
         ack = DuelResultAck(result=0).encode()
         await self.transport.send_event(event(5106, ack, correlation), note='duel result ack')
 
+    @packet_handler(DuelRefuseReq)
     async def handle_duel_refuse(self, correlation: int, body: bytes):
         """Opcode 5112 (eERC_DUEL_REFUSE_REQ) -> 5113 (eERC_DUEL_REFUSE_ACK).
 
@@ -171,6 +176,7 @@ class ArenaHandlers(BaseDomainService):
     # Arena Channels / Square (Opcodes 2304 / 2305)
     # ==========================================================================
 
+    @packet_handler(ArenaSquareListReq)
     async def handle_arena_square_list(self, correlation: int, body: bytes):
         """Opcode 2304 -> 2305 / 2447.
 
@@ -190,6 +196,7 @@ class ArenaHandlers(BaseDomainService):
     # Arena Room Management (Opcodes 2306 / 2307, 5145-5154)
     # ==========================================================================
 
+    @packet_handler(ArenaGetRoomListReq)
     async def handle_arena_get_room_list(self, correlation: int, body: bytes):
         """Opcode 2306 -> 2307 / 2449.
 
@@ -202,6 +209,7 @@ class ArenaHandlers(BaseDomainService):
         ack = ArenaGetRoomListAck(result=0, flag=True, room_count=len(rooms), rooms=rooms).encode()
         await self.transport.send_event(event(2307, ack, correlation), note='arena get room list ack')
 
+    @packet_handler(ArenaCreateRoomReq)
     async def handle_arena_create_room(self, correlation: int, body: bytes):
         """Opcode 5153 (eERC_ARENA_CREATE_ROOM_REQ) -> 5154 (eERC_ARENA_CREATE_ROOM_ACK).
 
@@ -232,6 +240,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(5154, ack, correlation),
                                         note=f'arena create room ack (id={room.room_id}, name={room.room_name})')
 
+    @packet_handler(ArenaJoinRoomReq)
     async def handle_arena_join_room(self, correlation: int, body: bytes):
         """Opcode 5145 (eERC_ARENA_JOIN_ROOM_REQ) -> 5146 (eERC_ARENA_JOIN_ROOM_ACK).
 
@@ -260,6 +269,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(5146, ack, correlation),
                                         note=f'arena join room ack (room={room.room_id})')
 
+    @packet_handler(ArenaLeaveRoomReq)
     async def handle_arena_leave_room(self, correlation: int, body: bytes):
         """Opcode 5148 (eERC_ARENA_LEAVE_ROOM_REQ) -> 5149 (eERC_ARENA_LEAVE_ROOM_ACK).
 
@@ -282,6 +292,7 @@ class ArenaHandlers(BaseDomainService):
         ack = ArenaLeaveRoomAck(result=0).encode()
         await self.transport.send_event(event(5149, ack, correlation), note='arena leave room ack')
 
+    @packet_handler(ArenaGetInviteListReq)
     async def handle_arena_get_invite_list(self, correlation: int, body: bytes):
         """Opcode 2308 (eEGS_ARENA_GET_INVITELIST_REQ) -> 2309 (eEGS_ARENA_GET_INVITELIST_ACK).
 
@@ -295,6 +306,7 @@ class ArenaHandlers(BaseDomainService):
     # Arena Teams (Opcodes 5269 - 5275)
     # ==========================================================================
 
+    @packet_handler(ArenaTeamCreateReq)
     async def handle_arena_team_create(self, correlation: int, body: bytes):
         """Opcode 5269 / 2452 -> 5270 / 2453.
 
@@ -333,6 +345,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(5270, ack, correlation),
                                         note=f'arena team create ack (name={req.team_name})')
 
+    @packet_handler(ArenaTeamJoinReq)
     async def handle_arena_team_join(self, correlation: int, body: bytes):
         """Opcode 5271 / 2454 -> 5272 / 2455.
 
@@ -370,6 +383,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(5272, ack, correlation),
                                         note=f'arena team join ack (team={req.team_id})')
 
+    @packet_handler(ArenaTeamLeaveReq)
     async def handle_arena_team_leave(self, correlation: int, body: bytes):
         """Opcode 5274 / 2456 -> 5275 / 2457.
 
@@ -389,6 +403,7 @@ class ArenaHandlers(BaseDomainService):
     # League Season Arena Rankings (Opcodes 2550 - 2553)
     # ==========================================================================
 
+    @packet_handler(LeagueSeasonArenaGetRankReq)
     async def handle_league_season_arena_get_rank(self, correlation: int, body: bytes):
         """Opcode 2550 / 2475 -> 2551 / 2476.
 
@@ -401,6 +416,7 @@ class ArenaHandlers(BaseDomainService):
         await self.transport.send_event(event(2551, ack, correlation),
                                         note=f'league season arena get rank ack (season={req.season_id})')
 
+    @packet_handler(LeagueSeasonArenaGetMyRankReq)
     async def handle_league_season_arena_get_my_rank(self, correlation: int, body: bytes):
         """Opcode 2552 / 2477 -> 2553 / 2478.
 
@@ -418,36 +434,3 @@ class ArenaHandlers(BaseDomainService):
         ack = LeagueSeasonArenaGetMyRankAck(result=0, my_rank=my_rank).encode()
         await self.transport.send_event(event(2553, ack, correlation),
                                         note=f'league season arena get my rank ack (season={req.season_id})')
-
-    # ==========================================================================
-    # Dispatcher Bindings
-    # ==========================================================================
-
-    # 1v1 Town Duels
-    on_5100 = handle_duel_request
-    on_5097 = handle_duel_start
-    on_5105 = handle_duel_result
-    on_5112 = handle_duel_refuse
-
-    # Arena Channels / Square (2304)
-    on_2304 = handle_arena_square_list
-
-    # Arena Rooms (2306, 5145, 5148, 5153, 2308)
-    on_2306 = handle_arena_get_room_list
-
-    on_2308 = handle_arena_get_invite_list
-    on_5153 = handle_arena_create_room
-    on_5145 = handle_arena_join_room
-    on_5148 = handle_arena_leave_room
-
-    # Arena Teams (5269, 5271, 5274)
-    on_5269 = handle_arena_team_create
-
-    on_5271 = handle_arena_team_join
-
-    on_5274 = handle_arena_team_leave
-
-    # League Season Arena Rankings (2550, 2552)
-    on_2550 = handle_league_season_arena_get_rank
-
-    on_2552 = handle_league_season_arena_get_my_rank

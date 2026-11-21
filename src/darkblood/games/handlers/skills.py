@@ -15,6 +15,7 @@ from darkblood.games.network.messages import (
     UseLearnSkillItemAck,
     UseLearnSkillItemReq,
 )
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
@@ -49,7 +50,8 @@ class SkillHandlers(BaseDomainService):
             char['u66'] = char['gold']
         return True
 
-    async def on_2050(self, correlation, body):
+    @packet_handler(LearnSkillReq)
+    async def handle_learn_skill(self, correlation, body):
         # eEGS_LEARN_SKILL_REQ (0x00780000.c:9504) -> 2051 eEGS_LEARN_SKILL_ACK (0x0078DBE0).
         req = LearnSkillReq.decode(body)
         char = self.current_char()
@@ -68,7 +70,8 @@ class SkillHandlers(BaseDomainService):
         await self.transport.send_event(event(2051, ack, correlation),
                                         note=f'learn skill ack (skill={req.skill_index} lvl={req.level})')
 
-    async def on_2697(self, correlation, body):
+    @packet_handler(LearnSkillListReq)
+    async def handle_learn_skill_list(self, correlation, body):
         # eEGS_LEARN_SKILL_LIST_REQ (0x007A73D0) -> 2698 eEGS_LEARN_SKILL_LIST_ACK (0x007A74A0).
         req = LearnSkillListReq.decode(body)
         char = self.current_char()
@@ -93,7 +96,8 @@ class SkillHandlers(BaseDomainService):
         await self.transport.send_event(event(2698, ack, correlation),
                                         note=f'learn skill list ack ({len(learned_skills)} skills)')
 
-    async def on_2053(self, correlation, body):
+    @packet_handler(ModifySkillSpeechReq)
+    async def handle_modify_skill_speech(self, correlation, body):
         # eEGS_MODIFY_SKILL_SPEECH_REQ (0x00780000.c:9674) -> 2054 eEGS_MODIFY_SKILL_SPEECH_ACK (0x0078E090).
         req = ModifySkillSpeechReq.decode(body)
         char = self.current_char()
@@ -105,7 +109,8 @@ class SkillHandlers(BaseDomainService):
         await self.transport.send_event(event(2054, ack, correlation),
                                         note=f'modify skill speech ack (skill={req.skill_index})')
 
-    async def on_2055(self, correlation, body):
+    @packet_handler(DeleteSkillSpeechReq)
+    async def handle_delete_skill_speech(self, correlation, body):
         # eEGS_DELETE_SKILL_SPEECH_REQ (0x00780000.c:9708) -> 2056 eEGS_DELETE_SKILL_SPEECH_ACK (0x0078E270).
         req = DeleteSkillSpeechReq.decode(body)
         char = self.current_char()
@@ -117,7 +122,8 @@ class SkillHandlers(BaseDomainService):
         await self.transport.send_event(event(2056, ack, correlation),
                                         note=f'delete skill speech ack (skill={req.skill_index})')
 
-    async def on_2117(self, correlation, body):
+    @packet_handler(UpdateSkillLockedReq)
+    async def handle_update_skill_locked(self, correlation, body):
         # eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390) -> 2118 eEGS_UPDATE_SKILL_LOCKED_ACK (0x00752C70).
         req = UpdateSkillLockedReq.decode(body)
         self.transport.record('update-skill-locked-req', body, skill=req.skill_index, locked=req.locked)
@@ -134,7 +140,8 @@ class SkillHandlers(BaseDomainService):
         await self.transport.send_event(event(2118, ack, correlation),
                                         note=f'update skill locked ack (skill={req.skill_index} locked={req.locked})')
 
-    async def on_2111(self, correlation, body):
+    @packet_handler(UseLearnSkillItemReq)
+    async def handle_use_learn_skill_item(self, correlation, body):
         # eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0).
         req = UseLearnSkillItemReq.decode(body)
         self.transport.record('use-learn-skill-item-req', body, item_uid=req.item_uid, skill_id=req.skill_id)

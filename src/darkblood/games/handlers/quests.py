@@ -29,12 +29,14 @@ def _quest_id_after_tag(body: bytes) -> int:
         return 0
 
 
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
 class QuestHandlers(BaseDomainService):
     """Quest start/complete and tutorial quests."""
 
+    @packet_handler(2073)
     async def handle_quest_start(self, correlation: int, body: bytes):
         """Opcode 2073 (eEGS_QUEST_START_REQ) -> 2074 (eEGS_QUEST_START_ACK).
 
@@ -168,6 +170,7 @@ class QuestHandlers(BaseDomainService):
         exp_ack = ChangeExpNot(exp_total=char_exp, gain_2=exp).encode()
         await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
 
+    @packet_handler(2076)
     async def handle_quest_complete(self, correlation: int, body: bytes):
         """Opcode 2076 (eEGS_QUEST_COMPLETE_REQ) -> 2077 (eEGS_QUEST_COMPLETE_ACK).
 
@@ -227,6 +230,7 @@ class QuestHandlers(BaseDomainService):
         await self.transport.send_event(event(2077, ack, correlation),
                                         note='quest complete ack (%08x)' % quest_id)
 
+    @packet_handler(2346)
     async def handle_tutorial_quest_start(self, correlation: int, body: bytes):
         """Opcode 2346 (eEGS_TUTORIAL_QUEST_START_REQ) -> 2347 (eEGS_TUTORIAL_QUEST_START_ACK).
 
@@ -255,7 +259,8 @@ class QuestHandlers(BaseDomainService):
         await self.transport.send_event(event(2074, start),
                                         note='tutorial quest start -> quest start ack (%08x)' % quest_id)
 
-    async def on_2113(self, correlation: int, body: bytes):
+    @packet_handler(2113)
+    async def handle_quest_update_mission(self, correlation: int, body: bytes):
         """Opcode 2113 (eEGS_QUEST_UPDATE_MISSION_REQ) -> 2114 (eEGS_QUEST_UPDATE_MISSION_ACK).
 
         Observed body: 0x7FFFFFFF prefix + J-wstring mission id ("QM807",
@@ -292,6 +297,7 @@ class QuestHandlers(BaseDomainService):
         await self.transport.send_event(event(2114, struct.pack('<I', 0), correlation),
                                         note='quest update mission ack (%s, %d quests)' % (mission, len(updates)))
 
+    @packet_handler(QuestGiveupReq)
     async def handle_quest_giveup(self, correlation: int, body: bytes):
         """Opcode 2078 (eEGS_QUEST_GIVEUP_REQ) -> 2079 (eEGS_QUEST_GIVEUP_ACK).
 
@@ -307,6 +313,7 @@ class QuestHandlers(BaseDomainService):
         ack = QuestGiveupAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
 
+    @packet_handler(QuestFailReq)
     async def handle_quest_fail(self, correlation: int, body: bytes):
         """Opcode 2080 (eEGS_QUEST_FAIL_REQ) -> 2081 (eEGS_QUEST_FAIL_ACK).
 
@@ -321,11 +328,3 @@ class QuestHandlers(BaseDomainService):
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
         ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
         await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
-
-    # Client opcode bindings
-    on_2073 = handle_quest_start
-    on_2076 = handle_quest_complete
-    on_2346 = handle_tutorial_quest_start
-
-    on_2078 = handle_quest_giveup
-    on_2080 = handle_quest_fail

@@ -45,6 +45,7 @@ from darkblood.games.network.messages import (
     StartGameAck,
     StartGameReq,
 )
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.network import results
 
@@ -76,7 +77,8 @@ class DungeonHandlers(BaseDomainService):
         super().__init__(session)
         self.room = None
 
-    async def on_2010(self, correlation, body):
+    @packet_handler(2010)
+    async def handle_get_room_info_list(self, correlation, body):
         # eEGS_GET_ROOMINFOLIST_REQ (sender 0x7AB140), written as
         # "nPage << bWait << nGateID << nMapID << sDiff" (live: page 0,
         # wait 0/1, the gate hash, -1, -1) -> 2011 with the open rooms.
@@ -104,7 +106,8 @@ class DungeonHandlers(BaseDomainService):
         await self.transport.send_event(event(2011, ack.encode(), correlation),
                                         note='room info list ack (%d rooms)' % len(rooms))
 
-    async def on_5060(self, correlation, body):
+    @packet_handler(5060)
+    async def handle_room_member_info(self, correlation, body):
         # eERC_ROOM_MEM_INFO_REQ (Find party row click) -> 5061. The client
         # waits for it before offering the join; member vectors not recovered.
         from darkblood.games.network.messages import RoomMemInfoAck, RoomMemInfoReq
@@ -132,7 +135,8 @@ class DungeonHandlers(BaseDomainService):
             char_class=int(record.get('char_class', 0)) & 0xFF,
             level=min(int(record.get('level', 1)), 0xFF))
 
-    async def on_5011(self, correlation, body):
+    @packet_handler(ChangeRoomInfoReq)
+    async def handle_change_room_info(self, correlation, body):
         # eERC_CHANGE_ROOMINFO_REQ (Party info OK) -> 5012. The request is a whole
         # jRoomInfo; the client locks input until the ack arrives (froze without it).
         try:
@@ -161,7 +165,8 @@ class DungeonHandlers(BaseDomainService):
         await self._notify_room(room, [m for m in room.members if m is not self.session],
                                 event(5012, ack), 'change room info (member sync)')
 
-    async def on_5088(self, correlation, body):
+    @packet_handler(ChangeItemObtainReq)
+    async def handle_change_item_obtain(self, correlation, body):
         # eERC_CHANGE_ITEM_OBTAIN_REQ (looting mode button) -> 5089 (i32 result, bool).
         # Echoing the mode alternates the two modes (see the 5089 schema notes).
         try:
@@ -179,7 +184,8 @@ class DungeonHandlers(BaseDomainService):
             await self._notify_room(room, [m for m in room.members if m is not self.session],
                                     event(5089, ack), 'change item obtain (member sync)')
 
-    async def on_5047(self, correlation, body):
+    @packet_handler(5047)
+    async def handle_request_join_room(self, correlation, body):
         # eERC_REQUEST_JOIN_ROOM_REQ (View party info "Join"). The request goes
         # to the room host as 5048 (requester's member entry); the host's
         # confirmation popup continues the flow: its Accept sends 5049 for the
@@ -203,7 +209,8 @@ class DungeonHandlers(BaseDomainService):
         except (ConnectionError, OSError):
             pass
 
-    async def on_5001(self, correlation, body):
+    @packet_handler(CreateRoomReq)
+    async def handle_create_room(self, correlation, body):
         # eERC_CREATE_ROOM_REQ (sender 0x0058B060) -> 5002 CREATE_ROOM_ACK.
         char = self.current_char()
         if char is None:
@@ -227,7 +234,8 @@ class DungeonHandlers(BaseDomainService):
         await self.transport.send_event(event(5002, ack.encode(), correlation),
                                         note='create room ack (%s)' % req.name)
 
-    async def on_5003(self, correlation, body):
+    @packet_handler(JoinRoomReq)
+    async def handle_join_room(self, correlation, body):
         try:
             req = JoinRoomReq.decode(body)
         except WireError:
@@ -293,7 +301,8 @@ class DungeonHandlers(BaseDomainService):
                     peer.dungeon.room = None
             room.members.clear()
 
-    async def on_5043(self, correlation, body):
+    @packet_handler(5043)
+    async def handle_select_dungeon(self, correlation, body):
         # eERC_SELECT_DUNGEON_REQ (sender 0x7AC1C0), observed body:
         # ffffff7f + J-wstring gate id ("Act1_G1") -> 5044.
         gate = ''
@@ -361,7 +370,8 @@ class DungeonHandlers(BaseDomainService):
         if record is None or diff >= record['diff']:
             history[dungeon] = {'map': map_code, 'diff': diff}
 
-    async def on_5009(self, correlation, body):
+    @packet_handler(5009)
+    async def handle_change_map_code(self, correlation, body):
         # eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f
         # + J-wstring map code ("Act1_G1_A10") + bool -> 5010, consumed by
         # JAppStateDungeonGate vf20 -> 0x6D4A00 (only in app state 8).
@@ -382,7 +392,8 @@ class DungeonHandlers(BaseDomainService):
             await self._notify_room(room, [m for m in room.members if m is not self.session],
                                     event(5010, ack), 'change mapcode (party gate %s)' % code)
 
-    async def on_5013(self, correlation, body):
+    @packet_handler(StartGameReq)
+    async def handle_start_game(self, correlation, body):
         try:
             request = StartGameReq.decode(body)
             if not request.map_code or '\x00' in request.map_code:
@@ -422,7 +433,8 @@ class DungeonHandlers(BaseDomainService):
         self.dungeon_score = 0
         self.dungeon_exp = 0
 
-    async def on_5095(self, correlation, body):
+    @packet_handler(ChangeDungeonLayerNot)
+    async def handle_change_dungeon_layer(self, correlation, body):
         # eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x7900B0): ffffff7f + i64 layer_net_id.
         try:
             msg = ChangeDungeonLayerNot.decode(body)
@@ -434,13 +446,15 @@ class DungeonHandlers(BaseDomainService):
         except (struct.error, ValueError):
             pass
 
-    async def on_2509(self, correlation, body):
+    @packet_handler(2509)
+    async def handle_monster_layer_move(self, correlation, body):
         # eEGS_MONSTER_LAYER_MOVE_NOT: notification without an ACK opcode
         # (2510 is PET_NICK_CHANGE_REQ). Live: ffffff7f 13270006 + two
         # (u32 layer, u32 hash) pairs, e.g. 2 -> 5 in 0x32ADCD46. Recorded only.
         self.transport.record('monster-layer-move', body)
 
-    async def on_2422(self, correlation, body):
+    @packet_handler(ActiveWarFlagReq)
+    async def handle_active_war_flag(self, correlation, body):
         # eEGS_ACTIVE_WARFLAG_REQ (sender 0x79C300): ffffff7f + u32 war_flag_id.
         try:
             msg = ActiveWarFlagReq.decode(body)
@@ -449,13 +463,15 @@ class DungeonHandlers(BaseDomainService):
         except (struct.error, ValueError):
             pass
 
-    async def on_2204(self, correlation, body):
+    @packet_handler(2204)
+    async def handle_frame_stat(self, correlation, body):
         # eEGS_FRAME_STAT_NOT: client frame-rate telemetry sent after dungeon
         # results (live: ffffff7f 3a f9010000, the u32 varies per run). The
         # opcode has no ACK; recorded only so it no longer shows as unhandled.
         self.transport.record('frame-stat', body)
 
-    async def on_2358(self, correlation, body):
+    @packet_handler(GuideBeginnerUpdateReq)
+    async def handle_guide_beginner_update(self, correlation, body):
         # eEGS_GUIDE_BEGINNER_UPDATE_REQ (sender 0x79A3B0): ffffff7f + vector<u32> guide_ids.
         try:
             msg = GuideBeginnerUpdateReq.decode(body)
@@ -498,7 +514,8 @@ class DungeonHandlers(BaseDomainService):
             self.floor_drops, self.floor_gold, self.next_drop_uid = {}, {}, 0
         return self
 
-    async def on_5063(self, correlation, body):
+    @packet_handler(MonsterDeadReq)
+    async def handle_monster_dead(self, correlation, body):
         # eERC_MONSTER_DEAD_REQ (sender 0x78A690): ffffff7f + u32 monster_id + u32 param.
         try:
             msg = MonsterDeadReq.decode(body)
@@ -556,7 +573,8 @@ class DungeonHandlers(BaseDomainService):
                         note=f'quest update not ({q_key} obj={obj_idx} count={counters[obj_idx]}/{target_count})'
                     )
 
-    async def on_5017(self, correlation, body):
+    @packet_handler(5017)
+    async def handle_finish_game(self, correlation, body):
         # eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60).
         from darkblood.games.network.messages import FinishGameAck, FinishGameReq, SingleReward
         req = FinishGameReq.decode(body)
@@ -707,7 +725,8 @@ class DungeonHandlers(BaseDomainService):
         char = self.current_char()
         return char
 
-    async def on_5093(self, correlation, body):
+    @packet_handler(GameplayDieCharReq)
+    async def handle_gameplay_die_char(self, correlation, body):
         # eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0) -> 5094 (0x0078F090).
         # bDie = 1: echo the client's own UID so the handler opens the revive
         # window (page 0x6B). bDie = 0: revive; spend one rebirth coin and
@@ -752,7 +771,8 @@ class DungeonHandlers(BaseDomainService):
             await self.transport.send_event(event(2286, RebirthCoinChangeNot(result=0, coins=coins).encode()),
                                             note='rebirth coin change not (%d)' % coins)
 
-    async def on_2448(self, correlation, body):
+    @packet_handler(DailyRebirthCoinUseReq)
+    async def handle_daily_rebirth_coin_use(self, correlation, body):
         # eEGS_DAILY_REBIRTH_COIN_USE_REQ -> 2449 (0x0079DC70) + 2286 (0x007983B0).
         # Daily claim of free rebirth coins: top the owned coins up to 3, count
         # them as received today, then announce the new total with 2286.
@@ -780,14 +800,16 @@ class DungeonHandlers(BaseDomainService):
         await self.transport.send_event(event(2286, RebirthCoinChangeNot(result=0, coins=coins).encode()),
                                         note='rebirth coin change not (%d)' % coins)
 
-    async def on_5005(self, correlation, body):
+    @packet_handler(5005)
+    async def handle_leave_room(self, correlation, body):
         # eERC_LEAVE_ROOM_REQ (0x0058B240) -> 5006 eERC_LEAVE_ROOM_ACK (0x00598A00).
         # Acknowledges leaving game room before eERC_BACK_TO_SQUARE_REQ (5045).
         await self.leave_room()
         ack = LeaveRoomAck(result=0).encode()
         await self.transport.send_event(event(5006, ack, correlation), note='leave room ack')
 
-    async def on_5090(self, correlation, body):
+    @packet_handler(ChoiceRewardPartyRankReq)
+    async def handle_choice_reward_party_rank(self, correlation, body):
         # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
         req = ChoiceRewardPartyRankReq.decode(body)
         char = self._current_char()
@@ -815,14 +837,16 @@ class DungeonHandlers(BaseDomainService):
         await self.transport.send_event(event(5091, ack, correlation),
                                         note=f'choice reward partyrank ack (card={req.card_index} item={reward_code})')
 
-    async def on_5015(self, correlation, body):
+    @packet_handler(ChangeTeamReq)
+    async def handle_change_team(self, correlation, body):
         # eERC_CHANGE_TEAM_REQ -> 5016 eERC_CHANGE_TEAM_ACK.
         req = ChangeTeamReq.decode(body)
         self.transport.record('change-team-req', body, team_id=req.team_id)
         ack = ChangeTeamAck(result=0, team_id=req.team_id).encode()
         await self.transport.send_event(event(5016, ack, correlation), note=f'change team ack (team={req.team_id})')
 
-    async def on_5065(self, correlation, body):
+    @packet_handler(5065)
+    async def handle_pick_up_item(self, correlation, body):
         # eERC_PICK_UP_ITEM_REQ (prefix + u32 drop uid). 5066 has no client
         # handler; 5068 (global 0x0078AD80) removes the drop and prints the
         # message, and an unsolicited 2037 puts the item into the bag.
@@ -909,7 +933,8 @@ class DungeonHandlers(BaseDomainService):
             except (ConnectionError, OSError):
                 pass
 
-    async def on_5363(self, correlation, body):
+    @packet_handler(5363)
+    async def handle_gold_goblin_attack(self, correlation, body):
         # eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10).
         from darkblood.games.network.messages import GoldGoblinAttackAck, GoldGoblinAttackReq
         req = GoldGoblinAttackReq.decode(body)
@@ -917,7 +942,8 @@ class DungeonHandlers(BaseDomainService):
         ack = GoldGoblinAttackAck(result=0).encode()
         await self.transport.send_event(event(5364, ack, correlation), note=f'gold goblin attack ack (goblin={req.goblin_id})')
 
-    async def on_5365(self, correlation, body):
+    @packet_handler(5365)
+    async def handle_gold_goblin_dead(self, correlation, body):
         # eERC_GOLDGOBLIEN_DEAD_REQ -> 5366 eERC_GOLDGOBLIEN_DEAD_ACK (0x00784CA0).
         from darkblood.games.network.messages import GoldGoblinDeadAck, GoldGoblinDeadReq
         req = GoldGoblinDeadReq.decode(body)

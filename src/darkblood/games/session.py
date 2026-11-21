@@ -1,6 +1,6 @@
 """Game connection session (JEvent dispatcher)."""
 from darkblood.core.serialization.jser import WireError, event, parse_event
-from darkblood.games.dispatcher import PacketDispatcher
+from darkblood.games.dispatcher import PacketDispatcher, packet_handler
 from darkblood.games.handlers.arena import ArenaHandlers
 from darkblood.games.handlers.commerce import CommerceHandlers
 from darkblood.games.handlers.dungeon import DungeonHandlers
@@ -58,7 +58,9 @@ class GameSession:
     async def on_connected(self):
         await self.transport.send_event(event(2), note='accept not (login)')
 
-    async def on_5386(self, correlation, body):
+    @packet_handler(5386)
+    async def handle_authenticate_steam_user(self, correlation, body):
+        """Opcode 5386 (eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ) -> 5020 welcome."""
         if self.authenticated:
             return
         account = account_from_auth(body)

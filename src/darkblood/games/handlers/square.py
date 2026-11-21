@@ -27,12 +27,14 @@ TUTORIAL_HOG_OBJECTIVES = {
 }
 TUTORIAL_QUEST_ID = 0x34c58e7c
 
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
 class SquareHandlers(BaseDomainService):
     """Town (square) play: tutorial, layers, NPCs, waypoints."""
 
+    @packet_handler(2082)
     async def handle_clear_tutorial(self, correlation: int, body: bytes):
         """Opcode 2082 (eEGS_CLEAR_TUTORIAL_REQ) -> 2083 (eEGS_CLEAR_TUTORIAL_ACK).
 
@@ -68,10 +70,12 @@ class SquareHandlers(BaseDomainService):
                                         note='clear tutorial ack (completed=%d, %d rewards, %d items)'
                                              % (completed, granted, len(items)))
 
+    @packet_handler(2084)
     async def handle_clear_opening(self, correlation: int, body: bytes):
         """Opcode 2084 (eEGS_CLEAR_OPENING_NOT): Cinematic intro complete."""
         pass
 
+    @packet_handler(2353)
     async def handle_tutorial_monster_dead(self, correlation: int, body: bytes):
         """Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT).
 
@@ -117,6 +121,7 @@ class SquareHandlers(BaseDomainService):
                 note=f'quest update not (Q0882S01 obj={obj_idx} count={counters[obj_idx]}/{target})'
             )
 
+    @packet_handler(2094)
     async def handle_npc_first_meet(self, correlation: int, body: bytes):
         """Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK).
 
@@ -128,6 +133,7 @@ class SquareHandlers(BaseDomainService):
         await self.transport.send_event(event(2095, ack, correlation),
                                         note='npc first meet ack (npc %d)' % npc_id)
 
+    @packet_handler(5045)
     async def handle_back_to_square(self, correlation: int, body: bytes):
         """Opcode 5045 (eERC_BACK_TO_SQUARE_REQ) -> 5046 (eERC_BACK_TO_SQUARE_ACK).
 
@@ -184,6 +190,7 @@ class SquareHandlers(BaseDomainService):
         char = self.current_char()
         return int(char.get('gold', 0)) if char else 0
 
+    @packet_handler(5124)
     async def handle_get_gtarget_list(self, correlation: int, body: bytes):
         """Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK).
 
@@ -196,6 +203,7 @@ class SquareHandlers(BaseDomainService):
         from darkblood.games.world import GameWorldManager
         await GameWorldManager.get().player_ready(self.session)
 
+    @packet_handler(5030)
     async def handle_join_layer(self, correlation: int, body: bytes):
         """Opcode 5030 changes the town layer; positions travel via the relay."""
         from darkblood.games.world import GameWorldManager
@@ -213,6 +221,7 @@ class SquareHandlers(BaseDomainService):
                 await world.broadcast_layer_leave(player, previous_layer)
             await world.broadcast_player_spawn(player)
 
+    @packet_handler(2016)
     async def handle_enter_maptool(self, correlation: int, body: bytes):
         """Opcode 2016 (eEGS_ENTER_MAPTOOL_REQ) -> 2017 (eEGS_ENTER_MAPTOOL_ACK).
 
@@ -222,6 +231,7 @@ class SquareHandlers(BaseDomainService):
         await self.transport.send_event(event(2017, struct.pack('<I', 0), correlation),
                                         note='enter maptool ack')
 
+    @packet_handler(2344)
     async def handle_waypoint_insert(self, correlation: int, body: bytes):
         """Opcode 2344 (eEGS_WAYPOINT_INSERT_REQ) -> 2345 (eEGS_WAYPOINT_INSERT_ACK).
 
@@ -233,6 +243,7 @@ class SquareHandlers(BaseDomainService):
         await self.transport.send_event(event(2345, ack, correlation),
                                         note='waypoint insert ack (%016x)' % layer)
 
+    @packet_handler(5037)
     async def handle_leave_layer(self, correlation: int, body: bytes):
         """Opcode 5037 (eERC_LEAVE_LAYER_REQ) -> 5038 (eERC_LEAVE_LAYER_ACK).
 
@@ -254,6 +265,7 @@ class SquareHandlers(BaseDomainService):
         await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
                                         note='leave layer ack')
 
+    @packet_handler(5032)
     async def handle_leave_square(self, correlation: int, body: bytes):
         """Opcode 5032 (eERC_LEAVE_SQUARE_REQ) -> 5033 (eERC_LEAVE_SQUARE_ACK).
 
@@ -268,19 +280,6 @@ class SquareHandlers(BaseDomainService):
             await GameWorldManager.get().remove_session_player(self.session)
         await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
                                         note='leave square ack')
-
-    # Client opcode bindings
-    on_2082 = handle_clear_tutorial
-    on_2084 = handle_clear_opening
-    on_2353 = handle_tutorial_monster_dead
-    on_2094 = handle_npc_first_meet
-    on_5045 = handle_back_to_square
-    on_5124 = handle_get_gtarget_list
-    on_5030 = handle_join_layer
-    on_5037 = handle_leave_layer
-    on_5032 = handle_leave_square
-    on_2016 = handle_enter_maptool
-    on_2344 = handle_waypoint_insert
 
 
 def _is_town_layer(layer_id: int) -> bool:

@@ -30,6 +30,7 @@ from darkblood.games.network.messages.pets import (
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
 )
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
@@ -38,7 +39,8 @@ class PetHandlers(BaseDomainService):
 
     # --- Monster Taming (2348, 2350) ---
 
-    async def on_2348(self, correlation, body):
+    @packet_handler(TameingMonsterInsertReq)
+    async def handle_taming_monster_insert(self, correlation, body):
         # eEGS_TAMEING_MONSTER_INSERT_REQ (0x00799BA0) -> 2349 eEGS_TAMEING_MONSTER_INSERT_ACK (0x00771A00)
         req = TameingMonsterInsertReq.decode(body)
         char = self.current_char()
@@ -55,7 +57,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2349, ack, correlation),
                                         note=f'tame monster insert ack (monster={req.monster_id}, slot={slot})')
 
-    async def on_2350(self, correlation, body):
+    @packet_handler(TameingMonsterDeleteReq)
+    async def handle_taming_monster_delete(self, correlation, body):
         # eEGS_TAMEING_MONSTER_DELETE_REQ (0x00799D30) -> 2351 eEGS_TAMEING_MONSTER_DELETE_ACK (0x00771BB0)
         req = TameingMonsterDeleteReq.decode(body)
         char = self.current_char()
@@ -75,7 +78,8 @@ class PetHandlers(BaseDomainService):
 
     # --- Mounts / Riding (2434, 2437) ---
 
-    async def on_2434(self, correlation, body):
+    @packet_handler(RidingGetListReq)
+    async def handle_riding_get_list(self, correlation, body):
         # eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0)
         char = self.current_char()
         mounts = char.get('mounts', []) if char else []
@@ -83,7 +87,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2435, ack, correlation),
                                         note=f'riding get list ack (count={len(mounts)})')
 
-    async def on_2437(self, correlation, body):
+    @packet_handler(RidingRideObjectReq)
+    async def handle_riding_ride_object(self, correlation, body):
         # eEGS_RIDING_RIDE_OBJECT_REQ (0x0079CE00) -> 2438 eEGS_RIDING_RIDE_OBJECT_ACK (0x00753A90)
         req = RidingRideObjectReq.decode(body)
         char = self.current_char()
@@ -107,7 +112,8 @@ class PetHandlers(BaseDomainService):
 
     # --- Pets Lifecycle (2464, 2466, 2468, 2470, 2473, 2475, 2477, 2480, 2484, 2508, 2510) ---
 
-    async def on_2464(self, correlation, body):
+    @packet_handler(PetCreateReq)
+    async def handle_pet_create(self, correlation, body):
         # eEGS_PET_CREATE_REQ (0x0079E0B0) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620)
         req = PetCreateReq.decode(body)
         char = self.current_char()
@@ -131,7 +137,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2465, ack, correlation),
                                         note=f'pet create ack (uid={new_uid})')
 
-    async def on_2466(self, correlation, body):
+    @packet_handler(PetDeleteReq)
+    async def handle_pet_delete(self, correlation, body):
         # eEGS_PET_DELETE_REQ (0x0079E260) -> 2467 eEGS_PET_DELETE_ACK (0x0079EA50)
         req = PetDeleteReq.decode(body)
         char = self.current_char()
@@ -150,7 +157,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2467, ack, correlation),
                                         note=f'pet delete ack (uid={req.pet_uid})')
 
-    async def on_2468(self, correlation, body):
+    @packet_handler(PetSummonReq)
+    async def handle_pet_summon(self, correlation, body):
         # eEGS_PET_SUMMON_REQ (0x0079E3E0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0)
         PetSummonReq.decode(body)
         pet_slot = 0  # 2468 carries no fields (sender 0x0079E3C0)
@@ -165,7 +173,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2469, ack, correlation),
                                         note=f'pet summon ack (slot={pet_slot})')
 
-    async def on_2470(self, correlation, body):
+    @packet_handler(PetReleaseSummonReq)
+    async def handle_pet_release_summon(self, correlation, body):
         # eEGS_PET_RELEASE_SUMMON_REQ (0x0079E510) -> 2471 eEGS_PET_RELEASE_SUMMON_ACK (0x0079EEE0)
         char = self.current_char()
         if char:
@@ -175,12 +184,14 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2471, ack, correlation),
                                         note='pet release summon ack')
 
-    async def on_2473(self, correlation, body):
+    @packet_handler(PetSaveReq)
+    async def handle_pet_save(self, correlation, body):
         # eEGS_PET_SAVE_REQ -> 2474 eEGS_PET_SAVE_ACK (0x007758B0)
         ack = PetSaveAck(result=0, value=1).encode()
         await self.transport.send_event(event(2474, ack, correlation), note='pet save ack')
 
-    async def on_2475(self, correlation, body):
+    @packet_handler(PetLoadReq)
+    async def handle_pet_load(self, correlation, body):
         # eEGS_PET_LOAD_REQ (0x0079F320) -> 2476 eEGS_PET_LOAD_ACK (0x0079F560)
         req = PetLoadReq.decode(body)
         char = self.current_char()
@@ -191,7 +202,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2476, ack, correlation),
                                         note=f'pet load ack (uid={req.pet_uid})')
 
-    async def on_2477(self, correlation, body):
+    @packet_handler(PetReplaceReq)
+    async def handle_pet_replace(self, correlation, body):
         # eEGS_PET_REPLACE_REQ -> 2478 eEGS_PET_REPLACE_ACK (0x0079F770)
         req = PetReplaceReq.decode(body)
         char = self.current_char()
@@ -202,7 +214,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2478, ack, correlation),
                                         note=f'pet replace ack (uid={req.pet_uid})')
 
-    async def on_2480(self, correlation, body):
+    @packet_handler(PetEatNormalReq)
+    async def handle_pet_eat_normal(self, correlation, body):
         # eEGS_PET_EAT_NORMAL_REQ (0x0079FBA0) -> 2481 eEGS_PET_EAT_NORMAL_ACK (0x00781260)
         req = PetEatNormalReq.decode(body)
         char = self.current_char()
@@ -218,7 +231,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2481, ack, correlation),
                                         note=f'pet eat normal ack (satiety={satiety})')
 
-    async def on_2484(self, correlation, body):
+    @packet_handler(PetEvolutionReq)
+    async def handle_pet_evolution(self, correlation, body):
         # eEGS_PET_EVOLUTION_REQ (0x0079FE20) -> 2485 eEGS_PET_EVOLUTION_ACK (0x0079FEF0)
         char = self.current_char()
         old_uid = 1
@@ -238,7 +252,8 @@ class PetHandlers(BaseDomainService):
         await self.transport.send_event(event(2485, ack, correlation),
                                         note=f'pet evolution ack (uid={new_uid})')
 
-    async def on_2510(self, correlation, body):
+    @packet_handler(PetNickChangeReq)
+    async def handle_pet_nick_change(self, correlation, body):
         # eEGS_PET_NICK_CHANGE_REQ (0x007A16DA) -> 2511 eEGS_PET_NICK_CHANGE_AKC (0x00781CD0)
         req = PetNickChangeReq.decode(body)
         char = self.current_char()

@@ -34,6 +34,7 @@ from darkblood.player_management.characters import (
     free_cells,
     next_item_uid,
 )
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
 
@@ -73,7 +74,8 @@ class MailHandlers(BaseDomainService):
             items=items,
         )
 
-    async def on_2219(self, correlation, body):
+    @packet_handler(PostListReq)
+    async def handle_post_list(self, correlation, body):
         # eEGS_POST_REQUEST_LIST_REQ (0x007962F0) -> 2220 eEGS_POST_REQUEST_LIST_ACK (0x007AEF70).
         req = PostListReq.decode(body)
         self.transport.record('post-request-list-req', body, flag=req.flag)
@@ -92,7 +94,8 @@ class MailHandlers(BaseDomainService):
         await self.transport.send_event(event(2220, ack, correlation),
                                         note=f'post list ack (inbox={len(inbox)}, outbox={len(outbox)}, unread={unread_count})')
 
-    async def on_2221(self, correlation, body):
+    @packet_handler(PostSendReq)
+    async def handle_post_send(self, correlation, body):
         # eEGS_POST_SEND_REQ (0x00795D70) -> 2222 eEGS_POST_SEND_ACK (0x00795F40).
         req = PostSendReq.decode(body)
         self.transport.record('post-send-req', body, recipient=req.recipient, title=req.title, gold=req.gold)
@@ -165,7 +168,8 @@ class MailHandlers(BaseDomainService):
         ack = PostSendAck(result=0, items=[], remain_gold=int(char.get('gold', 0)) if char else 0).encode()
         await self.transport.send_event(event(2222, ack, correlation), note=f'post send ack to {req.recipient}')
 
-    async def on_2223(self, correlation, body):
+    @packet_handler(PostReadReq)
+    async def handle_post_read(self, correlation, body):
         # eEGS_POST_READ_REQ (0x007963C0) -> 2224 eEGS_POST_READ_ACK (0x0075A660).
         req = PostReadReq.decode(body)
         self.transport.record('post-read-req', body, mail_uid=req.mail_uid)
@@ -173,7 +177,8 @@ class MailHandlers(BaseDomainService):
         ack = PostReadAck(result=0, mail_uid=req.mail_uid).encode()
         await self.transport.send_event(event(2224, ack, correlation), note=f'post read ack (uid={req.mail_uid})')
 
-    async def on_2225(self, correlation, body):
+    @packet_handler(PostGetAppendItemReq)
+    async def handle_post_get_append_item(self, correlation, body):
         # eEGS_POST_GET_APPEND_ITEM_REQ (0x0079664C) -> 2226 eEGS_POST_GET_APPEND_ITEM_ACK (0x0077F8E0).
         req = PostGetAppendItemReq.decode(body)
         self.transport.record('post-get-append-item-req', body, mail_uid=req.mail_uid)
@@ -223,7 +228,8 @@ class MailHandlers(BaseDomainService):
             note=f'post get append item ack (uid={req.mail_uid}, gold={claimed_gold}, items={len(new_items)})'
         )
 
-    async def on_2234(self, correlation, body):
+    @packet_handler(PostReturnReq)
+    async def handle_post_return(self, correlation, body):
         # eEGS_POST_RETURN_REQ (0x00A33907) -> 2235 eEGS_POST_RETURN_ACK (0x00771470).
         req = PostReturnReq.decode(body)
         self.transport.record('post-return-req', body, mail_id=req.mail_id)
@@ -231,7 +237,8 @@ class MailHandlers(BaseDomainService):
         ack = PostReturnAck(result=0, mail_uids=[req.mail_id]).encode()
         await self.transport.send_event(event(2235, ack, correlation), note=f'post return ack (mail={req.mail_id})')
 
-    async def on_2236(self, correlation, body):
+    @packet_handler(PostDeleteReq)
+    async def handle_post_delete(self, correlation, body):
         # eEGS_POST_DELETE_REQ (0x007964EC) -> 2237 eEGS_POST_DELETE_ACK (0x007715F0).
         req = PostDeleteReq.decode(body)
         self.transport.record('post-delete-req', body, mail_uids=req.mail_uids)
