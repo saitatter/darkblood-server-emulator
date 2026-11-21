@@ -47,7 +47,7 @@
 | `2609 MonsterCardDeckAck` | `vector<?>` | commerce.jsch:244 | cards (0x004AFD30) |
 | `2618 MonsterCardAlbumAck` | `vector<?>` | commerce.jsch:250 | album (0x004D6E60) |
 
-## dungeon (43 of 162 fields)
+## dungeon (42 of 162 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -69,8 +69,7 @@
 | `RoomMember` | `u16` | dungeon.jsch:83 |  |
 | `RoomMember` | `u16` | dungeon.jsch:84 |  |
 | `RoomMember` | `u32` | dungeon.jsch:85 |  |
-| `5004 JoinRoomAck` | `bool` | dungeon.jsch:95 |  |
-| `5004 JoinRoomAck` | `bool` | dungeon.jsch:96 |  |
+| `5004 JoinRoomAck` | `bool` | dungeon.jsch:96 | bIsAllCharSameRate |
 | `5035 RoomMemberJoinedNot` | `bool` | dungeon.jsch:102 | bIsAllCharSameRate |
 | `5036 RoomMemberLeftNot` | `u32` | dungeon.jsch:107 |  |
 | `5044 SelectDungeonAck` | `set<?>` | dungeon.jsch:132 | 0x00765450 (gate +0x268), element meaning not recovered |
