@@ -1,5 +1,12 @@
 # Research status and handoff
 
+## Random box toast and subclass skill report - 2026-11-22
+
+- User reported that random boxes grant the rolled inventory item but also display "Please try again." Static decompilation of the hash-verified client's analysis fixture shows `2039 UseItemAck` handles nonzero results through the localized result table, while `2196 RandomboxResultItemNot` is a separate successful-roll notification. The emulator sent the `2039` success and `2037` inventory update but omitted `2196`.
+- Added a `2196` notification after the inventory update for successful `DictRandomBox` rolls, carrying the rolled item hash and count. This is a source-level fix based on client static analysis; live confirmation is pending. The derived `research/unpacked.analysis.exe` fixture was decompiled only and was not launched.
+- User also reported missing new skills after choosing a subclass. The promotion dialog data selects a subclass and branches into its questline; the `2076` completion request carries only quest ID and reward selection. `2283` applies the server-provided learned-skill map after a skill reset. The server currently sends an empty map and refunds AP. The exact skills expected from the selected profession remain unclear, so no guessed learned-skill grants were added pending the user's class/skill details.
+- Headless suite: 221/221 tests pass, including the random-box `2196` result assertion. Live client confirmation is pending.
+
 > Older per-feature logs (2026-11-15 to 11-20) were removed once the work was implemented and summarized in the README,
 > `docs/OPCODE_REGISTRY.md` and `ROADMAP.md`; they remain in Git history. This file keeps recent evidence and the RE notes still in use.
 

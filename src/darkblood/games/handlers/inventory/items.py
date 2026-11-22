@@ -22,6 +22,7 @@ from darkblood.games.network.messages import (
     EquipItemReq,
     ItemDecomposeAck,
     ItemDecomposeReq,
+    RandomboxResultItemNot,
     SealItemAck,
     SealItemReq,
     UseArenaSpItemAck,
@@ -155,7 +156,7 @@ class ItemHandlersMixin:
             await self.reply(UseItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
                              note='use item fail (not found)')
             return
-        contents = self._cash_box_contents(used_item.get('code', ''))
+        contents, random_box = self._cash_box_contents(used_item.get('code', ''))
         if contents:
             free = free_bag_slots(char)
             if free is not None and slots_needed(contents) > free:
@@ -202,6 +203,15 @@ class ItemHandlersMixin:
             await self.send_msg(DragItemAck(result=0, items=wire_items),
                                 note='cash box opened (%s -> %s)' % (
                                     used_item.get('code'), ', '.join(i['code'] for i in stored)))
+            if random_box:
+                reward_code, reward_count = contents[0]
+                reward_hash = jhash(reward_code)
+                if reward_hash >= 0x80000000:
+                    reward_hash -= 0x100000000
+                await self.send_msg(
+                    RandomboxResultItemNot(item_code=reward_hash, count=reward_count),
+                    note='random box result (%s x%d)' % (reward_code, reward_count),
+                )
 
     @packet_handler(UseDyeingItemReq)
     async def handle_use_dyeing_item(self, correlation, body):
@@ -241,18 +251,18 @@ class ItemHandlersMixin:
         from darkblood.games.game_data import client_dict
         info = client_dict.cash_items().get(code)
         if not info or not info['adj']:
-            return []
+            return [], False
         adj = info['adj']
         if adj.startswith('PACKAGE'):
-            return list(client_dict.cash_packages().get(adj, []))
+            return list(client_dict.cash_packages().get(adj, [])), False
         states, groups = client_dict.random_boxes()
         grades = states.get(adj)
         if not grades:
-            return []
+            return [], False
         weights = [p for p, _ in grades]
         _, names = random.choices(grades, weights=weights)[0]
         pool = [entry for name in names for entry in groups.get(name, [])]
-        return [random.choice(pool)] if pool else []
+        return ([random.choice(pool)], True) if pool else ([], False)
 
     @packet_handler(EquipItemReq)
     async def handle_equip_item(self, correlation, body):

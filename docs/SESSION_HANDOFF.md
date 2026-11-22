@@ -1,5 +1,12 @@
 # Session handoff — 2026-11-22
 
+## Random box result toast and subclass skill report — saita machine, 2026-11-22
+
+- User reports that random boxes award their item (including a Max HP changing gem) while the client also displays "Please try again." The current `2038` handler sends a successful `2039` consume ACK and `2037` inventory delta but did not send the separate `2196 RandomboxResultItemNot` success notification.
+- Added `2196` after the `2037` delta for successful random-box rolls, using the rolled item hash/count and the current default `is_jackpot = false`. The `2039` handler at `0x0077D4C0` routes nonzero result values through the localized error lookup; `2196` has its own success handler at `0x0075A2E0`. Analysis used `tools/decomp.ps1` on the derived static fixture only. Live confirmation is pending.
+- User also reports that promotion does not grant new skills selected when choosing a subclass. The promotion Lua dialog selects the subclass branch; the `2076` completion body contains quest ID and reward index, with no skill IDs. Client `0x00797F00` applies the server's `2283` learned-skill map after resetting the tree. Current server behavior sends an empty map and refunds AP. Do not guess an auto-learn list; confirm the exact subclass and expected skill names, then trace the relevant selection path.
+- Headless suite: 221/221 tests pass, including a check that `2196` reports the rolled item's signed hash and count after `2037`. The client was not launched; perform one bounded live box check and resolve the subclass skill expectation once the user identifies the class and skills.
+
 ## Dungeon rank calculation (`5017/5018`) & card reward table (`5090/5091`, Issue #15 item 8) — saita machine, 2026-11-22
 
 - **Dungeon end rank always SSS (`5017 FinishGameReq` -> `5018 FinishGameAck`, `src/darkblood/games/handlers/dungeon/combat.py`)**:
