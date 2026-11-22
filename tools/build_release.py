@@ -113,12 +113,14 @@ def create_release_zip(version: str, output_dir: Path = None, root: Path = ROOT,
         raise FileNotFoundError('client_hook/steam_api.dll is missing; build it first or omit --skip-build')
 
     count = 0
+    notes_text = generate_release_notes(version, zip_path.name, '(see .sha256)', root=root)
     with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for src, rel in iter_release_files(root):
             zf.write(src, f'{top_dir}/{rel}')
             count += 1
         zf.writestr(f'{top_dir}/.version', version + '\n')
-        count += 1
+        zf.writestr(f'{top_dir}/RELEASE_NOTES.md', notes_text)
+        count += 2
 
     sha256 = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     (output_dir / f'{zip_path.name}.sha256').write_text(f'{sha256}  {zip_path.name}\n', encoding='utf-8')

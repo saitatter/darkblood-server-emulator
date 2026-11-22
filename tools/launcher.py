@@ -158,12 +158,37 @@ def _resolve_github_username(name: str, email: str = '', login: str = '') -> str
     return name or 'unknown'
 
 
-def fetch_recent_commits(limit=25):
-    """Return list of dicts {sha, short, date, author, subject} from local git or GitHub."""
-    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+def _current_release_tags(flags):
+    """Return (current_tag, previous_tag) for the installed/latest release."""
+    ver_file = ROOT / updater.VERSION_FILE
+    if ver_file.is_file():
+        v = ver_file.read_text(encoding='utf-8', errors='replace').strip()
+        if v.startswith('v'):
+            return v, ''
     try:
         proc = subprocess.run(
-            ['git', 'log', f'-n{limit}', '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short'],
+            ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=5, creationflags=flags,
+        )
+        if proc.returncode == 0:
+            tags = [t.strip() for t in proc.stdout.splitlines() if t.strip()]
+            if tags:
+                return tags[0], (tags[1] if len(tags) > 1 else '')
+    except Exception:
+        pass
+    return '', ''
+
+
+def fetch_recent_commits(limit=25):
+    """Return list of dicts {sha, short, date, author, subject} for the current release."""
+    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+    cur_tag, prev_tag = _current_release_tags(flags)
+    rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
+    label = f'release {cur_tag}' if cur_tag else 'local git'
+    try:
+        proc = subprocess.run(
+            ['git', 'log', rev_spec, '--no-merges', f'-n{limit * 2}',
+             '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short'],
             cwd=str(ROOT), capture_output=True, text=True, encoding='utf-8',
             errors='replace', timeout=5, creationflags=flags,
         )
@@ -172,42 +197,65 @@ def fetch_recent_commits(limit=25):
             for line in proc.stdout.splitlines():
                 parts = line.split('\x1f')
                 if len(parts) == 6:
+                    if '[skip ci]' in parts[5] or 'github-actions[bot]' in parts[3].lower():
+                        continue
                     commits.append({
                         'sha': parts[0], 'short': parts[1],
                         'date': parts[2],
                         'author': _resolve_github_username(parts[3], parts[4]),
                         'subject': parts[5],
                     })
+                    if len(commits) >= limit:
+                        break
             if commits:
-                return commits, 'local git'
+                return commits, label
     except Exception:
         pass
 
-    # Fallback: GitHub REST API
+    # Fallback: GitHub REST API (scoped to release tag when known)
     try:
-        req = urllib.request.Request(
-            GITHUB_COMMITS_API, headers={'User-Agent': 'DarkBlood-Launcher'})
+        api_url = GITHUB_COMMITS_API + (f'&sha={cur_tag}' if cur_tag else '')
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'DarkBlood-Launcher'})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode('utf-8'))
         commits = []
-        for item in data[:limit]:
+        for item in data:
             sha = item.get('sha', '')
             c = item.get('commit', {})
             gh_author = item.get('author') or {}
             c_author = c.get('author') or {}
+            subject = (c.get('message', '') or '').splitlines()[0]
+            if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
+                continue
             author = _resolve_github_username(
                 c_author.get('name', ''),
                 c_author.get('email', ''),
                 gh_author.get('login', ''),
             )
             date = (c_author.get('date', '') or '')[:10]
-            subject = (c.get('message', '') or '').splitlines()[0]
             commits.append({
                 'sha': sha, 'short': sha[:7],
                 'date': date, 'author': author, 'subject': subject,
             })
-        return commits, 'GitHub'
+            if len(commits) >= limit:
+                break
+        return commits, (f'release {cur_tag}' if cur_tag else 'GitHub')
     except Exception as exc:
+        # Offline portable fallback: parse bundled RELEASE_NOTES.md if present
+        notes_file = ROOT / 'RELEASE_NOTES.md'
+        if notes_file.is_file():
+            commits = []
+            pat = re.compile(r'^- (?:(?:\*\*([^*\n]+)\*\*:\s*)?)(.+?) \(`([0-9a-f]{7})`, @([^)]+)\)$')
+            for line in notes_file.read_text(encoding='utf-8', errors='replace').splitlines():
+                m = pat.match(line.strip())
+                if m:
+                    scope, desc, sha, user = m.groups()
+                    subj = f'feat({scope}): {desc}' if scope else desc
+                    commits.append({'sha': sha, 'short': sha, 'date': cur_tag or 'release', 'author': user, 'subject': subj})
+                    if len(commits) >= limit:
+                        break
+            if commits:
+                return commits, (f'release {cur_tag} (offline)' if cur_tag else 'release notes')
         return [], f'unavailable ({exc.__class__.__name__})'
 
 
@@ -387,15 +435,19 @@ class DarkBloodLauncher(tk.Tk):
         style.map('Dark.Vertical.TScrollbar', background=[('active', '#3d455e')])
 
     def _load_client_icon(self):
-        ico_bytes = extract_client_icon_bytes(CLIENT_EXE)
+        bundled = ROOT / 'assets' / 'darkblood.ico'
+        ico_bytes = bundled.read_bytes() if bundled.is_file() else extract_client_icon_bytes(CLIENT_EXE)
         if not ico_bytes:
             return
         try:
-            fd, tmp_path = tempfile.mkstemp(prefix='darkblood_icon_', suffix='.ico')
-            os.close(fd)
-            Path(tmp_path).write_bytes(ico_bytes)
-            self._temp_ico_path = tmp_path
-            self.iconbitmap(tmp_path)
+            if bundled.is_file():
+                self.iconbitmap(str(bundled))
+            else:
+                fd, tmp_path = tempfile.mkstemp(prefix='darkblood_icon_', suffix='.ico')
+                os.close(fd)
+                Path(tmp_path).write_bytes(ico_bytes)
+                self._temp_ico_path = tmp_path
+                self.iconbitmap(tmp_path)
         except Exception:
             pass
         try:
@@ -406,6 +458,11 @@ class DarkBloodLauncher(tk.Tk):
             self._header_icon_img = ImageTk.PhotoImage(img)
         except Exception:
             self._header_icon_img = None
+
+    def _reload_header_icon(self):
+        self._load_client_icon()
+        if self._header_icon_img is not None and getattr(self, '_header_icon_lbl', None) is not None:
+            self._header_icon_lbl.configure(image=self._header_icon_img, text='', bg=BG_HEADER, width=0, height=0)
 
     def _make_btn(self, parent, text, command, bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_MAIN,
                   font=('Segoe UI', 9, 'bold'), padx=12, pady=6):
@@ -438,11 +495,14 @@ class DarkBloodLauncher(tk.Tk):
         left.pack(side='left', padx=18, pady=12)
 
         if self._header_icon_img is not None:
-            tk.Label(left, image=self._header_icon_img, bg=BG_HEADER).pack(side='left', padx=(0, 12))
+            self._header_icon_lbl = tk.Label(left, image=self._header_icon_img, bg=BG_HEADER)
+            self._header_icon_lbl.pack(side='left', padx=(0, 12))
         else:
-            badge = tk.Label(left, text='DB', bg=ACCENT, fg='white',
-                             font=('Segoe UI', 14, 'bold'), width=3, height=1)
-            badge.pack(side='left', padx=(0, 12))
+            self._header_icon_lbl = tk.Label(
+                left, text='DB', bg=ACCENT, fg='white',
+                font=('Segoe UI', 14, 'bold'), width=3, height=1,
+            )
+            self._header_icon_lbl.pack(side='left', padx=(0, 12))
 
         title_box = tk.Frame(left, bg=BG_HEADER)
         title_box.pack(side='left')
@@ -519,7 +579,7 @@ class DarkBloodLauncher(tk.Tk):
         news_hdr = tk.Frame(left_card, bg=BG_CARD_ALT, height=38)
         news_hdr.pack(fill='x')
         news_hdr.pack_propagate(False)
-        tk.Label(news_hdr, text='LATEST REPOSITORY NEWS (COMMITS)', bg=BG_CARD_ALT, fg=GOLD,
+        tk.Label(news_hdr, text='RELEASE CHANGELOG', bg=BG_CARD_ALT, fg=GOLD,
                  font=('Segoe UI', 9, 'bold')).pack(side='left', padx=12)
         self.news_source_lbl = tk.Label(news_hdr, text='', bg=BG_CARD_ALT, fg=TEXT_MUTED,
                                         font=('Segoe UI', 8))
@@ -888,6 +948,7 @@ class DarkBloodLauncher(tk.Tk):
             try:
                 stage_client_folder(Path(chosen))
                 self.after(0, lambda: (
+                    self._reload_header_icon(),
                     self.status_var.set(f'Client staged in {CLIENT_DIR}'),
                     self._refresh_client_badge(),
                 ))
