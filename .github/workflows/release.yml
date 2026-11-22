@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0-alpha)'
+        required: true
+        default: 'v0.1.0-alpha'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Verify generated files and headless tests
+        shell: pwsh
+        run: |
+          python tools/gen_messages.py --check
+          python tools/gen_progress.py --check
+          python -m unittest discover -s tests -v
+
+      - name: Setup MSVC x86 toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
+      - name: Build modular steam_api.dll (x86)
+        shell: cmd
+        working-directory: client_hook
+        run: |
+          cl /nologo /LD /O2 /MT /W3 /DWIN32 /DNDEBUG ^
+            steam_api_hook.c common.c ^
+            patches\network_redirect.c ^
+            patches\borderless_fullscreen.c ^
+            patches\auto_reconnect.c ^
+            patches\peer_update_interval.c ^
+            patches\skip_logos.c ^
+            patches\skip_tutorial_always.c ^
+            patches\diagnostic_hooks.c ^
+            patches\debug_tools.c ^
+            /Fe:steam_api.dll /link ws2_32.lib user32.lib d3d9.lib
+
+      - name: Package portable release ZIP
+        id: pkg
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          python tools/build_release.py --version $tag --skip-build
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.pkg.outputs.tag }}
+          name: Dark Blood Offline Server Emulator ${{ steps.pkg.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/*.zip
+            dist/*.sha256

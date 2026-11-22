@@ -56,6 +56,39 @@ class ZipUpdaterTest(unittest.TestCase):
             self.assertEqual((root / 'logs' / 'wire.jsonl').read_text(encoding='utf-8'), 'keep\n')
             self.assertFalse((root.parent / 'escape.txt').exists())
 
+    def test_release_zip_deploys_prebuilt_steam_api_dll(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'research' / 'client').mkdir(parents=True)
+            (root / 'research' / 'client' / 'steam_api.dll').write_bytes(b'OLD_DLL')
+
+            archive = self._make_zip({
+                'DarkBlood-Emulator-v0.1.0/client_hook/steam_api.dll': b'NEW_PREBUILT_DLL',
+                'DarkBlood-Emulator-v0.1.0/src/darkblood/__init__.py': b'# v0.1.0\n',
+            })
+            res = updater.apply_zip_archive(root, archive, new_sha='v0.1.0')
+            self.assertTrue(res.ok)
+            self.assertEqual(res.mode, 'release')
+            self.assertFalse(res.hook_changed)  # prebuilt DLL already deployed, no MSVC needed
+            self.assertEqual((root / 'research' / 'client' / 'steam_api.dll').read_bytes(), b'NEW_PREBUILT_DLL')
+            self.assertEqual((root / '.version').read_text(encoding='utf-8').strip(), 'v0.1.0')
+
+    def test_build_release_zip_packages_clean_portable_archive(self):
+        import build_release
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp)
+            zip_path = build_release.create_release_zip('v0.1.0-test', output_dir=out_dir, require_dll=False)
+            self.assertTrue(zip_path.is_file())
+            self.assertTrue((out_dir / f'{zip_path.name}.sha256').is_file())
+            with zipfile.ZipFile(zip_path) as zf:
+                names = set(zf.namelist())
+                self.assertIn('DarkBlood-Emulator-v0.1.0-test/run_server.py', names)
+                self.assertIn('DarkBlood-Emulator-v0.1.0-test/tools/launcher.py', names)
+                self.assertIn('DarkBlood-Emulator-v0.1.0-test/tools/updater.py', names)
+                self.assertIn('DarkBlood-Emulator-v0.1.0-test/.version', names)
+                self.assertFalse(any('/data/' in n or '/research/' in n or '/logs/' in n for n in names))
+                self.assertFalse(any(n.endswith(('.obj', '.db', '.log')) for n in names))
+
 
 @unittest.skipUnless(shutil.which('git'), 'git CLI not available')
 class GitUpdaterTest(unittest.TestCase):

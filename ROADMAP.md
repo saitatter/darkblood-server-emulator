@@ -59,8 +59,8 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 
 ### Stability and tooling (P5)
 - [ ] Verify complete network isolation: hook `ConnectEx`, IPv6 and UDP (`connect` and `WSAConnect` IPv4 are hooked).
-- [ ] Automatic test-client staging (clean copy of the game folder without touching the original install).
-- [ ] Release build producing a portable launcher zip.
+- [x] Automatic test-client staging (`stage_client_folder()` in `tools/launcher.py` — copies EXE, backs up `steam_api.dll`, creates `Data` junction, deploys hook).
+- [x] Release build producing a portable launcher zip (`tools/build_release.py` + `.github/workflows/release.yml` with prebuilt x86 `steam_api.dll` + GitHub Releases auto-updater in `tools/updater.py`).
 - [ ] Find whether the client's `mon.changyou.com` monitoring ping (MAC, IP, disk serial) can run and block it
   (`docs/CLIENT_LEADS.md`).
 - [ ] Steam shim: SteamUser has three slots and SteamFriends one; other interfaces return placeholder `1`.

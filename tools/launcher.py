@@ -12,6 +12,7 @@ Features:
 """
 import io
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -26,7 +27,7 @@ import tkinter as tk
 import urllib.request
 import webbrowser
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'src'))
@@ -229,6 +230,55 @@ def probe_tcp(host, port, timeout=1.5):
         return False, 'Offline'
 
 
+def stage_client_folder(exe_path: Path, target_dir: Path = CLIENT_DIR,
+                        hook_dll: Path = HOOK_BUILT_DLL, verify_hash: bool = True):
+    """Stage a clean playable copy in `target_dir` without modifying the original game folder.
+
+    Copies root files from `exe_path.parent`, backs up `steam_api.dll` to `steam_api.dll.bak`,
+    deploys `hook_dll`, and links `Data/` via a Windows directory junction (`mklink /J`).
+    """
+    exe_path = Path(exe_path).resolve()
+    if not exe_path.is_file():
+        raise FileNotFoundError(f'DarkBlood.exe not found: {exe_path}')
+    if verify_hash:
+        digest = hashlib.sha256(exe_path.read_bytes()).hexdigest()
+        if digest != gamectl.CLIENT_SHA256:
+            raise ValueError(
+                f'Unsupported DarkBlood.exe SHA-256 ({digest[:12]}...). '
+                f'Expected {gamectl.CLIENT_SHA256[:12]}... (Steam build 1.6.5#0).'
+            )
+    src_dir = exe_path.parent
+    target_dir = Path(target_dir).resolve()
+    if src_dir == target_dir:
+        raise ValueError('Source folder is already the staged client folder.')
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    for item in src_dir.iterdir():
+        if item.is_file():
+            dst = target_dir / item.name
+            if item.name.lower() == 'steam_api.dll':
+                bak = target_dir / 'steam_api.dll.bak'
+                if not bak.exists():
+                    shutil.copy2(item, bak)
+            else:
+                shutil.copy2(item, dst)
+
+    src_data = src_dir / 'Data'
+    dst_data = target_dir / 'Data'
+    if src_data.is_dir() and not dst_data.exists():
+        flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+        proc = subprocess.run(
+            ['cmd.exe', '/c', 'mklink', '/J', str(dst_data), str(src_data)],
+            capture_output=True, text=True, creationflags=flags,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(f'Failed to link Data junction: {proc.stderr or proc.stdout}')
+
+    if Path(hook_dll).is_file():
+        shutil.copy2(hook_dll, target_dir / 'steam_api.dll')
+    return target_dir
+
+
 def launch_clients(account, count=1):
     """Launch 1..4 DarkBlood.exe instances directly against the configured server."""
     if not CLIENT_EXE.exists():
@@ -427,9 +477,10 @@ class DarkBloodLauncher(tk.Tk):
 
         self.client_badge = tk.Label(
             right, text='Checking client...', bg=BG_HEADER, fg=TEXT_MUTED,
-            font=('Segoe UI', 8),
+            font=('Segoe UI', 8), cursor='hand2',
         )
         self.client_badge.pack(anchor='e', pady=(3, 0))
+        self.client_badge.bind('<Button-1>', lambda e: self._setup_client_dialog())
 
         # Crimson divider line
         tk.Frame(self, bg=ACCENT, height=2).pack(fill='x')
@@ -767,9 +818,9 @@ class DarkBloodLauncher(tk.Tk):
     def _refresh_client_badge(self):
         def check():
             if not CLIENT_EXE.exists():
-                text, color = 'Client EXE missing', ERR_RED
+                text, color = 'Client Missing  •  Click to Setup', ERR_RED
             elif not CLIENT_DLL.exists():
-                text, color = 'Client OK  •  Hook DLL missing', WARN_AMBER
+                text, color = 'Client OK  •  Click to Deploy Hook', WARN_AMBER
             else:
                 try:
                     ok_hash = (gamectl.client_hash() == gamectl.CLIENT_SHA256)
@@ -824,8 +875,41 @@ class DarkBloodLauncher(tk.Tk):
         self.conn_detail.config(text=f'Local server started (PID {self._server_proc.pid}).', fg=OK_GREEN)
         self.after(900, self._probe_server_async)
 
+    def _setup_client_dialog(self):
+        chosen = filedialog.askopenfilename(
+            title='Select DarkBlood.exe (Steam build 1.6.5#0)',
+            filetypes=[('DarkBlood.exe', 'DarkBlood.exe'), ('Executables', '*.exe')],
+        )
+        if not chosen:
+            return
+        self.status_var.set('Staging client folder and verifying SHA-256...')
+
+        def run():
+            try:
+                stage_client_folder(Path(chosen))
+                self.after(0, lambda: (
+                    self.status_var.set(f'Client staged in {CLIENT_DIR}'),
+                    self._refresh_client_badge(),
+                ))
+            except Exception as exc:
+                self.after(0, lambda: (
+                    self.status_var.set(f'Client setup failed: {exc}'),
+                    messagebox.showerror('Client Setup Failed', str(exc)),
+                ))
+
+        threading.Thread(target=run, daemon=True).start()
+
     def _build_hook(self):
         if not HOOK_BUILD_BAT.exists():
+            # Portable release install: deploy prebuilt client_hook/steam_api.dll directly
+            if HOOK_BUILT_DLL.is_file():
+                try:
+                    CLIENT_DIR.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(HOOK_BUILT_DLL, CLIENT_DLL)
+                    self._finish_build(True, f'Deployed prebuilt {CLIENT_DLL.name}')
+                except OSError as exc:
+                    self._finish_build(False, f'Deploy failed (close running game first): {exc}')
+                return
             messagebox.showerror('Build Hook', f'Missing build script: {HOOK_BUILD_BAT}')
             return
         self.build_btn.config(state='disabled')

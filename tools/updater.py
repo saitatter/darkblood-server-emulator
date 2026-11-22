@@ -14,6 +14,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -21,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 GITHUB_REPO = 'saitatter/darkblood-server-emulator'
 GITHUB_BRANCH = 'main'
 GITHUB_COMMIT_API = f'https://api.github.com/repos/{GITHUB_REPO}/commits/{GITHUB_BRANCH}'
+GITHUB_RELEASE_API = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
 GITHUB_ZIP_URL = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip'
 VERSION_FILE = '.version'
 
@@ -31,7 +33,7 @@ PROTECTED_SUFFIXES = frozenset({'.db', '.db-wal', '.db-shm', '.ini', '.log', '.k
 
 @dataclass
 class UpdateStatus:
-    mode: str                 # 'git' | 'zip'
+    mode: str                 # 'git' | 'release' | 'zip'
     current_sha: str = ''
     remote_sha: str = ''
     behind: int = 0
@@ -39,14 +41,19 @@ class UpdateStatus:
     dirty: bool = False
     up_to_date: bool = True
     error: str = ''
+    download_url: str = ''
 
     @property
     def short_current(self) -> str:
-        return self.current_sha[:7] if self.current_sha else 'unknown'
+        if not self.current_sha:
+            return 'unknown'
+        return self.current_sha if self.current_sha.startswith('v') else self.current_sha[:7]
 
     @property
     def short_remote(self) -> str:
-        return self.remote_sha[:7] if self.remote_sha else 'unknown'
+        if not self.remote_sha:
+            return 'unknown'
+        return self.remote_sha if self.remote_sha.startswith('v') else self.remote_sha[:7]
 
 
 @dataclass
@@ -89,6 +96,44 @@ def _fetch_remote_sha_api(timeout: int = 8) -> str:
     return (data.get('sha') or '').strip()
 
 
+def _fetch_latest_release_api(timeout: int = 8):
+    """Return (tag_name, zip_download_url) from GitHub Releases API, or (None, None) if no release exists."""
+    req = urllib.request.Request(
+        GITHUB_RELEASE_API,
+        headers={'User-Agent': 'DarkBlood-Launcher-Updater', 'Accept': 'application/vnd.github+json'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None, None
+        raise
+    tag = (data.get('tag_name') or '').strip()
+    zip_url = ''
+    for asset in data.get('assets') or []:
+        name = (asset.get('name') or '').lower()
+        if name.endswith('.zip'):
+            zip_url = asset.get('browser_download_url') or ''
+            break
+    if not zip_url:
+        zip_url = data.get('zipball_url') or ''
+    return (tag or None), (zip_url or None)
+
+
+def _deploy_prebuilt_dll(root: Path) -> bool:
+    """Copy prebuilt client_hook/steam_api.dll to research/client/steam_api.dll when client dir exists."""
+    src_dll = root / 'client_hook' / 'steam_api.dll'
+    dst_dir = root / 'research' / 'client'
+    if src_dll.is_file() and dst_dir.is_dir():
+        try:
+            shutil.copy2(src_dll, dst_dir / 'steam_api.dll')
+            return True
+        except OSError:
+            return False
+    return False
+
+
 def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = GITHUB_BRANCH) -> UpdateStatus:
     """Check whether `root` is behind GitHub's latest `main` commit."""
     root = Path(root)
@@ -126,9 +171,24 @@ def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = G
         except Exception as exc:
             return UpdateStatus(mode='git', error=str(exc))
 
-    # Portable ZIP fallback
+    # Portable install (no .git): prefer GitHub Releases (/releases/latest), fall back to main ZIP.
     ver_file = root / VERSION_FILE
     current_sha = ver_file.read_text(encoding='utf-8').strip() if ver_file.is_file() else ''
+    try:
+        tag, zip_url = _fetch_latest_release_api()
+        if tag and zip_url:
+            up_to_date = bool(current_sha and current_sha == tag)
+            return UpdateStatus(
+                mode='release',
+                current_sha=current_sha,
+                remote_sha=tag,
+                behind=0 if up_to_date else 1,
+                up_to_date=up_to_date,
+                download_url=zip_url,
+            )
+    except Exception:
+        pass
+
     try:
         remote_sha = _fetch_remote_sha_api()
     except Exception as exc:
@@ -140,6 +200,7 @@ def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = G
         remote_sha=remote_sha,
         behind=0 if up_to_date else 1,
         up_to_date=up_to_date,
+        download_url=GITHUB_ZIP_URL,
     )
 
 
@@ -186,13 +247,18 @@ def apply_zip_archive(root: Path, zip_bytes: bytes, new_sha: str = '') -> Update
 
     if new_sha:
         ver_file.write_text(new_sha + '\n', encoding='utf-8')
+    dll_deployed = False
+    if (root / 'client_hook' / 'steam_api.dll').is_file():
+        dll_deployed = _deploy_prebuilt_dll(root)
+    label = new_sha if new_sha.startswith('v') else (new_sha[:7] or 'latest')
+    extra = ' (steam_api.dll deployed)' if dll_deployed else ''
     return UpdateResult(
         ok=True,
-        mode='zip',
+        mode='release' if new_sha.startswith('v') else 'zip',
         old_sha=old_sha,
         new_sha=new_sha,
-        message=f'Updated {updated} file(s) to {new_sha[:7] or "latest"}.',
-        hook_changed=hook_changed,
+        message=f'Updated {updated} file(s) to {label}.{extra}',
+        hook_changed=hook_changed and not dll_deployed,
         launcher_changed=launcher_changed,
         files_updated=updated,
     )
@@ -256,13 +322,21 @@ def apply_update(root: Path = ROOT, remote: str = 'origin', branch: str = GITHUB
         except Exception as exc:
             return UpdateResult(ok=False, mode='git', message=str(exc))
 
-    # Portable ZIP fallback
+    # Portable Release / ZIP fallback
     try:
-        remote_sha = _fetch_remote_sha_api()
-        req = urllib.request.Request(GITHUB_ZIP_URL, headers={'User-Agent': 'DarkBlood-Launcher-Updater'})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        tag, zip_url = None, None
+        try:
+            tag, zip_url = _fetch_latest_release_api()
+        except Exception:
+            pass
+        if tag and zip_url:
+            target_ver, url = tag, zip_url
+        else:
+            target_ver, url = _fetch_remote_sha_api(), GITHUB_ZIP_URL
+        req = urllib.request.Request(url, headers={'User-Agent': 'DarkBlood-Launcher-Updater'})
+        with urllib.request.urlopen(req, timeout=60) as resp:
             zip_bytes = resp.read()
-        return apply_zip_archive(root, zip_bytes, new_sha=remote_sha)
+        return apply_zip_archive(root, zip_bytes, new_sha=target_ver)
     except Exception as exc:
         return UpdateResult(ok=False, mode='zip', message=f'ZIP update failed: {exc}')
 
