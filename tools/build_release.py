@@ -14,11 +14,13 @@ Strictly excludes user data (`data/`, `research/`, `logs/`, `.git/`, `*.db`, `*.
 import argparse
 import hashlib
 from pathlib import Path
+import re
 import subprocess
 import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / 'tools'))
 HOOK_BUILD_BAT = ROOT / 'client_hook' / 'build.bat'
 HOOK_DLL = ROOT / 'client_hook' / 'steam_api.dll'
 
@@ -120,8 +122,128 @@ def create_release_zip(version: str, output_dir: Path = None, root: Path = ROOT,
 
     sha256 = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     (output_dir / f'{zip_path.name}.sha256').write_text(f'{sha256}  {zip_path.name}\n', encoding='utf-8')
+    notes_path = output_dir / 'RELEASE_NOTES.md'
+    notes_path.write_text(generate_release_notes(version, zip_path.name, sha256, root=root), encoding='utf-8')
     print(f'Built {zip_path} ({count} files, {zip_path.stat().st_size:,} bytes, sha256={sha256[:12]}...)')
     return zip_path
+
+
+_COMMIT_RE = re.compile(r'^(feat|fix|refactor|perf|docs|test|chore|ci|build)(?:\(([^)]+)\))?!?:\s*(.+)$', re.I)
+
+
+def _prev_tag(version: str, root: Path) -> str:
+    try:
+        proc = subprocess.run(
+            ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
+            cwd=str(root), capture_output=True, text=True, timeout=5,
+        )
+        if proc.returncode == 0:
+            tags = [t.strip() for t in proc.stdout.splitlines() if t.strip() and t.strip() != version]
+            if tags:
+                return tags[0]
+    except Exception:
+        pass
+    return ''
+
+
+def generate_release_notes(version: str, zip_name: str, zip_sha256: str, root: Path = ROOT) -> str:
+    """Build structured Markdown release notes from all commits since the previous tag."""
+    prev = _prev_tag(version, root)
+    rev_range = f'{prev}..HEAD' if prev else 'HEAD'
+    commits = []
+    try:
+        proc = subprocess.run(
+            ['git', 'log', rev_range, '--no-merges', '--pretty=format:%h\x1f%an\x1f%ae\x1f%s'],
+            cwd=str(root), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10,
+        )
+        if proc.returncode == 0:
+            try:
+                from launcher import _resolve_github_username
+            except Exception:
+                _resolve_github_username = lambda n, e='', l='': n
+            for line in proc.stdout.splitlines():
+                parts = line.split('\x1f')
+                if len(parts) != 4:
+                    continue
+                sha, name, email, subj = parts
+                if '[skip ci]' in subj or 'github-actions[bot]' in name.lower():
+                    continue
+                user = _resolve_github_username(name, email)
+                commits.append((sha, user, subj))
+    except Exception:
+        pass
+
+    sections = {'feat': [], 'fix': [], 'refactor': [], 'other': []}
+    for sha, user, subj in commits:
+        m = _COMMIT_RE.match(subj)
+        if m:
+            kind, scope, desc = m.group(1).lower(), m.group(2), m.group(3)
+            prefix = f'**{scope}**: ' if scope else ''
+            bullet = f'- {prefix}{desc} (`{sha}`, @{user})'
+            if kind == 'feat':
+                sections['feat'].append(bullet)
+            elif kind == 'fix':
+                sections['fix'].append(bullet)
+            elif kind in ('refactor', 'perf'):
+                sections['refactor'].append(bullet)
+            else:
+                sections['other'].append(bullet)
+        else:
+            sections['other'].append(f'- {subj} (`{sha}`, @{user})')
+
+    out = [
+        f'# Dark Blood Online — Offline Server Emulator `{version}`',
+        '',
+        '### Quick Start (Portable Windows Release — no Visual Studio required)',
+        '1. Download and extract `' + zip_name + '`.',
+        '2. Run `Launch_DarkBlood.bat` (requires Python 3.8+).',
+        '3. Click **`Client Missing • Click to Setup`** in the top-right header and select your `DarkBlood.exe` (Steam build `1.6.5#0`, SHA-256 `a82ae3d71b596418c1f3593cb63d3f9746318d452143c2e88f6ebbaff339c931`). The launcher stages `research/client/`, links `Data/` via junction, and deploys the prebuilt `steam_api.dll` automatically.',
+        '4. Click **`Start Local Server`** and **`▶ PLAY DARK BLOOD`**.',
+        '',
+        '### Highlights' if not prev else f'### Changes since `{prev}` ({len(commits)} commits)',
+        '',
+    ]
+    if not prev:
+        out += [
+            '- **Connection & Transport**: Full ProudNet RSA-OAEP + AES handshake (optimized GF(2^8) tables), framing, TCP stream reassembly, and local square/room relay (`127.0.0.1:9400` / `9401`).',
+            '- **Custom Launcher & Auto-Updater**: Dark Bifrost-themed GUI (`Launch_DarkBlood.bat`), live repository news feed, modular patch toggles, 1-click client staging, multibox support (1–4 clients), and automatic GitHub Releases / Git updater.',
+            '- **Modular x86 Client Hook (`steam_api.dll` prebuilt)**: IPv4 `connect`/`WSAConnect` redirection, borderless fullscreen, lobby auto-reconnect on disconnect, 100 ms town peer sync, optional skip logos / skip tutorial.',
+            '- **Lobby, World & Multiplayer**: Server/channel lists, character creation/deletion/undeletion, SQLite persistence (WAL mode), two-client town presence, chat/whispers, friends/blocklist/memos, character inspect, and party rooms with host promotion.',
+            '- **Dungeons, Combat, Quests & Progression**: Tutorial & Act 1 dungeons, difficulty gate history, monster EXP/level-up, loot drops/pickup, stress (fatigue) & dungeon leave penalty timers, quest kill/item/dungeon-clear tracking (964/964 mission chains), end-of-dungeon rank & chest rewards, achievements, and native GM console (123 commands).',
+            '- **Inventory, Skills & Economy**: Bags, equipment, dyeing, durability loss & repair, crafting/enchanting/avatar zam, storage/depot, skills & dual skill trees, NPC shops with full sell & repurchase, offline Steam Cash Shop, P2P trade, personal stalls, broker, mail, fishing, pets, guilds, and arena.',
+            f'- **Protocol & Verification**: **801/1098 opcodes (73%)**, **88% named fields**, 17 schema-generated `WireMessage` domains, and **219 automated headless tests** (including fuzzing and 10-client concurrency).',
+            '',
+            f'<details><summary>Detailed changelog ({len(commits)} commits)</summary>',
+            '',
+        ]
+
+    for title, key in (
+        ('Features', 'feat'),
+        ('Bug Fixes', 'fix'),
+        ('Refactoring & Performance', 'refactor'),
+        ('Docs, Tests & Tooling', 'other'),
+    ):
+        if sections[key]:
+            out.append(f'#### {title} ({len(sections[key])})')
+            out.extend(sections[key])
+            out.append('')
+
+    if not prev:
+        out.append('</details>')
+        out.append('')
+
+    out += [
+        '### Checksum',
+        '```text',
+        f'{zip_sha256}  {zip_name}',
+        '```',
+        '',
+    ]
+    if prev:
+        out.append(f'**Full Changelog**: https://github.com/saitatter/darkblood-server-emulator/compare/{prev}...{version}')
+    else:
+        out.append(f'**Full Changelog**: https://github.com/saitatter/darkblood-server-emulator/commits/{version}')
+    return '\n'.join(out) + '\n'
 
 
 def main(argv=None) -> int:

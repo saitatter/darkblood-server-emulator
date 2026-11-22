@@ -65,7 +65,7 @@ jobs:
         with:
           tag_name: ${{ steps.pkg.outputs.tag }}
           name: Dark Blood Offline Server Emulator ${{ steps.pkg.outputs.tag }}
-          generate_release_notes: true
+          body_path: dist/RELEASE_NOTES.md
           files: |
             dist/*.zip
             dist/*.sha256
