@@ -43,6 +43,7 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 ### Gameplay (P3)
 - [x] Attendance calendar (CRONOS 2289-2300), native GM cheat opcodes, fishing (9/9), guild domain sweep.
 - [x] Constructor defaults in the 2007 details (24-byte options block) and non-zero `nAuthLevel` in 5020 (`gm_mode`).
+- [ ] Live-check the random-box success notification (`2196`) and confirm the expected learned-skill map after subclass promotion.
 - [ ] Monster AI aggro and damage calculation from the client property tables.
 - [ ] Live checks for the 11-20/21 work: gate history and quest variants, EXP bar, town AR, chest names,
   counter achievements, revive layer, floor gold, stress, 6012 View Info, 5022 host promotion, 2134 memo.

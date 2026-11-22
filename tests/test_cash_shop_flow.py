@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tests.common import ServerTestCase, create_request, lobby_flow
+from darkblood.core.hashing import jhash
 from darkblood.games import session
 from darkblood.games.game_data import cash_shop, client_dict
 
@@ -154,6 +155,15 @@ class CashShopFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2039)[0], 0)
             _, drag2037 = await client.expect_event(2037)
             self.assertEqual(struct.unpack_from('<i', drag2037)[0], 0)
+            _, result2196 = await client.expect_event(2196)
+            result, reward_hash, reward_count, is_jackpot = struct.unpack('<iih?', result2196)
+            self.assertEqual(result, 0)
+            expected_hash = jhash(char['items'][0]['code'])
+            if expected_hash >= 0x80000000:
+                expected_hash -= 0x100000000
+            self.assertEqual(reward_hash, expected_hash)
+            self.assertGreaterEqual(reward_count, 1)
+            self.assertFalse(is_jackpot)
             # Box was consumed and replaced by a rolled item
             self.assertEqual(len(char['items']), 1)
             self.assertNotEqual(char['items'][0]['code'], 'IRanCashbod1')

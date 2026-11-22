@@ -836,7 +836,9 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2085 eEGS_CHANGE_DUNGEON_PENALTY_NOT` (`0x0078FA70`):
   `in_dungeon: bool, is_penalty: bool, penalty_level: i16, penalty_id: i32, duration: i32`.
 - `2196 eEGS_RANDOMBOX_RESULT_ITEM_NOT` (`0x0075A2E0`):
-  `result: i32 (0), item_code: i32, count: i16, is_jackpot: bool`.
+  `result: i32 (0), item_code: i32, count: i16, is_jackpot: bool`. The emulator now sends this after
+  the `2037` inventory delta for successful `DictRandomBox` rolls; `is_jackpot` remains false until its
+  client meaning is recovered. Live confirmation of the success UI is pending.
 
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 
