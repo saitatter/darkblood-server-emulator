@@ -219,13 +219,25 @@ def resolve_accounts(count, accounts=None, skip=0):
     return result
 
 
-def _launch_desktop_client(account, timeout=90):
+def _work_area():
+    area = wintypes.RECT()
+    user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(area), 0)
+    return (area.left, area.top, area.right, area.bottom)
+
+
+def _launch_desktop_client(account, timeout=90, rect=None):
     """Launch DarkBlood.exe directly on the user's interactive desktop (WinSta0\\Default).
     Uses Windows Task Scheduler to break out of agent sandbox desktops if present."""
     lab = gamectl.LAB
     safe = re.sub(r'[^A-Za-z0-9_.-]', '_', account) or 'player'
     bat = lab / ('_launch_%s.bat' % safe)
-    bat.write_text(f"""@echo off\r\nset __COMPAT_LAYER=RunAsInvoker\r\nset DARKBLOOD_ACCOUNT={account}\r\ncd /d "{lab}"\r\nstart "" "{lab}\\DarkBlood.exe"\r\n""")
+    rect_line = ''
+    if rect is not None:
+        rect_line = 'set DARKBLOOD_WINDOW_RECT=%d,%d,%d,%d\r\n' % tuple(rect)
+    bat.write_text(
+        f'@echo off\r\nset __COMPAT_LAYER=RunAsInvoker\r\nset DARKBLOOD_ACCOUNT={account}\r\n'
+        f'{rect_line}cd /d "{lab}"\r\nstart "" "{lab}\\DarkBlood.exe"\r\n'
+    )
     task_name = 'DarkBlood_Launch_%s' % safe
     cmd = f'cmd.exe /c "{bat}"'
     pids_before = set(_running_clients())
@@ -255,7 +267,8 @@ def _launch_desktop_client(account, timeout=90):
 def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False, layout='auto', with_server=False):
     if layout not in VALID_LAYOUTS:
         raise gamectl.GameError('Unknown tile layout %r (expected one of %s)' % (layout, ', '.join(VALID_LAYOUTS)))
-    resolved_accounts = resolve_accounts(count, accounts=accounts, skip=len(_running_clients()))
+    existing_count = len(_running_clients())
+    resolved_accounts = resolve_accounts(count, accounts=accounts, skip=existing_count)
     if gamectl._port_free():
         if with_server:
             gamectl.start(server_only=True)
@@ -270,8 +283,10 @@ def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False, lay
     # Clients already running (also ones started by hand) hold the mutexes.
     for pid in _running_clients():
         release_instance_mutexes(pid)
-    for account in resolved_accounts:
-        pid = _launch_desktop_client(account, timeout=timeout)
+    planned_rects = compute_tile_rects(_work_area(), existing_count + count, layout=layout) if resize else None
+    for idx, account in enumerate(resolved_accounts):
+        rect = planned_rects[existing_count + idx] if planned_rects else None
+        pid = _launch_desktop_client(account, timeout=timeout, rect=rect)
         state.setdefault('accounts', {})[str(pid)] = account
         state['clients'].append(pid)
         _save(state)

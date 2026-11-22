@@ -68,9 +68,45 @@ static void SubclassForBorderless(HWND hwnd) {
     }
 }
 
+static int ParseIntField(const char** p, int* out) {
+    const char* s = *p;
+    int neg = 0, val = 0, any = 0;
+    while (*s == ' ' || *s == '\t') s++;
+    if (*s == '-') { neg = 1; s++; }
+    else if (*s == '+') { s++; }
+    while (*s >= '0' && *s <= '9') {
+        val = val * 10 + (*s - '0');
+        s++;
+        any = 1;
+    }
+    if (!any) return 0;
+    *out = neg ? -val : val;
+    *p = s;
+    return 1;
+}
+
+static int ParseTargetRect(RECT* out) {
+    char buf[128];
+    const char* p = buf;
+    int x = 0, y = 0, w = 0, h = 0;
+    DWORD n = GetEnvironmentVariableA("DARKBLOOD_WINDOW_RECT", buf, sizeof(buf));
+    if (n == 0 || n >= sizeof(buf)) return 0;
+    if (!ParseIntField(&p, &x) || *p++ != ',') return 0;
+    if (!ParseIntField(&p, &y) || *p++ != ',') return 0;
+    if (!ParseIntField(&p, &w) || *p++ != ',') return 0;
+    if (!ParseIntField(&p, &h) || w <= 0 || h <= 0) return 0;
+    out->left = x;
+    out->top = y;
+    out->right = x + w;
+    out->bottom = y + h;
+    return 1;
+}
+
 static void ApplyBorderless(PresentParams* pp, HWND focus) {
     HWND hwnd;
     MONITORINFO mi;
+    RECT target;
+    int hasTarget;
     int w, h;
     if (!pp || !BorderlessEnabled()) return;
     if (pp->Windowed) {
@@ -84,19 +120,28 @@ static void ApplyBorderless(PresentParams* pp, HWND focus) {
     hwnd = pp->hDeviceWindow ? pp->hDeviceWindow : (focus ? focus : g_deviceWindow);
     if (!hwnd) return;
     g_deviceWindow = hwnd;
-    mi.cbSize = sizeof(mi);
-    if (!GetMonitorInfoA(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &mi)) return;
-    w = mi.rcMonitor.right - mi.rcMonitor.left;
-    h = mi.rcMonitor.bottom - mi.rcMonitor.top;
-    RawLogFmt("[D3D9] borderless: fullscreen %ux%u -> windowed popup %dx%d",
-              pp->BackBufferWidth, pp->BackBufferHeight, w, h);
-    g_monitorRect = mi.rcMonitor;
+    hasTarget = ParseTargetRect(&target);
+    if (!hasTarget) {
+        mi.cbSize = sizeof(mi);
+        if (!GetMonitorInfoA(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &mi)) return;
+        target = mi.rcMonitor;
+    }
+    w = target.right - target.left;
+    h = target.bottom - target.top;
+    if (hasTarget) {
+        RawLogFmt("[D3D9] borderless: fullscreen %ux%u -> tile popup %dx%d at (%ld,%ld)",
+                  pp->BackBufferWidth, pp->BackBufferHeight, w, h, target.left, target.top);
+    } else {
+        RawLogFmt("[D3D9] borderless: fullscreen %ux%u -> windowed popup %dx%d",
+                  pp->BackBufferWidth, pp->BackBufferHeight, w, h);
+    }
+    g_monitorRect = target;
     g_borderlessActive = 1;
     SubclassForBorderless(hwnd);
     SetWindowLongA(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
     SetWindowLongA(hwnd, GWL_EXSTYLE,
                    GetWindowLongA(hwnd, GWL_EXSTYLE) & ~(WS_EX_TOPMOST | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_DLGMODALFRAME));
-    SetWindowPos(hwnd, HWND_NOTOPMOST, mi.rcMonitor.left, mi.rcMonitor.top, w, h,
+    SetWindowPos(hwnd, HWND_NOTOPMOST, target.left, target.top, w, h,
                  SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     pp->Windowed = TRUE;
     pp->FullScreen_RefreshRateInHz = 0;
