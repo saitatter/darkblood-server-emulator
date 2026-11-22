@@ -10,6 +10,11 @@
   - Added `--with-server` to `multibox.py start` (auto-starts the local server via `gamectl.start(server_only=True)` if port 9400 is free), sanitized per-account launch task names, and added `count` and `accounts` to `status()`.
   - Added Windows-gated unit tests in `tests/test_multibox.py`.
 
+- **Windows test order (2026-11-23):** The Cash Shop purchase test overrides
+  only the catalog path. Restoring the whole process environment via
+  `patch.dict(os.environ, ...)` removed empty Git configuration values on
+  Windows and broke the updater test. All 224 tests pass in discovery order.
+
 ## Random box result toast and subclass skill report — saita machine, 2026-11-22
 
 - User reports that random boxes award their item (including a Max HP changing gem) while the client also displays "Please try again." The current `2038` handler sends a successful `2039` consume ACK and `2037` inventory delta but did not send the separate `2196 RandomboxResultItemNot` success notification.
