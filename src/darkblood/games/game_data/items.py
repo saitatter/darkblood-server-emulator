@@ -286,7 +286,10 @@ def random_boxes():
             data = json.loads(json_path.read_text(encoding='utf-8'))
             states = {}
             for rid, grades in data.get('states', {}).items():
-                states[rid] = [(float(g['prob']), g['groups']) for g in grades]
+                states[rid] = [
+                    (float(g['prob']), g['groups']) if isinstance(g, dict) else (float(g[0]), list(g[1]))
+                    for g in grades
+                ]
             groups = {}
             for gid, items in data.get('groups', {}).items():
                 groups[gid] = [(item, int(cnt)) for item, cnt in items]

@@ -132,6 +132,34 @@ class CashShopFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_random_box_opens_without_disconnect(self):
+        """Using a random box backed by assets/random_boxes.json (e.g. Gem box IRanCashbod1)
+        rolls an item and grants it via 2037 without raising TypeError / disconnecting."""
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('GemOpener'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
+            char['items'] = [dict(code='IRanCashbod1', uid=53, container=bag, slot=0, count=1)]
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+
+            client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 53, 1))
+            _, ack2039 = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack2039)[0], 0)
+            _, drag2037 = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', drag2037)[0], 0)
+            # Box was consumed and replaced by a rolled item
+            self.assertEqual(len(char['items']), 1)
+            self.assertNotEqual(char['items'][0]['code'], 'IRanCashbod1')
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()
