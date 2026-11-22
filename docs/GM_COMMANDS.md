@@ -1,25 +1,15 @@
-# Dark Blood Online — GM Console & Cheat Commands
+# Dark Blood Online — Native GM Console & Cheat Commands
 
-Complete reference for the native in-game GM console (`JAppPageCheat`, `0x004EF790`) and server-side chat commands.
+Complete reference for the native in-game GM console (`JAppPageCheat`, `0x004EF790`).
 
 ## How to Enable & Use
 
-There are **two separate command systems**:
-
-1. **Native GM Console (`JAppPageCheat` — built into the original `DarkBlood.exe` client)**:
-   - **Enable**: set `[server] gm_mode = 1` in `research/client/darkblood_options.ini` (enabled by default; also toggleable in `tools/launcher.py` under **Patches & Hacks -> Server Behaviour -> GM console & cheat commands**). When enabled, the server sends `nAuthLevel = 1` in the `5020` welcome packet (`src/darkblood/games/handlers/frontend.py`), unlocking the client's built-in GM features.
-   - **How to open / run**:
-     - Press **`Left Ctrl + Left Shift + C`** in-game (`0x00451A87`: `DIK_LCONTROL` + `DIK_LSHIFT` + `DIK_C`) to toggle the visual `Page_Cheat` console window.
-     - Or run any native GM command directly from normal chat using the **`%`** prefix (e.g. `%lv 20`, `%notdie`, `%maxatk`, `%dunclear`; `0x00547574` -> `0x00547B38`).
-   - **What it does**: supports all **123 original client commands** below — including **client-side** cheats that only the game binary can perform (`notdie`, `maxatk`, `speed`, `freecamera`, `moncall`, `dunclear`) and **server-backed** commands that send `eEGS_CHEAT_*` / `eERC_CHEAT_*` opcodes to `src/darkblood/games/handlers/gm.py`.
-
-2. **Server Chat Slash Commands (emulator convenience shortcuts — not part of the original client)**:
-   - Typed directly in normal chat (`Enter`) with a **`/`** prefix — intercepted on the server (`5040 ChatReq`), work even when `gm_mode = 0`, and are meant as quick shortcuts for common testing actions:
-     - `/gold <amount>` — Add AR (gold) to the current character.
-     - `/levelup [levels]` — Level up by N levels (default 1) and broadcast `5087 LevelUpNot`.
-     - `/sp <amount>` — Add Skill Points (AP/SP).
-     - `/item <code> [count]` — Grant an item by code (e.g. `/item Iwpna0001 1`).
-     - `/bags` — Expand all bags to 20 slots.
+1. **Enable GM Mode**: set `[server] gm_mode = 1` in `research/client/darkblood_options.ini` (enabled by default; also toggleable in `tools/launcher.py` under **Patches & Hacks -> Server Behaviour -> GM console & cheat commands**).
+   - When enabled, the server sends `nAuthLevel = 1` in the `5020` welcome packet (`src/darkblood/games/handlers/frontend.py`), unlocking the client's built-in GM features.
+2. **Open the GM Console or Run Commands**:
+   - Press **`Left Ctrl + Left Shift + C`** in-game (`0x00451A87`: `DIK_LCONTROL` + `DIK_LSHIFT` + `DIK_C`) to toggle the visual `Page_Cheat` console window (`eAP_Cheat = 0x37`).
+   - Or run any command below directly from normal chat (`Enter`) using the **`%`** prefix (e.g. `%lv 20`, `%ar 100000`, `%ap 50`, `%notdie`, `%maxatk`, `%dunclear`; `0x00547574` -> `0x00547B38`).
+3. **Client-side vs Server-backed**: client-side commands (e.g. `notdie`, `maxatk`, `speed`, `freecamera`, `moncall`, `dunclear`) take effect immediately in the client; server-backed commands send `eEGS_CHEAT_*` / `eERC_CHEAT_*` opcodes handled by `src/darkblood/games/handlers/gm.py`.
 
 ## Native GM Console Commands (123 commands)
 

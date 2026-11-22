@@ -10,6 +10,8 @@
 - **End-of-dungeon card rewards always meat (`5090 -> 5091`, Issue #15 item 8)**:
   - Exported `DictMap:LoadItemPrize` (218 prize groups) and `DictMap:LoadRewardItemGroup` (34 dungeons, N/S/R/U difficulty weights) from `dungeonreward.lua` into `assets/dungeon_rewards.json` via `tools/export_assets.py` and `game_data/world.py::dungeon_rewards()`.
   - Implemented `loot.roll_dungeon_reward(map_code, char_class)` resolving explicit item groups (potions, reinforcing stones, materials) and level/grade/class equipment groups (`Weapon`/`Armor`/`Accessory` across Normal/Superior/Rare/Unique/Mythic) from `equip_index.tsv`, replacing the hardcoded `'Ihppa0001'` (Piece of Raw Meat) in `handle_choice_reward_party_rank`.
+- **Removed custom server chat slash commands (`handlers/social/chat.py`, `docs/GM_COMMANDS.md`)**:
+  - Removed custom `/gold`, `/levelup`, `/sp`, `/item`, and `/bags` interception from `handle_chat` (`5040`) now that the native client GM console (`Left Ctrl + Left Shift + C` or `%<command>` in chat) covers all 123 commands.
 - **Random Box crash/disconnect (`src/darkblood/games/game_data/items.py`, Issue #15 items 2, 3, 7)**:
   - `random_boxes()` assumed each grade entry in `assets/random_boxes.json` was a dict (`g['prob'], g['groups']`), whereas `export_assets.py` exports 2-element lists `[prob, groups]`. Using any random box (Gem Random Box, Mage Rune Box, Card Booster Pack, etc.) raised `TypeError: list indices must be integers or slices, not str` inside `handle_use_item` (`2038`), immediately disconnecting the client. Fixed `random_boxes()` to unpack both `[prob, groups]` lists and dicts.
 - **Book of AP `2109 InsertApNot` field order (`schemas/skills.jsch`, `0x00790480`)**:

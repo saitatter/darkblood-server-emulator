@@ -158,23 +158,6 @@ class SocialFlowTest(ServerTestCase):
             _, ack5041 = await client.expect_event(5041)
             self.assertEqual(struct.unpack_from('<iB', ack5041[:5]), (0, 0))
 
-            # 28. Chat GM command /gold
-            client.send_event(5040, chat_request('/gold 5000'))
-            _, ack_gold = await client.expect_event(5041)
-            self.assertEqual(struct.unpack_from('<iB', ack_gold[:5]), (0, 0))
-
-            # 29. Chat GM command /levelup (triggers 5087 LevelUpNot followed by 5041 ChatAck)
-            client.send_event(5040, chat_request('/levelup 2'))
-            _, not5087 = await client.expect_event(5087)
-            self.assertGreater(len(not5087), 0)
-            _, ack_lvl = await client.expect_event(5041)
-            self.assertEqual(struct.unpack_from('<iB', ack_lvl[:5]), (0, 0))
-
-            # 30. Chat GM command /sp
-            client.send_event(5040, chat_request('/sp 10'))
-            _, ack_sp = await client.expect_event(5041)
-            self.assertEqual(struct.unpack_from('<iB', ack_sp[:5]), (0, 0))
-
             # 31. Character nickname change (2310 -> 2311)
             from darkblood.core.serialization.jser import wide_string
             nick_payload = CharNickChangeReq(item_uid=123, new_name='RenamedHero').encode()
