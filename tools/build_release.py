@@ -194,8 +194,6 @@ def generate_release_notes(version: str, zip_name: str, zip_sha256: str, root: P
             sections['other'].append(f'- {subj} (`{sha}`, @{user})')
 
     out = [
-        f'# Dark Blood Online — Offline Server Emulator `{version}`',
-        '',
         '### Quick Start (Portable Windows Release — no Visual Studio required)',
         '1. Download and extract `' + zip_name + '`.',
         '2. Run `Launch_DarkBlood.bat` (requires Python 3.8+).',
