@@ -781,8 +781,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<i', ack_ret[:4])[0], 0)
 
     def test_combat_ap_gain_notification(self):
-        not_ap = messages.InsertApNot(current_ap=50, total_ap=150).encode()
-        self.assertEqual(struct.unpack_from('<ii', not_ap), (50, 150))
+        not_ap = messages.InsertApNot(total_ap=150, current_ap=50).encode()
+        self.assertEqual(struct.unpack_from('<ii', not_ap), (150, 50))
 
     def test_dungeon_penalty_notification(self):
         not_pen = messages.ChangeDungeonPenaltyNot(

@@ -112,9 +112,10 @@ message 2112 UseLearnSkillItemAck ok_only
 end
 
 message 2109 InsertApNot
-  ## Handler 0x00790480.
-  i32 current_ap
+  ## Handler 0x00790480: reads iTotalAp (written to player +0x88, delta printed
+  ## in chat as iTotalAp - old_total) then iMarginAp (written to player +0x8C).
   i32 total_ap
+  i32 current_ap
 end
 
 message 2697 LearnSkillListReq header

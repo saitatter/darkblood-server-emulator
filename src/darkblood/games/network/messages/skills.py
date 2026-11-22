@@ -230,11 +230,12 @@ class UseLearnSkillItemAck(WireMessage):
 class InsertApNot(WireMessage):
     """Opcode 2109: eEGS_INSERT_AP_NOT (reply).
 
-    Handler 0x00790480.
+    Handler 0x00790480: reads iTotalAp (written to player +0x88, delta printed
+    in chat as iTotalAp - old_total) then iMarginAp (written to player +0x8C).
     """
     OPCODE: ClassVar[int] = 2109
-    current_ap: i32 = 0
     total_ap: i32 = 0
+    current_ap: i32 = 0
 
 
 @dataclass

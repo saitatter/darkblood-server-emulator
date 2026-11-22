@@ -10,6 +10,8 @@
 - **End-of-dungeon card rewards always meat (`5090 -> 5091`, Issue #15 item 8)**:
   - Exported `DictMap:LoadItemPrize` (218 prize groups) and `DictMap:LoadRewardItemGroup` (34 dungeons, N/S/R/U difficulty weights) from `dungeonreward.lua` into `assets/dungeon_rewards.json` via `tools/export_assets.py` and `game_data/world.py::dungeon_rewards()`.
   - Implemented `loot.roll_dungeon_reward(map_code, char_class)` resolving explicit item groups (potions, reinforcing stones, materials) and level/grade/class equipment groups (`Weapon`/`Armor`/`Accessory` across Normal/Superior/Rare/Unique/Mythic) from `equip_index.tsv`, replacing the hardcoded `'Ihppa0001'` (Piece of Raw Meat) in `handle_choice_reward_party_rank`.
+- **Book of AP `2109 InsertApNot` field order (`schemas/skills.jsch`, `0x00790480`)**:
+  - `On_eEGS_INSERT_AP_NOT` (`0x00790480`) reads `total_ap` (`player+0x88`) first and `current_ap` (`player+0x8C`, remaining AP) second, printing `first - old_total_ap` in chat. Previously the two fields were swapped in `schemas/skills.jsch`, causing Book of AP (`Ispaa0001`) to print a negative delta in chat and display `remaining AP` / `total AP` inverted in the skill window. Swapped to `total_ap`, `current_ap`.
 - **Verification**: 221/221 headless tests pass (`test_dungeon_rank_uses_score_ratio_and_card_rewards_roll_from_table`), `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check` pass. Live client retest pending.
 
 ## Class promotion quests & `2283 PromotionNot` (Issue #16) — saita machine, 2026-11-22
