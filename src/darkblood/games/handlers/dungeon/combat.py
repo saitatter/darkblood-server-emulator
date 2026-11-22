@@ -373,6 +373,9 @@ class DungeonCombatHandlers:
                 return 1
             return 0
 
+        # DictDungeonReward:LoadDungeonReward Exp_Reward bonus rates per rank (0=D..6=SSS).
+        rank_exp_bonus = {0: 0.065, 1: 0.07, 2: 0.075, 3: 0.10, 4: 0.13, 5: 0.17, 6: 0.20}
+
         # The player's UID is the character id (2007 details +0x1C, copied to
         # player +0x10 by 0x0095A150). Characters have no 'char_uid' key, so
         # mapSingleReward used to go out empty and the result screen froze.
@@ -383,8 +386,6 @@ class DungeonCombatHandlers:
             if req.is_clear:
                 member.dungeon._record_dungeon_clear(char, map_code)
                 await member.dungeon._update_quest_dungeon_clear(map_code, char)
-            # EXP was already granted per kill (5063 -> 5086), so the result
-            # screen only reports it. No extra boxes are offered.
             uid = int(char.get('id', 0))
             gained = getattr(member.dungeon, 'dungeon_exp', 0)
             if total_monster_hp > 0 and uid in party_scores:
@@ -392,7 +393,16 @@ class DungeonCombatHandlers:
             else:
                 user_rank = fallback_rank
             member_ranks.append(user_rank)
-            rewards[uid] = SingleReward(total=gained, exp=gained, rank=user_rank)
+            bonus_exp = round(gained * rank_exp_bonus.get(user_rank, 0.0)) if (req.is_clear and gained > 0) else 0
+            if bonus_exp > 0:
+                await member.quests.grant_exp(char, bonus_exp)
+            rewards[uid] = SingleReward(
+                total=gained,
+                exp=gained,
+                bonus_exp=bonus_exp,
+                final_total_exp=gained + bonus_exp,
+                rank=user_rank,
+            )
         if members and req.is_clear:
             self.store().save()
 

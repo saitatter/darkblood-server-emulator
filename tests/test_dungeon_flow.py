@@ -525,6 +525,11 @@ class DungeonFlowTest(ServerTestCase):
             await client.expect_event(5014)
             await client.expect_event(2023)
 
+            # Kill a monster so dungeon_exp > 0 and bonus_exp / final_total_exp are non-zero
+            kill = struct.pack('<iII', 0x7fffffff, hashing.jhash('1npi01n0') & 0xFFFFFFFF, 0x03000fa2)
+            client.send_event(5063, kill)
+            await client.expect_event(5086)
+
             w5017 = JSerBufferWriter()
             w5017.write_bool(True)
             for m in ({char_id: 7357}, {char_id: 246}):
@@ -536,9 +541,15 @@ class DungeonFlowTest(ServerTestCase):
                     w5017.write_i32(v)
             w5017.write_i32(14803)  # nTotalMosterHP
             client.send_event(5017, w5017.to_bytes())
+            # Bonus clear EXP triggers a 5086 before 5018
+            await client.expect_event(5086)
             _, ack5018 = await client.expect_event(5018)
             parsed = messages.FinishGameAck.decode(ack5018)
-            self.assertEqual(parsed.rewards[char_id].rank, 3)  # A, NOT SSS (6)
+            sr = parsed.rewards[char_id]
+            self.assertEqual(sr.rank, 3)  # A, NOT SSS (6)
+            self.assertGreater(sr.exp, 0)
+            self.assertGreater(sr.bonus_exp, 0)
+            self.assertEqual(sr.final_total_exp, sr.exp + sr.bonus_exp)
             self.assertEqual(parsed.rank_first, 3)
             self.assertEqual(parsed.rank_final, 3)
             self.assertEqual(parsed.box_grade, 1)

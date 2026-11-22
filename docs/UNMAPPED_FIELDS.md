@@ -53,7 +53,7 @@
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
 | `2387 RouletteRollDiceAck` | `vector<?>` | commerce.jsch:350 | 0x00A3EA40 |
 
-## dungeon (54 of 280 fields)
+## dungeon (52 of 280 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -87,8 +87,6 @@
 | `5091 ChoiceRewardPartyRankAck` | `u16` | dungeon.jsch:242 | +4 not recovered |
 | `5091 ChoiceRewardPartyRankAck` | `u32` | dungeon.jsch:244 | +8 not recovered |
 | `SingleReward` | `i32` | dungeon.jsch:281 | +0x00 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:286 | +0x14 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:287 | +0x18 unknown |
 | `SingleReward` | `i32` | dungeon.jsch:288 | +0x1C unknown |
 | `5018 FinishGameAck` | `map<?>` | dungeon.jsch:299 | mapGuildPersonCnt |
 | `5018 FinishGameAck` | `vector<?>` | dungeon.jsch:306 | vecBonusMonster |

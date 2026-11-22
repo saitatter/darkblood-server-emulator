@@ -589,6 +589,8 @@ class SingleReward(WireMessage):
     rate_a: i32 = 100  # +0x08 explist row 1, shown as value / 100.0 after "X"
     rate_b: i32 = 100  # +0x0C explist row 2
     exp: i32 = 0  # +0x10 explist row 0 text
+    bonus_exp: i32 = 0  # +0x14 bonusexplist row 0 (0x00711A30, blue text when != 0)
+    final_total_exp: i32 = 0  # +0x18 final num_total after bonus step (0x00711910)
     extra_box_count: i32 = 0  # +0x20: 0x0071FF0F adds this many "extra_box" entries; keep small
     rank: i32 = 0  # +0x24 individual rank 0=D..6=SSS (Lua_OnChecked_5 @ 0x0071F9F0 / 0x00720000:530)
     _WIRE_LAYOUT: ClassVar[tuple] = (
@@ -597,8 +599,8 @@ class SingleReward(WireMessage):
         'rate_a',
         'rate_b',
         'exp',
-        Const(i32, 0),
-        Const(i32, 0),
+        'bonus_exp',
+        'final_total_exp',
         Const(i32, 0),
         'extra_box_count',
         'rank',
