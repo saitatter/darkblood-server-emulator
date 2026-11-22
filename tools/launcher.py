@@ -34,6 +34,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 
 from darkblood.core import options  # noqa: E402
 import gamectl  # noqa: E402
+import updater  # noqa: E402
 
 CLIENT_DIR = gamectl.LAB
 CLIENT_EXE = CLIENT_DIR / 'DarkBlood.exe'
@@ -321,6 +322,7 @@ class DarkBloodLauncher(tk.Tk):
         self._refresh_client_badge()
         self._refresh_commits()
         self._probe_server_async()
+        self._check_updates_async()
         self.protocol('WM_DELETE_WINDOW', self._on_close)
 
     def _configure_styles(self):
@@ -474,7 +476,13 @@ class DarkBloodLauncher(tk.Tk):
         self._make_btn(
             news_hdr, 'Refresh', self._refresh_commits,
             bg=BG_CARD, hover=BORDER, fg=TEXT_DIM, font=('Segoe UI', 8, 'bold'), padx=8, pady=2,
-        ).pack(side='right', padx=8, pady=6)
+        ).pack(side='right', padx=(4, 8), pady=6)
+        self.update_btn = self._make_btn(
+            news_hdr, 'Check Updates', self._on_update_click,
+            bg=BG_CARD, hover=BORDER, fg=TEXT_DIM, font=('Segoe UI', 8, 'bold'), padx=8, pady=2,
+        )
+        self.update_btn.pack(side='right', padx=(4, 0), pady=6)
+        self._update_status = None
 
         self.news_scroll = ScrollFrame(left_card, bg=BG_CARD)
         self.news_scroll.pack(fill='both', expand=True, padx=4, pady=4)
@@ -850,6 +858,79 @@ class DarkBloodLauncher(tk.Tk):
         self.status_var.set(message)
         if ok:
             self._refresh_client_badge()
+
+    def _check_updates_async(self):
+        self.update_btn.config(state='disabled', text='Checking...')
+
+        def run():
+            st = updater.check_for_updates(ROOT)
+            self.after(0, lambda: self._apply_update_status(st))
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _apply_update_status(self, st):
+        self._update_status = st
+        self.update_btn.config(state='normal')
+        if st.error:
+            self.update_btn.config(text='Check Updates', bg=BG_CARD, fg=TEXT_MUTED)
+            return
+        if st.up_to_date:
+            self.update_btn.config(text=f'Up to date ({st.short_current})', bg=BG_CARD, fg=OK_GREEN)
+            return
+        label = f'⬆ Update ({st.behind})' if st.mode == 'git' and st.behind > 0 else '⬆ Update Available'
+        self.update_btn.config(text=label, bg=ACCENT, fg='white')
+        self.status_var.set(
+            f'Update available on GitHub: {st.short_current} -> {st.short_remote} ({st.behind} new commit(s))'
+        )
+
+    def _on_update_click(self):
+        st = self._update_status
+        if st is None or st.up_to_date or st.error:
+            self._check_updates_async()
+            return
+        msg = (
+            f'Update Dark Blood Server Emulator from {st.short_current} to {st.short_remote}?\n\n'
+            f'Mode: {st.mode.upper()} ({st.behind} new commit(s))\n'
+            'User data (data/, research/, darkblood_options.ini) is preserved.'
+        )
+        if not messagebox.askyesno('Update from GitHub', msg):
+            return
+        # Stop local server if started by this launcher so updated code loads cleanly
+        if self._server_proc is not None and self._server_proc.poll() is None:
+            self._server_proc.terminate()
+            self._server_proc = None
+            self.local_srv_btn.config(text='Start Local Server')
+
+        self.update_btn.config(state='disabled', text='Updating...')
+        self.status_var.set('Downloading latest version from GitHub...')
+
+        def run():
+            res = updater.apply_update(ROOT)
+            self.after(0, lambda: self._finish_update(res))
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _finish_update(self, res):
+        self.update_btn.config(state='normal')
+        self.status_var.set(res.message)
+        if not res.ok:
+            self.update_btn.config(text='Retry Update', bg=ACCENT, fg='white')
+            messagebox.showerror('Update Failed', res.message)
+            return
+        self.update_btn.config(text=f'Up to date ({res.new_sha[:7]})', bg=BG_CARD, fg=OK_GREEN)
+        self._update_status = updater.UpdateStatus(
+            mode=res.mode, current_sha=res.new_sha, remote_sha=res.new_sha, up_to_date=True,
+        )
+        self._refresh_commits()
+        if res.hook_changed and HOOK_BUILD_BAT.exists():
+            self._build_hook()
+        if res.launcher_changed:
+            if messagebox.askyesno('Launcher Updated',
+                                   f'{res.message}\n\nThe launcher itself was updated. Restart now?'):
+                subprocess.Popen([sys.executable, str(Path(__file__).resolve())], cwd=str(ROOT))
+                self.destroy()
+                return
+        messagebox.showinfo('Update Complete', res.message)
 
     def _launch(self):
         if not self._save_config():
