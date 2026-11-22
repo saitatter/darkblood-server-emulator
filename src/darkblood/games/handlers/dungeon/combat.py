@@ -321,20 +321,26 @@ class DungeonCombatHandlers:
         else:
             char = self._current_char()
             members = [(self.session, char)] if char is not None else []
-        # Optional 5017 trailing maps: map<i64,i32> scores, map<i64,i32> rank_points.
+        # 5017 sender 0x007AD380 (assert 0x00D00E08):
+        #   bVictory << mapPartyScoreList << mapPartyDPS << nTotalMosterHP << vecUnderling << nInner
         # Headless tests may send a bare 1-byte body; parse defensively.
-        rank_points = {}
+        party_scores = {}
+        total_monster_hp = 0
         if req.tail:
             from darkblood.core.serialization.jser import JSerBufferReader
             try:
                 r = JSerBufferReader(req.tail)
-                r.read_tagged_map(JSerBufferReader.read_i64, JSerBufferReader.read_i32)  # per-player combat score
-                rank_points = r.read_tagged_map(JSerBufferReader.read_i64, JSerBufferReader.read_i32)  # per-player rank percentage (0..100+)
+                party_scores = r.read_tagged_map(JSerBufferReader.read_i64, JSerBufferReader.read_i32)
+                r.read_tagged_map(JSerBufferReader.read_i64, JSerBufferReader.read_i32)  # mapPartyDPS
+                if r.remaining >= 4:
+                    total_monster_hp = r.read_i32()  # nTotalMosterHP
             except (WireError, struct.error, IndexError):
-                rank_points = {}
+                party_scores = {}
+                total_monster_hp = 0
 
-        # Client rank enum (0x007101F0 / 0x00720000:530 Lua_OnChecked_5):
-        # 0=D, 1=C, 2=B, 3=A, 4=S, 5=SS, 6=SSS.
+        # Client rank enum (0x007101F0 / 0x00720000:530 Lua_OnChecked_5) and
+        # DictMap:LoadDungeonRank (dungeonrank.lua) / LoadDungeonReward (dungeonreward.lua):
+        # 0=D (0.0), 1=C (0.1), 2=B (0.225), 3=A (0.375), 4=S (0.625), 5=SS (0.75), 6=SSS (0.9).
         kill_count = getattr(self, 'dungeon_kill_count', 0)
         score = getattr(self, 'dungeon_score', 0)
         if score >= 50000 or kill_count >= 25:
@@ -352,18 +358,18 @@ class DungeonCombatHandlers:
         else:
             fallback_rank = 0
 
-        def _points_to_rank(pts: int) -> int:
-            if pts >= 98:
+        def _ratio_to_rank(ratio: float) -> int:
+            if ratio >= 0.9:
                 return 6
-            if pts >= 90:
+            if ratio >= 0.75:
                 return 5
-            if pts >= 80:
+            if ratio >= 0.625:
                 return 4
-            if pts >= 65:
+            if ratio >= 0.375:
                 return 3
-            if pts >= 50:
+            if ratio >= 0.225:
                 return 2
-            if pts >= 30:
+            if ratio >= 0.1:
                 return 1
             return 0
 
@@ -381,16 +387,23 @@ class DungeonCombatHandlers:
             # screen only reports it. No extra boxes are offered.
             uid = int(char.get('id', 0))
             gained = getattr(member.dungeon, 'dungeon_exp', 0)
-            user_rank = _points_to_rank(rank_points[uid]) if uid in rank_points else fallback_rank
+            if total_monster_hp > 0 and uid in party_scores:
+                user_rank = _ratio_to_rank(party_scores[uid] / total_monster_hp)
+            else:
+                user_rank = fallback_rank
             member_ranks.append(user_rank)
             rewards[uid] = SingleReward(total=gained, exp=gained, rank=user_rank)
         if members and req.is_clear:
             self.store().save()
 
         # Party rank uses the exact same 0..6 (D..SSS) scale as SingleReward.rank.
-        # In solo runs this guarantees party_rank == user_rank (never off-by-one).
-        party_rank = round(sum(member_ranks) / len(member_ranks)) if member_ranks else fallback_rank
-        box_grade = min(4, max(1, (party_rank + 1) // 2))
+        # In solo runs sum(party_scores) == member score, so party_rank == user_rank.
+        if total_monster_hp > 0 and party_scores:
+            party_rank = _ratio_to_rank(sum(party_scores.values()) / total_monster_hp)
+        else:
+            party_rank = round(sum(member_ranks) / len(member_ranks)) if member_ranks else fallback_rank
+        # DictDungeonReward:LoadDungeonReward BoxGrade: D/C/B->0, A->1, S->2, SS->3, SSS->4.
+        box_grade = {0: 0, 1: 0, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4}.get(party_rank, 0)
 
         ack = FinishGameAck(
             result=0,
@@ -526,16 +539,18 @@ class DungeonCombatHandlers:
     @packet_handler(ChoiceRewardPartyRankReq)
     async def handle_choice_reward_party_rank(self, correlation, body):
         # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
+        from darkblood.games import loot
         req = ChoiceRewardPartyRankReq.decode(body)
         char = self._current_char()
         char_id = self.char_id
-        reward_code = 'Ihppa0001'
+        char_class = int(char.get('char_class', 0)) if char else 0
+        reward_code, reward_count = loot.roll_dungeon_reward(getattr(self, 'map_code', ''), char_class)
         item_id = jhash(reward_code) & 0xFFFFFFFF
         from darkblood.games.entities.items import UPDATE_OWNER, Item
         from darkblood.player_management.characters import add_reward_items
         stored_items = []
         if char:
-            stored_items = add_reward_items(char, [(reward_code, 1)])
+            stored_items = add_reward_items(char, [(reward_code, reward_count)])
             self.store().save()
         reward_item = [Item(owner=UPDATE_OWNER, **i) for i in stored_items] if stored_items else []
         gold = char.get('gold', char.get('u66', 0)) if char else 0
@@ -543,14 +558,14 @@ class DungeonCombatHandlers:
             result=0,
             char_uid=char_id,
             item_id=item_id,
-            count=1,
+            count=reward_count,
             box_type=0,
             box_cost=0,
             items=reward_item,
             gold=gold,
         ).encode()
         await self.transport.send_event(event(5091, ack, correlation),
-                                        note=f'choice reward partyrank ack (card={req.card_index} item={reward_code})')
+                                        note=f'choice reward partyrank ack (card={req.card_index} item={reward_code} x{reward_count})')
 
 
     @packet_handler(5065)

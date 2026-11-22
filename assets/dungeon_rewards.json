@@ -1,0 +1,7773 @@
+{
+  "prizes": {
+    "GeneralItem_Group_3_N": {
+      "items": [
+        [
+          "Ihppa0001",
+          1
+        ],
+        [
+          "Imppa0013",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_8_N": {
+      "items": [
+        [
+          "Ihppa0003",
+          1
+        ],
+        [
+          "Imppa0015",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_13_N": {
+      "items": [
+        [
+          "Imppa0016",
+          1
+        ],
+        [
+          "Ihppa0022",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_18_N": {
+      "items": [
+        [
+          "Imppa0018",
+          1
+        ],
+        [
+          "Ihppa0024",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_23_N": {
+      "items": [
+        [
+          "Ihppa0016",
+          1
+        ],
+        [
+          "Imppa0019",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_28_N": {
+      "items": [
+        [
+          "Ihppa0017",
+          1
+        ],
+        [
+          "Imppa0020",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_33_N": {
+      "items": [
+        [
+          "Ihppa0043",
+          1
+        ],
+        [
+          "Imppa0046",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_38_N": {
+      "items": [
+        [
+          "Ihppa0045",
+          1
+        ],
+        [
+          "Imppa0048",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "GeneralItem_Group_43_N": {
+      "items": [
+        [
+          "Ihppa0044",
+          1
+        ],
+        [
+          "Imppa0047",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_10_S": {
+      "items": [
+        [
+          "Iupga0001",
+          1
+        ],
+        [
+          "Iupga0007",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_20_S": {
+      "items": [
+        [
+          "Iupga0001",
+          2
+        ],
+        [
+          "Iupga0007",
+          2
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_24_S": {
+      "items": [
+        [
+          "Iupga0001",
+          3
+        ],
+        [
+          "Iupga0007",
+          3
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_27_S": {
+      "items": [
+        [
+          "Iupga0001",
+          4
+        ],
+        [
+          "Iupga0007",
+          4
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_30_S": {
+      "items": [
+        [
+          "Iupga0001",
+          5
+        ],
+        [
+          "Iupga0007",
+          5
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_34_S": {
+      "items": [
+        [
+          "Iupga0001",
+          6
+        ],
+        [
+          "Iupga0007",
+          6
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_37_S": {
+      "items": [
+        [
+          "Iupga0001",
+          7
+        ],
+        [
+          "Iupga0007",
+          7
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_40_S": {
+      "items": [
+        [
+          "Iupga0001",
+          8
+        ],
+        [
+          "Iupga0007",
+          8
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_44_S": {
+      "items": [
+        [
+          "Iupga0001",
+          9
+        ],
+        [
+          "Iupga0007",
+          9
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_47_S": {
+      "items": [
+        [
+          "Iupga0001",
+          10
+        ],
+        [
+          "Iupga0007",
+          10
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "ReinforcingStone_Group_50_S": {
+      "items": [
+        [
+          "Iupga0001",
+          11
+        ],
+        [
+          "Iupga0007",
+          11
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Stuff_Group_20_N": {
+      "items": [
+        [
+          "IMaia0007",
+          1
+        ],
+        [
+          "IMaia0012",
+          1
+        ],
+        [
+          "IMaia0017",
+          1
+        ],
+        [
+          "ISuba0002",
+          1
+        ],
+        [
+          "ISuba0007",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Stuff_Group_20_S": {
+      "items": [
+        [
+          "IArka0002",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Stuff_Group_20_R": {
+      "items": [
+        [
+          "IMnra0020",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Accessory_Group_10_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 10,
+      "grade": 0
+    },
+    "Accessory_Group_10_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 10,
+      "grade": 1
+    },
+    "Accessory_Group_10_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 10,
+      "grade": 2
+    },
+    "Accessory_Group_15_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 15,
+      "grade": 0
+    },
+    "Accessory_Group_15_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 15,
+      "grade": 1
+    },
+    "Accessory_Group_15_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 15,
+      "grade": 2
+    },
+    "Accessory_Group_20_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 20,
+      "grade": 0
+    },
+    "Accessory_Group_20_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 20,
+      "grade": 1
+    },
+    "Accessory_Group_20_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 20,
+      "grade": 2
+    },
+    "Accessory_Group_20_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 20,
+      "grade": 3
+    },
+    "Accessory_Group_20_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 20,
+      "grade": 4
+    },
+    "Accessory_Group_24_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 24,
+      "grade": 0
+    },
+    "Accessory_Group_24_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 24,
+      "grade": 1
+    },
+    "Accessory_Group_24_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 24,
+      "grade": 2
+    },
+    "Accessory_Group_24_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 24,
+      "grade": 3
+    },
+    "Accessory_Group_27_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 27,
+      "grade": 0
+    },
+    "Accessory_Group_27_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 27,
+      "grade": 1
+    },
+    "Accessory_Group_27_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 27,
+      "grade": 2
+    },
+    "Accessory_Group_27_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 27,
+      "grade": 3
+    },
+    "Accessory_Group_30_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 30,
+      "grade": 0
+    },
+    "Accessory_Group_30_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 30,
+      "grade": 1
+    },
+    "Accessory_Group_30_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 30,
+      "grade": 2
+    },
+    "Accessory_Group_30_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 30,
+      "grade": 3
+    },
+    "Accessory_Group_30_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 30,
+      "grade": 4
+    },
+    "Accessory_Group_34_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 34,
+      "grade": 0
+    },
+    "Accessory_Group_34_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 34,
+      "grade": 1
+    },
+    "Accessory_Group_34_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 34,
+      "grade": 2
+    },
+    "Accessory_Group_34_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 34,
+      "grade": 3
+    },
+    "Accessory_Group_34_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 34,
+      "grade": 4
+    },
+    "Accessory_Group_37_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 37,
+      "grade": 0
+    },
+    "Accessory_Group_37_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 37,
+      "grade": 1
+    },
+    "Accessory_Group_37_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 37,
+      "grade": 2
+    },
+    "Accessory_Group_37_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 37,
+      "grade": 3
+    },
+    "Accessory_Group_37_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 37,
+      "grade": 4
+    },
+    "Accessory_Group_40_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 40,
+      "grade": 0
+    },
+    "Accessory_Group_40_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 40,
+      "grade": 1
+    },
+    "Accessory_Group_40_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 40,
+      "grade": 2
+    },
+    "Accessory_Group_40_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 40,
+      "grade": 3
+    },
+    "Accessory_Group_40_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 40,
+      "grade": 4
+    },
+    "Accessory_Group_44_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 44,
+      "grade": 0
+    },
+    "Accessory_Group_44_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 44,
+      "grade": 1
+    },
+    "Accessory_Group_44_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 44,
+      "grade": 2
+    },
+    "Accessory_Group_44_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 44,
+      "grade": 3
+    },
+    "Accessory_Group_44_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 44,
+      "grade": 4
+    },
+    "Accessory_Group_47_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 47,
+      "grade": 0
+    },
+    "Accessory_Group_47_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 47,
+      "grade": 1
+    },
+    "Accessory_Group_47_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 47,
+      "grade": 2
+    },
+    "Accessory_Group_47_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 47,
+      "grade": 3
+    },
+    "Accessory_Group_47_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 47,
+      "grade": 4
+    },
+    "Accessory_Group_50_N": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 50,
+      "grade": 0
+    },
+    "Accessory_Group_50_S": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 50,
+      "grade": 1
+    },
+    "Accessory_Group_50_R": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 50,
+      "grade": 2
+    },
+    "Accessory_Group_50_M": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 50,
+      "grade": 3
+    },
+    "Accessory_Group_50_U": {
+      "items": [],
+      "kind": "Accessory",
+      "level": 50,
+      "grade": 4
+    },
+    "Armor_Group_1_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 1,
+      "grade": 1
+    },
+    "Armor_Group_1_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 1,
+      "grade": 2
+    },
+    "Armor_Group_5_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 5,
+      "grade": 0
+    },
+    "Armor_Group_5_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 5,
+      "grade": 1
+    },
+    "Armor_Group_5_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 5,
+      "grade": 2
+    },
+    "Armor_Group_10_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 10,
+      "grade": 0
+    },
+    "Armor_Group_10_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 10,
+      "grade": 1
+    },
+    "Armor_Group_10_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 10,
+      "grade": 2
+    },
+    "Armor_Group_15_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 15,
+      "grade": 0
+    },
+    "Armor_Group_15_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 15,
+      "grade": 1
+    },
+    "Armor_Group_15_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 15,
+      "grade": 2
+    },
+    "Armor_Group_20_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 20,
+      "grade": 0
+    },
+    "Armor_Group_20_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 20,
+      "grade": 1
+    },
+    "Armor_Group_20_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 20,
+      "grade": 2
+    },
+    "Armor_Group_20_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 20,
+      "grade": 3
+    },
+    "Armor_Group_20_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 20,
+      "grade": 4
+    },
+    "Armor_Group_24_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 24,
+      "grade": 0
+    },
+    "Armor_Group_24_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 24,
+      "grade": 1
+    },
+    "Armor_Group_24_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 24,
+      "grade": 2
+    },
+    "Armor_Group_24_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 24,
+      "grade": 3
+    },
+    "Armor_Group_27_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 27,
+      "grade": 0
+    },
+    "Armor_Group_27_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 27,
+      "grade": 1
+    },
+    "Armor_Group_27_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 27,
+      "grade": 2
+    },
+    "Armor_Group_27_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 27,
+      "grade": 3
+    },
+    "Armor_Group_30_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 30,
+      "grade": 0
+    },
+    "Armor_Group_30_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 30,
+      "grade": 1
+    },
+    "Armor_Group_30_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 30,
+      "grade": 2
+    },
+    "Armor_Group_30_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 30,
+      "grade": 3
+    },
+    "Armor_Group_30_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 30,
+      "grade": 4
+    },
+    "Armor_Group_34_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 34,
+      "grade": 0
+    },
+    "Armor_Group_34_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 34,
+      "grade": 1
+    },
+    "Armor_Group_34_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 34,
+      "grade": 2
+    },
+    "Armor_Group_34_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 34,
+      "grade": 3
+    },
+    "Armor_Group_34_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 34,
+      "grade": 4
+    },
+    "Armor_Group_37_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 37,
+      "grade": 0
+    },
+    "Armor_Group_37_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 37,
+      "grade": 1
+    },
+    "Armor_Group_37_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 37,
+      "grade": 2
+    },
+    "Armor_Group_37_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 37,
+      "grade": 3
+    },
+    "Armor_Group_37_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 37,
+      "grade": 4
+    },
+    "Armor_Group_40_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 40,
+      "grade": 0
+    },
+    "Armor_Group_40_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 40,
+      "grade": 1
+    },
+    "Armor_Group_40_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 40,
+      "grade": 2
+    },
+    "Armor_Group_40_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 40,
+      "grade": 3
+    },
+    "Armor_Group_40_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 40,
+      "grade": 4
+    },
+    "Armor_Group_44_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 44,
+      "grade": 0
+    },
+    "Armor_Group_44_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 44,
+      "grade": 1
+    },
+    "Armor_Group_44_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 44,
+      "grade": 2
+    },
+    "Armor_Group_44_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 44,
+      "grade": 3
+    },
+    "Armor_Group_44_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 44,
+      "grade": 4
+    },
+    "Armor_Group_47_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 47,
+      "grade": 0
+    },
+    "Armor_Group_47_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 47,
+      "grade": 1
+    },
+    "Armor_Group_47_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 47,
+      "grade": 2
+    },
+    "Armor_Group_47_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 47,
+      "grade": 3
+    },
+    "Armor_Group_47_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 47,
+      "grade": 4
+    },
+    "Armor_Group_50_N": {
+      "items": [],
+      "kind": "Armor",
+      "level": 50,
+      "grade": 0
+    },
+    "Armor_Group_50_S": {
+      "items": [],
+      "kind": "Armor",
+      "level": 50,
+      "grade": 1
+    },
+    "Armor_Group_50_R": {
+      "items": [],
+      "kind": "Armor",
+      "level": 50,
+      "grade": 2
+    },
+    "Armor_Group_50_M": {
+      "items": [],
+      "kind": "Armor",
+      "level": 50,
+      "grade": 3
+    },
+    "Armor_Group_50_U": {
+      "items": [],
+      "kind": "Armor",
+      "level": 50,
+      "grade": 4
+    },
+    "Weapon_Group_1_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 1,
+      "grade": 1
+    },
+    "Weapon_Group_1_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 1,
+      "grade": 2
+    },
+    "Weapon_Group_5_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 5,
+      "grade": 0
+    },
+    "Weapon_Group_5_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 5,
+      "grade": 1
+    },
+    "Weapon_Group_5_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 5,
+      "grade": 2
+    },
+    "Weapon_Group_10_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 10,
+      "grade": 0
+    },
+    "Weapon_Group_10_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 10,
+      "grade": 1
+    },
+    "Weapon_Group_10_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 10,
+      "grade": 2
+    },
+    "Weapon_Group_15_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 15,
+      "grade": 0
+    },
+    "Weapon_Group_15_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 15,
+      "grade": 1
+    },
+    "Weapon_Group_15_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 15,
+      "grade": 2
+    },
+    "Weapon_Group_20_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 20,
+      "grade": 0
+    },
+    "Weapon_Group_20_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 20,
+      "grade": 1
+    },
+    "Weapon_Group_20_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 20,
+      "grade": 2
+    },
+    "Weapon_Group_20_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 20,
+      "grade": 3
+    },
+    "Weapon_Group_20_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 20,
+      "grade": 4
+    },
+    "Weapon_Group_24_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 24,
+      "grade": 0
+    },
+    "Weapon_Group_24_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 24,
+      "grade": 1
+    },
+    "Weapon_Group_24_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 24,
+      "grade": 2
+    },
+    "Weapon_Group_24_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 24,
+      "grade": 3
+    },
+    "Weapon_Group_27_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 27,
+      "grade": 0
+    },
+    "Weapon_Group_27_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 27,
+      "grade": 1
+    },
+    "Weapon_Group_27_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 27,
+      "grade": 2
+    },
+    "Weapon_Group_27_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 27,
+      "grade": 3
+    },
+    "Weapon_Group_30_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 30,
+      "grade": 0
+    },
+    "Weapon_Group_30_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 30,
+      "grade": 1
+    },
+    "Weapon_Group_30_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 30,
+      "grade": 2
+    },
+    "Weapon_Group_30_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 30,
+      "grade": 3
+    },
+    "Weapon_Group_30_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 30,
+      "grade": 4
+    },
+    "Weapon_Group_34_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 34,
+      "grade": 0
+    },
+    "Weapon_Group_34_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 34,
+      "grade": 1
+    },
+    "Weapon_Group_34_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 34,
+      "grade": 2
+    },
+    "Weapon_Group_34_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 34,
+      "grade": 3
+    },
+    "Weapon_Group_34_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 34,
+      "grade": 4
+    },
+    "Weapon_Group_37_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 37,
+      "grade": 0
+    },
+    "Weapon_Group_37_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 37,
+      "grade": 1
+    },
+    "Weapon_Group_37_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 37,
+      "grade": 2
+    },
+    "Weapon_Group_37_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 37,
+      "grade": 3
+    },
+    "Weapon_Group_37_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 37,
+      "grade": 4
+    },
+    "Weapon_Group_40_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 40,
+      "grade": 0
+    },
+    "Weapon_Group_40_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 40,
+      "grade": 1
+    },
+    "Weapon_Group_40_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 40,
+      "grade": 2
+    },
+    "Weapon_Group_40_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 40,
+      "grade": 3
+    },
+    "Weapon_Group_40_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 40,
+      "grade": 4
+    },
+    "Weapon_Group_44_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 44,
+      "grade": 0
+    },
+    "Weapon_Group_44_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 44,
+      "grade": 1
+    },
+    "Weapon_Group_44_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 44,
+      "grade": 2
+    },
+    "Weapon_Group_44_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 44,
+      "grade": 3
+    },
+    "Weapon_Group_44_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 44,
+      "grade": 4
+    },
+    "Weapon_Group_47_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 47,
+      "grade": 0
+    },
+    "Weapon_Group_47_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 47,
+      "grade": 1
+    },
+    "Weapon_Group_47_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 47,
+      "grade": 2
+    },
+    "Weapon_Group_47_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 47,
+      "grade": 3
+    },
+    "Weapon_Group_47_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 47,
+      "grade": 4
+    },
+    "Weapon_Group_50_N": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 50,
+      "grade": 0
+    },
+    "Weapon_Group_50_S": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 50,
+      "grade": 1
+    },
+    "Weapon_Group_50_R": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 50,
+      "grade": 2
+    },
+    "Weapon_Group_50_M": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 50,
+      "grade": 3
+    },
+    "Weapon_Group_50_U": {
+      "items": [],
+      "kind": "Weapon",
+      "level": 50,
+      "grade": 4
+    },
+    "Avatar_Group_1_R": {
+      "items": [],
+      "kind": "Avatar",
+      "level": 1,
+      "grade": 2
+    },
+    "Avatar_Group_20_R": {
+      "items": [],
+      "kind": "Avatar",
+      "level": 20,
+      "grade": 2
+    },
+    "Avatar_Group_30_M": {
+      "items": [],
+      "kind": "Avatar",
+      "level": 30,
+      "grade": 3
+    },
+    "Avatar_Group_40_M": {
+      "items": [],
+      "kind": "Avatar",
+      "level": 40,
+      "grade": 3
+    },
+    "Mark_N_Group_30_R": {
+      "items": [
+        [
+          "MMrk151",
+          1
+        ],
+        [
+          "MMrk152",
+          1
+        ],
+        [
+          "MMrk155",
+          1
+        ],
+        [
+          "MMrk158",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_N_Group_30_U": {
+      "items": [
+        [
+          "MMrk153",
+          1
+        ],
+        [
+          "MMrk154",
+          1
+        ],
+        [
+          "MMrk156",
+          1
+        ],
+        [
+          "MMrk157",
+          1
+        ],
+        [
+          "MMrk159",
+          1
+        ],
+        [
+          "MMrk160",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_N_Group_40_R": {
+      "items": [
+        [
+          "MMrk161",
+          1
+        ],
+        [
+          "MMrk162",
+          1
+        ],
+        [
+          "MMrk165",
+          1
+        ],
+        [
+          "MMrk168",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_N_Group_40_U": {
+      "items": [
+        [
+          "MMrk163",
+          1
+        ],
+        [
+          "MMrk164",
+          1
+        ],
+        [
+          "MMrk166",
+          1
+        ],
+        [
+          "MMrk167",
+          1
+        ],
+        [
+          "MMrk169",
+          1
+        ],
+        [
+          "MMrk170",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_N_Group_50_R": {
+      "items": [
+        [
+          "MMrk171",
+          1
+        ],
+        [
+          "MMrk172",
+          1
+        ],
+        [
+          "MMrk175",
+          1
+        ],
+        [
+          "MMrk178",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_N_Group_50_U": {
+      "items": [
+        [
+          "MMrk173",
+          1
+        ],
+        [
+          "MMrk174",
+          1
+        ],
+        [
+          "MMrk176",
+          1
+        ],
+        [
+          "MMrk177",
+          1
+        ],
+        [
+          "MMrk179",
+          1
+        ],
+        [
+          "MMrk180",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SP_Group_30_M": {
+      "items": [
+        [
+          "MMrk000",
+          1
+        ],
+        [
+          "MMrk007",
+          1
+        ],
+        [
+          "MMrk015",
+          1
+        ],
+        [
+          "MMrk021",
+          1
+        ],
+        [
+          "MMrk027",
+          1
+        ],
+        [
+          "MMrk034",
+          1
+        ],
+        [
+          "MMrk035",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SP_Group_40_M": {
+      "items": [
+        [
+          "MMrk040",
+          1
+        ],
+        [
+          "MMrk048",
+          1
+        ],
+        [
+          "MMrk058",
+          1
+        ],
+        [
+          "MMrk059",
+          1
+        ],
+        [
+          "MMrk067",
+          1
+        ],
+        [
+          "MMrk076",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SP_Group_50_M": {
+      "items": [
+        [
+          "MMrk095",
+          1
+        ],
+        [
+          "MMrk104",
+          1
+        ],
+        [
+          "MMrk105",
+          1
+        ],
+        [
+          "MMrk112",
+          1
+        ],
+        [
+          "MMrk115",
+          1
+        ],
+        [
+          "MMrk122",
+          1
+        ],
+        [
+          "MMrk131",
+          1
+        ],
+        [
+          "MMrk134",
+          1
+        ],
+        [
+          "MMrk142",
+          1
+        ],
+        [
+          "MMrk143",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SA_Group_30_M": {
+      "items": [
+        [
+          "MMrk002",
+          1
+        ],
+        [
+          "MMrk005",
+          1
+        ],
+        [
+          "MMrk009",
+          1
+        ],
+        [
+          "MMrk012",
+          1
+        ],
+        [
+          "MMrk017",
+          1
+        ],
+        [
+          "MMrk023",
+          1
+        ],
+        [
+          "MMrk024",
+          1
+        ],
+        [
+          "MMrk029",
+          1
+        ],
+        [
+          "MMrk036",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SA_Group_40_M": {
+      "items": [
+        [
+          "MMrk043",
+          1
+        ],
+        [
+          "MMrk046",
+          1
+        ],
+        [
+          "MMrk051",
+          1
+        ],
+        [
+          "MMrk054",
+          1
+        ],
+        [
+          "MMrk061",
+          1
+        ],
+        [
+          "MMrk064",
+          1
+        ],
+        [
+          "MMrk070",
+          1
+        ],
+        [
+          "MMrk073",
+          1
+        ],
+        [
+          "MMrk079",
+          1
+        ],
+        [
+          "MMrk082",
+          1
+        ],
+        [
+          "MMrk089",
+          1
+        ],
+        [
+          "MMrk092",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SA_Group_50_M": {
+      "items": [
+        [
+          "MMrk098",
+          1
+        ],
+        [
+          "MMrk106",
+          1
+        ],
+        [
+          "MMrk109",
+          1
+        ],
+        [
+          "MMrk116",
+          1
+        ],
+        [
+          "MMrk119",
+          1
+        ],
+        [
+          "MMrk125",
+          1
+        ],
+        [
+          "MMrk128",
+          1
+        ],
+        [
+          "MMrk135",
+          1
+        ],
+        [
+          "MMrk138",
+          1
+        ],
+        [
+          "MMrk145",
+          1
+        ],
+        [
+          "MMrk148",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SC_Group_30_M": {
+      "items": [
+        [
+          "MMrk003",
+          1
+        ],
+        [
+          "MMrk004",
+          1
+        ],
+        [
+          "MMrk006",
+          1
+        ],
+        [
+          "MMrk010",
+          1
+        ],
+        [
+          "MMrk011",
+          1
+        ],
+        [
+          "MMrk013",
+          1
+        ],
+        [
+          "MMrk014",
+          1
+        ],
+        [
+          "MMrk018",
+          1
+        ],
+        [
+          "MMrk019",
+          1
+        ],
+        [
+          "MMrk020",
+          1
+        ],
+        [
+          "MMrk025",
+          1
+        ],
+        [
+          "MMrk026",
+          1
+        ],
+        [
+          "MMrk030",
+          1
+        ],
+        [
+          "MMrk031",
+          1
+        ],
+        [
+          "MMrk032",
+          1
+        ],
+        [
+          "MMrk033",
+          1
+        ],
+        [
+          "MMrk037",
+          1
+        ],
+        [
+          "MMrk038",
+          1
+        ],
+        [
+          "MMrk039",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SC_Group_40_M": {
+      "items": [
+        [
+          "MMrk044",
+          1
+        ],
+        [
+          "MMrk045",
+          1
+        ],
+        [
+          "MMrk047",
+          1
+        ],
+        [
+          "MMrk052",
+          1
+        ],
+        [
+          "MMrk053",
+          1
+        ],
+        [
+          "MMrk055",
+          1
+        ],
+        [
+          "MMrk056",
+          1
+        ],
+        [
+          "MMrk062",
+          1
+        ],
+        [
+          "MMrk063",
+          1
+        ],
+        [
+          "MMrk065",
+          1
+        ],
+        [
+          "MMrk066",
+          1
+        ],
+        [
+          "MMrk071",
+          1
+        ],
+        [
+          "MMrk072",
+          1
+        ],
+        [
+          "MMrk074",
+          1
+        ],
+        [
+          "MMrk075",
+          1
+        ],
+        [
+          "MMrk080",
+          1
+        ],
+        [
+          "MMrk081",
+          1
+        ],
+        [
+          "MMrk083",
+          1
+        ],
+        [
+          "MMrk084",
+          1
+        ],
+        [
+          "MMrk090",
+          1
+        ],
+        [
+          "MMrk091",
+          1
+        ],
+        [
+          "MMrk093",
+          1
+        ],
+        [
+          "MMrk094",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Mark_SC_Group_50_M": {
+      "items": [
+        [
+          "MMrk099",
+          1
+        ],
+        [
+          "MMrk100",
+          1
+        ],
+        [
+          "MMrk101",
+          1
+        ],
+        [
+          "MMrk102",
+          1
+        ],
+        [
+          "MMrk107",
+          1
+        ],
+        [
+          "MMrk108",
+          1
+        ],
+        [
+          "MMrk110",
+          1
+        ],
+        [
+          "MMrk111",
+          1
+        ],
+        [
+          "MMrk117",
+          1
+        ],
+        [
+          "MMrk118",
+          1
+        ],
+        [
+          "MMrk120",
+          1
+        ],
+        [
+          "MMrk121",
+          1
+        ],
+        [
+          "MMrk126",
+          1
+        ],
+        [
+          "MMrk127",
+          1
+        ],
+        [
+          "MMrk129",
+          1
+        ],
+        [
+          "MMrk130",
+          1
+        ],
+        [
+          "MMrk136",
+          1
+        ],
+        [
+          "MMrk137",
+          1
+        ],
+        [
+          "MMrk139",
+          1
+        ],
+        [
+          "MMrk140",
+          1
+        ],
+        [
+          "MMrk146",
+          1
+        ],
+        [
+          "MMrk147",
+          1
+        ],
+        [
+          "MMrk149",
+          1
+        ],
+        [
+          "MMrk150",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Riding_Group_1_M": {
+      "items": [
+        [
+          "IRid1M254",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Throw_Group_30_S": {
+      "items": [
+        [
+          "Ithr30S324",
+          1
+        ],
+        [
+          "Ithr30S325",
+          1
+        ],
+        [
+          "Ithr30S326",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Throw_Group_40_S": {
+      "items": [
+        [
+          "Ithr40S327",
+          1
+        ],
+        [
+          "Ithr40S328",
+          1
+        ],
+        [
+          "Ithr40S329",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    },
+    "Throw_Group_50_S": {
+      "items": [
+        [
+          "Ithr50S330",
+          1
+        ],
+        [
+          "Ithr50S331",
+          1
+        ],
+        [
+          "Ithr50S332",
+          1
+        ]
+      ],
+      "kind": "",
+      "level": 1,
+      "grade": 0
+    }
+  },
+  "dungeons": {
+    "Act1_G1_A1": [
+      [
+        "Weapon_Group_1_S",
+        [
+          0.08433957047,
+          0.08433957047,
+          0.08433957047,
+          0.08433957047
+        ]
+      ],
+      [
+        "Weapon_Group_1_R",
+        [
+          0.02064706425,
+          0.02064706425,
+          0.02064706425,
+          0.02064706425
+        ]
+      ],
+      [
+        "Armor_Group_1_S",
+        [
+          0.1686791409,
+          0.1686791409,
+          0.1686791409,
+          0.1686791409
+        ]
+      ],
+      [
+        "Armor_Group_1_R",
+        [
+          0.04129412849,
+          0.04129412849,
+          0.04129412849,
+          0.04129412849
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.01032353212,
+          0.01032353212,
+          0.01032353212,
+          0.01032353212
+        ]
+      ],
+      [
+        "GeneralItem_Group_3_N",
+        [
+          0.6747165637,
+          0.6747165637,
+          0.6747165637,
+          0.6747165637
+        ]
+      ]
+    ],
+    "Act1_G1_A2": [
+      [
+        "Weapon_Group_5_N",
+        [
+          0.1093778017,
+          0.1093778017,
+          0.1093778017,
+          0.1093778017
+        ]
+      ],
+      [
+        "Weapon_Group_5_S",
+        [
+          0.05468890084,
+          0.05468890084,
+          0.05468890084,
+          0.05468890084
+        ]
+      ],
+      [
+        "Weapon_Group_5_R",
+        [
+          0.02008248162,
+          0.02008248162,
+          0.02008248162,
+          0.02008248162
+        ]
+      ],
+      [
+        "Armor_Group_5_N",
+        [
+          0.2187556034,
+          0.2187556034,
+          0.2187556034,
+          0.2187556034
+        ]
+      ],
+      [
+        "Armor_Group_5_S",
+        [
+          0.1093778017,
+          0.1093778017,
+          0.1093778017,
+          0.1093778017
+        ]
+      ],
+      [
+        "Armor_Group_5_R",
+        [
+          0.04016496324,
+          0.04016496324,
+          0.04016496324,
+          0.04016496324
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.01004124081,
+          0.01004124081,
+          0.01004124081,
+          0.01004124081
+        ]
+      ],
+      [
+        "GeneralItem_Group_3_N",
+        [
+          0.4375112067,
+          0.4375112067,
+          0.4375112067,
+          0.4375112067
+        ]
+      ]
+    ],
+    "Act1_G1_A3": [
+      [
+        "Weapon_Group_5_N",
+        [
+          0.1044818727,
+          0.1044818727,
+          0.1044818727,
+          0.1044818727
+        ]
+      ],
+      [
+        "Weapon_Group_5_S",
+        [
+          0.05224093634,
+          0.05224093634,
+          0.05224093634,
+          0.05224093634
+        ]
+      ],
+      [
+        "Weapon_Group_5_R",
+        [
+          0.03197259492,
+          0.03197259492,
+          0.03197259492,
+          0.03197259492
+        ]
+      ],
+      [
+        "Armor_Group_5_N",
+        [
+          0.2089637454,
+          0.2089637454,
+          0.2089637454,
+          0.2089637454
+        ]
+      ],
+      [
+        "Armor_Group_5_S",
+        [
+          0.1044818727,
+          0.1044818727,
+          0.1044818727,
+          0.1044818727
+        ]
+      ],
+      [
+        "Armor_Group_5_R",
+        [
+          0.06394518984,
+          0.06394518984,
+          0.06394518984,
+          0.06394518984
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.01598629746,
+          0.01598629746,
+          0.01598629746,
+          0.01598629746
+        ]
+      ],
+      [
+        "GeneralItem_Group_8_N",
+        [
+          0.4179274907,
+          0.4179274907,
+          0.4179274907,
+          0.4179274907
+        ]
+      ]
+    ],
+    "Act1_G1_A4": [
+      [
+        "ReinforcingStone_Group_10_S",
+        [
+          0.1495098039,
+          0.1495098039,
+          0.1495098039,
+          0.1495098039
+        ]
+      ],
+      [
+        "Weapon_Group_10_N",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Weapon_Group_10_S",
+        [
+          0.03737745098,
+          0.03737745098,
+          0.03737745098,
+          0.03737745098
+        ]
+      ],
+      [
+        "Weapon_Group_10_R",
+        [
+          0.02287581699,
+          0.02287581699,
+          0.02287581699,
+          0.02287581699
+        ]
+      ],
+      [
+        "Armor_Group_10_N",
+        [
+          0.1495098039,
+          0.1495098039,
+          0.1495098039,
+          0.1495098039
+        ]
+      ],
+      [
+        "Armor_Group_10_S",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Armor_Group_10_R",
+        [
+          0.04575163399,
+          0.04575163399,
+          0.04575163399,
+          0.04575163399
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.0114379085,
+          0.0114379085,
+          0.0114379085,
+          0.0114379085
+        ]
+      ],
+      [
+        "Accessory_Group_10_N",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Accessory_Group_10_S",
+        [
+          0.03737745098,
+          0.03737745098,
+          0.03737745098,
+          0.03737745098
+        ]
+      ],
+      [
+        "Accessory_Group_10_R",
+        [
+          0.02287581699,
+          0.02287581699,
+          0.02287581699,
+          0.02287581699
+        ]
+      ],
+      [
+        "GeneralItem_Group_8_N",
+        [
+          0.2990196078,
+          0.2990196078,
+          0.2990196078,
+          0.2990196078
+        ]
+      ]
+    ],
+    "Act1_G2_B1": [
+      [
+        "ReinforcingStone_Group_10_S",
+        [
+          0.1510648836,
+          0.1510648836,
+          0.1510648836,
+          0.1510648836
+        ]
+      ],
+      [
+        "Weapon_Group_10_N",
+        [
+          0.0755324418,
+          0.0755324418,
+          0.0755324418,
+          0.0755324418
+        ]
+      ],
+      [
+        "Weapon_Group_10_S",
+        [
+          0.0377662209,
+          0.0377662209,
+          0.0377662209,
+          0.0377662209
+        ]
+      ],
+      [
+        "Weapon_Group_10_R",
+        [
+          0.02080237741,
+          0.02080237741,
+          0.02080237741,
+          0.02080237741
+        ]
+      ],
+      [
+        "Armor_Group_10_N",
+        [
+          0.1510648836,
+          0.1510648836,
+          0.1510648836,
+          0.1510648836
+        ]
+      ],
+      [
+        "Armor_Group_10_S",
+        [
+          0.0755324418,
+          0.0755324418,
+          0.0755324418,
+          0.0755324418
+        ]
+      ],
+      [
+        "Armor_Group_10_R",
+        [
+          0.04160475483,
+          0.04160475483,
+          0.04160475483,
+          0.04160475483
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.01040118871,
+          0.01040118871,
+          0.01040118871,
+          0.01040118871
+        ]
+      ],
+      [
+        "Accessory_Group_10_N",
+        [
+          0.0755324418,
+          0.0755324418,
+          0.0755324418,
+          0.0755324418
+        ]
+      ],
+      [
+        "Accessory_Group_10_S",
+        [
+          0.0377662209,
+          0.0377662209,
+          0.0377662209,
+          0.0377662209
+        ]
+      ],
+      [
+        "Accessory_Group_10_R",
+        [
+          0.02080237741,
+          0.02080237741,
+          0.02080237741,
+          0.02080237741
+        ]
+      ],
+      [
+        "GeneralItem_Group_8_N",
+        [
+          0.3021297672,
+          0.3021297672,
+          0.3021297672,
+          0.3021297672
+        ]
+      ]
+    ],
+    "Act1_G2_B2": [
+      [
+        "ReinforcingStone_Group_10_S",
+        [
+          0.1495098039,
+          0.1495098039,
+          0.1495098039,
+          0.1495098039
+        ]
+      ],
+      [
+        "Weapon_Group_10_N",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Weapon_Group_10_S",
+        [
+          0.03737745098,
+          0.03737745098,
+          0.03737745098,
+          0.03737745098
+        ]
+      ],
+      [
+        "Weapon_Group_10_R",
+        [
+          0.02287581699,
+          0.02287581699,
+          0.02287581699,
+          0.02287581699
+        ]
+      ],
+      [
+        "Armor_Group_10_N",
+        [
+          0.1495098039,
+          0.1495098039,
+          0.1495098039,
+          0.1495098039
+        ]
+      ],
+      [
+        "Armor_Group_10_S",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Armor_Group_10_R",
+        [
+          0.04575163399,
+          0.04575163399,
+          0.04575163399,
+          0.04575163399
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.0114379085,
+          0.0114379085,
+          0.0114379085,
+          0.0114379085
+        ]
+      ],
+      [
+        "Accessory_Group_10_N",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Accessory_Group_10_S",
+        [
+          0.03737745098,
+          0.03737745098,
+          0.03737745098,
+          0.03737745098
+        ]
+      ],
+      [
+        "Accessory_Group_10_R",
+        [
+          0.02287581699,
+          0.02287581699,
+          0.02287581699,
+          0.02287581699
+        ]
+      ],
+      [
+        "GeneralItem_Group_13_N",
+        [
+          0.2990196078,
+          0.2990196078,
+          0.2990196078,
+          0.2990196078
+        ]
+      ]
+    ],
+    "Act1_G2_B3": [
+      [
+        "ReinforcingStone_Group_10_S",
+        [
+          0.1495098039,
+          0.1495098039,
+          0.1495098039,
+          0.1495098039
+        ]
+      ],
+      [
+        "Weapon_Group_15_N",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Weapon_Group_15_S",
+        [
+          0.03737745098,
+          0.03737745098,
+          0.03737745098,
+          0.03737745098
+        ]
+      ],
+      [
+        "Weapon_Group_15_R",
+        [
+          0.02287581699,
+          0.02287581699,
+          0.02287581699,
+          0.02287581699
+        ]
+      ],
+      [
+        "Armor_Group_15_N",
+        [
+          0.1495098039,
+          0.1495098039,
+          0.1495098039,
+          0.1495098039
+        ]
+      ],
+      [
+        "Armor_Group_15_S",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Armor_Group_15_R",
+        [
+          0.04575163399,
+          0.04575163399,
+          0.04575163399,
+          0.04575163399
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.0114379085,
+          0.0114379085,
+          0.0114379085,
+          0.0114379085
+        ]
+      ],
+      [
+        "Accessory_Group_15_N",
+        [
+          0.07475490196,
+          0.07475490196,
+          0.07475490196,
+          0.07475490196
+        ]
+      ],
+      [
+        "Accessory_Group_15_S",
+        [
+          0.03737745098,
+          0.03737745098,
+          0.03737745098,
+          0.03737745098
+        ]
+      ],
+      [
+        "Accessory_Group_15_R",
+        [
+          0.02287581699,
+          0.02287581699,
+          0.02287581699,
+          0.02287581699
+        ]
+      ],
+      [
+        "GeneralItem_Group_13_N",
+        [
+          0.2990196078,
+          0.2990196078,
+          0.2990196078,
+          0.2990196078
+        ]
+      ]
+    ],
+    "Act1_G2_B4": [
+      [
+        "ReinforcingStone_Group_10_S",
+        [
+          0.1559304703,
+          0.1559304703,
+          0.1559304703,
+          0.1559304703
+        ]
+      ],
+      [
+        "Weapon_Group_15_N",
+        [
+          0.07796523517,
+          0.07796523517,
+          0.07796523517,
+          0.07796523517
+        ]
+      ],
+      [
+        "Weapon_Group_15_S",
+        [
+          0.03898261759,
+          0.03898261759,
+          0.03898261759,
+          0.03898261759
+        ]
+      ],
+      [
+        "Weapon_Group_15_R",
+        [
+          0.01431492843,
+          0.01431492843,
+          0.01431492843,
+          0.01431492843
+        ]
+      ],
+      [
+        "Armor_Group_15_N",
+        [
+          0.1559304703,
+          0.1559304703,
+          0.1559304703,
+          0.1559304703
+        ]
+      ],
+      [
+        "Armor_Group_15_S",
+        [
+          0.07796523517,
+          0.07796523517,
+          0.07796523517,
+          0.07796523517
+        ]
+      ],
+      [
+        "Armor_Group_15_R",
+        [
+          0.02862985685,
+          0.02862985685,
+          0.02862985685,
+          0.02862985685
+        ]
+      ],
+      [
+        "Avatar_Group_1_R",
+        [
+          0.007157464213,
+          0.007157464213,
+          0.007157464213,
+          0.007157464213
+        ]
+      ],
+      [
+        "Accessory_Group_15_N",
+        [
+          0.07796523517,
+          0.07796523517,
+          0.07796523517,
+          0.07796523517
+        ]
+      ],
+      [
+        "Accessory_Group_15_S",
+        [
+          0.03898261759,
+          0.03898261759,
+          0.03898261759,
+          0.03898261759
+        ]
+      ],
+      [
+        "Accessory_Group_15_R",
+        [
+          0.01431492843,
+          0.01431492843,
+          0.01431492843,
+          0.01431492843
+        ]
+      ],
+      [
+        "GeneralItem_Group_13_N",
+        [
+          0.3118609407,
+          0.3118609407,
+          0.3118609407,
+          0.3118609407
+        ]
+      ]
+    ],
+    "Act1_G2_B5": [
+      [
+        "ReinforcingStone_Group_20_S",
+        [
+          0.08442018556,
+          0.08442018556,
+          0.08442018556,
+          0.08442018556
+        ]
+      ],
+      [
+        "Weapon_Group_20_N",
+        [
+          0.04221009278,
+          0.04221009278,
+          0.04221009278,
+          0.04221009278
+        ]
+      ],
+      [
+        "Weapon_Group_20_S",
+        [
+          0.02110504639,
+          0.02110504639,
+          0.02110504639,
+          0.02110504639
+        ]
+      ],
+      [
+        "Weapon_Group_20_R",
+        [
+          0.01162507473,
+          0.01162507473,
+          0.01162507473,
+          0.01162507473
+        ]
+      ],
+      [
+        "Weapon_Group_20_M",
+        [
+          0.00174376121,
+          0.00174376121,
+          0.00174376121,
+          0.00174376121
+        ]
+      ],
+      [
+        "Weapon_Group_20_U",
+        [
+          0.000697504484,
+          0.000697504484,
+          0.000697504484,
+          0.000697504484
+        ]
+      ],
+      [
+        "Armor_Group_20_N",
+        [
+          0.08442018556,
+          0.08442018556,
+          0.08442018556,
+          0.08442018556
+        ]
+      ],
+      [
+        "Armor_Group_20_S",
+        [
+          0.04221009278,
+          0.04221009278,
+          0.04221009278,
+          0.04221009278
+        ]
+      ],
+      [
+        "Armor_Group_20_R",
+        [
+          0.02325014947,
+          0.02325014947,
+          0.02325014947,
+          0.02325014947
+        ]
+      ],
+      [
+        "Armor_Group_20_M",
+        [
+          0.00348752242,
+          0.00348752242,
+          0.00348752242,
+          0.00348752242
+        ]
+      ],
+      [
+        "Armor_Group_20_U",
+        [
+          0.001395008968,
+          0.001395008968,
+          0.001395008968,
+          0.001395008968
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.005812537366,
+          0.005812537366,
+          0.005812537366,
+          0.005812537366
+        ]
+      ],
+      [
+        "Accessory_Group_20_N",
+        [
+          0.04221009278,
+          0.04221009278,
+          0.04221009278,
+          0.04221009278
+        ]
+      ],
+      [
+        "Accessory_Group_20_S",
+        [
+          0.02110504639,
+          0.02110504639,
+          0.02110504639,
+          0.02110504639
+        ]
+      ],
+      [
+        "Accessory_Group_20_R",
+        [
+          0.01162507473,
+          0.01162507473,
+          0.01162507473,
+          0.01162507473
+        ]
+      ],
+      [
+        "Accessory_Group_20_M",
+        [
+          0.00174376121,
+          0.00174376121,
+          0.00174376121,
+          0.00174376121
+        ]
+      ],
+      [
+        "Accessory_Group_20_U",
+        [
+          0.000697504484,
+          0.000697504484,
+          0.000697504484,
+          0.000697504484
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3376807422,
+          0.3376807422,
+          0.3376807422,
+          0.3376807422
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08442018556,
+          0.08442018556,
+          0.08442018556,
+          0.08442018556
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.009300059786,
+          0.009300059786,
+          0.009300059786,
+          0.009300059786
+        ]
+      ],
+      [
+        "GeneralItem_Group_18_N",
+        [
+          0.1688403711,
+          0.1688403711,
+          0.1688403711,
+          0.1688403711
+        ]
+      ]
+    ],
+    "Act2_G1_A1": [
+      [
+        "ReinforcingStone_Group_20_S",
+        [
+          0.08442018556,
+          0.08442018556,
+          0.08442018556,
+          0.08442018556
+        ]
+      ],
+      [
+        "Weapon_Group_20_N",
+        [
+          0.04221009278,
+          0.04221009278,
+          0.04221009278,
+          0.04221009278
+        ]
+      ],
+      [
+        "Weapon_Group_20_S",
+        [
+          0.02110504639,
+          0.02110504639,
+          0.02110504639,
+          0.02110504639
+        ]
+      ],
+      [
+        "Weapon_Group_20_R",
+        [
+          0.01162507473,
+          0.01162507473,
+          0.01162507473,
+          0.01162507473
+        ]
+      ],
+      [
+        "Weapon_Group_20_M",
+        [
+          0.00174376121,
+          0.00174376121,
+          0.00174376121,
+          0.00174376121
+        ]
+      ],
+      [
+        "Weapon_Group_20_U",
+        [
+          0.000697504484,
+          0.000697504484,
+          0.000697504484,
+          0.000697504484
+        ]
+      ],
+      [
+        "Armor_Group_20_N",
+        [
+          0.08442018556,
+          0.08442018556,
+          0.08442018556,
+          0.08442018556
+        ]
+      ],
+      [
+        "Armor_Group_20_S",
+        [
+          0.04221009278,
+          0.04221009278,
+          0.04221009278,
+          0.04221009278
+        ]
+      ],
+      [
+        "Armor_Group_20_R",
+        [
+          0.02325014947,
+          0.02325014947,
+          0.02325014947,
+          0.02325014947
+        ]
+      ],
+      [
+        "Armor_Group_20_M",
+        [
+          0.00348752242,
+          0.00348752242,
+          0.00348752242,
+          0.00348752242
+        ]
+      ],
+      [
+        "Armor_Group_20_U",
+        [
+          0.001395008968,
+          0.001395008968,
+          0.001395008968,
+          0.001395008968
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.005812537366,
+          0.005812537366,
+          0.005812537366,
+          0.005812537366
+        ]
+      ],
+      [
+        "Accessory_Group_20_N",
+        [
+          0.04221009278,
+          0.04221009278,
+          0.04221009278,
+          0.04221009278
+        ]
+      ],
+      [
+        "Accessory_Group_20_S",
+        [
+          0.02110504639,
+          0.02110504639,
+          0.02110504639,
+          0.02110504639
+        ]
+      ],
+      [
+        "Accessory_Group_20_R",
+        [
+          0.01162507473,
+          0.01162507473,
+          0.01162507473,
+          0.01162507473
+        ]
+      ],
+      [
+        "Accessory_Group_20_M",
+        [
+          0.00174376121,
+          0.00174376121,
+          0.00174376121,
+          0.00174376121
+        ]
+      ],
+      [
+        "Accessory_Group_20_U",
+        [
+          0.000697504484,
+          0.000697504484,
+          0.000697504484,
+          0.000697504484
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3376807422,
+          0.3376807422,
+          0.3376807422,
+          0.3376807422
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08442018556,
+          0.08442018556,
+          0.08442018556,
+          0.08442018556
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.009300059786,
+          0.009300059786,
+          0.009300059786,
+          0.009300059786
+        ]
+      ],
+      [
+        "GeneralItem_Group_18_N",
+        [
+          0.1688403711,
+          0.1688403711,
+          0.1688403711,
+          0.1688403711
+        ]
+      ]
+    ],
+    "Act2_G1_A2": [
+      [
+        "ReinforcingStone_Group_24_S",
+        [
+          0.08465637837,
+          0.08465637837,
+          0.08465637837,
+          0.08465637837
+        ]
+      ],
+      [
+        "Weapon_Group_24_N",
+        [
+          0.04232818919,
+          0.04232818919,
+          0.04232818919,
+          0.04232818919
+        ]
+      ],
+      [
+        "Weapon_Group_24_S",
+        [
+          0.02116409459,
+          0.02116409459,
+          0.02116409459,
+          0.02116409459
+        ]
+      ],
+      [
+        "Weapon_Group_24_R",
+        [
+          0.01165759964,
+          0.01165759964,
+          0.01165759964,
+          0.01165759964
+        ]
+      ],
+      [
+        "Weapon_Group_24_M",
+        [
+          0.001748639947,
+          0.001748639947,
+          0.001748639947,
+          0.001748639947
+        ]
+      ],
+      [
+        "Armor_Group_24_N",
+        [
+          0.08465637837,
+          0.08465637837,
+          0.08465637837,
+          0.08465637837
+        ]
+      ],
+      [
+        "Armor_Group_24_S",
+        [
+          0.04232818919,
+          0.04232818919,
+          0.04232818919,
+          0.04232818919
+        ]
+      ],
+      [
+        "Armor_Group_24_R",
+        [
+          0.02331519929,
+          0.02331519929,
+          0.02331519929,
+          0.02331519929
+        ]
+      ],
+      [
+        "Armor_Group_24_M",
+        [
+          0.003497279893,
+          0.003497279893,
+          0.003497279893,
+          0.003497279893
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.005828799822,
+          0.005828799822,
+          0.005828799822,
+          0.005828799822
+        ]
+      ],
+      [
+        "Accessory_Group_24_N",
+        [
+          0.04232818919,
+          0.04232818919,
+          0.04232818919,
+          0.04232818919
+        ]
+      ],
+      [
+        "Accessory_Group_24_S",
+        [
+          0.02116409459,
+          0.02116409459,
+          0.02116409459,
+          0.02116409459
+        ]
+      ],
+      [
+        "Accessory_Group_24_R",
+        [
+          0.01165759964,
+          0.01165759964,
+          0.01165759964,
+          0.01165759964
+        ]
+      ],
+      [
+        "Accessory_Group_24_M",
+        [
+          0.001748639947,
+          0.001748639947,
+          0.001748639947,
+          0.001748639947
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3386255135,
+          0.3386255135,
+          0.3386255135,
+          0.3386255135
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08465637837,
+          0.08465637837,
+          0.08465637837,
+          0.08465637837
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.009326079716,
+          0.009326079716,
+          0.009326079716,
+          0.009326079716
+        ]
+      ],
+      [
+        "GeneralItem_Group_23_N",
+        [
+          0.1693127567,
+          0.1693127567,
+          0.1693127567,
+          0.1693127567
+        ]
+      ]
+    ],
+    "Act2_G1_A3": [
+      [
+        "ReinforcingStone_Group_24_S",
+        [
+          0.08563807385,
+          0.08563807385,
+          0.08563807385,
+          0.08563807385
+        ]
+      ],
+      [
+        "Weapon_Group_24_N",
+        [
+          0.04281903692,
+          0.04281903692,
+          0.04281903692,
+          0.04281903692
+        ]
+      ],
+      [
+        "Weapon_Group_24_S",
+        [
+          0.02140951846,
+          0.02140951846,
+          0.02140951846,
+          0.02140951846
+        ]
+      ],
+      [
+        "Weapon_Group_24_R",
+        [
+          0.009827319949,
+          0.009827319949,
+          0.009827319949,
+          0.009827319949
+        ]
+      ],
+      [
+        "Weapon_Group_24_M",
+        [
+          0.001474097992,
+          0.001474097992,
+          0.001474097992,
+          0.001474097992
+        ]
+      ],
+      [
+        "Armor_Group_24_N",
+        [
+          0.08563807385,
+          0.08563807385,
+          0.08563807385,
+          0.08563807385
+        ]
+      ],
+      [
+        "Armor_Group_24_S",
+        [
+          0.04281903692,
+          0.04281903692,
+          0.04281903692,
+          0.04281903692
+        ]
+      ],
+      [
+        "Armor_Group_24_R",
+        [
+          0.0196546399,
+          0.0196546399,
+          0.0196546399,
+          0.0196546399
+        ]
+      ],
+      [
+        "Armor_Group_24_M",
+        [
+          0.002948195985,
+          0.002948195985,
+          0.002948195985,
+          0.002948195985
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.004913659975,
+          0.004913659975,
+          0.004913659975,
+          0.004913659975
+        ]
+      ],
+      [
+        "Accessory_Group_24_N",
+        [
+          0.04281903692,
+          0.04281903692,
+          0.04281903692,
+          0.04281903692
+        ]
+      ],
+      [
+        "Accessory_Group_24_S",
+        [
+          0.02140951846,
+          0.02140951846,
+          0.02140951846,
+          0.02140951846
+        ]
+      ],
+      [
+        "Accessory_Group_24_R",
+        [
+          0.009827319949,
+          0.009827319949,
+          0.009827319949,
+          0.009827319949
+        ]
+      ],
+      [
+        "Accessory_Group_24_M",
+        [
+          0.001474097992,
+          0.001474097992,
+          0.001474097992,
+          0.001474097992
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3425522954,
+          0.3425522954,
+          0.3425522954,
+          0.3425522954
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08563807385,
+          0.08563807385,
+          0.08563807385,
+          0.08563807385
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.00786185596,
+          0.00786185596,
+          0.00786185596,
+          0.00786185596
+        ]
+      ],
+      [
+        "GeneralItem_Group_23_N",
+        [
+          0.1712761477,
+          0.1712761477,
+          0.1712761477,
+          0.1712761477
+        ]
+      ]
+    ],
+    "Act2_G2_B1": [
+      [
+        "ReinforcingStone_Group_24_S",
+        [
+          0.08401432375,
+          0.08401432375,
+          0.08401432375,
+          0.08401432375
+        ]
+      ],
+      [
+        "Weapon_Group_24_N",
+        [
+          0.04200716188,
+          0.04200716188,
+          0.04200716188,
+          0.04200716188
+        ]
+      ],
+      [
+        "Weapon_Group_24_S",
+        [
+          0.02100358094,
+          0.02100358094,
+          0.02100358094,
+          0.02100358094
+        ]
+      ],
+      [
+        "Weapon_Group_24_R",
+        [
+          0.01285465063,
+          0.01285465063,
+          0.01285465063,
+          0.01285465063
+        ]
+      ],
+      [
+        "Weapon_Group_24_M",
+        [
+          0.001928197594,
+          0.001928197594,
+          0.001928197594,
+          0.001928197594
+        ]
+      ],
+      [
+        "Armor_Group_24_N",
+        [
+          0.08401432375,
+          0.08401432375,
+          0.08401432375,
+          0.08401432375
+        ]
+      ],
+      [
+        "Armor_Group_24_S",
+        [
+          0.04200716188,
+          0.04200716188,
+          0.04200716188,
+          0.04200716188
+        ]
+      ],
+      [
+        "Armor_Group_24_R",
+        [
+          0.02570930126,
+          0.02570930126,
+          0.02570930126,
+          0.02570930126
+        ]
+      ],
+      [
+        "Armor_Group_24_M",
+        [
+          0.003856395189,
+          0.003856395189,
+          0.003856395189,
+          0.003856395189
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.006427325314,
+          0.006427325314,
+          0.006427325314,
+          0.006427325314
+        ]
+      ],
+      [
+        "Accessory_Group_24_N",
+        [
+          0.04200716188,
+          0.04200716188,
+          0.04200716188,
+          0.04200716188
+        ]
+      ],
+      [
+        "Accessory_Group_24_S",
+        [
+          0.02100358094,
+          0.02100358094,
+          0.02100358094,
+          0.02100358094
+        ]
+      ],
+      [
+        "Accessory_Group_24_R",
+        [
+          0.01285465063,
+          0.01285465063,
+          0.01285465063,
+          0.01285465063
+        ]
+      ],
+      [
+        "Accessory_Group_24_M",
+        [
+          0.001928197594,
+          0.001928197594,
+          0.001928197594,
+          0.001928197594
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.336057295,
+          0.336057295,
+          0.336057295,
+          0.336057295
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08401432375,
+          0.08401432375,
+          0.08401432375,
+          0.08401432375
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.0102837205,
+          0.0102837205,
+          0.0102837205,
+          0.0102837205
+        ]
+      ],
+      [
+        "GeneralItem_Group_23_N",
+        [
+          0.1680286475,
+          0.1680286475,
+          0.1680286475,
+          0.1680286475
+        ]
+      ]
+    ],
+    "Act2_G2_B2": [
+      [
+        "ReinforcingStone_Group_27_S",
+        [
+          0.08401432375,
+          0.08401432375,
+          0.08401432375,
+          0.08401432375
+        ]
+      ],
+      [
+        "Weapon_Group_27_N",
+        [
+          0.04200716188,
+          0.04200716188,
+          0.04200716188,
+          0.04200716188
+        ]
+      ],
+      [
+        "Weapon_Group_27_S",
+        [
+          0.02100358094,
+          0.02100358094,
+          0.02100358094,
+          0.02100358094
+        ]
+      ],
+      [
+        "Weapon_Group_27_R",
+        [
+          0.01285465063,
+          0.01285465063,
+          0.01285465063,
+          0.01285465063
+        ]
+      ],
+      [
+        "Weapon_Group_27_M",
+        [
+          0.001928197594,
+          0.001928197594,
+          0.001928197594,
+          0.001928197594
+        ]
+      ],
+      [
+        "Armor_Group_27_N",
+        [
+          0.08401432375,
+          0.08401432375,
+          0.08401432375,
+          0.08401432375
+        ]
+      ],
+      [
+        "Armor_Group_27_S",
+        [
+          0.04200716188,
+          0.04200716188,
+          0.04200716188,
+          0.04200716188
+        ]
+      ],
+      [
+        "Armor_Group_27_R",
+        [
+          0.02570930126,
+          0.02570930126,
+          0.02570930126,
+          0.02570930126
+        ]
+      ],
+      [
+        "Armor_Group_27_M",
+        [
+          0.003856395189,
+          0.003856395189,
+          0.003856395189,
+          0.003856395189
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.006427325314,
+          0.006427325314,
+          0.006427325314,
+          0.006427325314
+        ]
+      ],
+      [
+        "Accessory_Group_27_N",
+        [
+          0.04200716188,
+          0.04200716188,
+          0.04200716188,
+          0.04200716188
+        ]
+      ],
+      [
+        "Accessory_Group_27_S",
+        [
+          0.02100358094,
+          0.02100358094,
+          0.02100358094,
+          0.02100358094
+        ]
+      ],
+      [
+        "Accessory_Group_27_R",
+        [
+          0.01285465063,
+          0.01285465063,
+          0.01285465063,
+          0.01285465063
+        ]
+      ],
+      [
+        "Accessory_Group_27_M",
+        [
+          0.001928197594,
+          0.001928197594,
+          0.001928197594,
+          0.001928197594
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.336057295,
+          0.336057295,
+          0.336057295,
+          0.336057295
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08401432375,
+          0.08401432375,
+          0.08401432375,
+          0.08401432375
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.0102837205,
+          0.0102837205,
+          0.0102837205,
+          0.0102837205
+        ]
+      ],
+      [
+        "GeneralItem_Group_23_N",
+        [
+          0.1680286475,
+          0.1680286475,
+          0.1680286475,
+          0.1680286475
+        ]
+      ]
+    ],
+    "Act2_G2_B3": [
+      [
+        "ReinforcingStone_Group_27_S",
+        [
+          0.08338193483,
+          0.08338193483,
+          0.08338193483,
+          0.08338193483
+        ]
+      ],
+      [
+        "Weapon_Group_27_N",
+        [
+          0.04169096741,
+          0.04169096741,
+          0.04169096741,
+          0.04169096741
+        ]
+      ],
+      [
+        "Weapon_Group_27_S",
+        [
+          0.02084548371,
+          0.02084548371,
+          0.02084548371,
+          0.02084548371
+        ]
+      ],
+      [
+        "Weapon_Group_27_R",
+        [
+          0.01403368083,
+          0.01403368083,
+          0.01403368083,
+          0.01403368083
+        ]
+      ],
+      [
+        "Weapon_Group_27_M",
+        [
+          0.002105052125,
+          0.002105052125,
+          0.002105052125,
+          0.002105052125
+        ]
+      ],
+      [
+        "Armor_Group_27_N",
+        [
+          0.08338193483,
+          0.08338193483,
+          0.08338193483,
+          0.08338193483
+        ]
+      ],
+      [
+        "Armor_Group_27_S",
+        [
+          0.04169096741,
+          0.04169096741,
+          0.04169096741,
+          0.04169096741
+        ]
+      ],
+      [
+        "Armor_Group_27_R",
+        [
+          0.02806736167,
+          0.02806736167,
+          0.02806736167,
+          0.02806736167
+        ]
+      ],
+      [
+        "Armor_Group_27_M",
+        [
+          0.00421010425,
+          0.00421010425,
+          0.00421010425,
+          0.00421010425
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.007016840417,
+          0.007016840417,
+          0.007016840417,
+          0.007016840417
+        ]
+      ],
+      [
+        "Accessory_Group_27_N",
+        [
+          0.04169096741,
+          0.04169096741,
+          0.04169096741,
+          0.04169096741
+        ]
+      ],
+      [
+        "Accessory_Group_27_S",
+        [
+          0.02084548371,
+          0.02084548371,
+          0.02084548371,
+          0.02084548371
+        ]
+      ],
+      [
+        "Accessory_Group_27_R",
+        [
+          0.01403368083,
+          0.01403368083,
+          0.01403368083,
+          0.01403368083
+        ]
+      ],
+      [
+        "Accessory_Group_27_M",
+        [
+          0.002105052125,
+          0.002105052125,
+          0.002105052125,
+          0.002105052125
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3335277393,
+          0.3335277393,
+          0.3335277393,
+          0.3335277393
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08338193483,
+          0.08338193483,
+          0.08338193483,
+          0.08338193483
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.01122694467,
+          0.01122694467,
+          0.01122694467,
+          0.01122694467
+        ]
+      ],
+      [
+        "GeneralItem_Group_23_N",
+        [
+          0.1667638697,
+          0.1667638697,
+          0.1667638697,
+          0.1667638697
+        ]
+      ]
+    ],
+    "Act2_G2_B4": [
+      [
+        "ReinforcingStone_Group_30_S",
+        [
+          0.08310204022,
+          0.08310204022,
+          0.08310204022,
+          0.08310204022
+        ]
+      ],
+      [
+        "Weapon_Group_30_N",
+        [
+          0.04155102011,
+          0.04155102011,
+          0.04155102011,
+          0.04155102011
+        ]
+      ],
+      [
+        "Weapon_Group_30_S",
+        [
+          0.02077551006,
+          0.02077551006,
+          0.02077551006,
+          0.02077551006
+        ]
+      ],
+      [
+        "Weapon_Group_30_R",
+        [
+          0.01398657289,
+          0.01398657289,
+          0.01398657289,
+          0.01398657289
+        ]
+      ],
+      [
+        "Weapon_Group_30_M",
+        [
+          0.002097985934,
+          0.002097985934,
+          0.002097985934,
+          0.002097985934
+        ]
+      ],
+      [
+        "Weapon_Group_30_U",
+        [
+          0.0008391943734,
+          0.0008391943734,
+          0.0008391943734,
+          0.0008391943734
+        ]
+      ],
+      [
+        "Armor_Group_30_N",
+        [
+          0.08310204022,
+          0.08310204022,
+          0.08310204022,
+          0.08310204022
+        ]
+      ],
+      [
+        "Armor_Group_30_S",
+        [
+          0.04155102011,
+          0.04155102011,
+          0.04155102011,
+          0.04155102011
+        ]
+      ],
+      [
+        "Armor_Group_30_R",
+        [
+          0.02797314578,
+          0.02797314578,
+          0.02797314578,
+          0.02797314578
+        ]
+      ],
+      [
+        "Armor_Group_30_M",
+        [
+          0.004195971867,
+          0.004195971867,
+          0.004195971867,
+          0.004195971867
+        ]
+      ],
+      [
+        "Armor_Group_30_U",
+        [
+          0.001678388747,
+          0.001678388747,
+          0.001678388747,
+          0.001678388747
+        ]
+      ],
+      [
+        "Avatar_Group_20_R",
+        [
+          0.006993286445,
+          0.006993286445,
+          0.006993286445,
+          0.006993286445
+        ]
+      ],
+      [
+        "Accessory_Group_30_N",
+        [
+          0.04155102011,
+          0.04155102011,
+          0.04155102011,
+          0.04155102011
+        ]
+      ],
+      [
+        "Accessory_Group_30_S",
+        [
+          0.02077551006,
+          0.02077551006,
+          0.02077551006,
+          0.02077551006
+        ]
+      ],
+      [
+        "Accessory_Group_30_R",
+        [
+          0.01398657289,
+          0.01398657289,
+          0.01398657289,
+          0.01398657289
+        ]
+      ],
+      [
+        "Accessory_Group_30_M",
+        [
+          0.002097985934,
+          0.002097985934,
+          0.002097985934,
+          0.002097985934
+        ]
+      ],
+      [
+        "Accessory_Group_30_U",
+        [
+          0.0008391943734,
+          0.0008391943734,
+          0.0008391943734,
+          0.0008391943734
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3324081609,
+          0.3324081609,
+          0.3324081609,
+          0.3324081609
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08310204022,
+          0.08310204022,
+          0.08310204022,
+          0.08310204022
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.01118925831,
+          0.01118925831,
+          0.01118925831,
+          0.01118925831
+        ]
+      ],
+      [
+        "GeneralItem_Group_28_N",
+        [
+          0.1662040804,
+          0.1662040804,
+          0.1662040804,
+          0.1662040804
+        ]
+      ]
+    ],
+    "Act3_G1_A1": [
+      [
+        "ReinforcingStone_Group_30_S",
+        [
+          0.08461963267,
+          0.08461963267,
+          0.08461963267,
+          0.08461963267
+        ]
+      ],
+      [
+        "Weapon_Group_30_N",
+        [
+          0.04230981634,
+          0.04230981634,
+          0.04230981634,
+          0.04230981634
+        ]
+      ],
+      [
+        "Weapon_Group_30_S",
+        [
+          0.02115490817,
+          0.02115490817,
+          0.02115490817,
+          0.02115490817
+        ]
+      ],
+      [
+        "Weapon_Group_30_R",
+        [
+          0.0121056939,
+          0.0121056939,
+          0.0121056939,
+          0.0121056939
+        ]
+      ],
+      [
+        "Weapon_Group_30_M",
+        [
+          0.001815854085,
+          0.001815854085,
+          0.001815854085,
+          0.001815854085
+        ]
+      ],
+      [
+        "Weapon_Group_30_U",
+        [
+          0.0007263416339,
+          0.0007263416339,
+          0.0007263416339,
+          0.0007263416339
+        ]
+      ],
+      [
+        "Armor_Group_30_N",
+        [
+          0.08461963267,
+          0.08461963267,
+          0.08461963267,
+          0.08461963267
+        ]
+      ],
+      [
+        "Armor_Group_30_S",
+        [
+          0.04230981634,
+          0.04230981634,
+          0.04230981634,
+          0.04230981634
+        ]
+      ],
+      [
+        "Armor_Group_30_R",
+        [
+          0.0242113878,
+          0.0242113878,
+          0.0242113878,
+          0.0242113878
+        ]
+      ],
+      [
+        "Armor_Group_30_M",
+        [
+          0.003631708169,
+          0.003631708169,
+          0.003631708169,
+          0.003631708169
+        ]
+      ],
+      [
+        "Armor_Group_30_U",
+        [
+          0.001452683268,
+          0.001452683268,
+          0.001452683268,
+          0.001452683268
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.0009079270423,
+          0.0009079270423,
+          0.0009079270423,
+          0.0009079270423
+        ]
+      ],
+      [
+        "Accessory_Group_30_N",
+        [
+          0.04230981634,
+          0.04230981634,
+          0.04230981634,
+          0.04230981634
+        ]
+      ],
+      [
+        "Accessory_Group_30_S",
+        [
+          0.02115490817,
+          0.02115490817,
+          0.02115490817,
+          0.02115490817
+        ]
+      ],
+      [
+        "Accessory_Group_30_R",
+        [
+          0.0121056939,
+          0.0121056939,
+          0.0121056939,
+          0.0121056939
+        ]
+      ],
+      [
+        "Accessory_Group_30_M",
+        [
+          0.001815854085,
+          0.001815854085,
+          0.001815854085,
+          0.001815854085
+        ]
+      ],
+      [
+        "Accessory_Group_30_U",
+        [
+          0.0007263416339,
+          0.0007263416339,
+          0.0007263416339,
+          0.0007263416339
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3384785307,
+          0.3384785307,
+          0.3384785307,
+          0.3384785307
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08461963267,
+          0.08461963267,
+          0.08461963267,
+          0.08461963267
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.009684555118,
+          0.009684555118,
+          0.009684555118,
+          0.009684555118
+        ]
+      ],
+      [
+        "GeneralItem_Group_28_N",
+        [
+          0.1692392653,
+          0.1692392653,
+          0.1692392653,
+          0.1692392653
+        ]
+      ]
+    ],
+    "Act3_G1_A2": [
+      [
+        "ReinforcingStone_Group_34_S",
+        [
+          0.08395428599,
+          0.08395428599,
+          0.08395428599,
+          0.08395428599
+        ]
+      ],
+      [
+        "Weapon_Group_34_N",
+        [
+          0.04197714299,
+          0.04197714299,
+          0.04197714299,
+          0.04197714299
+        ]
+      ],
+      [
+        "Weapon_Group_34_S",
+        [
+          0.0209885715,
+          0.0209885715,
+          0.0209885715,
+          0.0209885715
+        ]
+      ],
+      [
+        "Weapon_Group_34_R",
+        [
+          0.01338632619,
+          0.01338632619,
+          0.01338632619,
+          0.01338632619
+        ]
+      ],
+      [
+        "Weapon_Group_34_M",
+        [
+          0.002007948928,
+          0.002007948928,
+          0.002007948928,
+          0.002007948928
+        ]
+      ],
+      [
+        "Weapon_Group_34_U",
+        [
+          0.0008031795712,
+          0.0008031795712,
+          0.0008031795712,
+          0.0008031795712
+        ]
+      ],
+      [
+        "Armor_Group_34_N",
+        [
+          0.08395428599,
+          0.08395428599,
+          0.08395428599,
+          0.08395428599
+        ]
+      ],
+      [
+        "Armor_Group_34_S",
+        [
+          0.04197714299,
+          0.04197714299,
+          0.04197714299,
+          0.04197714299
+        ]
+      ],
+      [
+        "Armor_Group_34_R",
+        [
+          0.02677265237,
+          0.02677265237,
+          0.02677265237,
+          0.02677265237
+        ]
+      ],
+      [
+        "Armor_Group_34_M",
+        [
+          0.004015897856,
+          0.004015897856,
+          0.004015897856,
+          0.004015897856
+        ]
+      ],
+      [
+        "Armor_Group_34_U",
+        [
+          0.001606359142,
+          0.001606359142,
+          0.001606359142,
+          0.001606359142
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.001003974464,
+          0.001003974464,
+          0.001003974464,
+          0.001003974464
+        ]
+      ],
+      [
+        "Accessory_Group_34_N",
+        [
+          0.04197714299,
+          0.04197714299,
+          0.04197714299,
+          0.04197714299
+        ]
+      ],
+      [
+        "Accessory_Group_34_S",
+        [
+          0.0209885715,
+          0.0209885715,
+          0.0209885715,
+          0.0209885715
+        ]
+      ],
+      [
+        "Accessory_Group_34_R",
+        [
+          0.01338632619,
+          0.01338632619,
+          0.01338632619,
+          0.01338632619
+        ]
+      ],
+      [
+        "Accessory_Group_34_M",
+        [
+          0.002007948928,
+          0.002007948928,
+          0.002007948928,
+          0.002007948928
+        ]
+      ],
+      [
+        "Accessory_Group_34_U",
+        [
+          0.0008031795712,
+          0.0008031795712,
+          0.0008031795712,
+          0.0008031795712
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3358171439,
+          0.3358171439,
+          0.3358171439,
+          0.3358171439
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08395428599,
+          0.08395428599,
+          0.08395428599,
+          0.08395428599
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.01070906095,
+          0.01070906095,
+          0.01070906095,
+          0.01070906095
+        ]
+      ],
+      [
+        "GeneralItem_Group_28_N",
+        [
+          0.167908572,
+          0.167908572,
+          0.167908572,
+          0.167908572
+        ]
+      ]
+    ],
+    "Act3_G1_A3": [
+      [
+        "ReinforcingStone_Group_34_S",
+        [
+          0.08320283237,
+          0.08320283237,
+          0.08320283237,
+          0.08320283237
+        ]
+      ],
+      [
+        "Weapon_Group_34_N",
+        [
+          0.04160141619,
+          0.04160141619,
+          0.04160141619,
+          0.04160141619
+        ]
+      ],
+      [
+        "Weapon_Group_34_S",
+        [
+          0.02080070809,
+          0.02080070809,
+          0.02080070809,
+          0.02080070809
+        ]
+      ],
+      [
+        "Weapon_Group_34_R",
+        [
+          0.0148326936,
+          0.0148326936,
+          0.0148326936,
+          0.0148326936
+        ]
+      ],
+      [
+        "Weapon_Group_34_M",
+        [
+          0.00222490404,
+          0.00222490404,
+          0.00222490404,
+          0.00222490404
+        ]
+      ],
+      [
+        "Weapon_Group_34_U",
+        [
+          0.000889961616,
+          0.000889961616,
+          0.000889961616,
+          0.000889961616
+        ]
+      ],
+      [
+        "Armor_Group_34_N",
+        [
+          0.08320283237,
+          0.08320283237,
+          0.08320283237,
+          0.08320283237
+        ]
+      ],
+      [
+        "Armor_Group_34_S",
+        [
+          0.04160141619,
+          0.04160141619,
+          0.04160141619,
+          0.04160141619
+        ]
+      ],
+      [
+        "Armor_Group_34_R",
+        [
+          0.0296653872,
+          0.0296653872,
+          0.0296653872,
+          0.0296653872
+        ]
+      ],
+      [
+        "Armor_Group_34_M",
+        [
+          0.00444980808,
+          0.00444980808,
+          0.00444980808,
+          0.00444980808
+        ]
+      ],
+      [
+        "Armor_Group_34_U",
+        [
+          0.001779923232,
+          0.001779923232,
+          0.001779923232,
+          0.001779923232
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.00111245202,
+          0.00111245202,
+          0.00111245202,
+          0.00111245202
+        ]
+      ],
+      [
+        "Accessory_Group_34_N",
+        [
+          0.04160141619,
+          0.04160141619,
+          0.04160141619,
+          0.04160141619
+        ]
+      ],
+      [
+        "Accessory_Group_34_S",
+        [
+          0.02080070809,
+          0.02080070809,
+          0.02080070809,
+          0.02080070809
+        ]
+      ],
+      [
+        "Accessory_Group_34_R",
+        [
+          0.0148326936,
+          0.0148326936,
+          0.0148326936,
+          0.0148326936
+        ]
+      ],
+      [
+        "Accessory_Group_34_M",
+        [
+          0.00222490404,
+          0.00222490404,
+          0.00222490404,
+          0.00222490404
+        ]
+      ],
+      [
+        "Accessory_Group_34_U",
+        [
+          0.000889961616,
+          0.000889961616,
+          0.000889961616,
+          0.000889961616
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3328113295,
+          0.3328113295,
+          0.3328113295,
+          0.3328113295
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08320283237,
+          0.08320283237,
+          0.08320283237,
+          0.08320283237
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.01186615488,
+          0.01186615488,
+          0.01186615488,
+          0.01186615488
+        ]
+      ],
+      [
+        "GeneralItem_Group_33_N",
+        [
+          0.1664056647,
+          0.1664056647,
+          0.1664056647,
+          0.1664056647
+        ]
+      ]
+    ],
+    "Act3_G1_A4": [
+      [
+        "ReinforcingStone_Group_34_S",
+        [
+          0.08450773627,
+          0.08450773627,
+          0.08450773627,
+          0.08450773627
+        ]
+      ],
+      [
+        "Weapon_Group_34_N",
+        [
+          0.04225386814,
+          0.04225386814,
+          0.04225386814,
+          0.04225386814
+        ]
+      ],
+      [
+        "Weapon_Group_34_S",
+        [
+          0.02112693407,
+          0.02112693407,
+          0.02112693407,
+          0.02112693407
+        ]
+      ],
+      [
+        "Weapon_Group_34_R",
+        [
+          0.01232106754,
+          0.01232106754,
+          0.01232106754,
+          0.01232106754
+        ]
+      ],
+      [
+        "Weapon_Group_34_M",
+        [
+          0.001848160131,
+          0.001848160131,
+          0.001848160131,
+          0.001848160131
+        ]
+      ],
+      [
+        "Weapon_Group_34_U",
+        [
+          0.0007392640522,
+          0.0007392640522,
+          0.0007392640522,
+          0.0007392640522
+        ]
+      ],
+      [
+        "Armor_Group_34_N",
+        [
+          0.08450773627,
+          0.08450773627,
+          0.08450773627,
+          0.08450773627
+        ]
+      ],
+      [
+        "Armor_Group_34_S",
+        [
+          0.04225386814,
+          0.04225386814,
+          0.04225386814,
+          0.04225386814
+        ]
+      ],
+      [
+        "Armor_Group_34_R",
+        [
+          0.02464213507,
+          0.02464213507,
+          0.02464213507,
+          0.02464213507
+        ]
+      ],
+      [
+        "Armor_Group_34_M",
+        [
+          0.003696320261,
+          0.003696320261,
+          0.003696320261,
+          0.003696320261
+        ]
+      ],
+      [
+        "Armor_Group_34_U",
+        [
+          0.001478528104,
+          0.001478528104,
+          0.001478528104,
+          0.001478528104
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.0009240800653,
+          0.0009240800653,
+          0.0009240800653,
+          0.0009240800653
+        ]
+      ],
+      [
+        "Accessory_Group_34_N",
+        [
+          0.04225386814,
+          0.04225386814,
+          0.04225386814,
+          0.04225386814
+        ]
+      ],
+      [
+        "Accessory_Group_34_S",
+        [
+          0.02112693407,
+          0.02112693407,
+          0.02112693407,
+          0.02112693407
+        ]
+      ],
+      [
+        "Accessory_Group_34_R",
+        [
+          0.01232106754,
+          0.01232106754,
+          0.01232106754,
+          0.01232106754
+        ]
+      ],
+      [
+        "Accessory_Group_34_M",
+        [
+          0.001848160131,
+          0.001848160131,
+          0.001848160131,
+          0.001848160131
+        ]
+      ],
+      [
+        "Accessory_Group_34_U",
+        [
+          0.0007392640522,
+          0.0007392640522,
+          0.0007392640522,
+          0.0007392640522
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3380309451,
+          0.3380309451,
+          0.3380309451,
+          0.3380309451
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08450773627,
+          0.08450773627,
+          0.08450773627,
+          0.08450773627
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.00985685403,
+          0.00985685403,
+          0.00985685403,
+          0.00985685403
+        ]
+      ],
+      [
+        "GeneralItem_Group_33_N",
+        [
+          0.1690154725,
+          0.1690154725,
+          0.1690154725,
+          0.1690154725
+        ]
+      ]
+    ],
+    "Act3_G2_B1": [
+      [
+        "ReinforcingStone_Group_37_S",
+        [
+          0.08449294863,
+          0.08449294863,
+          0.08449294863,
+          0.08449294863
+        ]
+      ],
+      [
+        "Weapon_Group_37_N",
+        [
+          0.04224647431,
+          0.04224647431,
+          0.04224647431,
+          0.04224647431
+        ]
+      ],
+      [
+        "Weapon_Group_37_S",
+        [
+          0.02112323716,
+          0.02112323716,
+          0.02112323716,
+          0.02112323716
+        ]
+      ],
+      [
+        "Weapon_Group_37_R",
+        [
+          0.0123495302,
+          0.0123495302,
+          0.0123495302,
+          0.0123495302
+        ]
+      ],
+      [
+        "Weapon_Group_37_M",
+        [
+          0.001852429529,
+          0.001852429529,
+          0.001852429529,
+          0.001852429529
+        ]
+      ],
+      [
+        "Weapon_Group_37_U",
+        [
+          0.0007409718118,
+          0.0007409718118,
+          0.0007409718118,
+          0.0007409718118
+        ]
+      ],
+      [
+        "Armor_Group_37_N",
+        [
+          0.08449294863,
+          0.08449294863,
+          0.08449294863,
+          0.08449294863
+        ]
+      ],
+      [
+        "Armor_Group_37_S",
+        [
+          0.04224647431,
+          0.04224647431,
+          0.04224647431,
+          0.04224647431
+        ]
+      ],
+      [
+        "Armor_Group_37_R",
+        [
+          0.02469906039,
+          0.02469906039,
+          0.02469906039,
+          0.02469906039
+        ]
+      ],
+      [
+        "Armor_Group_37_M",
+        [
+          0.003704859059,
+          0.003704859059,
+          0.003704859059,
+          0.003704859059
+        ]
+      ],
+      [
+        "Armor_Group_37_U",
+        [
+          0.001481943624,
+          0.001481943624,
+          0.001481943624,
+          0.001481943624
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.0009262147647,
+          0.0009262147647,
+          0.0009262147647,
+          0.0009262147647
+        ]
+      ],
+      [
+        "Accessory_Group_37_N",
+        [
+          0.04224647431,
+          0.04224647431,
+          0.04224647431,
+          0.04224647431
+        ]
+      ],
+      [
+        "Accessory_Group_37_S",
+        [
+          0.02112323716,
+          0.02112323716,
+          0.02112323716,
+          0.02112323716
+        ]
+      ],
+      [
+        "Accessory_Group_37_R",
+        [
+          0.0123495302,
+          0.0123495302,
+          0.0123495302,
+          0.0123495302
+        ]
+      ],
+      [
+        "Accessory_Group_37_M",
+        [
+          0.001852429529,
+          0.001852429529,
+          0.001852429529,
+          0.001852429529
+        ]
+      ],
+      [
+        "Accessory_Group_37_U",
+        [
+          0.0007409718118,
+          0.0007409718118,
+          0.0007409718118,
+          0.0007409718118
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3379717945,
+          0.3379717945,
+          0.3379717945,
+          0.3379717945
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08449294863,
+          0.08449294863,
+          0.08449294863,
+          0.08449294863
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.009879624157,
+          0.009879624157,
+          0.009879624157,
+          0.009879624157
+        ]
+      ],
+      [
+        "GeneralItem_Group_33_N",
+        [
+          0.1689858973,
+          0.1689858973,
+          0.1689858973,
+          0.1689858973
+        ]
+      ]
+    ],
+    "Act3_G2_B2": [
+      [
+        "ReinforcingStone_Group_37_S",
+        [
+          0.08537268973,
+          0.08537268973,
+          0.08537268973,
+          0.08537268973
+        ]
+      ],
+      [
+        "Weapon_Group_37_N",
+        [
+          0.04268634486,
+          0.04268634486,
+          0.04268634486,
+          0.04268634486
+        ]
+      ],
+      [
+        "Weapon_Group_37_S",
+        [
+          0.02134317243,
+          0.02134317243,
+          0.02134317243,
+          0.02134317243
+        ]
+      ],
+      [
+        "Weapon_Group_37_R",
+        [
+          0.01065624025,
+          0.01065624025,
+          0.01065624025,
+          0.01065624025
+        ]
+      ],
+      [
+        "Weapon_Group_37_M",
+        [
+          0.001598436037,
+          0.001598436037,
+          0.001598436037,
+          0.001598436037
+        ]
+      ],
+      [
+        "Weapon_Group_37_U",
+        [
+          0.0006393744149,
+          0.0006393744149,
+          0.0006393744149,
+          0.0006393744149
+        ]
+      ],
+      [
+        "Armor_Group_37_N",
+        [
+          0.08537268973,
+          0.08537268973,
+          0.08537268973,
+          0.08537268973
+        ]
+      ],
+      [
+        "Armor_Group_37_S",
+        [
+          0.04268634486,
+          0.04268634486,
+          0.04268634486,
+          0.04268634486
+        ]
+      ],
+      [
+        "Armor_Group_37_R",
+        [
+          0.0213124805,
+          0.0213124805,
+          0.0213124805,
+          0.0213124805
+        ]
+      ],
+      [
+        "Armor_Group_37_M",
+        [
+          0.003196872074,
+          0.003196872074,
+          0.003196872074,
+          0.003196872074
+        ]
+      ],
+      [
+        "Armor_Group_37_U",
+        [
+          0.00127874883,
+          0.00127874883,
+          0.00127874883,
+          0.00127874883
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.0007992180186,
+          0.0007992180186,
+          0.0007992180186,
+          0.0007992180186
+        ]
+      ],
+      [
+        "Accessory_Group_37_N",
+        [
+          0.04268634486,
+          0.04268634486,
+          0.04268634486,
+          0.04268634486
+        ]
+      ],
+      [
+        "Accessory_Group_37_S",
+        [
+          0.02134317243,
+          0.02134317243,
+          0.02134317243,
+          0.02134317243
+        ]
+      ],
+      [
+        "Accessory_Group_37_R",
+        [
+          0.01065624025,
+          0.01065624025,
+          0.01065624025,
+          0.01065624025
+        ]
+      ],
+      [
+        "Accessory_Group_37_M",
+        [
+          0.001598436037,
+          0.001598436037,
+          0.001598436037,
+          0.001598436037
+        ]
+      ],
+      [
+        "Accessory_Group_37_U",
+        [
+          0.0006393744149,
+          0.0006393744149,
+          0.0006393744149,
+          0.0006393744149
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3414907589,
+          0.3414907589,
+          0.3414907589,
+          0.3414907589
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08537268973,
+          0.08537268973,
+          0.08537268973,
+          0.08537268973
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.008524992198,
+          0.008524992198,
+          0.008524992198,
+          0.008524992198
+        ]
+      ],
+      [
+        "GeneralItem_Group_33_N",
+        [
+          0.1707453795,
+          0.1707453795,
+          0.1707453795,
+          0.1707453795
+        ]
+      ]
+    ],
+    "Act3_G2_B3": [
+      [
+        "ReinforcingStone_Group_37_S",
+        [
+          0.08536430469,
+          0.08536430469,
+          0.08536430469,
+          0.08536430469
+        ]
+      ],
+      [
+        "Weapon_Group_37_N",
+        [
+          0.04268215235,
+          0.04268215235,
+          0.04268215235,
+          0.04268215235
+        ]
+      ],
+      [
+        "Weapon_Group_37_S",
+        [
+          0.02134107617,
+          0.02134107617,
+          0.02134107617,
+          0.02134107617
+        ]
+      ],
+      [
+        "Weapon_Group_37_R",
+        [
+          0.01067237942,
+          0.01067237942,
+          0.01067237942,
+          0.01067237942
+        ]
+      ],
+      [
+        "Weapon_Group_37_M",
+        [
+          0.001600856913,
+          0.001600856913,
+          0.001600856913,
+          0.001600856913
+        ]
+      ],
+      [
+        "Weapon_Group_37_U",
+        [
+          0.0006403427653,
+          0.0006403427653,
+          0.0006403427653,
+          0.0006403427653
+        ]
+      ],
+      [
+        "Armor_Group_37_N",
+        [
+          0.08536430469,
+          0.08536430469,
+          0.08536430469,
+          0.08536430469
+        ]
+      ],
+      [
+        "Armor_Group_37_S",
+        [
+          0.04268215235,
+          0.04268215235,
+          0.04268215235,
+          0.04268215235
+        ]
+      ],
+      [
+        "Armor_Group_37_R",
+        [
+          0.02134475884,
+          0.02134475884,
+          0.02134475884,
+          0.02134475884
+        ]
+      ],
+      [
+        "Armor_Group_37_M",
+        [
+          0.003201713827,
+          0.003201713827,
+          0.003201713827,
+          0.003201713827
+        ]
+      ],
+      [
+        "Armor_Group_37_U",
+        [
+          0.001280685531,
+          0.001280685531,
+          0.001280685531,
+          0.001280685531
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.0008004284566,
+          0.0008004284566,
+          0.0008004284566,
+          0.0008004284566
+        ]
+      ],
+      [
+        "Accessory_Group_37_N",
+        [
+          0.04268215235,
+          0.04268215235,
+          0.04268215235,
+          0.04268215235
+        ]
+      ],
+      [
+        "Accessory_Group_37_S",
+        [
+          0.02134107617,
+          0.02134107617,
+          0.02134107617,
+          0.02134107617
+        ]
+      ],
+      [
+        "Accessory_Group_37_R",
+        [
+          0.01067237942,
+          0.01067237942,
+          0.01067237942,
+          0.01067237942
+        ]
+      ],
+      [
+        "Accessory_Group_37_M",
+        [
+          0.001600856913,
+          0.001600856913,
+          0.001600856913,
+          0.001600856913
+        ]
+      ],
+      [
+        "Accessory_Group_37_U",
+        [
+          0.0006403427653,
+          0.0006403427653,
+          0.0006403427653,
+          0.0006403427653
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3414572188,
+          0.3414572188,
+          0.3414572188,
+          0.3414572188
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08536430469,
+          0.08536430469,
+          0.08536430469,
+          0.08536430469
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.008537903537,
+          0.008537903537,
+          0.008537903537,
+          0.008537903537
+        ]
+      ],
+      [
+        "GeneralItem_Group_38_N",
+        [
+          0.1707286094,
+          0.1707286094,
+          0.1707286094,
+          0.1707286094
+        ]
+      ]
+    ],
+    "Act3_G2_B4": [
+      [
+        "ReinforcingStone_Group_40_S",
+        [
+          0.08620249166,
+          0.08620249166,
+          0.08620249166,
+          0.08620249166
+        ]
+      ],
+      [
+        "Weapon_Group_40_N",
+        [
+          0.04310124583,
+          0.04310124583,
+          0.04310124583,
+          0.04310124583
+        ]
+      ],
+      [
+        "Weapon_Group_40_S",
+        [
+          0.02155062292,
+          0.02155062292,
+          0.02155062292,
+          0.02155062292
+        ]
+      ],
+      [
+        "Weapon_Group_40_R",
+        [
+          0.009059071169,
+          0.009059071169,
+          0.009059071169,
+          0.009059071169
+        ]
+      ],
+      [
+        "Weapon_Group_40_M",
+        [
+          0.001358860675,
+          0.001358860675,
+          0.001358860675,
+          0.001358860675
+        ]
+      ],
+      [
+        "Weapon_Group_40_U",
+        [
+          0.0005435442701,
+          0.0005435442701,
+          0.0005435442701,
+          0.0005435442701
+        ]
+      ],
+      [
+        "Armor_Group_40_N",
+        [
+          0.08620249166,
+          0.08620249166,
+          0.08620249166,
+          0.08620249166
+        ]
+      ],
+      [
+        "Armor_Group_40_S",
+        [
+          0.04310124583,
+          0.04310124583,
+          0.04310124583,
+          0.04310124583
+        ]
+      ],
+      [
+        "Armor_Group_40_R",
+        [
+          0.01811814234,
+          0.01811814234,
+          0.01811814234,
+          0.01811814234
+        ]
+      ],
+      [
+        "Armor_Group_40_M",
+        [
+          0.002717721351,
+          0.002717721351,
+          0.002717721351,
+          0.002717721351
+        ]
+      ],
+      [
+        "Armor_Group_40_U",
+        [
+          0.00108708854,
+          0.00108708854,
+          0.00108708854,
+          0.00108708854
+        ]
+      ],
+      [
+        "Avatar_Group_30_M",
+        [
+          0.0006794303376,
+          0.0006794303376,
+          0.0006794303376,
+          0.0006794303376
+        ]
+      ],
+      [
+        "Accessory_Group_40_N",
+        [
+          0.04310124583,
+          0.04310124583,
+          0.04310124583,
+          0.04310124583
+        ]
+      ],
+      [
+        "Accessory_Group_40_S",
+        [
+          0.02155062292,
+          0.02155062292,
+          0.02155062292,
+          0.02155062292
+        ]
+      ],
+      [
+        "Accessory_Group_40_R",
+        [
+          0.009059071169,
+          0.009059071169,
+          0.009059071169,
+          0.009059071169
+        ]
+      ],
+      [
+        "Accessory_Group_40_M",
+        [
+          0.001358860675,
+          0.001358860675,
+          0.001358860675,
+          0.001358860675
+        ]
+      ],
+      [
+        "Accessory_Group_40_U",
+        [
+          0.0005435442701,
+          0.0005435442701,
+          0.0005435442701,
+          0.0005435442701
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3448099666,
+          0.3448099666,
+          0.3448099666,
+          0.3448099666
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08620249166,
+          0.08620249166,
+          0.08620249166,
+          0.08620249166
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.007247256935,
+          0.007247256935,
+          0.007247256935,
+          0.007247256935
+        ]
+      ],
+      [
+        "GeneralItem_Group_38_N",
+        [
+          0.1724049833,
+          0.1724049833,
+          0.1724049833,
+          0.1724049833
+        ]
+      ]
+    ],
+    "Act4_G1_A1": [
+      [
+        "ReinforcingStone_Group_40_S",
+        [
+          0.08635666091,
+          0.08635666091,
+          0.08635666091,
+          0.08635666091
+        ]
+      ],
+      [
+        "Weapon_Group_40_U",
+        [
+          0.0005257399477,
+          0.0005257399477,
+          0.0005257399477,
+          0.0005257399477
+        ]
+      ],
+      [
+        "Weapon_Group_40_M",
+        [
+          0.001314349869,
+          0.001314349869,
+          0.001314349869,
+          0.001314349869
+        ]
+      ],
+      [
+        "Weapon_Group_40_R",
+        [
+          0.008762332461,
+          0.008762332461,
+          0.008762332461,
+          0.008762332461
+        ]
+      ],
+      [
+        "Weapon_Group_40_S",
+        [
+          0.02158916523,
+          0.02158916523,
+          0.02158916523,
+          0.02158916523
+        ]
+      ],
+      [
+        "Weapon_Group_40_N",
+        [
+          0.04317833045,
+          0.04317833045,
+          0.04317833045,
+          0.04317833045
+        ]
+      ],
+      [
+        "Armor_Group_40_U",
+        [
+          0.001051479895,
+          0.001051479895,
+          0.001051479895,
+          0.001051479895
+        ]
+      ],
+      [
+        "Armor_Group_40_M",
+        [
+          0.002628699738,
+          0.002628699738,
+          0.002628699738,
+          0.002628699738
+        ]
+      ],
+      [
+        "Armor_Group_40_R",
+        [
+          0.01752466492,
+          0.01752466492,
+          0.01752466492,
+          0.01752466492
+        ]
+      ],
+      [
+        "Armor_Group_40_S",
+        [
+          0.04317833045,
+          0.04317833045,
+          0.04317833045,
+          0.04317833045
+        ]
+      ],
+      [
+        "Armor_Group_40_N",
+        [
+          0.08635666091,
+          0.08635666091,
+          0.08635666091,
+          0.08635666091
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0006571749346,
+          0.0006571749346,
+          0.0006571749346,
+          0.0006571749346
+        ]
+      ],
+      [
+        "Accessory_Group_40_U",
+        [
+          0.0005257399477,
+          0.0005257399477,
+          0.0005257399477,
+          0.0005257399477
+        ]
+      ],
+      [
+        "Accessory_Group_40_M",
+        [
+          0.001314349869,
+          0.001314349869,
+          0.001314349869,
+          0.001314349869
+        ]
+      ],
+      [
+        "Accessory_Group_40_R",
+        [
+          0.008762332461,
+          0.008762332461,
+          0.008762332461,
+          0.008762332461
+        ]
+      ],
+      [
+        "Accessory_Group_40_S",
+        [
+          0.02158916523,
+          0.02158916523,
+          0.02158916523,
+          0.02158916523
+        ]
+      ],
+      [
+        "Accessory_Group_40_N",
+        [
+          0.04317833045,
+          0.04317833045,
+          0.04317833045,
+          0.04317833045
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3454266436,
+          0.3454266436,
+          0.3454266436,
+          0.3454266436
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08635666091,
+          0.08635666091,
+          0.08635666091,
+          0.08635666091
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.007009865969,
+          0.007009865969,
+          0.007009865969,
+          0.007009865969
+        ]
+      ],
+      [
+        "GeneralItem_Group_38_N",
+        [
+          0.1727133218,
+          0.1727133218,
+          0.1727133218,
+          0.1727133218
+        ]
+      ]
+    ],
+    "Act4_G1_A2": [
+      [
+        "ReinforcingStone_Group_40_S",
+        [
+          0.0860488719,
+          0.0860488719,
+          0.0860488719,
+          0.0860488719
+        ]
+      ],
+      [
+        "Weapon_Group_40_U",
+        [
+          0.0005612851351,
+          0.0005612851351,
+          0.0005612851351,
+          0.0005612851351
+        ]
+      ],
+      [
+        "Weapon_Group_40_M",
+        [
+          0.001403212838,
+          0.001403212838,
+          0.001403212838,
+          0.001403212838
+        ]
+      ],
+      [
+        "Weapon_Group_40_R",
+        [
+          0.009354752251,
+          0.009354752251,
+          0.009354752251,
+          0.009354752251
+        ]
+      ],
+      [
+        "Weapon_Group_40_S",
+        [
+          0.02151221797,
+          0.02151221797,
+          0.02151221797,
+          0.02151221797
+        ]
+      ],
+      [
+        "Weapon_Group_40_N",
+        [
+          0.04302443595,
+          0.04302443595,
+          0.04302443595,
+          0.04302443595
+        ]
+      ],
+      [
+        "Armor_Group_40_U",
+        [
+          0.00112257027,
+          0.00112257027,
+          0.00112257027,
+          0.00112257027
+        ]
+      ],
+      [
+        "Armor_Group_40_M",
+        [
+          0.002806425675,
+          0.002806425675,
+          0.002806425675,
+          0.002806425675
+        ]
+      ],
+      [
+        "Armor_Group_40_R",
+        [
+          0.0187095045,
+          0.0187095045,
+          0.0187095045,
+          0.0187095045
+        ]
+      ],
+      [
+        "Armor_Group_40_S",
+        [
+          0.04302443595,
+          0.04302443595,
+          0.04302443595,
+          0.04302443595
+        ]
+      ],
+      [
+        "Armor_Group_40_N",
+        [
+          0.0860488719,
+          0.0860488719,
+          0.0860488719,
+          0.0860488719
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0007016064188,
+          0.0007016064188,
+          0.0007016064188,
+          0.0007016064188
+        ]
+      ],
+      [
+        "Accessory_Group_40_U",
+        [
+          0.0005612851351,
+          0.0005612851351,
+          0.0005612851351,
+          0.0005612851351
+        ]
+      ],
+      [
+        "Accessory_Group_40_M",
+        [
+          0.001403212838,
+          0.001403212838,
+          0.001403212838,
+          0.001403212838
+        ]
+      ],
+      [
+        "Accessory_Group_40_R",
+        [
+          0.009354752251,
+          0.009354752251,
+          0.009354752251,
+          0.009354752251
+        ]
+      ],
+      [
+        "Accessory_Group_40_S",
+        [
+          0.02151221797,
+          0.02151221797,
+          0.02151221797,
+          0.02151221797
+        ]
+      ],
+      [
+        "Accessory_Group_40_N",
+        [
+          0.04302443595,
+          0.04302443595,
+          0.04302443595,
+          0.04302443595
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3441954876,
+          0.3441954876,
+          0.3441954876,
+          0.3441954876
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.0860488719,
+          0.0860488719,
+          0.0860488719,
+          0.0860488719
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.007483801801,
+          0.007483801801,
+          0.007483801801,
+          0.007483801801
+        ]
+      ],
+      [
+        "GeneralItem_Group_38_N",
+        [
+          0.1720977438,
+          0.1720977438,
+          0.1720977438,
+          0.1720977438
+        ]
+      ]
+    ],
+    "Act4_G1_A3": [
+      [
+        "ReinforcingStone_Group_40_S",
+        [
+          0.08562332194,
+          0.08562332194,
+          0.08562332194,
+          0.08562332194
+        ]
+      ],
+      [
+        "Weapon_Group_40_U",
+        [
+          0.0006104300125,
+          0.0006104300125,
+          0.0006104300125,
+          0.0006104300125
+        ]
+      ],
+      [
+        "Weapon_Group_40_M",
+        [
+          0.001526075031,
+          0.001526075031,
+          0.001526075031,
+          0.001526075031
+        ]
+      ],
+      [
+        "Weapon_Group_40_R",
+        [
+          0.01017383354,
+          0.01017383354,
+          0.01017383354,
+          0.01017383354
+        ]
+      ],
+      [
+        "Weapon_Group_40_S",
+        [
+          0.02140583048,
+          0.02140583048,
+          0.02140583048,
+          0.02140583048
+        ]
+      ],
+      [
+        "Weapon_Group_40_N",
+        [
+          0.04281166097,
+          0.04281166097,
+          0.04281166097,
+          0.04281166097
+        ]
+      ],
+      [
+        "Armor_Group_40_U",
+        [
+          0.001220860025,
+          0.001220860025,
+          0.001220860025,
+          0.001220860025
+        ]
+      ],
+      [
+        "Armor_Group_40_M",
+        [
+          0.003052150063,
+          0.003052150063,
+          0.003052150063,
+          0.003052150063
+        ]
+      ],
+      [
+        "Armor_Group_40_R",
+        [
+          0.02034766708,
+          0.02034766708,
+          0.02034766708,
+          0.02034766708
+        ]
+      ],
+      [
+        "Armor_Group_40_S",
+        [
+          0.04281166097,
+          0.04281166097,
+          0.04281166097,
+          0.04281166097
+        ]
+      ],
+      [
+        "Armor_Group_40_N",
+        [
+          0.08562332194,
+          0.08562332194,
+          0.08562332194,
+          0.08562332194
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0007630375156,
+          0.0007630375156,
+          0.0007630375156,
+          0.0007630375156
+        ]
+      ],
+      [
+        "Accessory_Group_40_U",
+        [
+          0.0006104300125,
+          0.0006104300125,
+          0.0006104300125,
+          0.0006104300125
+        ]
+      ],
+      [
+        "Accessory_Group_40_M",
+        [
+          0.001526075031,
+          0.001526075031,
+          0.001526075031,
+          0.001526075031
+        ]
+      ],
+      [
+        "Accessory_Group_40_R",
+        [
+          0.01017383354,
+          0.01017383354,
+          0.01017383354,
+          0.01017383354
+        ]
+      ],
+      [
+        "Accessory_Group_40_S",
+        [
+          0.02140583048,
+          0.02140583048,
+          0.02140583048,
+          0.02140583048
+        ]
+      ],
+      [
+        "Accessory_Group_40_N",
+        [
+          0.04281166097,
+          0.04281166097,
+          0.04281166097,
+          0.04281166097
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3424932877,
+          0.3424932877,
+          0.3424932877,
+          0.3424932877
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08562332194,
+          0.08562332194,
+          0.08562332194,
+          0.08562332194
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.008139066833,
+          0.008139066833,
+          0.008139066833,
+          0.008139066833
+        ]
+      ],
+      [
+        "GeneralItem_Group_38_N",
+        [
+          0.1712466439,
+          0.1712466439,
+          0.1712466439,
+          0.1712466439
+        ]
+      ]
+    ],
+    "Act4_G1_A4": [
+      [
+        "ReinforcingStone_Group_44_S",
+        [
+          0.08554073702,
+          0.08554073702,
+          0.08554073702,
+          0.08554073702
+        ]
+      ],
+      [
+        "Weapon_Group_44_N",
+        [
+          0.04277036851,
+          0.04277036851,
+          0.04277036851,
+          0.04277036851
+        ]
+      ],
+      [
+        "Weapon_Group_44_S",
+        [
+          0.02138518426,
+          0.02138518426,
+          0.02138518426,
+          0.02138518426
+        ]
+      ],
+      [
+        "Weapon_Group_44_R",
+        [
+          0.01033278963,
+          0.01033278963,
+          0.01033278963,
+          0.01033278963
+        ]
+      ],
+      [
+        "Weapon_Group_44_M",
+        [
+          0.001549918445,
+          0.001549918445,
+          0.001549918445,
+          0.001549918445
+        ]
+      ],
+      [
+        "Weapon_Group_44_U",
+        [
+          0.0006199673779,
+          0.0006199673779,
+          0.0006199673779,
+          0.0006199673779
+        ]
+      ],
+      [
+        "Armor_Group_44_N",
+        [
+          0.08554073702,
+          0.08554073702,
+          0.08554073702,
+          0.08554073702
+        ]
+      ],
+      [
+        "Armor_Group_44_S",
+        [
+          0.04277036851,
+          0.04277036851,
+          0.04277036851,
+          0.04277036851
+        ]
+      ],
+      [
+        "Armor_Group_44_R",
+        [
+          0.02066557926,
+          0.02066557926,
+          0.02066557926,
+          0.02066557926
+        ]
+      ],
+      [
+        "Armor_Group_44_M",
+        [
+          0.00309983689,
+          0.00309983689,
+          0.00309983689,
+          0.00309983689
+        ]
+      ],
+      [
+        "Armor_Group_44_U",
+        [
+          0.001239934756,
+          0.001239934756,
+          0.001239934756,
+          0.001239934756
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0007749592224,
+          0.0007749592224,
+          0.0007749592224,
+          0.0007749592224
+        ]
+      ],
+      [
+        "Accessory_Group_44_N",
+        [
+          0.04277036851,
+          0.04277036851,
+          0.04277036851,
+          0.04277036851
+        ]
+      ],
+      [
+        "Accessory_Group_44_S",
+        [
+          0.02138518426,
+          0.02138518426,
+          0.02138518426,
+          0.02138518426
+        ]
+      ],
+      [
+        "Accessory_Group_44_R",
+        [
+          0.01033278963,
+          0.01033278963,
+          0.01033278963,
+          0.01033278963
+        ]
+      ],
+      [
+        "Accessory_Group_44_M",
+        [
+          0.001549918445,
+          0.001549918445,
+          0.001549918445,
+          0.001549918445
+        ]
+      ],
+      [
+        "Accessory_Group_44_U",
+        [
+          0.0006199673779,
+          0.0006199673779,
+          0.0006199673779,
+          0.0006199673779
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3421629481,
+          0.3421629481,
+          0.3421629481,
+          0.3421629481
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08554073702,
+          0.08554073702,
+          0.08554073702,
+          0.08554073702
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.008266231705,
+          0.008266231705,
+          0.008266231705,
+          0.008266231705
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.171081474,
+          0.171081474,
+          0.171081474,
+          0.171081474
+        ]
+      ]
+    ],
+    "Act4_G1_A5": [
+      [
+        "ReinforcingStone_Group_44_S",
+        [
+          0.08588561317,
+          0.08588561317,
+          0.08588561317,
+          0.08588561317
+        ]
+      ],
+      [
+        "Weapon_Group_44_N",
+        [
+          0.04294280658,
+          0.04294280658,
+          0.04294280658,
+          0.04294280658
+        ]
+      ],
+      [
+        "Weapon_Group_44_S",
+        [
+          0.02147140329,
+          0.02147140329,
+          0.02147140329,
+          0.02147140329
+        ]
+      ],
+      [
+        "Weapon_Group_44_R",
+        [
+          0.009668986028,
+          0.009668986028,
+          0.009668986028,
+          0.009668986028
+        ]
+      ],
+      [
+        "Weapon_Group_44_M",
+        [
+          0.001450347904,
+          0.001450347904,
+          0.001450347904,
+          0.001450347904
+        ]
+      ],
+      [
+        "Weapon_Group_44_U",
+        [
+          0.0005801391617,
+          0.0005801391617,
+          0.0005801391617,
+          0.0005801391617
+        ]
+      ],
+      [
+        "Armor_Group_44_N",
+        [
+          0.08588561317,
+          0.08588561317,
+          0.08588561317,
+          0.08588561317
+        ]
+      ],
+      [
+        "Armor_Group_44_S",
+        [
+          0.04294280658,
+          0.04294280658,
+          0.04294280658,
+          0.04294280658
+        ]
+      ],
+      [
+        "Armor_Group_44_R",
+        [
+          0.01933797206,
+          0.01933797206,
+          0.01933797206,
+          0.01933797206
+        ]
+      ],
+      [
+        "Armor_Group_44_M",
+        [
+          0.002900695808,
+          0.002900695808,
+          0.002900695808,
+          0.002900695808
+        ]
+      ],
+      [
+        "Armor_Group_44_U",
+        [
+          0.001160278323,
+          0.001160278323,
+          0.001160278323,
+          0.001160278323
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0007251739521,
+          0.0007251739521,
+          0.0007251739521,
+          0.0007251739521
+        ]
+      ],
+      [
+        "Accessory_Group_44_N",
+        [
+          0.04294280658,
+          0.04294280658,
+          0.04294280658,
+          0.04294280658
+        ]
+      ],
+      [
+        "Accessory_Group_44_S",
+        [
+          0.02147140329,
+          0.02147140329,
+          0.02147140329,
+          0.02147140329
+        ]
+      ],
+      [
+        "Accessory_Group_44_R",
+        [
+          0.009668986028,
+          0.009668986028,
+          0.009668986028,
+          0.009668986028
+        ]
+      ],
+      [
+        "Accessory_Group_44_M",
+        [
+          0.001450347904,
+          0.001450347904,
+          0.001450347904,
+          0.001450347904
+        ]
+      ],
+      [
+        "Accessory_Group_44_U",
+        [
+          0.0005801391617,
+          0.0005801391617,
+          0.0005801391617,
+          0.0005801391617
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3435424527,
+          0.3435424527,
+          0.3435424527,
+          0.3435424527
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08588561317,
+          0.08588561317,
+          0.08588561317,
+          0.08588561317
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.007735188822,
+          0.007735188822,
+          0.007735188822,
+          0.007735188822
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.1717712263,
+          0.1717712263,
+          0.1717712263,
+          0.1717712263
+        ]
+      ]
+    ],
+    "Act4_G2_B1": [
+      [
+        "ReinforcingStone_Group_44_S",
+        [
+          0.08673585079,
+          0.08673585079,
+          0.08673585079,
+          0.08673585079
+        ]
+      ],
+      [
+        "Weapon_Group_44_N",
+        [
+          0.0433679254,
+          0.0433679254,
+          0.0433679254,
+          0.0433679254
+        ]
+      ],
+      [
+        "Weapon_Group_44_S",
+        [
+          0.0216839627,
+          0.0216839627,
+          0.0216839627,
+          0.0216839627
+        ]
+      ],
+      [
+        "Weapon_Group_44_R",
+        [
+          0.008032483162,
+          0.008032483162,
+          0.008032483162,
+          0.008032483162
+        ]
+      ],
+      [
+        "Weapon_Group_44_M",
+        [
+          0.001204872474,
+          0.001204872474,
+          0.001204872474,
+          0.001204872474
+        ]
+      ],
+      [
+        "Weapon_Group_44_U",
+        [
+          0.0004819489897,
+          0.0004819489897,
+          0.0004819489897,
+          0.0004819489897
+        ]
+      ],
+      [
+        "Armor_Group_44_N",
+        [
+          0.08673585079,
+          0.08673585079,
+          0.08673585079,
+          0.08673585079
+        ]
+      ],
+      [
+        "Armor_Group_44_S",
+        [
+          0.0433679254,
+          0.0433679254,
+          0.0433679254,
+          0.0433679254
+        ]
+      ],
+      [
+        "Armor_Group_44_R",
+        [
+          0.01606496632,
+          0.01606496632,
+          0.01606496632,
+          0.01606496632
+        ]
+      ],
+      [
+        "Armor_Group_44_M",
+        [
+          0.002409744949,
+          0.002409744949,
+          0.002409744949,
+          0.002409744949
+        ]
+      ],
+      [
+        "Armor_Group_44_U",
+        [
+          0.0009638979795,
+          0.0009638979795,
+          0.0009638979795,
+          0.0009638979795
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0006024362372,
+          0.0006024362372,
+          0.0006024362372,
+          0.0006024362372
+        ]
+      ],
+      [
+        "Accessory_Group_44_N",
+        [
+          0.0433679254,
+          0.0433679254,
+          0.0433679254,
+          0.0433679254
+        ]
+      ],
+      [
+        "Accessory_Group_44_S",
+        [
+          0.0216839627,
+          0.0216839627,
+          0.0216839627,
+          0.0216839627
+        ]
+      ],
+      [
+        "Accessory_Group_44_R",
+        [
+          0.008032483162,
+          0.008032483162,
+          0.008032483162,
+          0.008032483162
+        ]
+      ],
+      [
+        "Accessory_Group_44_M",
+        [
+          0.001204872474,
+          0.001204872474,
+          0.001204872474,
+          0.001204872474
+        ]
+      ],
+      [
+        "Accessory_Group_44_U",
+        [
+          0.0004819489897,
+          0.0004819489897,
+          0.0004819489897,
+          0.0004819489897
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3469434032,
+          0.3469434032,
+          0.3469434032,
+          0.3469434032
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08673585079,
+          0.08673585079,
+          0.08673585079,
+          0.08673585079
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.00642598653,
+          0.00642598653,
+          0.00642598653,
+          0.00642598653
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.1734717016,
+          0.1734717016,
+          0.1734717016,
+          0.1734717016
+        ]
+      ]
+    ],
+    "Act4_G2_B2": [
+      [
+        "ReinforcingStone_Group_47_S",
+        [
+          0.08652860812,
+          0.08652860812,
+          0.08652860812,
+          0.08652860812
+        ]
+      ],
+      [
+        "Weapon_Group_47_N",
+        [
+          0.04326430406,
+          0.04326430406,
+          0.04326430406,
+          0.04326430406
+        ]
+      ],
+      [
+        "Weapon_Group_47_S",
+        [
+          0.02163215203,
+          0.02163215203,
+          0.02163215203,
+          0.02163215203
+        ]
+      ],
+      [
+        "Weapon_Group_47_R",
+        [
+          0.008431375448,
+          0.008431375448,
+          0.008431375448,
+          0.008431375448
+        ]
+      ],
+      [
+        "Weapon_Group_47_M",
+        [
+          0.001264706317,
+          0.001264706317,
+          0.001264706317,
+          0.001264706317
+        ]
+      ],
+      [
+        "Weapon_Group_47_U",
+        [
+          0.0005058825269,
+          0.0005058825269,
+          0.0005058825269,
+          0.0005058825269
+        ]
+      ],
+      [
+        "Armor_Group_47_N",
+        [
+          0.08652860812,
+          0.08652860812,
+          0.08652860812,
+          0.08652860812
+        ]
+      ],
+      [
+        "Armor_Group_47_S",
+        [
+          0.04326430406,
+          0.04326430406,
+          0.04326430406,
+          0.04326430406
+        ]
+      ],
+      [
+        "Armor_Group_47_R",
+        [
+          0.0168627509,
+          0.0168627509,
+          0.0168627509,
+          0.0168627509
+        ]
+      ],
+      [
+        "Armor_Group_47_M",
+        [
+          0.002529412634,
+          0.002529412634,
+          0.002529412634,
+          0.002529412634
+        ]
+      ],
+      [
+        "Armor_Group_47_U",
+        [
+          0.001011765054,
+          0.001011765054,
+          0.001011765054,
+          0.001011765054
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0006323531586,
+          0.0006323531586,
+          0.0006323531586,
+          0.0006323531586
+        ]
+      ],
+      [
+        "Accessory_Group_47_N",
+        [
+          0.04326430406,
+          0.04326430406,
+          0.04326430406,
+          0.04326430406
+        ]
+      ],
+      [
+        "Accessory_Group_47_S",
+        [
+          0.02163215203,
+          0.02163215203,
+          0.02163215203,
+          0.02163215203
+        ]
+      ],
+      [
+        "Accessory_Group_47_R",
+        [
+          0.008431375448,
+          0.008431375448,
+          0.008431375448,
+          0.008431375448
+        ]
+      ],
+      [
+        "Accessory_Group_47_M",
+        [
+          0.001264706317,
+          0.001264706317,
+          0.001264706317,
+          0.001264706317
+        ]
+      ],
+      [
+        "Accessory_Group_47_U",
+        [
+          0.0005058825269,
+          0.0005058825269,
+          0.0005058825269,
+          0.0005058825269
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3461144325,
+          0.3461144325,
+          0.3461144325,
+          0.3461144325
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08652860812,
+          0.08652860812,
+          0.08652860812,
+          0.08652860812
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.006745100358,
+          0.006745100358,
+          0.006745100358,
+          0.006745100358
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.1730572162,
+          0.1730572162,
+          0.1730572162,
+          0.1730572162
+        ]
+      ]
+    ],
+    "Act4_G2_B3": [
+      [
+        "ReinforcingStone_Group_47_S",
+        [
+          0.08732232454,
+          0.08732232454,
+          0.08732232454,
+          0.08732232454
+        ]
+      ],
+      [
+        "Weapon_Group_47_N",
+        [
+          0.04366116227,
+          0.04366116227,
+          0.04366116227,
+          0.04366116227
+        ]
+      ],
+      [
+        "Weapon_Group_47_S",
+        [
+          0.02183058114,
+          0.02183058114,
+          0.02183058114,
+          0.02183058114
+        ]
+      ],
+      [
+        "Weapon_Group_47_R",
+        [
+          0.006903662293,
+          0.006903662293,
+          0.006903662293,
+          0.006903662293
+        ]
+      ],
+      [
+        "Weapon_Group_47_M",
+        [
+          0.001035549344,
+          0.001035549344,
+          0.001035549344,
+          0.001035549344
+        ]
+      ],
+      [
+        "Weapon_Group_47_U",
+        [
+          0.0004142197376,
+          0.0004142197376,
+          0.0004142197376,
+          0.0004142197376
+        ]
+      ],
+      [
+        "Armor_Group_47_N",
+        [
+          0.08732232454,
+          0.08732232454,
+          0.08732232454,
+          0.08732232454
+        ]
+      ],
+      [
+        "Armor_Group_47_S",
+        [
+          0.04366116227,
+          0.04366116227,
+          0.04366116227,
+          0.04366116227
+        ]
+      ],
+      [
+        "Armor_Group_47_R",
+        [
+          0.01380732459,
+          0.01380732459,
+          0.01380732459,
+          0.01380732459
+        ]
+      ],
+      [
+        "Armor_Group_47_M",
+        [
+          0.002071098688,
+          0.002071098688,
+          0.002071098688,
+          0.002071098688
+        ]
+      ],
+      [
+        "Armor_Group_47_U",
+        [
+          0.0008284394752,
+          0.0008284394752,
+          0.0008284394752,
+          0.0008284394752
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.000517774672,
+          0.000517774672,
+          0.000517774672,
+          0.000517774672
+        ]
+      ],
+      [
+        "Accessory_Group_47_N",
+        [
+          0.04366116227,
+          0.04366116227,
+          0.04366116227,
+          0.04366116227
+        ]
+      ],
+      [
+        "Accessory_Group_47_S",
+        [
+          0.02183058114,
+          0.02183058114,
+          0.02183058114,
+          0.02183058114
+        ]
+      ],
+      [
+        "Accessory_Group_47_R",
+        [
+          0.006903662293,
+          0.006903662293,
+          0.006903662293,
+          0.006903662293
+        ]
+      ],
+      [
+        "Accessory_Group_47_M",
+        [
+          0.001035549344,
+          0.001035549344,
+          0.001035549344,
+          0.001035549344
+        ]
+      ],
+      [
+        "Accessory_Group_47_U",
+        [
+          0.0004142197376,
+          0.0004142197376,
+          0.0004142197376,
+          0.0004142197376
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3492892982,
+          0.3492892982,
+          0.3492892982,
+          0.3492892982
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08732232454,
+          0.08732232454,
+          0.08732232454,
+          0.08732232454
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.005522929835,
+          0.005522929835,
+          0.005522929835,
+          0.005522929835
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.1746446491,
+          0.1746446491,
+          0.1746446491,
+          0.1746446491
+        ]
+      ]
+    ],
+    "Act4_G2_B4": [
+      [
+        "ReinforcingStone_Group_47_S",
+        [
+          0.08725832681,
+          0.08725832681,
+          0.08725832681,
+          0.08725832681
+        ]
+      ],
+      [
+        "Weapon_Group_47_N",
+        [
+          0.0436291634,
+          0.0436291634,
+          0.0436291634,
+          0.0436291634
+        ]
+      ],
+      [
+        "Weapon_Group_47_S",
+        [
+          0.0218145817,
+          0.0218145817,
+          0.0218145817,
+          0.0218145817
+        ]
+      ],
+      [
+        "Weapon_Group_47_R",
+        [
+          0.007026842538,
+          0.007026842538,
+          0.007026842538,
+          0.007026842538
+        ]
+      ],
+      [
+        "Weapon_Group_47_M",
+        [
+          0.001054026381,
+          0.001054026381,
+          0.001054026381,
+          0.001054026381
+        ]
+      ],
+      [
+        "Weapon_Group_47_U",
+        [
+          0.0004216105523,
+          0.0004216105523,
+          0.0004216105523,
+          0.0004216105523
+        ]
+      ],
+      [
+        "Armor_Group_47_N",
+        [
+          0.08725832681,
+          0.08725832681,
+          0.08725832681,
+          0.08725832681
+        ]
+      ],
+      [
+        "Armor_Group_47_S",
+        [
+          0.0436291634,
+          0.0436291634,
+          0.0436291634,
+          0.0436291634
+        ]
+      ],
+      [
+        "Armor_Group_47_R",
+        [
+          0.01405368508,
+          0.01405368508,
+          0.01405368508,
+          0.01405368508
+        ]
+      ],
+      [
+        "Armor_Group_47_M",
+        [
+          0.002108052762,
+          0.002108052762,
+          0.002108052762,
+          0.002108052762
+        ]
+      ],
+      [
+        "Armor_Group_47_U",
+        [
+          0.0008432211046,
+          0.0008432211046,
+          0.0008432211046,
+          0.0008432211046
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0005270131904,
+          0.0005270131904,
+          0.0005270131904,
+          0.0005270131904
+        ]
+      ],
+      [
+        "Accessory_Group_47_N",
+        [
+          0.0436291634,
+          0.0436291634,
+          0.0436291634,
+          0.0436291634
+        ]
+      ],
+      [
+        "Accessory_Group_47_S",
+        [
+          0.0218145817,
+          0.0218145817,
+          0.0218145817,
+          0.0218145817
+        ]
+      ],
+      [
+        "Accessory_Group_47_R",
+        [
+          0.007026842538,
+          0.007026842538,
+          0.007026842538,
+          0.007026842538
+        ]
+      ],
+      [
+        "Accessory_Group_47_M",
+        [
+          0.001054026381,
+          0.001054026381,
+          0.001054026381,
+          0.001054026381
+        ]
+      ],
+      [
+        "Accessory_Group_47_U",
+        [
+          0.0004216105523,
+          0.0004216105523,
+          0.0004216105523,
+          0.0004216105523
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3490333072,
+          0.3490333072,
+          0.3490333072,
+          0.3490333072
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08725832681,
+          0.08725832681,
+          0.08725832681,
+          0.08725832681
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.005621474031,
+          0.005621474031,
+          0.005621474031,
+          0.005621474031
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.1745166536,
+          0.1745166536,
+          0.1745166536,
+          0.1745166536
+        ]
+      ]
+    ],
+    "Act4_G2_B5": [
+      [
+        "ReinforcingStone_Group_50_S",
+        [
+          0.08677048779,
+          0.08677048779,
+          0.08677048779,
+          0.08677048779
+        ]
+      ],
+      [
+        "Weapon_Group_50_N",
+        [
+          0.0433852439,
+          0.0433852439,
+          0.0433852439,
+          0.0433852439
+        ]
+      ],
+      [
+        "Weapon_Group_50_S",
+        [
+          0.02169262195,
+          0.02169262195,
+          0.02169262195,
+          0.02169262195
+        ]
+      ],
+      [
+        "Weapon_Group_50_R",
+        [
+          0.007965815273,
+          0.007965815273,
+          0.007965815273,
+          0.007965815273
+        ]
+      ],
+      [
+        "Weapon_Group_50_M",
+        [
+          0.001194872291,
+          0.001194872291,
+          0.001194872291,
+          0.001194872291
+        ]
+      ],
+      [
+        "Weapon_Group_50_U",
+        [
+          0.0004779489164,
+          0.0004779489164,
+          0.0004779489164,
+          0.0004779489164
+        ]
+      ],
+      [
+        "Armor_Group_50_N",
+        [
+          0.08677048779,
+          0.08677048779,
+          0.08677048779,
+          0.08677048779
+        ]
+      ],
+      [
+        "Armor_Group_50_S",
+        [
+          0.0433852439,
+          0.0433852439,
+          0.0433852439,
+          0.0433852439
+        ]
+      ],
+      [
+        "Armor_Group_50_R",
+        [
+          0.01593163055,
+          0.01593163055,
+          0.01593163055,
+          0.01593163055
+        ]
+      ],
+      [
+        "Armor_Group_50_M",
+        [
+          0.002389744582,
+          0.002389744582,
+          0.002389744582,
+          0.002389744582
+        ]
+      ],
+      [
+        "Armor_Group_50_U",
+        [
+          0.0009558978327,
+          0.0009558978327,
+          0.0009558978327,
+          0.0009558978327
+        ]
+      ],
+      [
+        "Avatar_Group_40_M",
+        [
+          0.0005974361455,
+          0.0005974361455,
+          0.0005974361455,
+          0.0005974361455
+        ]
+      ],
+      [
+        "Accessory_Group_50_N",
+        [
+          0.0433852439,
+          0.0433852439,
+          0.0433852439,
+          0.0433852439
+        ]
+      ],
+      [
+        "Accessory_Group_50_S",
+        [
+          0.02169262195,
+          0.02169262195,
+          0.02169262195,
+          0.02169262195
+        ]
+      ],
+      [
+        "Accessory_Group_50_R",
+        [
+          0.007965815273,
+          0.007965815273,
+          0.007965815273,
+          0.007965815273
+        ]
+      ],
+      [
+        "Accessory_Group_50_M",
+        [
+          0.001194872291,
+          0.001194872291,
+          0.001194872291,
+          0.001194872291
+        ]
+      ],
+      [
+        "Accessory_Group_50_U",
+        [
+          0.0004779489164,
+          0.0004779489164,
+          0.0004779489164,
+          0.0004779489164
+        ]
+      ],
+      [
+        "Stuff_Group_20_N",
+        [
+          0.3470819512,
+          0.3470819512,
+          0.3470819512,
+          0.3470819512
+        ]
+      ],
+      [
+        "Stuff_Group_20_S",
+        [
+          0.08677048779,
+          0.08677048779,
+          0.08677048779,
+          0.08677048779
+        ]
+      ],
+      [
+        "Stuff_Group_20_R",
+        [
+          0.006372652218,
+          0.006372652218,
+          0.006372652218,
+          0.006372652218
+        ]
+      ],
+      [
+        "GeneralItem_Group_43_N",
+        [
+          0.1735409756,
+          0.1735409756,
+          0.1735409756,
+          0.1735409756
+        ]
+      ]
+    ]
+  }
+}

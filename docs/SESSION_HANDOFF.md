@@ -1,5 +1,16 @@
 # Session handoff — 2026-11-22
 
+## Dungeon rank calculation (`5017/5018`) & card reward table (`5090/5091`, Issue #15 item 8) — saita machine, 2026-11-22
+
+- **Dungeon end rank always SSS (`5017 FinishGameReq` -> `5018 FinishGameAck`, `src/darkblood/games/handlers/dungeon/combat.py`)**:
+  - Decompiled `JUserClient::FinishGameByHostREQ` (`0x007AD380`, assert `0x00D00E08`: `bVictory << mapPartyScoreList << mapPartyDPS << nTotalMosterHP << vecUnderling << nInner`).
+  - Previously `handle_finish_game` misread the second map (`mapPartyDPS`, typically 200–300+) as a `0..100` rank percentage and mapped `>= 98` to `SSS` (6), forcing every clear to `SSS`.
+  - Now parses `mapPartyScoreList` and `nTotalMosterHP` and applies the exact `dungeonrank.lua` (`DictMap:LoadDungeonRank`) thresholds (`D=0.0, C=0.1, B=0.225, A=0.375, S=0.625, SS=0.75, SSS=0.9`) plus `DictDungeonReward:LoadDungeonReward` `BoxGrade` (`D/C/B->0, A->1, S->2, SS->3, SSS->4`).
+- **End-of-dungeon card rewards always meat (`5090 -> 5091`, Issue #15 item 8)**:
+  - Exported `DictMap:LoadItemPrize` (218 prize groups) and `DictMap:LoadRewardItemGroup` (34 dungeons, N/S/R/U difficulty weights) from `dungeonreward.lua` into `assets/dungeon_rewards.json` via `tools/export_assets.py` and `game_data/world.py::dungeon_rewards()`.
+  - Implemented `loot.roll_dungeon_reward(map_code, char_class)` resolving explicit item groups (potions, reinforcing stones, materials) and level/grade/class equipment groups (`Weapon`/`Armor`/`Accessory` across Normal/Superior/Rare/Unique/Mythic) from `equip_index.tsv`, replacing the hardcoded `'Ihppa0001'` (Piece of Raw Meat) in `handle_choice_reward_party_rank`.
+- **Verification**: 221/221 headless tests pass (`test_dungeon_rank_uses_score_ratio_and_card_rewards_roll_from_table`), `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check` pass. Live client retest pending.
+
 ## Class promotion quests & `2283 PromotionNot` (Issue #16) — saita machine, 2026-11-22
 
 - **Client analysis (`0x00797F00` `On_eEGS_PROMOTION_NOT`, `0x0080BA60`, `0x00AC7130`)**:

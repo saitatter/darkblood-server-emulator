@@ -68,6 +68,7 @@ from darkblood.games.game_data.world import (  # noqa: F401
     dungeon_maps,
     dungeon_map_copies,
     gate_dungeons,
+    dungeon_rewards,
 )
 
 __all__ = [
@@ -123,4 +124,5 @@ __all__ = [
     "dungeon_maps",
     "dungeon_map_copies",
     "gate_dungeons",
+    "dungeon_rewards",
 ]

@@ -86,31 +86,31 @@
 | `5014 StartGameAck` | `map<?>` | dungeon.jsch:160 | 0x004B7550 |
 | `5091 ChoiceRewardPartyRankAck` | `u16` | dungeon.jsch:242 | +4 not recovered |
 | `5091 ChoiceRewardPartyRankAck` | `u32` | dungeon.jsch:244 | +8 not recovered |
-| `SingleReward` | `i32` | dungeon.jsch:280 | +0x00 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:285 | +0x14 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:286 | +0x18 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:287 | +0x1C unknown |
-| `5018 FinishGameAck` | `map<?>` | dungeon.jsch:298 | mapGuildPersonCnt |
-| `5018 FinishGameAck` | `vector<?>` | dungeon.jsch:305 | vecBonusMonster |
-| `RoomMemberInfo` | `i32` | dungeon.jsch:321 | +0x10, meaning not recovered |
-| `RoomMemberInfo` | `i16` | dungeon.jsch:324 | +0x31, meaning not recovered |
-| `RoomMemberInfo` | `i64` | dungeon.jsch:326 | +0x34, meaning not recovered |
-| `RoomMemberInfo` | `i64` | dungeon.jsch:327 | +0x3C, meaning not recovered |
-| `RoomMemberInfo` | `raw[74]` | dungeon.jsch:328 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
-| `RoomMemberInfo` | `bool` | dungeon.jsch:329 | +0x8E, meaning not recovered |
-| `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:338 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
-| `2418 ServerBuffAddNot` | `map<?>` | dungeon.jsch:423 | mapNewBuffList |
-| `2419 ServerBuffDeleteNot` | `map<?>` | dungeon.jsch:428 | mapEndBuffList |
-| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:445 | vecKeepBuffChange (0x0076EB20) |
-| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:446 | jKeepCooltimeInfo (0x00A4A070) |
-| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:474 | vecFishingInfo |
-| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:568 | m_mapDailyInfo (0x004D4710) |
-| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:616 | mapInfo (0x004D4710) |
-| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:655 | mapReward (0x00532F50) |
-| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:662 | mapReward (0x00532F50) |
-| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:686 | mapReward (0x00532F50) |
-| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:700 | 0x00A51060 |
-| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:701 | 0x00A3EA40 |
+| `SingleReward` | `i32` | dungeon.jsch:281 | +0x00 unknown |
+| `SingleReward` | `i32` | dungeon.jsch:286 | +0x14 unknown |
+| `SingleReward` | `i32` | dungeon.jsch:287 | +0x18 unknown |
+| `SingleReward` | `i32` | dungeon.jsch:288 | +0x1C unknown |
+| `5018 FinishGameAck` | `map<?>` | dungeon.jsch:299 | mapGuildPersonCnt |
+| `5018 FinishGameAck` | `vector<?>` | dungeon.jsch:306 | vecBonusMonster |
+| `RoomMemberInfo` | `i32` | dungeon.jsch:322 | +0x10, meaning not recovered |
+| `RoomMemberInfo` | `i16` | dungeon.jsch:325 | +0x31, meaning not recovered |
+| `RoomMemberInfo` | `i64` | dungeon.jsch:327 | +0x34, meaning not recovered |
+| `RoomMemberInfo` | `i64` | dungeon.jsch:328 | +0x3C, meaning not recovered |
+| `RoomMemberInfo` | `raw[74]` | dungeon.jsch:329 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
+| `RoomMemberInfo` | `bool` | dungeon.jsch:330 | +0x8E, meaning not recovered |
+| `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:339 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
+| `2418 ServerBuffAddNot` | `map<?>` | dungeon.jsch:424 | mapNewBuffList |
+| `2419 ServerBuffDeleteNot` | `map<?>` | dungeon.jsch:429 | mapEndBuffList |
+| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:446 | vecKeepBuffChange (0x0076EB20) |
+| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:447 | jKeepCooltimeInfo (0x00A4A070) |
+| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:475 | vecFishingInfo |
+| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:569 | m_mapDailyInfo (0x004D4710) |
+| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:617 | mapInfo (0x004D4710) |
+| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:656 | mapReward (0x00532F50) |
+| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:663 | mapReward (0x00532F50) |
+| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:687 | mapReward (0x00532F50) |
+| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:701 | 0x00A51060 |
+| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:702 | 0x00A3EA40 |
 
 ## events (8 of 35 fields)
 

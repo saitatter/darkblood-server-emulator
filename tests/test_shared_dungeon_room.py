@@ -213,18 +213,22 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, guest_exp = await guest.expect_event(5086)
                 self.assertEqual(struct.unpack_from('<i', host_exp, 12), struct.unpack_from('<i', guest_exp, 12))
                 self.assertGreater(struct.unpack_from('<i', guest_exp, 12)[0], 0)
-                # 5017 with per-player scores and rank_points (both 77 -> rank 3 = A).
+                # 5017 (0x007AD380): bVictory << mapPartyScoreList << mapPartyDPS << nTotalMosterHP.
+                # Verify rank comes from score / total_monster_hp (dungeonrank.lua), NOT mapPartyDPS:
+                # host 4000/10000 = 0.40 -> A (3), guest 2500/10000 = 0.25 -> B (2),
+                # party 6500/10000 = 0.65 -> S (4), even though DPS values are > 200.
                 from darkblood.core.serialization.wire import JSerBufferWriter
                 from darkblood.games.network.messages import FinishGameAck
                 w5017 = JSerBufferWriter()
                 w5017.write_bool(True)
-                for m in ({host_id: 1796, guest_id: 952}, {host_id: 77, guest_id: 77}):
+                for m in ({host_id: 4000, guest_id: 2500}, {host_id: 290, guest_id: 240}):
                     w5017.write_u8(0x17)
                     w5017.write_varuint(len(m))
                     for k, v in sorted(m.items()):
                         w5017.write_u8(0x0F)
                         w5017.write_i64(k)
                         w5017.write_i32(v)
+                w5017.write_i32(10000)  # nTotalMosterHP
                 host.send_event(5017, w5017.to_bytes(), correlation=56)
                 correlation, result = await host.expect_event(5018)
                 self.assertEqual(correlation, 56)
@@ -232,9 +236,10 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(member_result, result)
                 parsed_result = FinishGameAck.decode(result)
                 self.assertEqual(parsed_result.rewards[host_id].rank, 3)
-                self.assertEqual(parsed_result.rewards[guest_id].rank, 3)
-                self.assertEqual(parsed_result.rank_first, 3)
-                self.assertEqual(parsed_result.rank_final, 3)
+                self.assertEqual(parsed_result.rewards[guest_id].rank, 2)
+                self.assertEqual(parsed_result.rank_first, 4)
+                self.assertEqual(parsed_result.rank_final, 4)
+                self.assertEqual(parsed_result.box_grade, 2)
                 for uid in (host_id, guest_id):
                     self.assertIn(b'\x0f' + struct.pack('<q', uid), result)
 

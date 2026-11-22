@@ -494,6 +494,64 @@ class DungeonFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_dungeon_rank_uses_score_ratio_and_card_rewards_roll_from_table(self):
+        """5017 computes rank from mapPartyScoreList / nTotalMosterHP (not mapPartyDPS),
+        and 5090 rolls real items from dungeonreward.lua instead of always granting meat."""
+        import random
+        from darkblood.games import loot
+        from darkblood.games.entities.character import CharacterClass
+        from darkblood.games.network import messages
+
+        # Roll 80 rewards for Act1_G1_A30 (Mage / Sorcerer) and verify variety (equipment + consumables, not only meat)
+        random.seed(42)
+        rolled = {loot.roll_dungeon_reward('Act1_G1_A30', int(CharacterClass.SORCERER))[0] for _ in range(80)}
+        self.assertGreater(len(rolled), 5, f'Expected varied dungeon rewards, got {rolled}')
+        self.assertTrue(any(code.startswith(('W', 'A')) for code in rolled),
+                        f'Expected weapon/armor drops in dungeon rewards, got {rolled}')
+
+        # Live-captured 5017 values: score=7357, dps=246, nTotalMosterHP=14803 -> ratio 0.497 -> A (3)
+        from darkblood.core.serialization.wire import JSerBufferWriter
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('RankHero', char_class=int(CharacterClass.MAGE)))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            client.send_event(5013, messages.StartGameReq(map_code='Act1_G1_A30').encode())
+            await client.expect_event(5014)
+            await client.expect_event(2023)
+
+            w5017 = JSerBufferWriter()
+            w5017.write_bool(True)
+            for m in ({char_id: 7357}, {char_id: 246}):
+                w5017.write_u8(0x17)
+                w5017.write_varuint(len(m))
+                for k, v in m.items():
+                    w5017.write_u8(0x0F)
+                    w5017.write_i64(k)
+                    w5017.write_i32(v)
+            w5017.write_i32(14803)  # nTotalMosterHP
+            client.send_event(5017, w5017.to_bytes())
+            _, ack5018 = await client.expect_event(5018)
+            parsed = messages.FinishGameAck.decode(ack5018)
+            self.assertEqual(parsed.rewards[char_id].rank, 3)  # A, NOT SSS (6)
+            self.assertEqual(parsed.rank_first, 3)
+            self.assertEqual(parsed.rank_final, 3)
+            self.assertEqual(parsed.box_grade, 1)
+
+            # Pick a reward card (5090 -> 5091) and verify item is added to inventory
+            client.send_event(5090, struct.pack('<ii', 0x7fffffff, 0))
+            _, ack5091 = await client.expect_event(5091)
+            res, uid, item_hash = struct.unpack_from('<iqI', ack5091, 0)
+            self.assertEqual((res, uid), (0, char_id))
+            self.assertNotEqual(item_hash, 0)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

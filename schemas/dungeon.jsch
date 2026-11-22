@@ -267,8 +267,9 @@ message 5006 LeaveRoomAck
 end
 
 message 5017 FinishGameReq
-  ## Sender 0x007AD2F0: bool, two 0x17 maps, 4 bytes, a 0x10 vector, 4 bytes.
-  ## Captures carry no header. Only the first field is decoded.
+  ## Sender 0x007AD380 (assert 0x00D00E08): bVictory << mapPartyScoreList <<
+  ## mapPartyDPS << nTotalMosterHP << vecUnderling << nInner.
+  ## Captures carry no header. Tail is parsed defensively in handle_finish_game.
   bool is_clear = true
   rest tail
 end

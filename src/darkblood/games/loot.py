@@ -76,3 +76,81 @@ def roll_drops(map_code, monster, char_class):
                 if item:
                     drops.append(item)
     return drops
+
+
+def _equip_for_prize(kind, level, grade, char_class):
+    """Pick a random equipment item matching (kind, level..level+4, grade, base_class)."""
+    if kind not in ('Weapon', 'Armor', 'Accessory'):
+        return None
+    base_class = int(char_class) & 0x0F
+
+    def fits(code):
+        if kind == 'Weapon':
+            return code.startswith('W')
+        if kind == 'Armor':
+            return code[:4] in ARMOR_SLOTS
+        return code[:4] in ACCESSORY_SLOTS
+
+    equip = client_dict.equip_index()
+    for lo, hi in ((level, level + 4), (max(1, level - 5), level + 5)):
+        pool = [code for code, g, lv, cls in equip
+                if g == grade and lo <= lv <= hi and fits(code)
+                and (len(cls) <= base_class or cls[base_class] == '1')]
+        if pool:
+            return random.choice(pool)
+    return None
+
+
+def roll_dungeon_reward(map_code, char_class):
+    """Roll (item_code, count) for a dungeon clear reward card (5090 -> 5091) from dungeonreward.lua."""
+    prizes, dungeons = client_dict.dungeon_rewards()
+    info = client_dict.dungeon_maps().get(map_code)
+    dungeon_id = info[0] if info else ''
+    diff = min(3, max(0, int(info[1]))) if info else 0
+
+    entries = dungeons.get(dungeon_id)
+    if not entries and map_code:
+        # Fallback: strip trailing _A## / _B## map index if map_code wasn't in dungeon_maps
+        base = re.sub(r'([A-Z]\d)\d+$', r'\1', map_code)
+        entries = dungeons.get(base) or dungeons.get(map_code)
+    if not entries:
+        return 'Ihppa0001', 1
+
+    # Filter to entries whose prize group can actually resolve an item
+    weighted = []
+    for pcode, probs in entries:
+        w = probs[diff] if diff < len(probs) else (probs[0] if probs else 0.0)
+        if w > 0 and pcode in prizes:
+            weighted.append((pcode, w))
+    if not weighted:
+        weighted = [(pcode, 1.0) for pcode, _ in entries if pcode in prizes]
+
+    # Try up to 6 weighted rolls (skipping empty groups such as Avatar_Group_* when unindexed)
+    for _ in range(6):
+        total_w = sum(w for _, w in weighted)
+        if total_w <= 0:
+            break
+        pick = random.random() * total_w
+        acc = 0.0
+        chosen = weighted[-1][0]
+        for pcode, w in weighted:
+            acc += w
+            if pick <= acc:
+                chosen = pcode
+                break
+        prize = prizes.get(chosen, {})
+        if prize.get('items'):
+            code, cnt = random.choice(prize['items'])
+            return code, max(1, int(cnt))
+        item = _equip_for_prize(prize.get('kind', ''), int(prize.get('level', 1)),
+                                int(prize.get('grade', 0)), char_class)
+        if item:
+            return item, 1
+
+    # Deterministic fallback to any explicit item group in this dungeon
+    for pcode, _ in weighted:
+        items = prizes.get(pcode, {}).get('items')
+        if items:
+            code, cnt = random.choice(items)
+            return code, max(1, int(cnt))
+    return 'Ihppa0001', 1

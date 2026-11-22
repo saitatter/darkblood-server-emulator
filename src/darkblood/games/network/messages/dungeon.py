@@ -570,8 +570,9 @@ class LeaveRoomAck(WireMessage):
 class FinishGameReq(WireMessage):
     """Opcode 5017: eERC_FINISH_GAME_REQ (request).
 
-    Sender 0x007AD2F0: bool, two 0x17 maps, 4 bytes, a 0x10 vector, 4 bytes.
-    Captures carry no header. Only the first field is decoded.
+    Sender 0x007AD380 (assert 0x00D00E08): bVictory << mapPartyScoreList <<
+    mapPartyDPS << nTotalMosterHP << vecUnderling << nInner.
+    Captures carry no header. Tail is parsed defensively in handle_finish_game.
     """
     OPCODE: ClassVar[int] = 5017
     is_clear: bool = True

@@ -315,6 +315,13 @@ def export_looting():
     print(f"Exported looting tables for {len(mon)} dungeons to looting.json")
 
 
+def export_dungeon_rewards():
+    prizes, dungeons = client_dict.dungeon_rewards()
+    (ASSETS_DIR / 'dungeon_rewards.json').write_text(
+        json.dumps({'prizes': prizes, 'dungeons': dungeons}, indent=2), encoding='utf-8')
+    print(f"Exported {len(prizes)} prize groups for {len(dungeons)} dungeons to dungeon_rewards.json")
+
+
 def main():
     root = client_dict.data_root()
     print(f"Reading from {root}...")
@@ -337,6 +344,7 @@ def main():
     export_tutorial_rewards()
     export_cash_and_random_boxes()
     export_looting()
+    export_dungeon_rewards()
     print("\nAll assets exported successfully!")
 
 

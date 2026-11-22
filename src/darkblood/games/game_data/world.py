@@ -243,3 +243,52 @@ def gate_dungeons():
         out[gid.group(1)] = dlist
     return out
 
+
+@lru_cache(maxsize=None)
+def dungeon_rewards():
+    """End-of-dungeon card reward tables from dungeonreward.lua.
+
+    Returns (prizes, dungeons):
+      prizes   {PrizeCode: {'items': [[code, count], ...], 'kind': str, 'level': int, 'grade': int}}
+      dungeons {DungeonID: [[prize_code, [n_prob, s_prob, r_prob, u_prob]], ...]}
+    """
+    override = _env_override('dungeonreward.lua')
+    if not override:
+        json_path = ASSETS_DIR / 'dungeon_rewards.json'
+        if json_path.is_file():
+            data = json.loads(json_path.read_text(encoding='utf-8'))
+            return data.get('prizes', {}), data.get('dungeons', {})
+
+    path = override or (data_root() / 'dungeonreward.lua')
+    if not path.exists():
+        return {}, {}
+    text = path.read_text(encoding='utf-8', errors='replace')
+    prizes = {}
+    for entry in _top_entries(_section(text, 'DictMap:LoadItemPrize')):
+        pcode = re.search(r'PrizeCode = "([^"]+)"', entry)
+        if not pcode:
+            continue
+        code = pcode.group(1)
+        items = [[m[0], int(m[1])] for m in re.findall(r'\{"([^"]+)",\s*(\d+)\}', entry)]
+        lvl = re.search(r'\bLevel = (\d+)', entry)
+        grd = re.search(r'\bGrade = (\d+)', entry)
+        kind = code.split('_Group_', 1)[0] if '_Group_' in code and not items else ''
+        prizes[code] = {
+            'items': items,
+            'kind': kind,
+            'level': int(lvl.group(1)) if lvl else 1,
+            'grade': int(grd.group(1)) if grd else 0,
+        }
+    dungeons = {}
+    for entry in _top_entries(_section(text, 'DictMap:LoadRewardItemGroup')):
+        did = re.search(r'DungeonID = "([^"]+)"', entry)
+        pcode = re.search(r'ItemPrizeCode = "([^"]+)"', entry)
+        if not (did and pcode):
+            continue
+        probs = []
+        for col in ('N_Prob', 'S_Prob', 'R_Prob', 'U_Prob'):
+            m = re.search(rf'\b{col} = ([0-9.eE+-]+)', entry)
+            probs.append(float(m.group(1)) if m else 0.0)
+        dungeons.setdefault(did.group(1), []).append([pcode.group(1), probs])
+    return prizes, dungeons
+
