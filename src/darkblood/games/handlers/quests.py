@@ -19,6 +19,7 @@ from darkblood.games.network.messages import (
     NpcMakingKairoReq,
     NpcSealItemAck,
     NpcSealItemReq,
+    PromotionNot,
     QuestAlimiChangeNot,
     QuestCompleteAck,
     QuestDiscardAck,
@@ -32,7 +33,7 @@ from darkblood.games.network.messages import (
     QuestStartAck,
     TutorialQuestStartAck,
 )
-from darkblood.games.progression import MAX_LEVEL, advance_level, level_up_not
+from darkblood.games.progression import MAX_LEVEL, advance_level, level_up_not, total_ap
 
 
 def _quest_id_after_tag(body: bytes) -> int:
@@ -244,6 +245,25 @@ class QuestHandlers(BaseDomainService):
                                items=[Item(owner=owner, **i) for i in reward_items]).encode()
         await self.transport.send_event(event(2077, ack, correlation),
                                         note='quest complete ack (%08x)' % quest_id)
+        if char and not already:
+            from darkblood.games.game_data.client_dict import quest_promotion_class
+            promo_class = quest_promotion_class(quest_id)
+            cur_class = int(char.get('char_class', 0))
+            if (promo_class is not None
+                    and (cur_class & 0x0F) == (promo_class & 0x0F)
+                    and cur_class != promo_class):
+                new_sp = total_ap(char)
+                char['char_class'] = promo_class
+                char['sp'] = new_sp
+                char['total_ap'] = new_sp
+                char['skills'] = {}
+                char['locked_skills'] = []
+                char['skill_show_cooltime'] = []
+                self.save_char()
+                await self.send_msg(
+                    PromotionNot(result=0, new_class=promo_class, sp=new_sp, skills={}),
+                    note=f'promotion not (class {cur_class:#x} -> {promo_class:#x}, sp={new_sp})',
+                )
 
     @packet_handler(2346)
     async def handle_tutorial_quest_start(self, correlation: int, body: bytes):

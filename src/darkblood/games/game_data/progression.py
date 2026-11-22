@@ -66,7 +66,7 @@ def char_level_stats():
 def char_level_stat(char_class: int, level: int) -> dict:
     """Returns stat dictionary for (char_class, level) with fallback formula."""
     stats = char_level_stats()
-    res = stats.get((char_class, level))
+    res = stats.get((char_class, level)) or stats.get((char_class & 0x0F, level))
     if res:
         return res
     return {

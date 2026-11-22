@@ -1,4 +1,16 @@
-# Session handoff — 2026-11-21
+# Session handoff — 2026-11-22
+
+## Class promotion quests & `2283 PromotionNot` (Issue #16) — saita machine, 2026-11-22
+
+- **Client analysis (`0x00797F00` `On_eEGS_PROMOTION_NOT`, `0x0080BA60`, `0x00AC7130`)**:
+  - Recovered `2283 PromotionNot` assert `0x00CFBE70` (`ucJob >> iMarginAp >> mapLearnSkill`) and mapped its trailing map in `schemas/system.jsch` as `map<u16,LearnedSkill> skills` (reader `0x004ACB80`).
+  - Verified `0x00797F00` updates `player+0x64` and `unit+0x29` to `ucJob`, calls `0x0080BA60(1, iMarginAp, &mapLearnSkill)` to reset/apply learned skills and refresh the Skill Tree UI, and prints `GAME_241` ("Class has been changed") + `UI_1060` ("A skill has been initialized (AP : %d -> %d)").
+  - Verified promoted subclass IDs from `0x00AC7130` and `skilltree.lua` `Demand1Class`: `0x10..0x16` and `0x50..0x56` (low nibble = base class `0..6`). Notably, in `quest_promotion.lua` and `quest_event.lua`, Hunter (`2`) and WHunter (`6`) have `PromotionType = 0` -> Trickster (`0x52`/`0x56`) and `PromotionType = 1` -> Shooter (`0x12`/`0x16`), whereas the other 5 base classes map `0 -> 0x10|base` and `1 -> 0x50|base`.
+- **Server & assets (`assets/quest_promotions.tsv`, `tools/export_assets.py`, `game_data/quests.py`, `handlers/quests.py`)**:
+  - Exported all 22 final class-promotion quests (`PromotionLv = 0`, 14 standard `QMA*` + 8 jumping `Q12*` quests) to `assets/quest_promotions.tsv` and added `quest_promotion_class()` / `quest_promotion_classes()`.
+  - Updated `handle_quest_complete` (`2076`) to promote `char['char_class']`, reset `skills`/`locked_skills`/`skill_show_cooltime`, refund `sp` to `total_ap(char)`, persist via `save_char()`, and send `2283 PromotionNot`.
+  - Added all 14 promoted subclass values to `CharacterClass` (`entities/character.py`) and masked `char_class & 0x0F` in `char_level_stat()` (`game_data/progression.py`), `_criteria_item()` (`loot.py`), and friend search (`handlers/social/friends.py`).
+- **Verification**: 220/220 headless tests pass (`test_class_promotion_quest_promotes_character_and_sends_2283` in `tests/test_quest_flow.py`), `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check` pass. Live client retest pending.
 
 ## Project-wide audit refactors, performance & hygiene — saita machine, 2026-11-21
 

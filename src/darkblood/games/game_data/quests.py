@@ -345,3 +345,80 @@ def quest_dungeon_objectives():
         return by_dungeon, by_map
     return by_dungeon, by_map
 
+
+def _promotion_target_class(base_class: int, promo_type: int) -> int:
+    """Map (base_class 0..6, PromotionType 0|1) -> promoted class ID (0x10..0x16 / 0x50..0x56).
+
+    Verified against client class lookup 0x00AC7130 and skilltree.lua Demand1Class:
+    - For Hunter (2) and WHunter (6), PromotionType 0 is Trickster (0x52/0x56) and 1 is Shooter (0x12/0x16).
+    - For all other base classes (0, 1, 3, 4, 5), PromotionType 0 is 0x10|base and 1 is 0x50|base.
+    """
+    if base_class in (2, 6):
+        high = 0x50 if promo_type == 0 else 0x10
+    else:
+        high = 0x10 if promo_type == 0 else 0x50
+    return high | (base_class & 0x0F)
+
+
+@lru_cache(maxsize=None)
+def quest_promotion_classes():
+    """Mapping: jhash(quest_id) -> promoted class ID (u8) for final class-promotion quests."""
+    q_override = _quest_override_files()
+    if not q_override:
+        tsv = ASSETS_DIR / 'quest_promotions.tsv'
+        if tsv.is_file():
+            out = {}
+            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+                parts = line.split('\t')
+                if len(parts) >= 2 and parts[0]:
+                    out[jhash(parts[0]) & 0xFFFFFFFF] = int(parts[1], 0)
+            return out
+
+    all_quests = {}
+    for p in _quest_files():
+        txt = p.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', txt):
+            if not block.startswith('LoadQuest'):
+                continue
+            for q_block in re.split(r'\n  \{', block)[1:]:
+                qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+                if not qid:
+                    continue
+                plv = re.search(r'PromotionLv\s*=\s*(\d+)', q_block)
+                ptype = re.search(r'PromotionType\s*=\s*(\d+)', q_block)
+                bcls = re.search(r'DemandBClass\s*=\s*"([^"]+)"', q_block)
+                lim = re.search(r'LimitQuest\s*=\s*\{([^}]*)\}', q_block)
+                all_quests[qid.group(1)] = {
+                    'plv': int(plv.group(1)) if plv else None,
+                    'ptype': int(ptype.group(1)) if ptype else None,
+                    'bcls': bcls.group(1) if bcls else '',
+                    'limits': re.findall(r'"([^"]+)"', lim.group(1)) if lim else [],
+                }
+
+    out = {}
+    for qid, q in all_quests.items():
+        if q['plv'] != 0 or '1' not in q['bcls']:
+            continue
+        base_class = q['bcls'].index('1')
+        cur = q
+        visited = {qid}
+        found_ptype = None
+        while cur and cur['limits']:
+            prev_id = cur['limits'][0]
+            if prev_id in visited or prev_id not in all_quests:
+                break
+            visited.add(prev_id)
+            prev = all_quests[prev_id]
+            if prev['ptype'] is not None:
+                found_ptype = prev['ptype']
+                break
+            cur = prev
+        if found_ptype is not None:
+            out[jhash(qid) & 0xFFFFFFFF] = _promotion_target_class(base_class, found_ptype)
+    return out
+
+
+def quest_promotion_class(quest_hash: int):
+    """Return the promoted class ID (u8) granted by completing quest_hash, or None."""
+    return quest_promotion_classes().get(quest_hash & 0xFFFFFFFF)
+

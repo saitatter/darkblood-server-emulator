@@ -94,7 +94,7 @@ class FriendsHandlers:
             char_class = int(record.get('char_class', 0)) & 0xFF
             if not req.low_level <= level <= req.high_level:
                 continue
-            if req.job < 7 and char_class != req.job:  # 7 = eCK_Max, taken as "any class"
+            if req.job < 7 and (char_class & 0x0F) != req.job:  # 7 = eCK_Max, taken as "any class"
                 continue
             if square is not None and player.square_id != square:
                 continue

@@ -36,7 +36,7 @@ def layer_net_id(square: str = DEFAULT_SQUARE, layer: int = DEFAULT_LAYER) -> in
 
 
 class CharacterClass(IntEnum):
-    """Player character classes in Dark Blood Online."""
+    """Player character classes in Dark Blood Online (client lookup 0x00AC7130)."""
     WARRIOR = 0
     KNIGHT = 1
     HUNTER = 2
@@ -44,6 +44,21 @@ class CharacterClass(IntEnum):
     THIEF = 4
     FIGHTER = 5
     WHUNTER = 6
+    # First promotion subclasses (low nibble = base class, high nibble = 0x10 or 0x50)
+    BERSERKER = 0x10
+    CRUSADER = 0x11
+    SHOOTER = 0x12
+    MAGICIAN = 0x13
+    ASSASSIN = 0x14
+    SPEEDER = 0x15
+    WSHOOTER = 0x16
+    BREAKER = 0x50
+    PALADIN = 0x51
+    TRICKSTER = 0x52
+    SORCERER = 0x53
+    OUTSIDER = 0x54
+    BALANCER = 0x55
+    WTRICKSTER = 0x56
 
 
 

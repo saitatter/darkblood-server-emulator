@@ -43,9 +43,10 @@ def _criteria_item(looting_id, char_class):
             return code[:4] in ARMOR_SLOTS
         return code[:4] in ACCESSORY_SLOTS
 
+    base_class = int(char_class) & 0x0F
     pool = [code for code, g, lv, cls in client_dict.equip_index()
             if g == grade and lo <= lv <= hi and fits(code)
-            and (len(cls) <= char_class or cls[char_class] == '1')]
+            and (len(cls) <= base_class or cls[base_class] == '1')]
     return random.choice(pool) if pool else None
 
 

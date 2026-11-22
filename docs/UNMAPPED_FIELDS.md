@@ -318,16 +318,15 @@
 | `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:78 |  |
 | `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:79 |  |
 
-## system (8 of 82 fields)
+## system (7 of 82 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `AchieveEntry` | `bool` | system.jsch:108 |  |
-| `AchieveEntry` | `i32` | system.jsch:109 |  |
-| `AchieveCompletion` | `raw[9]` | system.jsch:117 |  |
-| `2328 AchieveGetListAck` | `bool` | system.jsch:126 | not recovered |
-| `2329 AchieveChangeNot` | `map<?>` | system.jsch:144 |  |
+| `AchieveEntry` | `bool` | system.jsch:109 |  |
+| `AchieveEntry` | `i32` | system.jsch:110 |  |
+| `AchieveCompletion` | `raw[9]` | system.jsch:118 |  |
+| `2328 AchieveGetListAck` | `bool` | system.jsch:127 | not recovered |
 | `2329 AchieveChangeNot` | `map<?>` | system.jsch:145 |  |
 | `2329 AchieveChangeNot` | `map<?>` | system.jsch:146 |  |
-| `2283 PromotionNot` | `map<?>` | system.jsch:162 |  |
+| `2329 AchieveChangeNot` | `map<?>` | system.jsch:147 |  |
 

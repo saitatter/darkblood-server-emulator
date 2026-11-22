@@ -86,7 +86,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2068 | `eEGS_BUY_ITEM_ACK` | 0x0077E2F0 | — | `BuyItemAck` |  |
 | 2069 | `eEGS_SELL_ITEM_REQ` | — | `commerce/stores.py` (`handle_sell_item`) | `SellItemReq` | eEGS_SELL_ITEM_REQ (0x00780000.c:10700) -> 2070 eEGS_SELL_ITEM_ACK (0x0077E8E0). |
 | 2070 | `eEGS_SELL_ITEM_ACK` | 0x0077E8E0 | — | `SellItemAck` |  |
-| 2071 | `eEGS_REPURCHASE_ITEM_REQ` | — | `commerce/stores.py` (`handle_repurchase_item`) | `RepurchaseItemReq` | eEGS_REPURCHASE_ITEM_REQ (0x00780000.c:10735) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30). |
+| 2071 | `eEGS_REPURCHASE_ITEM_REQ` | — | `commerce/stores.py` (`handle_repurchase_item`) | `RepurchaseItemReq` | eEGS_REPURCHASE_ITEM_REQ (0x0078F8A0) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30 -> 0x0059F7F0). |
 | 2072 | `eEGS_REPURCHASE_ITEM_ACK` | 0x0077EC30 | — | `RepurchaseItemAck` |  |
 | 2073 | `eEGS_QUEST_START_REQ` | — | `quests.py` (`handle_quest_start`) | `QuestStartReq` | Opcode 2073 (eEGS_QUEST_START_REQ) -> 2074 (eEGS_QUEST_START_ACK). |
 | 2074 | `eEGS_QUEST_START_ACK` | — | — | `QuestStartAck` |  |

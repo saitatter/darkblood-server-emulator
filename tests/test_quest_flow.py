@@ -400,6 +400,83 @@ class QuestFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_class_promotion_quest_promotes_character_and_sends_2283(self):
+        """Completing a final class-promotion quest (e.g. QMA086 Born as Sorcerer) updates char_class,
+        resets skills / refunds AP, and sends 2283 eEGS_PROMOTION_NOT."""
+        from darkblood.games.entities.character import CharacterClass
+        from darkblood.games.game_data.client_dict import char_level_stat, quest_promotion_class
+        from darkblood.games.network.messages import PromotionNot
+
+        # Verify table covers standard + jumping quests including Hunter/WHunter Trickster vs Shooter
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA052')), CharacterClass.BERSERKER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA056')), CharacterClass.BREAKER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA072')), CharacterClass.TRICKSTER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA076')), CharacterClass.SHOOTER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA082')), CharacterClass.MAGICIAN)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA086')), CharacterClass.SORCERER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA112')), CharacterClass.WTRICKSTER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('QMA116')), CharacterClass.WSHOOTER)
+        self.assertEqual(quest_promotion_class(hashing.jhash('Q1279S01e1')), CharacterClass.SORCERER)
+        # Intermediate chain quests must NOT promote
+        self.assertIsNone(quest_promotion_class(hashing.jhash('QMA077')))
+        self.assertIsNone(quest_promotion_class(hashing.jhash('QMA084')))
+        self.assertIsNone(quest_promotion_class(hashing.jhash('QMA085')))
+        # Promoted classes still resolve base class level stats
+        self.assertEqual(char_level_stat(CharacterClass.SORCERER, 20),
+                         char_level_stat(CharacterClass.MAGE, 20))
+
+        q_hash = hashing.jhash('QMA086') & 0xFFFFFFFF
+        stamp = '2026-11-22'.encode('utf-16le')
+        req_complete = jser.varuint(len(stamp)) + stamp + struct.pack('<Ii', q_hash, -1)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            # Create a Mage (class 3)
+            client.send_event(2012, create_request('PromoMage', char_class=int(CharacterClass.MAGE)))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+
+            # Set character to level 20 with some spent SP and learned skills
+            store = session.GameSession.store()
+            char = store.get('OfflinePlayer', char_id)
+            char['level'] = 20
+            char['sp'] = 12
+            char['total_ap'] = 58
+            char['skills'] = {'30': 3, '26': 2}
+            char['locked_skills'] = [30]
+            store.save_char('OfflinePlayer', char_id)
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            # Complete QMA086 ("Born as Sorcerer")
+            client.send_event(2076, req_complete, compressed=True)
+            await client.expect_event(5086)  # EXP gain notification
+            _, ack2077 = await client.expect_event(2077)
+            self.assertEqual(struct.unpack_from('<I', ack2077[:4])[0], 0)
+
+            _, not2283 = await client.expect_event(2283)
+            res, new_cls, sp = struct.unpack_from('<IBi', not2283, 0)
+            self.assertEqual(res, 0)
+            self.assertEqual(new_cls, int(CharacterClass.SORCERER))
+            self.assertEqual(sp, 58)
+            self.assertEqual(not2283[9:], b'\x17\x80')  # empty map<u16, LearnedSkill>
+            self.assertEqual(
+                not2283,
+                PromotionNot(result=0, new_class=int(CharacterClass.SORCERER), sp=58, skills={}).encode(),
+            )
+
+            # Verify persisted state
+            updated = store.get('OfflinePlayer', char_id)
+            self.assertEqual(updated['char_class'], int(CharacterClass.SORCERER))
+            self.assertEqual(updated['sp'], 58)
+            self.assertEqual(updated['skills'], {})
+            self.assertEqual(updated['locked_skills'], [])
+            self.assertIn(q_hash, updated.get('quests_done', []))
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

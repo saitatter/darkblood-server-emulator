@@ -29,6 +29,8 @@ from darkblood.games.game_data.quests import (  # noqa: F401
     quest_item_objectives,
     quest_monster_objectives,
     quest_dungeon_objectives,
+    quest_promotion_classes,
+    quest_promotion_class,
 )
 from darkblood.games.game_data.items import (  # noqa: F401
     default_equipment,
@@ -88,6 +90,8 @@ __all__ = [
     "quest_item_objectives",
     "quest_monster_objectives",
     "quest_dungeon_objectives",
+    "quest_promotion_classes",
+    "quest_promotion_class",
     "default_equipment",
     "ITEM_FIELD_RE",
     "item_int_fields",

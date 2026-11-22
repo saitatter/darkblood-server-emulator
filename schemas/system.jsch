@@ -5,6 +5,7 @@ domain system Dark Blood protocol wire messages - System domain.
 
 extern Character from darkblood.games.entities.character encode=encode_world_details
 extern Item from darkblood.games.entities.items
+extern LearnedSkill from darkblood.games.network.messages.skills
 
 message 2594 HttpNoticeCheckReq bare
   ## Captured bodies are empty.
@@ -155,11 +156,13 @@ message 2330 AchieveCompleteNot
 end
 
 message 2283 PromotionNot ok_only
-  ## Handler 0x00797F00.
+  ## Handler 0x00797F00. Assert 0x00CFBE70: ucJob >> iMarginAp >> mapLearnSkill.
+  ## Calls 0x0080BA60(1, iMarginAp, &mapLearnSkill) to reset/apply skills and prints
+  ## GAME_241 ("Class has been changed") and UI_1060 ("A skill has been initialized").
   i32 result
   u8 new_class = 1
   i32 sp
-  map<?> _
+  map<u16,LearnedSkill> skills  # mapLearnSkill (0x004ACB80)
 end
 
 message 2286 RebirthCoinChangeNot ok_only

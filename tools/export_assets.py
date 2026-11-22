@@ -230,7 +230,51 @@ def export_quests(root):
     (ASSETS_DIR / 'quest_missions.tsv').write_text('\n'.join(mission_lines) + '\n', encoding='utf-8')
     (ASSETS_DIR / 'quest_chains.tsv').write_text('\n'.join(chain_lines) + '\n', encoding='utf-8')
     (ASSETS_DIR / 'quest_item_groups.tsv').write_text('\n'.join(group_lines) + '\n', encoding='utf-8')
-    print(f"Exported {len(quest_lines)-1} quests, {len(mission_lines)-1} missions, {len(chain_lines)-1} chains, {len(group_lines)-1} item groups")
+
+    # Export final class-promotion quests (PromotionLv == 0) mapped to promoted class IDs
+    from darkblood.games.game_data.quests import _promotion_target_class
+    all_q = {}
+    for p in sorted(root.glob('quest_*.lua')):
+        txt = p.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', txt):
+            if not block.startswith('LoadQuest'):
+                continue
+            for q_block in re.split(r'\n  \{', block)[1:]:
+                qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
+                if not qid:
+                    continue
+                plv = re.search(r'PromotionLv\s*=\s*(\d+)', q_block)
+                ptype = re.search(r'PromotionType\s*=\s*(\d+)', q_block)
+                bcls = re.search(r'DemandBClass\s*=\s*"([^"]+)"', q_block)
+                lim = re.search(r'LimitQuest\s*=\s*\{([^}]*)\}', q_block)
+                all_q[qid.group(1)] = {
+                    'plv': int(plv.group(1)) if plv else None,
+                    'ptype': int(ptype.group(1)) if ptype else None,
+                    'bcls': bcls.group(1) if bcls else '',
+                    'limits': re.findall(r'"([^"]+)"', lim.group(1)) if lim else [],
+                }
+    promo_lines = ['quest_id\ttarget_class']
+    for qid, q in sorted(all_q.items()):
+        if q['plv'] != 0 or '1' not in q['bcls']:
+            continue
+        base_cls = q['bcls'].index('1')
+        cur = q
+        visited = {qid}
+        found_ptype = None
+        while cur and cur['limits']:
+            prev_id = cur['limits'][0]
+            if prev_id in visited or prev_id not in all_q:
+                break
+            visited.add(prev_id)
+            prev = all_q[prev_id]
+            if prev['ptype'] is not None:
+                found_ptype = prev['ptype']
+                break
+            cur = prev
+        if found_ptype is not None:
+            promo_lines.append(f"{qid}\t0x{_promotion_target_class(base_cls, found_ptype):02x}")
+    (ASSETS_DIR / 'quest_promotions.tsv').write_text('\n'.join(promo_lines) + '\n', encoding='utf-8')
+    print(f"Exported {len(quest_lines)-1} quests, {len(mission_lines)-1} missions, {len(chain_lines)-1} chains, {len(group_lines)-1} item groups, {len(promo_lines)-1} promotions")
 
 
 def export_tutorial_rewards():

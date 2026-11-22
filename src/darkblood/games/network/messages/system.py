@@ -9,6 +9,7 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
     'HttpNoticeCheckReq',
@@ -328,19 +329,16 @@ class AchieveCompleteNot(WireMessage):
 class PromotionNot(WireMessage):
     """Opcode 2283: eEGS_PROMOTION_NOT (reply).
 
-    Handler 0x00797F00.
+    Handler 0x00797F00. Assert 0x00CFBE70: ucJob >> iMarginAp >> mapLearnSkill.
+    Calls 0x0080BA60(1, iMarginAp, &mapLearnSkill) to reset/apply skills and prints
+    GAME_241 ("Class has been changed") and UI_1060 ("A skill has been initialized").
     """
     OPCODE: ClassVar[int] = 2283
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     new_class: u8 = 1
     sp: i32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'new_class',
-        'sp',
-        Const(EmptyMap),
-    )
+    skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # mapLearnSkill (0x004ACB80)
 
 
 @dataclass
