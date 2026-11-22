@@ -179,18 +179,21 @@ def _current_release_tags(flags):
     return '', ''
 
 
-def fetch_recent_commits(limit=25):
+def fetch_recent_commits(limit=None):
     """Return list of dicts {sha, short, date, author, subject} for the current release."""
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     cur_tag, prev_tag = _current_release_tags(flags)
     rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
     label = f'release {cur_tag}' if cur_tag else 'local git'
     try:
+        git_args = ['git', 'log', rev_spec, '--no-merges',
+                    '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short']
+        if limit is not None:
+            git_args.insert(3, f'-n{limit * 2}')
         proc = subprocess.run(
-            ['git', 'log', rev_spec, '--no-merges', f'-n{limit * 2}',
-             '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short'],
+            git_args,
             cwd=str(ROOT), capture_output=True, text=True, encoding='utf-8',
-            errors='replace', timeout=5, creationflags=flags,
+            errors='replace', timeout=8, creationflags=flags,
         )
         if proc.returncode == 0 and proc.stdout.strip():
             commits = []
@@ -205,18 +208,19 @@ def fetch_recent_commits(limit=25):
                         'author': _resolve_github_username(parts[3], parts[4]),
                         'subject': parts[5],
                     })
-                    if len(commits) >= limit:
+                    if limit is not None and len(commits) >= limit:
                         break
             if commits:
                 return commits, label
     except Exception:
         pass
 
-    # Fallback: GitHub REST API (scoped to release tag when known)
+    # Fallback: GitHub REST API (scoped to release tag when known, up to 100/page)
     try:
-        api_url = GITHUB_COMMITS_API + (f'&sha={cur_tag}' if cur_tag else '')
+        base_api = f'https://api.github.com/repos/{updater.GITHUB_REPO}/commits?per_page=100'
+        api_url = base_api + (f'&sha={cur_tag}' if cur_tag else '')
         req = urllib.request.Request(api_url, headers={'User-Agent': 'DarkBlood-Launcher'})
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode('utf-8'))
         commits = []
         for item in data:
@@ -237,7 +241,7 @@ def fetch_recent_commits(limit=25):
                 'sha': sha, 'short': sha[:7],
                 'date': date, 'author': author, 'subject': subject,
             })
-            if len(commits) >= limit:
+            if limit is not None and len(commits) >= limit:
                 break
         return commits, (f'release {cur_tag}' if cur_tag else 'GitHub')
     except Exception as exc:
@@ -252,7 +256,7 @@ def fetch_recent_commits(limit=25):
                     scope, desc, sha, user = m.groups()
                     subj = f'feat({scope}): {desc}' if scope else desc
                     commits.append({'sha': sha, 'short': sha, 'date': cur_tag or 'release', 'author': user, 'subject': subj})
-                    if len(commits) >= limit:
+                    if limit is not None and len(commits) >= limit:
                         break
             if commits:
                 return commits, (f'release {cur_tag} (offline)' if cur_tag else 'release notes')
@@ -596,7 +600,15 @@ class DarkBloodLauncher(tk.Tk):
         self._update_status = None
 
         self.news_scroll = ScrollFrame(left_card, bg=BG_CARD)
-        self.news_scroll.pack(fill='both', expand=True, padx=4, pady=4)
+        self.news_scroll.pack(fill='both', expand=True, padx=4, pady=(4, 0))
+
+        tk.Frame(left_card, bg=BORDER, height=1).pack(fill='x')
+        self.news_pager = tk.Frame(left_card, bg=BG_CARD_ALT, height=34)
+        self.news_pager.pack(fill='x')
+        self.news_pager.pack_propagate(False)
+        self._all_commits = []
+        self._commits_page = 1
+        self._commits_page_size = 15
 
         # Right panel: Server Connection + Account + Active Patches summary
         right_col = tk.Frame(self.news_page, bg=BG_DARK, width=320)
@@ -798,24 +810,41 @@ class DarkBloodLauncher(tk.Tk):
     def _refresh_commits(self):
         for child in self.news_scroll.inner.winfo_children():
             child.destroy()
-        tk.Label(self.news_scroll.inner, text='Loading latest commits...', bg=BG_CARD, fg=TEXT_MUTED,
+        for child in self.news_pager.winfo_children():
+            child.destroy()
+        tk.Label(self.news_scroll.inner, text='Loading release changelog...', bg=BG_CARD, fg=TEXT_MUTED,
                  font=('Segoe UI', 9)).pack(anchor='w', padx=12, pady=12)
 
         def worker():
-            commits, source = fetch_recent_commits(limit=25)
+            commits, source = fetch_recent_commits(limit=None)
             self.after(0, lambda: self._render_commits(commits, source))
         threading.Thread(target=worker, daemon=True).start()
 
     def _render_commits(self, commits, source):
-        for child in self.news_scroll.inner.winfo_children():
-            child.destroy()
-        self.news_source_lbl.config(text=f'({source})')
-        if not commits:
+        self._all_commits = list(commits or [])
+        self._commits_page = 1
+        self.news_source_lbl.config(text=f'({source}, {len(self._all_commits)})' if self._all_commits else f'({source})')
+        if not self._all_commits:
+            for child in self.news_scroll.inner.winfo_children():
+                child.destroy()
+            for child in self.news_pager.winfo_children():
+                child.destroy()
             tk.Label(self.news_scroll.inner, text=f'Could not load commits ({source}).',
                      bg=BG_CARD, fg=ERR_RED, font=('Segoe UI', 9)).pack(anchor='w', padx=12, pady=12)
             return
+        self._show_commits_page(1)
 
-        for c in commits:
+    def _show_commits_page(self, page: int):
+        total = len(self._all_commits)
+        psize = self._commits_page_size
+        total_pages = max(1, (total + psize - 1) // psize)
+        page = max(1, min(page, total_pages))
+        self._commits_page = page
+
+        for child in self.news_scroll.inner.winfo_children():
+            child.destroy()
+        start = (page - 1) * psize
+        for c in self._all_commits[start:start + psize]:
             ctype, scope, title = parse_commit_prefix(c['subject'])
             bg_pill, fg_pill = COMMIT_BADGES.get(ctype, ('#2b3040', '#a6afc4'))
 
@@ -843,6 +872,60 @@ class DarkBloodLauncher(tk.Tk):
                 anchor='w', padx=10, pady=(1, 2))
             tk.Label(item, text=f'by {c["author"]}', bg=BG_CARD_ALT, fg=TEXT_MUTED,
                      font=('Segoe UI', 8)).pack(anchor='w', padx=10, pady=(0, 6))
+
+        self.news_scroll.canvas.yview_moveto(0.0)
+        self._render_pager(page, total_pages, total)
+
+    def _render_pager(self, page: int, total_pages: int, total_items: int):
+        for child in self.news_pager.winfo_children():
+            child.destroy()
+
+        bar = tk.Frame(self.news_pager, bg=BG_CARD_ALT)
+        bar.pack(side='left', padx=8, pady=4)
+
+        def add_tab(label, target_page, active=False, disabled=False):
+            bg = ACCENT if active else BG_CARD
+            fg = 'white' if active else (TEXT_MUTED if disabled else TEXT_DIM)
+            btn = tk.Button(
+                bar, text=label,
+                command=(lambda p=target_page: self._show_commits_page(p)) if not disabled else None,
+                state='disabled' if disabled else 'normal',
+                bg=bg, fg=fg, activebackground=BORDER, activeforeground=TEXT_MAIN,
+                disabledforeground=TEXT_MUTED, relief='flat', bd=0,
+                cursor='arrow' if disabled else 'hand2',
+                font=('Segoe UI', 8, 'bold'), padx=7, pady=2,
+            )
+            btn.pack(side='left', padx=2)
+
+        add_tab('‹', page - 1, disabled=(page <= 1))
+
+        # Build compact numbered tab list: 1 ... page-1 [page] page+1 ... total_pages
+        if total_pages <= 7:
+            pages = list(range(1, total_pages + 1))
+        else:
+            pages = [1]
+            lo = max(2, page - 1)
+            hi = min(total_pages - 1, page + 1)
+            if lo > 2:
+                pages.append(None)
+            pages.extend(range(lo, hi + 1))
+            if hi < total_pages - 1:
+                pages.append(None)
+            pages.append(total_pages)
+
+        for p in pages:
+            if p is None:
+                tk.Label(bar, text='…', bg=BG_CARD_ALT, fg=TEXT_MUTED,
+                         font=('Segoe UI', 8)).pack(side='left', padx=2)
+            else:
+                add_tab(str(p), p, active=(p == page))
+
+        add_tab('›', page + 1, disabled=(page >= total_pages))
+
+        tk.Label(
+            self.news_pager, text=f'Page {page}/{total_pages}  •  {total_items} changes',
+            bg=BG_CARD_ALT, fg=TEXT_MUTED, font=('Segoe UI', 8),
+        ).pack(side='right', padx=10)
 
     def _collect_and_save(self):
         net = options.validate_network(
