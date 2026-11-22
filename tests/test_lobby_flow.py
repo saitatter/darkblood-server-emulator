@@ -19,10 +19,20 @@ class LobbyFlowTest(ServerTestCase):
                 self.assertEqual(struct.unpack_from('<I', out[opcode])[0], 0)
 
             # Create character (class 1: Warrior)
-            client.send_event(2012, create_request('LobbyWarrior', char_class=1))
-            _, ack2013 = await client.expect_event(2013)
+            client.send_event(2012, create_request('LobbyWarrior', char_class=1), correlation=42)
+            correlation, ack2013 = await client.expect_event(2013)
+            self.assertEqual(correlation, 42)
             self.assertEqual(struct.unpack_from('<I', ack2013)[0], 0)
             char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+
+            # The new model receives its worn items without requesting a list.
+            correlation, preview = await client.expect_event(2009)
+            self.assertEqual(correlation, 42)
+            store = session.GameSession.store()
+            worn = [i for i in store.get('OfflinePlayer', char_id)['items'] if i['container'] == 1]
+            self.assertTrue(worn)
+            for item in worn:
+                self.assertIn(Item(owner=char_id, **item).encode(), preview)
 
             # Select character
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
@@ -37,7 +47,6 @@ class LobbyFlowTest(ServerTestCase):
             self.assertEqual((result, uid), (0, char_id))
             # Seconds left (duration formatter 0x0074F1D0), two days.
             self.assertTrue(2 * 86400 - 5 <= done_at <= 2 * 86400)
-            store = session.GameSession.store()
             self.assertGreater(store.get('OfflinePlayer', char_id)['delete_time'], time.time())
             entry = Character.from_dict(store.get('OfflinePlayer', char_id))
             self.assertTrue(entry.b5d)
