@@ -1,20 +1,23 @@
-"""Run several Dark Blood clients side by side against the local server (multiplayer tests).
+"""Run 1 to 4 Dark Blood clients side by side / in a grid against the local server.
 
-    python tools/multibox.py start [-n 2] [--no-resize]   launch clients and tile them
-    python tools/multibox.py tile [--no-resize]           re-tile the running clients
+    python tools/multibox.py start [-n 2..4] [--with-server] [--layout auto|grid|row] [--no-resize]
+    python tools/multibox.py tile [--layout auto|grid|row] [--no-resize]
     python tools/multibox.py status | stop
 
-The server must already be running (python run_server.py, or gamectl start
---server-only). The client refuses a second instance through the named mutex
+The server must already be running (python run_server.py, gamectl start --server-only,
+or pass --with-server). The client refuses a second instance through the named mutex
 "DarkBlood Online"; start() closes it inside each running client (also ones
-started by hand) before launching the next. Each window logs in to its own account (DARKBLOOD_ACCOUNT -> shim -> 5386);
-accounts register on first login. Default names: OfflinePlayer, Player2, ... Only clients started here (logs/multibox.json) are
-stopped. Windows only; standard library only.
+started by hand) before launching the next. Each window logs in to its own account
+(DARKBLOOD_ACCOUNT -> shim -> 5386); accounts register on first login. Default names:
+OfflinePlayer, Player2, Player3, Player4. Only clients started here (logs/multibox.json)
+are stopped. Windows only; standard library only.
 """
 import argparse
 import ctypes
 import json
+import math
 import os
+import re
 import subprocess
 import sys
 import time
@@ -25,6 +28,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gamectl  # noqa: E402
 
 STATE = gamectl.LOGS / 'multibox.json'
+MIN_CLIENTS = 1
+MAX_CLIENTS = 4
+VALID_LAYOUTS = ('auto', 'grid', 'row')
 user32 = gamectl.user32
 SWP_NOZORDER, SWP_NOSIZE, SWP_SHOWWINDOW = 0x0004, 0x0001, 0x0040
 SPI_GETWORKAREA = 0x0030
@@ -131,12 +137,49 @@ def _alive_clients(state):
 def status():
     state = _load()
     alive = _alive_clients(state)
-    return dict(clients=alive, windows={pid: bool(gamectl.find_window(pid)) for pid in alive},
+    saved_accounts = state.get('accounts', {})
+    accounts = {str(pid): saved_accounts[str(pid)] for pid in alive if str(pid) in saved_accounts}
+    return dict(count=len(alive), clients=alive, accounts=accounts,
+                windows={pid: bool(gamectl.find_window(pid)) for pid in alive},
                 server_listening=not gamectl._port_free())
 
 
-def tile(resize=True):
-    """Place the running clients next to each other on the primary work area."""
+def compute_tile_rects(area, count, layout='auto'):
+    """Compute (x, y, width, height) rectangles for `count` windows inside `area`.
+
+    `area` is `(left, top, right, bottom)`. `layout='auto'` uses a single row for
+    1-2 windows and a balanced grid (2x2 for 3-4 windows) for 3+ windows;
+    `layout='grid'` always uses a grid; `layout='row'` always uses a single row.
+    """
+    if layout not in VALID_LAYOUTS:
+        raise gamectl.GameError('Unknown tile layout %r (expected one of %s)' % (layout, ', '.join(VALID_LAYOUTS)))
+    if count <= 0:
+        return []
+    left, top, right, bottom = area
+    work_w = max(1, right - left)
+    work_h = max(1, bottom - top)
+    if layout == 'row':
+        cols, rows = count, 1
+    else:
+        cols = math.ceil(math.sqrt(count))
+        rows = math.ceil(count / cols)
+    cell_w = work_w // cols
+    cell_h = work_h // rows
+    rects = []
+    for i in range(count):
+        col = i % cols
+        row = i // cols
+        x = left + col * cell_w
+        y = top + row * cell_h
+        # Keep 4:3-ish proportions inside the cell so tall columns are not stretched;
+        # on 16:9 displays a 2x2 grid naturally uses the full cell height.
+        h = min(cell_h, cell_w * 3 // 4)
+        rects.append((x, y, cell_w, h))
+    return rects
+
+
+def tile(resize=True, layout='auto'):
+    """Place the running clients on the primary work area (row for 1-2, 2x2 grid for 3-4)."""
     pids = _alive_clients(_load())
     hwnds = [(pid, gamectl.find_window(pid)) for pid in pids]
     hwnds = [(pid, h) for pid, h in hwnds if h]
@@ -144,33 +187,46 @@ def tile(resize=True):
         raise gamectl.GameError('No client windows found')
     area = wintypes.RECT()
     user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(area), 0)
-    width = (area.right - area.left) // len(hwnds)
-    height = area.bottom - area.top
-    for i, (pid, hwnd) in enumerate(hwnds):
-        x = area.left + i * width
+    rects = compute_tile_rects((area.left, area.top, area.right, area.bottom), len(hwnds), layout=layout)
+    for (pid, hwnd), (x, y, w, h) in zip(hwnds, rects):
         if resize:
-            # Keep 4:3-ish proportions inside the column; the game scales its
-            # back buffer to the window in windowed mode.
-            h = min(height, width * 3 // 4)
-            user32.SetWindowPos(hwnd, 0, x, area.top, width, h, SWP_NOZORDER | SWP_SHOWWINDOW)
+            user32.SetWindowPos(hwnd, 0, x, y, w, h, SWP_NOZORDER | SWP_SHOWWINDOW)
         else:
-            user32.SetWindowPos(hwnd, 0, x, area.top, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW)
+            user32.SetWindowPos(hwnd, 0, x, y, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW)
     return [pid for pid, _ in hwnds]
 
 
 def default_accounts(count, skip=0):
-    """OfflinePlayer (the existing characters), then Player2, Player3, ..."""
+    """OfflinePlayer (the existing characters), then Player2, Player3, Player4, ..."""
     names = ['OfflinePlayer'] + ['Player%d' % i for i in range(2, count + skip + 2)]
     return names[skip:skip + count]
+
+
+def resolve_accounts(count, accounts=None, skip=0):
+    """Validate client count (1..MAX_CLIENTS) and return `count` unique account names."""
+    if not (MIN_CLIENTS <= count <= MAX_CLIENTS):
+        raise gamectl.GameError('Client count must be between %d and %d (got %d)' % (MIN_CLIENTS, MAX_CLIENTS, count))
+    result = [a.strip() for a in (accounts or []) if a and a.strip()]
+    if len(result) >= count:
+        return result[:count]
+    used = set(result)
+    for candidate in default_accounts(count + len(used) + 1, skip=skip):
+        if candidate not in used:
+            result.append(candidate)
+            used.add(candidate)
+            if len(result) == count:
+                break
+    return result
 
 
 def _launch_desktop_client(account, timeout=90):
     """Launch DarkBlood.exe directly on the user's interactive desktop (WinSta0\\Default).
     Uses Windows Task Scheduler to break out of agent sandbox desktops if present."""
     lab = gamectl.LAB
-    bat = lab / ('_launch_%s.bat' % account)
+    safe = re.sub(r'[^A-Za-z0-9_.-]', '_', account) or 'player'
+    bat = lab / ('_launch_%s.bat' % safe)
     bat.write_text(f"""@echo off\r\nset __COMPAT_LAYER=RunAsInvoker\r\nset DARKBLOOD_ACCOUNT={account}\r\ncd /d "{lab}"\r\nstart "" "{lab}\\DarkBlood.exe"\r\n""")
-    task_name = 'DarkBlood_Launch_%s' % account
+    task_name = 'DarkBlood_Launch_%s' % safe
     cmd = f'cmd.exe /c "{bat}"'
     pids_before = set(_running_clients())
     try:
@@ -196,9 +252,17 @@ def _launch_desktop_client(account, timeout=90):
     raise gamectl.GameError('Client window for %s did not appear within %ds' % (account, timeout))
 
 
-def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False):
+def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False, layout='auto', with_server=False):
+    if layout not in VALID_LAYOUTS:
+        raise gamectl.GameError('Unknown tile layout %r (expected one of %s)' % (layout, ', '.join(VALID_LAYOUTS)))
+    resolved_accounts = resolve_accounts(count, accounts=accounts, skip=len(_running_clients()))
     if gamectl._port_free():
-        raise gamectl.GameError('Server is not listening on 127.0.0.1:%d; start it first' % gamectl.PORT)
+        if with_server:
+            gamectl.start(server_only=True)
+        else:
+            raise gamectl.GameError(
+                'Server is not listening on 127.0.0.1:%d; start it first (or pass --with-server)' % gamectl.PORT
+            )
     if gamectl.client_hash() != gamectl.CLIENT_SHA256:
         raise gamectl.GameError('Unexpected client hash; addresses in the shim are build specific')
     state = _load()
@@ -206,9 +270,7 @@ def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False):
     # Clients already running (also ones started by hand) hold the mutexes.
     for pid in _running_clients():
         release_instance_mutexes(pid)
-    accounts = list(accounts or default_accounts(count, skip=len(_running_clients())))
-    for i in range(count):
-        account = accounts[i] if i < len(accounts) else 'Player%d' % (i + 2)
+    for account in resolved_accounts:
         pid = _launch_desktop_client(account, timeout=timeout)
         state.setdefault('accounts', {})[str(pid)] = account
         state['clients'].append(pid)
@@ -217,7 +279,7 @@ def start(count=2, resize=True, timeout=90, accounts=None, keep_alive=False):
         release_instance_mutexes(pid)
     # A new client resizes its window once its device is up; tile after that.
     time.sleep(6)
-    tile(resize)
+    tile(resize, layout=layout)
     if keep_alive:
         print(json.dumps(status(), indent=2))
         sys.stdout.flush()
@@ -250,20 +312,29 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='cmd', required=True)
     p_start = sub.add_parser('start')
-    p_start.add_argument('-n', '--count', type=int, default=2)
+    p_start.add_argument('-n', '--count', type=int, default=2,
+                         help='number of clients to launch (%d-%d, default 2)' % (MIN_CLIENTS, MAX_CLIENTS))
+    p_start.add_argument('--layout', choices=VALID_LAYOUTS, default='auto',
+                         help='tiling layout: auto (row for 1-2, 2x2 grid for 3-4), grid, or row')
+    p_start.add_argument('--with-server', action='store_true',
+                         help='start the local server automatically if port %d is not listening' % gamectl.PORT)
     p_start.add_argument('--no-resize', action='store_true')
     p_start.add_argument('--keep-alive', action='store_true', help='keep running to supervise clients')
-    p_start.add_argument('--accounts', nargs='+', help='account per window (default: OfflinePlayer, Player2, ...)')
+    p_start.add_argument('--accounts', nargs='+',
+                         help='account per window (default: OfflinePlayer, Player2, Player3, Player4)')
     p_tile = sub.add_parser('tile')
+    p_tile.add_argument('--layout', choices=VALID_LAYOUTS, default='auto',
+                        help='tiling layout: auto (row for 1-2, 2x2 grid for 3-4), grid, or row')
     p_tile.add_argument('--no-resize', action='store_true')
     sub.add_parser('status')
     sub.add_parser('stop')
     args = parser.parse_args(argv)
     try:
         if args.cmd == 'start':
-            result = start(args.count, not args.no_resize, accounts=args.accounts, keep_alive=args.keep_alive)
+            result = start(args.count, not args.no_resize, accounts=args.accounts,
+                           keep_alive=args.keep_alive, layout=args.layout, with_server=args.with_server)
         elif args.cmd == 'tile':
-            result = tile(not args.no_resize)
+            result = tile(not args.no_resize, layout=args.layout)
         elif args.cmd == 'status':
             result = status()
         else:

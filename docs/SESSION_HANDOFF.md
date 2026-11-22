@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-22
 
+## PR #17 CI fix, merge & 4-client multibox generalization — saita machine, 2026-11-22
+
+- **PR #17 (`fix/random-box-result-notification`)**:
+  - Fixed CI failure (`gen_progress.py --check` reported stale `README.md` architecture description for `chat.py` after `e009696` removed custom chat slash commands), verified green CI (`test` passed), and merged PR #17 into `main` (`eda63c2`).
+- **Multibox generalization (`tools/multibox.py`, `tools/mcp_server.py`, `tests/test_multibox.py`)**:
+  - Generalized `tools/multibox.py` for 1–4 clients (`MIN_CLIENTS = 1`, `MAX_CLIENTS = 4`, validated in `resolve_accounts()` with duplicate-safe account padding).
+  - Replaced single-row tiling with `compute_tile_rects(area, count, layout='auto')` supporting `auto` (1x1 for 1, 2x1 for 2, 2x2 grid for 3–4), `grid`, and `row` layouts, exposed via `--layout` on `start`/`tile` and in `tools/mcp_server.py`.
+  - Added `--with-server` to `multibox.py start` (auto-starts the local server via `gamectl.start(server_only=True)` if port 9400 is free), sanitized per-account launch task names, and added `count` and `accounts` to `status()`.
+  - Added Windows-gated unit tests in `tests/test_multibox.py`.
+
 ## Random box result toast and subclass skill report — saita machine, 2026-11-22
 
 - User reports that random boxes award their item (including a Max HP changing gem) while the client also displays "Please try again." The current `2038` handler sends a successful `2039` consume ACK and `2037` inventory delta but did not send the separate `2196 RandomboxResultItemNot` success notification.

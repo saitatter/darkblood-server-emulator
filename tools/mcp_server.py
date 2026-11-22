@@ -50,19 +50,24 @@ TOOLS = {
 
     # Multibox lifecycle
     'multibox_start': (
-        'Launch 1-4 Dark Blood clients side by side against the running server and tile them.',
+        'Launch 1-4 Dark Blood clients (side by side or 2x2 grid) against the local server and tile them.',
         {
             'count': _num('Number of clients (1-4, default 2)'),
             'accounts': {'type': 'array', 'items': {'type': 'string'},
-                         'description': 'Account names per window (default: OfflinePlayer, Player2, ...)'},
+                         'description': 'Account names per window (default: OfflinePlayer, Player2, Player3, Player4)'},
             'resize': _bool('Resize windows when tiling (default true)'),
+            'layout': _str('Tiling layout: auto (row for 1-2, 2x2 grid for 3-4), grid, or row'),
+            'with_server': _bool('Start the local server automatically if not listening (default false)'),
         },
         [],
     ),
     'multibox_status': ('Status of running multibox clients, windows, and server port.', {}, []),
     'multibox_tile': (
         'Re-tile running multibox client windows across the primary monitor.',
-        {'resize': _bool('Resize windows when tiling (default true)')},
+        {
+            'resize': _bool('Resize windows when tiling (default true)'),
+            'layout': _str('Tiling layout: auto (row for 1-2, 2x2 grid for 3-4), grid, or row'),
+        },
         [],
     ),
     'multibox_stop': ('Stop only client processes launched by multibox_start.', {}, []),
@@ -257,11 +262,16 @@ def call_tool(name, args):
             count=int(args.get('count', 2)),
             resize=bool(args.get('resize', True)),
             accounts=args.get('accounts'),
+            layout=str(args.get('layout', 'auto')),
+            with_server=bool(args.get('with_server', False)),
         )
     if name == 'multibox_status':
         return multibox.status()
     if name == 'multibox_tile':
-        return {'tiled': multibox.tile(resize=bool(args.get('resize', True)))}
+        return {'tiled': multibox.tile(
+            resize=bool(args.get('resize', True)),
+            layout=str(args.get('layout', 'auto')),
+        )}
     if name == 'multibox_stop':
         return multibox.stop()
     if name == 'game_screenshot':
