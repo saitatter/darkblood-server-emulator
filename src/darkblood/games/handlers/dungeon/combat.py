@@ -122,6 +122,8 @@ class DungeonCombatHandlers:
         self.dungeon_score = 0
         self.dungeon_exp = 0
         self.visited_dungeon_layers = set()
+        self.reward_card = None
+        self.reward_card_claimed = False
 
 
     async def _consume_session_stress(self, session, amount=None):
@@ -382,12 +384,15 @@ class DungeonCombatHandlers:
         rewards = {}
         member_ranks = []
         for member, char in members:
-            member.dungeon.dungeon_cleared = bool(req.is_clear)
+            dungeon = member.dungeon
+            dungeon.dungeon_cleared = bool(req.is_clear)
             if req.is_clear:
-                member.dungeon._record_dungeon_clear(char, map_code)
-                await member.dungeon._update_quest_dungeon_clear(map_code, char)
+                dungeon._record_dungeon_clear(char, map_code)
+                await dungeon._update_quest_dungeon_clear(map_code, char)
             uid = int(char.get('id', 0))
-            gained = getattr(member.dungeon, 'dungeon_exp', 0)
+            if req.is_clear and getattr(dungeon, 'in_dungeon', False) and dungeon.reward_card is None:
+                dungeon.reward_card = (uid, map_code)
+            gained = getattr(dungeon, 'dungeon_exp', 0)
             if total_monster_hp > 0 and uid in party_scores:
                 user_rank = _ratio_to_rank(party_scores[uid] / total_monster_hp)
             else:
@@ -550,32 +555,38 @@ class DungeonCombatHandlers:
     async def handle_choice_reward_party_rank(self, correlation, body):
         # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
         from darkblood.games import loot
+        from darkblood.games.entities.items import UPDATE_OWNER, Item
+        from darkblood.player_management.characters import add_reward_items, free_bag_slots, slots_needed
         req = ChoiceRewardPartyRankReq.decode(body)
         char = self._current_char()
-        char_id = self.char_id
-        char_class = int(char.get('char_class', 0)) if char else 0
-        reward_code, reward_count = loot.roll_dungeon_reward(getattr(self, 'map_code', ''), char_class)
-        item_id = jhash(reward_code) & 0xFFFFFFFF
-        from darkblood.games.entities.items import UPDATE_OWNER, Item
-        from darkblood.player_management.characters import add_reward_items
-        stored_items = []
-        if char:
-            stored_items = add_reward_items(char, [(reward_code, reward_count)])
-            self.store().save()
-        reward_item = [Item(owner=UPDATE_OWNER, **i) for i in stored_items] if stored_items else []
-        gold = char.get('gold', char.get('u66', 0)) if char else 0
+        card = self.reward_card
+        if (char is None or card is None or card[0] != char['id'] or self.reward_card_claimed
+                or not getattr(self, 'in_dungeon', False) or not getattr(self, 'dungeon_cleared', False)):
+            await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
+                             note='reward card unavailable')
+            return
+
+        char_id, map_code = card
+        reward_code, reward_count = loot.roll_dungeon_reward(map_code, int(char.get('char_class', 0)))
+        grant = [(reward_code, reward_count)]
+        free = free_bag_slots(char)
+        if free is not None and free < slots_needed(grant):
+            await self.reply(ChoiceRewardPartyRankAck(result=results.INVEN_FULL), correlation,
+                             note='reward card refused (bag full)')
+            return
+
+        stored_items = add_reward_items(char, grant)
+        self.save_char()
+        self.reward_card_claimed = True
         ack = ChoiceRewardPartyRankAck(
-            result=0,
             char_uid=char_id,
-            item_id=item_id,
+            item_id=jhash(reward_code) & 0xFFFFFFFF,
             count=reward_count,
-            box_type=0,
-            box_cost=0,
-            items=reward_item,
-            gold=gold,
-        ).encode()
-        await self.transport.send_event(event(5091, ack, correlation),
-                                        note=f'choice reward partyrank ack (card={req.card_index} item={reward_code} x{reward_count})')
+            items=[Item(owner=UPDATE_OWNER, **item) for item in stored_items],
+            gold=char.get('gold', char.get('u66', 0)),
+        )
+        await self.reply(ack, correlation,
+                         note=f'choice reward partyrank ack (card={req.card_index} item={reward_code} x{reward_count})')
 
 
     @packet_handler(5065)

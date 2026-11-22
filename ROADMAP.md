@@ -112,7 +112,7 @@ Live checklist (use `tools/gamectl.py enter-lobby`; launch the client only to co
 - [ ] Dungeon entry loads the map and spawns monsters with health bars.
 - [ ] Combat: hit sound, floating damage numbers, death animation.
 - [ ] Level-up fanfare when the EXP bar fills.
-- [ ] Card reward UI after a clear; return to town by portal.
+- [ ] Card reward UI after a clear; return to town by portal. One card claim per character per clear is verified headlessly.
 
 Still to write:
 - [x] Fuzz JSerBuffer varuints and scalar widths; out-of-order packets (gameplay before auth); truncated-frame floods (`tests/test_fuzz_and_load.py`).

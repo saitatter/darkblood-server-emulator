@@ -508,9 +508,10 @@ class ChoiceRewardPartyRankAck(WireMessage):
 
     On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0) is shown by the
     chest display 0x00713AB0: +0 looked up as an item (0x009E53D0), +6 shown as
-    "xN" when >= 2. A UID at +0 showed "unknown item".
+    "xN" when >= 2. Refusals sent by the server exit at 0x0078D6F9.
     """
     OPCODE: ClassVar[int] = 5091
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     char_uid: i64 = 0  # nChoiceCharUID
     item_id: h32 = 0  # +0 item code

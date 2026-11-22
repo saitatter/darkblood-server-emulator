@@ -1,5 +1,8 @@
 # Research status and handoff
 
+- Dungeon card rewards are limited to one claim per character per cleared run.
+  Full inventory leaves the claim available. Verified headlessly.
+
 ## Random box toast and subclass skill report - 2026-11-22
 
 - User reported that random boxes grant the rolled inventory item but also display "Please try again." Static decompilation of the hash-verified client's analysis fixture shows `2039 UseItemAck` handles nonzero results through the localized result table, while `2196 RandomboxResultItemNot` is a separate successful-roll notification. The emulator sent the `2039` success and `2037` inventory update but omitted `2196`.
