@@ -12,7 +12,10 @@ Complete reference for the native in-game GM console (`JAppPageCheat`, `0x004EF7
    - `/sp <amount>` — Add Skill Points (AP/SP).
    - `/item <code> [count]` — Grant an item by code (e.g. `/item Iwpna0001 1`).
    - `/bags` — Expand all bags to 20 slots.
-3. **Native GM Console (`JAppPageCheat`)**: type any command below directly into the client cheat console. Client-side commands (e.g. `notdie`, `maxatk`, `speed`, `freecamera`) take effect immediately in the client; server-backed commands send `eEGS_CHEAT_*` / `eERC_CHEAT_*` opcodes handled by `src/darkblood/games/handlers/gm.py`.
+3. **Native GM Console (`JAppPageCheat`)**:
+   - Press **`Left Ctrl + Left Shift + C`** in-game (`0x00451A87`: `DIK_LCONTROL` + `DIK_LSHIFT` + `DIK_C` -> toggles `eAP_Cheat` `0x37`) to open the native `Page_Cheat` console window.
+   - Or run any native command directly from normal chat with the **`%`** prefix (e.g. `%lv 20`, `%notdie`, `%dunclear`; `0x00547574` -> `0x00547B38`).
+   - Client-side commands (e.g. `notdie`, `maxatk`, `speed`, `freecamera`) take effect immediately in the client; server-backed commands send `eEGS_CHEAT_*` / `eERC_CHEAT_*` opcodes handled by `src/darkblood/games/handlers/gm.py`.
 
 ## Native GM Console Commands (123 commands)
 
