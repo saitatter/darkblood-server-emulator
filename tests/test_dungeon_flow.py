@@ -5,6 +5,7 @@ import unittest
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.core import hashing
 from darkblood.games import session
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
     FinishGameAck,
     PartyAcceptInviteReq,
@@ -97,10 +98,10 @@ class DungeonFlowTest(ServerTestCase):
             _, not2286 = await client.expect_event(2286)
             self.assertEqual(struct.unpack_from('<IH', not2286), (0, 3))
 
-            # 10. Choice reward party rank (5090 -> 5091)
+            # 10. A reward card is unavailable before a clear.
             client.send_event(5090, struct.pack('<ii', 0x7fffffff, 0))
             _, ack5091 = await client.expect_event(5091)
-            self.assertEqual(struct.unpack_from('<iq', ack5091)[:2], (0, char['id']))
+            self.assertEqual(ack5091, struct.pack('<i', results.INVALID_STATE))
 
             # 10b. Leave room outside dungeon (5005 -> 5006 only, no 5046)
             client.send_event(5005, b'')
@@ -562,11 +563,47 @@ class DungeonFlowTest(ServerTestCase):
             self.assertEqual((char['level'], char['exp']), exp_after_clear)
 
             # Pick a reward card (5090 -> 5091) and verify item is added to inventory
-            client.send_event(5090, struct.pack('<ii', 0x7fffffff, 0))
+            from darkblood.player_management.characters import add_reward_items, free_bag_slots
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            card_request = struct.pack('<ii', 0x7fffffff, 0)
+
+            fillers = add_reward_items(char, [('Ihppa0001', 1)] * free_bag_slots(char))
+            full_inventory = list(char['items'])
+            client.send_event(5090, card_request)
+            _, ack5091 = await client.expect_event(5091)
+            self.assertEqual(ack5091, struct.pack('<i', results.INVEN_FULL))
+            self.assertEqual(char['items'], full_inventory)
+            for filler in fillers:
+                char['items'].remove(filler)
+
+            before_claim = len(char['items'])
+            client.send_event(5090, card_request)
             _, ack5091 = await client.expect_event(5091)
             res, uid, item_hash = struct.unpack_from('<iqI', ack5091, 0)
             self.assertEqual((res, uid), (0, char_id))
             self.assertNotEqual(item_hash, 0)
+            self.assertGreater(len(char['items']), before_claim)
+            after_claim = len(char['items'])
+
+            client.send_event(5090, card_request)
+            _, ack5091 = await client.expect_event(5091)
+            self.assertEqual(ack5091, struct.pack('<i', results.INVALID_STATE))
+            self.assertEqual(len(char['items']), after_claim)
+
+            # The next run can award a new card, but only after a victory.
+            for victory in (False, True):
+                client.send_event(5013, messages.StartGameReq(map_code='Act1_G1_A30').encode())
+                await client.expect_event(5014)
+                client.send_event(5017, bytes([victory]))
+                await client.expect_event(5018)
+                client.send_event(5090, card_request)
+                _, ack5091 = await client.expect_event(5091)
+                if victory:
+                    self.assertEqual(struct.unpack_from('<iq', ack5091), (0, char_id))
+                    self.assertGreater(len(char['items']), after_claim)
+                else:
+                    self.assertEqual(ack5091, struct.pack('<i', results.INVALID_STATE))
+                    self.assertEqual(len(char['items']), after_claim)
 
         self.run_async(self.with_server(scenario))
 
