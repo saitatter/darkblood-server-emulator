@@ -1,5 +1,9 @@
 # Research status and handoff
 
+- **2026-11-23:** A new Warrior displays starter armor immediately in the
+  lobby after the server follows successful 2013 with the 2009 roster.
+  Verified in the real client using a fresh local test account.
+
 ## Random box toast and subclass skill report - 2026-11-22
 
 - User reported that random boxes grant the rolled inventory item but also display "Please try again." Static decompilation of the hash-verified client's analysis fixture shows `2039 UseItemAck` handles nonzero results through the localized result table, while `2196 RandomboxResultItemNot` is a separate successful-roll notification. The emulator sent the `2039` success and `2037` inventory update but omitted `2196`.

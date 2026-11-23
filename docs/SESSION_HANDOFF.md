@@ -1,5 +1,14 @@
 # Session handoff — 2026-11-22
 
+## Starter armor preview after creation — Cristian, 2026-11-23
+
+- The live Warrior preview showed only the weapon immediately after creation.
+  Reconnecting applied the saved armor through the 2009 worn-item vector.
+- The 2013 reader at `0x00758070` adds the character without reading an item
+  vector. The 2009 reader at `0x0077CFA0` applies the preview items via
+  `0x00538DF0`. Sending the roster after successful creation with the same
+  correlation displayed the armor immediately in the real client.
+
 ## PR #17 CI fix, merge & 4-client multibox generalization — saita machine, 2026-11-22
 
 - **PR #17 (`fix/random-box-result-notification`)**:
