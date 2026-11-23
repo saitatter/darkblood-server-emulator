@@ -18,7 +18,10 @@
   - `bSelect == True` populates the popup icon, glow capsule, amount, and colored item name.
 - **Fix (`src/darkblood/games/handlers/inventory/items.py`)**:
   - `handle_use_item` now sends `RandomboxResultItemNot(..., is_jackpot=True)` (`bSelect=True`) for rolled random boxes.
-- **Verification**: 226/226 headless tests pass (`test_random_box_opens_without_disconnect` updated to assert `bSelect=True`). Live client confirmation pending.
+- **Missing `item_randombox.lua` & `item_disposable.lua` boxes/packages (`src/darkblood/games/game_data/items.py`, `assets/`)**:
+  - `cash_items()`, `cash_packages()`, and `random_boxes()` previously only parsed `item_cash.lua` (and only the first `LoadRandomBoxState`/`LoadRandomBoxGroup` block), missing `RboxEEtc150R628` (Card Booster Pack `IRanCashEtc260`) and hundreds of non-cash random boxes/packages from `item_randombox.lua` and `item_disposable.lua`.
+  - Updated all three loaders to scan all relevant Lua dict files and sections, and re-exported `assets/cash_items.tsv` (1,026 items), `assets/cash_packages.tsv` (2,216 rows), and `assets/random_boxes.json` (440 states, 319 groups).
+- **Verification**: 226/226 headless tests pass (`test_random_box_opens_without_disconnect` updated to assert `bSelect=True` and Card Booster Pack `IRanCashEtc260` rolling `MCard*`). Live client confirmation pending.
 
 ## Standalone PyInstaller launcher release & `.bat` cleanup — saita machine, 2026-11-23
 

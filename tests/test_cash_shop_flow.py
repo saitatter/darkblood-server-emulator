@@ -167,6 +167,21 @@ class CashShopFlowTest(ServerTestCase):
             self.assertEqual(len(char['items']), 1)
             self.assertNotEqual(char['items'][0]['code'], 'IRanCashbod1')
 
+            # Card Booster Pack (IRanCashEtc260 -> RboxEEtc150R628 in item_randombox.lua)
+            char['items'] = [dict(code='IRanCashEtc260', uid=54, container=bag, slot=0, count=1)]
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 54, 1))
+            _, ack2039_card = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack2039_card)[0], 0)
+            _, drag2037_card = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', drag2037_card)[0], 0)
+            _, result2196_card = await client.expect_event(2196)
+            res_c, hash_c, cnt_c, sel_c = struct.unpack('<iih?', result2196_card)
+            self.assertEqual((res_c, sel_c), (0, True))
+            self.assertGreaterEqual(cnt_c, 1)
+            self.assertEqual(len(char['items']), 1)
+            self.assertTrue(char['items'][0]['code'].startswith('MCard'))
+
         self.run_async(self.with_server(scenario))
 
 
