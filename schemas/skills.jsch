@@ -118,8 +118,9 @@ message 2109 InsertApNot
   i32 current_ap
 end
 
-message 2697 LearnSkillListReq header
-  ## Sender 0x007A73D0. Captures always carry the header.
+message 2697 LearnSkillListReq header?
+  ## Sender 0x007A73D0. Uncompressed captures carry 0x7FFFFFFF; larger batches
+  ## (many skill points) are zlib-compressed by the client and decode without it.
   vector<SkillLevel> skills
 end
 

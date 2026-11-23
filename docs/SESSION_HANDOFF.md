@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-23)
 
+- **Batch skill learning freeze/crash (`2697 -> 2698`, PR #24 / Issue #15 item 1 — headless verified, live check pending)**:
+  - Live wire capture showed that large `2697 LearnSkillListReq` batches (zlib-compressed by the client) decode **without** the `0x7FFFFFFF` 4-byte prefix (`10 8a 0f ff 00 04 ...`), while `schemas/skills.jsch` declared `header` (unconditional 4-byte strip), causing `bad-request 2697` and leaving the client frozen waiting for `2698`.
+  - Changed `2697` to `header?` and fixed `_charge_skills` (`src/darkblood/games/handlers/skills.py`) to advance a running per-skill level map instead of double/triple-charging SP/AR when `2697` includes multiple sequential level steps for the same skill.
 - **Waypoints (`2344 -> 2345 WaypointInsertAck`, `5030 -> 5031`, PR #24 — headless verified, live check pending)**:
   - Recovered `WaypointData` (`0x00A49700`: `u64 layer_net_id`, `wstr name`, `h32 waypoint_id`, `i32 x`, `i32 y`) from `0x0064AE00`, `0x0064FC60` (`UpdateList`), and `0x00654D80` (`OnTeleportOK`).
   - Previously `2345` sent `ChannelSquare` (`u64 1`), so `UpdateList` called `DictMap::FindSquare(high_dword(1))` = `NULL` and discarded every waypoint. `handle_waypoint_insert` now sends `WaypointData(layer_net_id=layer, ...)` and persists `char['waypoints']`, and `handle_join_layer` (`5030 -> 5031`) echoes `use_waypoint`.

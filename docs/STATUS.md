@@ -1,5 +1,10 @@
 # Research status and handoff
 
+- **2026-11-23:** Fixed `2697 LearnSkillListReq` freeze/crash on large skill
+  batches (Issue #15 item 1): zlib-decompressed `2697` bodies omit `0x7FFFFFFF`
+  (`header` -> `header?`), and `_charge_skills` now tracks running per-skill
+  levels across sequential multi-level steps. Verified headlessly (226/226);
+  live client check pending.
 - **2026-11-23:** Recovered `WaypointData` (`0x00A49700`) for `2345 WaypointInsertAck`
   (`layer_net_id`, `name`, `waypoint_id`, `x`, `y`) instead of `ChannelSquare`
   (`u64 1`, which caused `UpdateList` `0x0064FC60` to discard waypoints), and

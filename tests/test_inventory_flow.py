@@ -105,6 +105,19 @@ class InventoryFlowTest(ServerTestCase):
             # Learning skill 101 to lv 2 (step 9) costs 2 SP; skills 5, 251, 35 at lv 1 are free (0 SP).
             self.assertEqual((sp, gold), (5, 500))
 
+            # 9c. Bare (no 0x7FFFFFFF prefix, as after zlib decompression) multi-step 2697 batch (Issue #15 item 1)
+            char['sp'] = 50
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            bare_2697 = bytes.fromhex(
+                '108a0fff00040fff00050fff00060f0001020f0001030f0001040f0001050f2900020f2900030f290004'
+            )
+            client.send_event(2697, bare_2697)
+            _, ack2698_bare = await client.expect_event(2698)
+            self.assertEqual(struct.unpack_from('<i', ack2698_bare[:4])[0], 0)
+            self.assertEqual(char['skills']['255'], 6)
+            self.assertEqual(char['skills']['256'], 5)
+            self.assertEqual(char['skills']['41'], 4)
+
             # 10. Change bag property (2048 -> 2049)
             client.send_event(2048, struct.pack('<qB', 2, 3))
             _, ack2049 = await client.expect_event(2049)

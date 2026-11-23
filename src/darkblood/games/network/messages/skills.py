@@ -242,10 +242,11 @@ class InsertApNot(WireMessage):
 class LearnSkillListReq(WireMessage):
     """Opcode 2697: eEGS_LEARN_SKILL_LIST_REQ (request).
 
-    Sender 0x007A73D0. Captures always carry the header.
+    Sender 0x007A73D0. Uncompressed captures carry 0x7FFFFFFF; larger batches
+    (many skill points) are zlib-compressed by the client and decode without it.
     """
     OPCODE: ClassVar[int] = 2697
-    _WIRE_HEADER: ClassVar[str] = 'header'
+    _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
     skills: Vector[SkillLevel] = field(default_factory=list)
 
