@@ -215,11 +215,14 @@ class FrontendHandlers(BaseDomainService):
         Serializes character slots for the account, including 3D model appearances,
         levels, classes, and equipped gear previews.
         """
-        from darkblood.player_management.characters import encode_character
         now = int(time.time())
         for char in self.store().characters(self.account):
             if char.get('delete_time') and char['delete_time'] <= now:
                 self.store().delete(self.account, char['id'])
+        await self._send_character_list(correlation)
+
+    async def _send_character_list(self, correlation: int):
+        from darkblood.player_management.characters import encode_character
         chars = self.store().characters(self.account)
         ack = struct.pack('<I', 0) + b'\x10' + varuint(len(chars))
         for char in chars:
@@ -299,6 +302,9 @@ class FrontendHandlers(BaseDomainService):
         else:
             ack = struct.pack('<I', 0) + encode_character(char) + struct.pack('<B', 0)
         await self.transport.send_event(event(2013, ack, correlation), note='create character ack')
+        if char is not None:
+            # 2013 adds the new model. Only 2009 applies its worn-item previews.
+            await self._send_character_list(correlation)
 
     @packet_handler(DeleteCharacterReq)
     async def handle_delete_character(self, correlation: int, body: bytes):

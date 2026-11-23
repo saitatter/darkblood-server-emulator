@@ -64,8 +64,7 @@ class CashShopFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertIn(('IRanCashEtc232', 2), [(i['code'], i.get('count', 1)) for i in char['items']])
 
-        with patch.object(cash_shop, 'CATALOG_PATH', path), \
-             patch.dict(os.environ, DARKBLOOD_CLIENT_DATA=str(root)):
+        with patch.object(cash_shop, 'CATALOG_PATH', path):
             self.run_async(self.with_server(scenario))
 
     def test_cash_package_opens_into_bag(self):
