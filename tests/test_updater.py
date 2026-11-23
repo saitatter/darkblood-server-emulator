@@ -76,7 +76,7 @@ class ZipUpdaterTest(unittest.TestCase):
     def test_release_zip_updates_locked_launcher_exe_via_rename(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             exe = root / updater.LAUNCHER_EXE_NAME
             exe.write_bytes(b'OLD_EXE')
 
