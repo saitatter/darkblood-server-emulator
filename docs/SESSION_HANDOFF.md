@@ -1,4 +1,14 @@
-# Session handoff — 2026-11-22
+# Session handoff — 2026-11-23
+
+## Standalone PyInstaller launcher release & `.bat` cleanup — saita machine, 2026-11-23
+
+- **Merged PRs #18, #19, #20, #21** into `main` (`d991899`) after resolving minor doc/combat conflicts and verifying 224/224 headless tests.
+- **Zero-install standalone release (`DarkBloodLauncher.exe`)**:
+  - Removed end-user batch wrappers `Launch_DarkBlood.bat` and `Play_DarkBlood.bat` (which also had a hardcoded local path).
+  - Made `REPO_ROOT` / `ROOT` PyInstaller-frozen-aware in `src/darkblood/__init__.py`, `tools/gamectl.py`, `tools/launcher.py`, and `tools/updater.py`.
+  - Added `--server` and `--check` modes to `tools/launcher.py` so `DarkBloodLauncher.exe` runs both the GUI and the embedded local server (with `logs/server.log` fallback when `sys.stderr` is `None` in `--windowed` mode), plus `DARKBLOOD_WINDOW_RECT` tiling for 2–4 clients launched from the GUI.
+  - Added Windows locked-executable self-update rename fallback (`*.old`) + startup `cleanup_old_binaries()` in `tools/updater.py`.
+  - Updated `tools/build_release.py` (`build_launcher_exe()`) and `.github/workflows/release.yml` to build `DarkBloodLauncher.exe` with PyInstaller, smoke-test `DarkBloodLauncher.exe --check`, and package the standalone ZIP.
 
 ## Starter armor preview after creation — Cristian, 2026-11-23
 

@@ -20,7 +20,7 @@ struct layouts were recovered from it, and other builds are not supported.
 
 ## Custom Launcher
 
-Launch and configure the emulator using `Launch_DarkBlood.bat` (or `python tools/launcher.py`). The launcher verifies the client binary, probes game/relay server latency, starts/stops the local server, rebuilds and deploys the modular `steam_api.dll` hook, and launches 1–4 clients with automatic multibox mutex release.
+Launch and configure the emulator using **`DarkBloodLauncher.exe`** (standalone release ZIP, no Python required) or `python tools/launcher.py` (from source). The launcher verifies the client binary, probes game/relay server latency, starts/stops the local server, rebuilds and deploys the modular `steam_api.dll` hook, and launches 1–4 clients in a 2×2 grid with automatic multibox mutex release.
 
 ### News & Server
 Displays the live repository commit feed, server connection settings (`host`, `port`, `relay_port`), account/multibox configuration, live TCP latency probes, and a summary of enabled patches.
@@ -333,7 +333,7 @@ python run_server.py
 *Port `9400` handles game traffic; port `9401` handles relay traffic.*
 
 ### 3. Launch Client (Custom Launcher)
-Use the custom launcher (`Launch_DarkBlood.bat` or `python tools\launcher.py`) to configure the target server IP/port, toggle individual client patches (`client_hook/patches/*.c`) and server options, rebuild/deploy `steam_api.dll`, and launch 1–4 clients:
+Use the custom launcher (`DarkBloodLauncher.exe` in releases, or `python tools\launcher.py` from source) to configure the target server IP/port, toggle individual client patches (`client_hook/patches/*.c`) and server options, rebuild/deploy `steam_api.dll`, and launch 1–4 clients:
 
 ```powershell
 python tools\launcher.py

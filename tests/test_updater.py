@@ -73,19 +73,54 @@ class ZipUpdaterTest(unittest.TestCase):
             self.assertEqual((root / 'research' / 'client' / 'steam_api.dll').read_bytes(), b'NEW_PREBUILT_DLL')
             self.assertEqual((root / '.version').read_text(encoding='utf-8').strip(), 'v0.1.0')
 
-    def test_build_release_zip_packages_clean_portable_archive(self):
+    def test_release_zip_updates_locked_launcher_exe_via_rename(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exe = root / updater.LAUNCHER_EXE_NAME
+            exe.write_bytes(b'OLD_EXE')
+
+            archive = self._make_zip({
+                f'DarkBlood-Emulator-v0.2.0/{updater.LAUNCHER_EXE_NAME}': b'NEW_EXE',
+            })
+
+            orig_write_bytes = Path.write_bytes
+            failed_once = {'done': False}
+
+            def fake_write_bytes(self_path, data):
+                if self_path == exe and not failed_once['done']:
+                    failed_once['done'] = True
+                    raise PermissionError('simulated Windows running exe lock')
+                return orig_write_bytes(self_path, data)
+
+            with patch.object(Path, 'write_bytes', fake_write_bytes):
+                res = updater.apply_zip_archive(root, archive, new_sha='v0.2.0')
+
+            self.assertTrue(res.ok)
+            self.assertTrue(res.launcher_changed)
+            self.assertEqual(exe.read_bytes(), b'NEW_EXE')
+            self.assertEqual((root / f'{updater.LAUNCHER_EXE_NAME}.old').read_bytes(), b'OLD_EXE')
+            self.assertEqual(updater.cleanup_old_binaries(root), 1)
+            self.assertFalse((root / f'{updater.LAUNCHER_EXE_NAME}.old').exists())
+
+    def test_build_release_zip_packages_clean_standalone_and_source_archives(self):
         import build_release
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp)
-            zip_path = build_release.create_release_zip('v0.1.0-test', output_dir=out_dir, require_dll=False)
+            # Standalone EXE release archive
+            fake_exe = out_dir / build_release.LAUNCHER_EXE_NAME
+            fake_exe.write_bytes(b'MZ_FAKE_EXE')
+            zip_path = build_release.create_release_zip(
+                'v0.1.0-test', output_dir=out_dir, require_dll=False, exe_path=fake_exe,
+            )
             self.assertTrue(zip_path.is_file())
             self.assertTrue((out_dir / f'{zip_path.name}.sha256').is_file())
             with zipfile.ZipFile(zip_path) as zf:
                 names = set(zf.namelist())
-                self.assertIn('DarkBlood-Emulator-v0.1.0-test/run_server.py', names)
-                self.assertIn('DarkBlood-Emulator-v0.1.0-test/tools/launcher.py', names)
-                self.assertIn('DarkBlood-Emulator-v0.1.0-test/tools/updater.py', names)
+                self.assertIn(f'DarkBlood-Emulator-v0.1.0-test/{build_release.LAUNCHER_EXE_NAME}', names)
                 self.assertIn('DarkBlood-Emulator-v0.1.0-test/.version', names)
+                self.assertTrue(any(n.startswith('DarkBlood-Emulator-v0.1.0-test/assets/') for n in names))
+                self.assertFalse(any(n.endswith('.bat') for n in names))
                 self.assertFalse(any('/data/' in n or '/research/' in n or '/logs/' in n for n in names))
                 self.assertFalse(any(n.endswith(('.obj', '.db', '.log')) for n in names))
 

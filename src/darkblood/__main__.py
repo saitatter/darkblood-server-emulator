@@ -5,7 +5,9 @@ Runs the client-compatible transport on 127.0.0.1:9400 (game) and
 """
 import asyncio
 import logging
+import sys
 
+from darkblood import REPO_ROOT
 from darkblood.frontend.relay import RELAY_PORT
 from darkblood.frontend.server import BootstrapServer
 
@@ -24,7 +26,12 @@ async def serve():
 
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+    handlers = None
+    if sys.stderr is None:
+        log_dir = REPO_ROOT / 'logs'
+        log_dir.mkdir(parents=True, exist_ok=True)
+        handlers = [logging.FileHandler(log_dir / 'server.log', encoding='utf-8')]
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', handlers=handlers)
     try:
         asyncio.run(serve())
     except KeyboardInterrupt:

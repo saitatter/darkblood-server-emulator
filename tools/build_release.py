@@ -2,11 +2,11 @@
 """Build a portable Windows release ZIP for Dark Blood Online Offline Server Emulator.
 
 Produces `dist/DarkBlood-Emulator-<version>-win32.zip` (plus `.sha256`) containing:
-  - Python server package (`src/darkblood/`)
+  - Standalone `DarkBloodLauncher.exe` (PyInstaller bundle with embedded GUI + server;
+    no Python or Visual Studio required)
   - Normalized game tables (`assets/`)
-  - Launcher, updater and CLI tools (`tools/`)
-  - Prebuilt `client_hook/steam_api.dll` (so players need no Visual Studio / MSVC)
-  - Entry scripts (`run_server.py`, `Launch_DarkBlood.bat`, `Play_DarkBlood.bat`)
+  - Prebuilt `client_hook/steam_api.dll`
+  - Documentation (`README.md`, `LICENSE`, `docs/GM_COMMANDS.md`, `RELEASE_NOTES.md`)
   - `.version` marker used by `tools/updater.py`
 
 Strictly excludes user data (`data/`, `research/`, `logs/`, `.git/`, `*.db`, `*.ini`).
@@ -23,13 +23,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tools'))
 HOOK_BUILD_BAT = ROOT / 'client_hook' / 'build.bat'
 HOOK_DLL = ROOT / 'client_hook' / 'steam_api.dll'
+LAUNCHER_EXE_NAME = 'DarkBloodLauncher.exe'
 
 INCLUDE_ROOT_FILES = (
-    'run_server.py',
-    'Launch_DarkBlood.bat',
-    'Play_DarkBlood.bat',
     'README.md',
     'LICENSE',
+)
+
+INCLUDE_SOURCE_ROOT_FILES = (
+    'run_server.py',
 )
 
 INCLUDE_DOC_FILES = (
@@ -78,14 +80,54 @@ def build_hook_dll() -> Path:
     return HOOK_DLL
 
 
-def iter_release_files(root: Path = ROOT):
+def build_launcher_exe(output_dir: Path = None, root: Path = ROOT) -> Path:
+    """Build standalone DarkBloodLauncher.exe using PyInstaller (embeds GUI + server)."""
+    out_dir = Path(output_dir or (root / 'dist'))
+    work_dir = out_dir / 'pyinstaller_build'
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        sys.executable, '-m', 'PyInstaller',
+        '--onefile',
+        '--windowed',
+        '--noconfirm',
+        '--clean',
+        '--name', 'DarkBloodLauncher',
+        '--distpath', str(out_dir),
+        '--workpath', str(work_dir),
+        '--specpath', str(work_dir),
+        '--paths', str(root / 'src'),
+        '--paths', str(root / 'tools'),
+        '--collect-submodules', 'darkblood',
+        '--hidden-import', 'gamectl',
+        '--hidden-import', 'multibox',
+        '--hidden-import', 'updater',
+        str(root / 'tools' / 'launcher.py'),
+    ]
+    proc = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f'PyInstaller build failed:\n{proc.stdout}\n{proc.stderr}')
+    exe_path = out_dir / LAUNCHER_EXE_NAME
+    if not exe_path.is_file():
+        raise FileNotFoundError(f'Expected built launcher executable at {exe_path}')
+    return exe_path
+
+
+def iter_release_files(root: Path = ROOT, exe_path: Path = None):
     """Yield (source_path, archive_rel_posix) pairs for the portable release archive."""
-    for rel in INCLUDE_ROOT_FILES + INCLUDE_DOC_FILES + INCLUDE_TOOLS:
+    if exe_path is not None and Path(exe_path).is_file():
+        yield Path(exe_path), LAUNCHER_EXE_NAME
+        root_files = INCLUDE_ROOT_FILES + INCLUDE_DOC_FILES
+        subdirs = ('assets',)
+    else:
+        root_files = INCLUDE_ROOT_FILES + INCLUDE_SOURCE_ROOT_FILES + INCLUDE_DOC_FILES + INCLUDE_TOOLS
+        subdirs = ('src/darkblood', 'assets')
+
+    for rel in root_files:
         p = root / rel
         if p.is_file():
             yield p, rel
 
-    for subdir in ('src/darkblood', 'assets'):
+    for subdir in subdirs:
         base = root / subdir
         if not base.is_dir():
             continue
@@ -102,7 +144,7 @@ def iter_release_files(root: Path = ROOT):
 
 
 def create_release_zip(version: str, output_dir: Path = None, root: Path = ROOT,
-                       require_dll: bool = True) -> Path:
+                       require_dll: bool = True, exe_path: Path = None) -> Path:
     output_dir = Path(output_dir or (root / 'dist'))
     output_dir.mkdir(parents=True, exist_ok=True)
     safe_ver = version.replace('/', '-').replace('\\', '-')
@@ -115,7 +157,7 @@ def create_release_zip(version: str, output_dir: Path = None, root: Path = ROOT,
     count = 0
     notes_text = generate_release_notes(version, zip_path.name, '(see .sha256)', root=root)
     with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-        for src, rel in iter_release_files(root):
+        for src, rel in iter_release_files(root, exe_path=exe_path):
             zf.write(src, f'{top_dir}/{rel}')
             count += 1
         zf.writestr(f'{top_dir}/.version', version + '\n')
@@ -194,9 +236,9 @@ def generate_release_notes(version: str, zip_name: str, zip_sha256: str, root: P
             sections['other'].append(f'- {subj} (`{sha}`, @{user})')
 
     out = [
-        '### Quick Start (Portable Windows Release — no Visual Studio required)',
+        '### Quick Start (Standalone Windows Release — no Python or Visual Studio required)',
         '1. Download and extract `' + zip_name + '`.',
-        '2. Run `Launch_DarkBlood.bat` (requires Python 3.8+).',
+        '2. Run `DarkBloodLauncher.exe`.',
         '3. Click **`Client Missing • Click to Setup`** in the top-right header and select your `DarkBlood.exe` (Steam build `1.6.5#0`, SHA-256 `a82ae3d71b596418c1f3593cb63d3f9746318d452143c2e88f6ebbaff339c931`). The launcher stages `research/client/`, links `Data/` via junction, and deploys the prebuilt `steam_api.dll` automatically.',
         '4. Click **`Start Local Server`** and **`▶ PLAY DARK BLOOD`**.',
         '',
@@ -206,7 +248,7 @@ def generate_release_notes(version: str, zip_name: str, zip_sha256: str, root: P
     if not prev:
         out += [
             '- **Connection & Transport**: Full ProudNet RSA-OAEP + AES handshake (optimized GF(2^8) tables), framing, TCP stream reassembly, and local square/room relay (`127.0.0.1:9400` / `9401`).',
-            '- **Custom Launcher & Auto-Updater**: Dark Bifrost-themed GUI (`Launch_DarkBlood.bat`), live repository news feed, modular patch toggles, 1-click client staging, multibox support (1–4 clients), and automatic GitHub Releases / Git updater.',
+            '- **Standalone Launcher & Auto-Updater**: Zero-install `DarkBloodLauncher.exe` (Bifrost dark UI + embedded server), live repository news feed, modular patch toggles, 1-click client staging, 1–4 client 2×2 grid multibox, and automatic GitHub Releases self-updater.',
             '- **Modular x86 Client Hook (`steam_api.dll` prebuilt)**: IPv4 `connect`/`WSAConnect` redirection, borderless fullscreen, lobby auto-reconnect on disconnect, 100 ms town peer sync, optional skip logos / skip tutorial.',
             '- **Lobby, World & Multiplayer**: Server/channel lists, character creation/deletion/undeletion, SQLite persistence (WAL mode), two-client town presence, chat/whispers, friends/blocklist/memos, character inspect, and party rooms with host promotion.',
             '- **Dungeons, Combat, Quests & Progression**: Tutorial & Act 1 dungeons, difficulty gate history, monster EXP/level-up, loot drops/pickup, stress (fatigue) & dungeon leave penalty timers, quest kill/item/dungeon-clear tracking (964/964 mission chains), end-of-dungeon rank & chest rewards, achievements, and native GM console (123 commands).',
@@ -251,12 +293,19 @@ def main(argv=None) -> int:
     parser.add_argument('--version', default=None, help='Release version/tag (default: git describe)')
     parser.add_argument('--output', default=None, help='Output directory (default: dist/)')
     parser.add_argument('--skip-build', action='store_true', help='Skip running client_hook/build.bat')
+    parser.add_argument('--exe', default=None, help='Path to a prebuilt DarkBloodLauncher.exe to package')
+    parser.add_argument('--skip-exe', action='store_true',
+                        help='Skip building DarkBloodLauncher.exe with PyInstaller (package Python sources instead)')
     args = parser.parse_args(argv)
 
     version = args.version or detect_version()
+    out_dir = Path(args.output) if args.output else None
     if not args.skip_build:
         build_hook_dll()
-    create_release_zip(version, output_dir=Path(args.output) if args.output else None)
+    exe_path = Path(args.exe) if args.exe else None
+    if exe_path is None and not args.skip_exe:
+        exe_path = build_launcher_exe(output_dir=out_dir)
+    create_release_zip(version, output_dir=out_dir, exe_path=exe_path)
     return 0
 
 

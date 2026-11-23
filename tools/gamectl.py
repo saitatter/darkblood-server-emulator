@@ -24,7 +24,11 @@ import zlib
 from ctypes import wintypes
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = (
+    Path(sys.executable).resolve().parent
+    if getattr(sys, 'frozen', False)
+    else Path(__file__).resolve().parent.parent
+)
 LAB = ROOT / 'research' / 'client'
 LOGS = ROOT / 'logs'
 STATE = LOGS / 'session.json'
@@ -119,7 +123,12 @@ def start(server_only=False, client_only=False):
         if not _port_free():
             raise GameError('127.0.0.1:%d is already in use by another process' % PORT)
         log = open(LOGS / 'server.log', 'w')
-        server = subprocess.Popen([sys.executable, '-u', str(ROOT / 'run_server.py')],
+        server_cmd = (
+            [sys.executable, '--server']
+            if getattr(sys, 'frozen', False)
+            else [sys.executable, '-u', str(ROOT / 'run_server.py')]
+        )
+        server = subprocess.Popen(server_cmd,
                                   cwd=str(ROOT), stdout=log, stderr=subprocess.STDOUT,
                                   creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS)
         state['server_pid'] = server.pid

@@ -54,12 +54,17 @@ jobs:
             patches\debug_tools.c ^
             /Fe:steam_api.dll /link ws2_32.lib user32.lib d3d9.lib
 
-      - name: Package portable release ZIP
+      - name: Install PyInstaller
+        shell: pwsh
+        run: python -m pip install --upgrade pyinstaller
+
+      - name: Build standalone launcher EXE & package release ZIP
         id: pkg
         shell: pwsh
         run: |
           $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
           python tools/build_release.py --version $tag --skip-build
+          ./dist/DarkBloodLauncher.exe --check
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Publish GitHub Release

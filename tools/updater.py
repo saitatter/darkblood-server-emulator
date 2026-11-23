@@ -18,7 +18,12 @@ import urllib.error
 import urllib.request
 import zipfile
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = (
+    Path(sys.executable).resolve().parent
+    if getattr(sys, 'frozen', False)
+    else Path(__file__).resolve().parent.parent
+)
+LAUNCHER_EXE_NAME = 'DarkBloodLauncher.exe'
 GITHUB_REPO = 'saitatter/darkblood-server-emulator'
 GITHUB_BRANCH = 'main'
 GITHUB_COMMIT_API = f'https://api.github.com/repos/{GITHUB_REPO}/commits/{GITHUB_BRANCH}'
@@ -204,6 +209,34 @@ def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = G
     )
 
 
+def cleanup_old_binaries(root: Path = ROOT) -> int:
+    """Remove leftover `.old` executables renamed during a Windows self-update."""
+    root = Path(root)
+    removed = 0
+    for old in root.glob('*.old'):
+        try:
+            old.unlink()
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def _write_replacing_locked(dest: Path, data: bytes) -> None:
+    """Write `data` to `dest`, renaming aside a running Windows executable if locked."""
+    try:
+        dest.write_bytes(data)
+    except PermissionError:
+        backup = dest.with_name(dest.name + '.old')
+        if backup.exists():
+            try:
+                backup.unlink()
+            except OSError:
+                pass
+        dest.rename(backup)
+        dest.write_bytes(data)
+
+
 def apply_zip_archive(root: Path, zip_bytes: bytes, new_sha: str = '') -> UpdateResult:
     """Safely extract a GitHub archive ZIP onto `root`, preserving local user data."""
     root = Path(root).resolve()
@@ -237,12 +270,12 @@ def apply_zip_archive(root: Path, zip_bytes: bytes, new_sha: str = '') -> Update
             dest.parent.mkdir(parents=True, exist_ok=True)
             data = zf.read(info)
             if not dest.exists() or dest.read_bytes() != data:
-                dest.write_bytes(data)
+                _write_replacing_locked(dest, data)
                 updated += 1
                 rel_posix = rel_path.as_posix()
                 if rel_posix.startswith('client_hook/'):
                     hook_changed = True
-                if rel_posix in ('tools/launcher.py', 'tools/updater.py'):
+                if rel_posix in ('tools/launcher.py', 'tools/updater.py', LAUNCHER_EXE_NAME):
                     launcher_changed = True
 
     if new_sha:

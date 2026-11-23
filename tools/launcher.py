@@ -29,9 +29,11 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / 'src'))
-sys.path.insert(0, str(ROOT / 'tools'))
+IS_FROZEN = bool(getattr(sys, 'frozen', False))
+ROOT = Path(sys.executable).resolve().parent if IS_FROZEN else Path(__file__).resolve().parent.parent
+if not IS_FROZEN:
+    sys.path.insert(0, str(ROOT / 'src'))
+    sys.path.insert(0, str(ROOT / 'tools'))
 
 from darkblood.core import options  # noqa: E402
 import gamectl  # noqa: E402
@@ -352,10 +354,13 @@ def launch_clients(account, count=1):
         accounts = multibox.default_accounts(count)
 
     launched = []
+    rects = multibox.compute_tile_rects(multibox._work_area(), count) if count > 1 else None
     for idx, acc in enumerate(accounts):
         env = os.environ.copy()
         env['__COMPAT_LAYER'] = 'RunAsInvoker'
         env['DARKBLOOD_ACCOUNT'] = acc
+        if rects is not None:
+            env['DARKBLOOD_WINDOW_RECT'] = '%d,%d,%d,%d' % rects[idx]
         proc = subprocess.Popen([str(CLIENT_EXE)], cwd=str(CLIENT_DIR), env=env)
         launched.append((proc.pid, acc))
         if idx + 1 < count:
@@ -1010,8 +1015,13 @@ class DarkBloodLauncher(tk.Tk):
             return
 
         flags = getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+        if IS_FROZEN:
+            flags |= getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+            server_cmd = [sys.executable, '--server']
+        else:
+            server_cmd = [sys.executable, str(ROOT / 'run_server.py')]
         self._server_proc = subprocess.Popen(
-            [sys.executable, str(ROOT / 'run_server.py')],
+            server_cmd,
             cwd=str(ROOT), creationflags=flags,
         )
         self.local_srv_btn.config(text='Stop Local Server')
@@ -1155,7 +1165,8 @@ class DarkBloodLauncher(tk.Tk):
         if res.launcher_changed:
             if messagebox.askyesno('Launcher Updated',
                                    f'{res.message}\n\nThe launcher itself was updated. Restart now?'):
-                subprocess.Popen([sys.executable, str(Path(__file__).resolve())], cwd=str(ROOT))
+                restart_cmd = [sys.executable] if IS_FROZEN else [sys.executable, str(Path(__file__).resolve())]
+                subprocess.Popen(restart_cmd, cwd=str(ROOT))
                 self.destroy()
                 return
         messagebox.showinfo('Update Complete', res.message)
@@ -1190,10 +1201,30 @@ class DarkBloodLauncher(tk.Tk):
         self.destroy()
 
 
-def main():
+def _self_check() -> int:
+    """Verify bundled server, tooling, and GUI modules import cleanly (used by release CI)."""
+    import darkblood.__main__  # noqa: F401
+    import darkblood.frontend.server  # noqa: F401
+    import darkblood.games.session  # noqa: F401
+    import gamectl  # noqa: F401
+    import multibox  # noqa: F401
+    import updater  # noqa: F401
+    return 0
+
+
+def main(argv=None):
+    args = list(sys.argv[1:] if argv is None else argv)
+    if '--check' in args:
+        return _self_check()
+    if '--server' in args:
+        from darkblood.__main__ import main as server_main
+        server_main()
+        return 0
+    updater.cleanup_old_binaries(ROOT)
     app = DarkBloodLauncher()
     app.mainloop()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
