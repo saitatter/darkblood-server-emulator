@@ -3,6 +3,8 @@
 - **2026-11-23:** A new Warrior displays starter armor immediately in the
   lobby after the server follows successful 2013 with the 2009 roster.
   Verified in the real client using a fresh local test account.
+- **2026-11-22:** Dungeon card rewards are limited to one claim per character per cleared run.
+  Full inventory leaves the claim available. Verified headlessly.
 
 ## Random box toast and subclass skill report - 2026-11-22
 

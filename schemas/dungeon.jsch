@@ -232,10 +232,10 @@ message 5090 ChoiceRewardPartyRankReq header
   i32 card_index
 end
 
-message 5091 ChoiceRewardPartyRankAck
+message 5091 ChoiceRewardPartyRankAck ok_only
   ## On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0) is shown by the
   ## chest display 0x00713AB0: +0 looked up as an item (0x009E53D0), +6 shown as
-  ## "xN" when >= 2. A UID at +0 showed "unknown item".
+  ## "xN" when >= 2. Refusals sent by the server exit at 0x0078D6F9.
   i32 result
   i64 char_uid               # nChoiceCharUID
   h32 item_id                # +0 item code

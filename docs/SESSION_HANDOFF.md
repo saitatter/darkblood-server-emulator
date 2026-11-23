@@ -9,6 +9,14 @@
   `0x00538DF0`. Sending the roster after successful creation with the same
   correlation displayed the armor immediately in the real client.
 
+## Dungeon card claims — Cristian, 2026-11-22
+
+- A cleared run offers one reward card per character. The server uses the
+  cleared map for the existing table roll. A full bag leaves the claim available.
+- The 5091 reader checks the result at `0x0078D6F9` and exits before reading the
+  item payload for the refusal codes used here. Headless coverage checks claims
+  before a clear, after defeat, after victory, after a full bag, and on a new run.
+
 ## PR #17 CI fix, merge & 4-client multibox generalization — saita machine, 2026-11-22
 
 - **PR #17 (`fix/random-box-result-notification`)**:
