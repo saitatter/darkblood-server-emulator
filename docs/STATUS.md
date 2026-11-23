@@ -1,5 +1,10 @@
 # Research status and handoff
 
+- **2026-11-23:** Deleting an inventory item (`2040 -> 2041`) now follows up with
+  an empty `2037 DragItemAck` to refresh client UI `7` (Quickslot) — since
+  `0x00557420` only refreshes UI `0` — and clears UID-bound quickslots (`2045`
+  with `ref_id=-1, ref_uid=-1`) on full removal. Verified headlessly (226/226);
+  live client check pending.
 - **2026-11-23:** A new Warrior displays starter armor immediately in the
   lobby after the server follows successful 2013 with the 2009 roster.
   Verified in the real client using a fresh local test account.

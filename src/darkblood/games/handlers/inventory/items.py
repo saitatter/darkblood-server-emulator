@@ -8,6 +8,7 @@ from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
+    AssignQuickslotAck,
     BuyLifeWaterAck,
     BuyLifeWaterReq,
     CharVerifyStatAck,
@@ -344,13 +345,31 @@ class ItemHandlersMixin:
             return
         current_count = target.get('count', 1)
         del_amount = min(req.amount if req.amount > 0 else 1, current_count)
-        if current_count <= del_amount:
+        removed = current_count <= del_amount
+        cleared_slots = []
+        if removed:
             items.remove(target)
+            # Clear item quickslots bound directly to this item's UID (non-stackable items).
+            # Stackable items are bound by ref_id with ref_uid=-1 and stay on the bar at 0.
+            qs = char.get('quickslots')
+            if isinstance(qs, dict):
+                for key, entry in list(qs.items()):
+                    if entry.get('type') == 0 and entry.get('ref_uid') == req.item_uid:
+                        cleared_slots.append((entry.get('type', 0), entry.get('slot', 0)))
+                        qs.pop(key, None)
         else:
             target['count'] = current_count - del_amount
         self.save_char()
         await self.reply(DeleteItemAck(result=0, item_uid=req.item_uid, del_amount=del_amount),
                          correlation, note=f'delete item ack (uid={req.item_uid} amount={del_amount})')
+        for slot_type, slot_num in cleared_slots:
+            await self.send_msg(
+                AssignQuickslotAck(result=0, slot_type=slot_type, slot_num=slot_num, ref_id=-1, ref_uid=-1),
+                note=f'clear deleted item quickslot (type={slot_type} slot={slot_num})',
+            )
+        # Client 0x00557420 (2041 DeleteItemAck) only refreshes UI 0 (Inventory) and omits
+        # UI 7 (Quickslot); an empty 2037 DragItemAck triggers 0x0077F570 to refresh [0, 7, 2, 0xc, 0xe].
+        await self.send_msg(DragItemAck(result=0, items=[]), note='refresh quickslot ui after delete')
 
     @packet_handler(BuyLifeWaterReq)
     async def handle_buy_life_water(self, correlation, body):

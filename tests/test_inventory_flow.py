@@ -711,3 +711,51 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(char['items'][0]['code'], 'Ihppa0000')
 
         self.run_async(self.with_server(scenario))
+
+    def test_delete_item_refreshes_quickslots_and_clears_uid_bound_slot(self):
+        """2040 -> 2041 sends an empty 2037 to refresh UI 7 (Quickslot) and clears UID-bound quickslots on full delete."""
+        from darkblood.core.hashing import jhash
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('DelQsHero', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['items'] = [
+                dict(code='Ihppa0000', uid=101, container=3, slot=0, count=5),
+                dict(code='AbodT1N', uid=102, container=3, slot=1, count=1),
+            ]
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+
+            # Bind stackable potion (ref_uid = -1) to slot 0 and unique armor (ref_uid = 102) to slot 1.
+            potion_hash = jhash('Ihppa0000') & 0x7FFFFFFF
+            armor_hash = jhash('AbodT1N') & 0x7FFFFFFF
+            client.send_event(2044, struct.pack('<iBBiq', 0x7fffffff, 0, 0, potion_hash, -1))
+            await client.expect_event(2045)
+            client.send_event(2044, struct.pack('<iBBiq', 0x7fffffff, 0, 1, armor_hash, 102))
+            await client.expect_event(2045)
+
+            # Partial delete of potion stack: 2041 followed by empty 2037 UI refresh; quickslot stays bound.
+            client.send_event(2040, struct.pack('<iqi', 0x7fffffff, 101, 2))
+            _, ack2041 = await client.expect_event(2041)
+            self.assertEqual(struct.unpack_from('<iqi', ack2041), (0, 101, 2))
+            _, refresh2037 = await client.expect_event(2037)
+            self.assertEqual(refresh2037, b'\x00\x00\x00\x00\x10\x80')
+            self.assertIn('0:0', char['quickslots'])
+
+            # Full delete of UID-bound armor: 2041 -> 2045 clear (-1, -1) -> empty 2037 refresh.
+            client.send_event(2040, struct.pack('<iqi', 0x7fffffff, 102, 1))
+            _, ack2041_full = await client.expect_event(2041)
+            self.assertEqual(struct.unpack_from('<iqi', ack2041_full), (0, 102, 1))
+            _, clear2045 = await client.expect_event(2045)
+            self.assertEqual(struct.unpack_from('<iBBiq', clear2045), (0, 0, 1, -1, -1))
+            _, refresh2037_full = await client.expect_event(2037)
+            self.assertEqual(refresh2037_full, b'\x00\x00\x00\x00\x10\x80')
+            self.assertNotIn('0:1', char['quickslots'])
+            self.assertIn('0:0', char['quickslots'])
+
+        self.run_async(self.with_server(scenario))

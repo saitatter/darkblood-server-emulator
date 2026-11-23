@@ -1,5 +1,15 @@
 # Session handoff — 2026-11-23
 
+## Quickslot refresh on item deletion (`2040 -> 2041`) — saita machine, 2026-11-23
+
+- **Root cause (static analysis of `unpacked.analysis.exe`)**:
+  - `2041 DeleteItemAck` (`0x00557420`, `JAppPageGameMenuInventory`) decrements/removes the deleted item via `0x0082f060` and refreshes UI `[0]` (Inventory) only — unlike `2037 DragItemAck` (`0x0077F570`, refreshes `[0, 7, 2, 0xc, 0xe]`), `2039 UseItemAck` (`0x00773f20`, refreshes `[0, 7]`), and `2322 ItemDeleteNot` (`0x00774DD0`, refreshes `[0, 2, 0xe, 7]`), it omits UI `7` (Quickslot).
+  - Additionally, non-stackable items bound to a quickslot by `ref_uid` remained in `char['quickslots']` after full deletion.
+- **Fix (`src/darkblood/games/handlers/inventory/items.py`)**:
+  - `handle_delete_item` now removes any item quickslots (`type == 0`) whose `ref_uid == req.item_uid` when the item is completely deleted and sends `2045 AssignQuickslotAck(ref_id=-1, ref_uid=-1)` to clear them (stackable items bound with `ref_uid=-1` remain on the hotbar at count 0, matching `2039 UseItemAck`).
+  - Follows every successful `2041 DeleteItemAck` with an unsolicited empty `2037 DragItemAck(result=0, items=[])` so the client refreshes UI `7` (Quickslot) immediately.
+- **Verification**: 226/226 headless tests pass (`test_delete_item_refreshes_quickslots_and_clears_uid_bound_slot` in `tests/test_inventory_flow.py`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`. Live client confirmation pending.
+
 ## Standalone PyInstaller launcher release & `.bat` cleanup — saita machine, 2026-11-23
 
 - **Merged PRs #18, #19, #20, #21** into `main` (`d991899`) after resolving minor doc/combat conflicts and verifying 224/224 headless tests.
