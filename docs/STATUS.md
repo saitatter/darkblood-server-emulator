@@ -1,5 +1,10 @@
 # Research status and handoff
 
+- **2026-11-23:** Recovered `WaypointData` (`0x00A49700`) for `2345 WaypointInsertAck`
+  (`layer_net_id`, `name`, `waypoint_id`, `x`, `y`) instead of `ChannelSquare`
+  (`u64 1`, which caused `UpdateList` `0x0064FC60` to discard waypoints), and
+  echoed `use_waypoint` in `5030 -> 5031`. Verified headlessly (226/226); live
+  client check pending.
 - **2026-11-23:** Recovered `PetInfo` (`0x00A52CF0`) and `2465 PetCreateAck`
   (`0x0079E620`: `vecItem >> nItemID >> jNewPetInfo`), replacing the invalid
   `raw[52]` stub so Pet Eggs (`Pegg1Cash96`/`Pegg1Reven`) consume the egg and

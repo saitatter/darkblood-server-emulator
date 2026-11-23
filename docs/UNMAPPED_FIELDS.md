@@ -253,7 +253,7 @@
 | `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:459 | m_mapWinCardDeck (0x005F6640) |
 | `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:460 | m_mapWinCnt (0x005F6730) |
 
-## quests (1 of 104 fields)
+## quests (1 of 109 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

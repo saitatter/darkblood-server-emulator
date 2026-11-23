@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-23)
 
+- **Waypoints (`2344 -> 2345 WaypointInsertAck`, `5030 -> 5031`, PR #24 — headless verified, live check pending)**:
+  - Recovered `WaypointData` (`0x00A49700`: `u64 layer_net_id`, `wstr name`, `h32 waypoint_id`, `i32 x`, `i32 y`) from `0x0064AE00`, `0x0064FC60` (`UpdateList`), and `0x00654D80` (`OnTeleportOK`).
+  - Previously `2345` sent `ChannelSquare` (`u64 1`), so `UpdateList` called `DictMap::FindSquare(high_dword(1))` = `NULL` and discarded every waypoint. `handle_waypoint_insert` now sends `WaypointData(layer_net_id=layer, ...)` and persists `char['waypoints']`, and `handle_join_layer` (`5030 -> 5031`) echoes `use_waypoint`.
 - **Pet Egg hatching (`2464 -> 2465 PetCreateAck`, PR #24 / Issue #15 item 4 — headless verified, live check pending)**:
   - Recovered `PetInfo` (`0x00A52CF0`, ctor `0x005014D0`) and `2465 PetCreateAck` (`0x0079E620`, assert `0x00CFD628`: `vecItem >> nItemID >> jNewPetInfo`).
   - Previously `PetCreateAck` sent 52 zero bytes (`raw[52]`), causing `0x00A52CF0` to fail deserialization and abort without consuming the egg or creating the pet.

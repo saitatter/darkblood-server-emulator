@@ -224,13 +224,18 @@ class SquareHandlers(BaseDomainService):
         from darkblood.games.world import GameWorldManager
 
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
+        use_waypoint = bool(body[12]) if len(body) >= 13 else False
         self._remember_layer(layer_id)
         world = GameWorldManager.get()
         player, previous_layer = world.change_layer(self.session, layer_id)
-        ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=layer_id,
-                              cur_ar=self._current_gold()).encode()
+        ack = BackToSquareAck(
+            square_uid=_wire_square_uid(self.session.square_id),
+            layer_net_id=layer_id,
+            use_waypoint=use_waypoint,
+            cur_ar=self._current_gold(),
+        ).encode()
         await self.transport.send_event(event(5031, ack, correlation),
-                                        note='join layer ack (%d)' % layer_id)
+                                        note='join layer ack (%d, wp=%d)' % (layer_id, int(use_waypoint)))
         await self._sync_passive_stress()
         if previous_layer is not None:
             if previous_layer != layer_id:
@@ -251,11 +256,29 @@ class SquareHandlers(BaseDomainService):
     async def handle_waypoint_insert(self, correlation: int, body: bytes):
         """Opcode 2344 (eEGS_WAYPOINT_INSERT_REQ) -> 2345 (eEGS_WAYPOINT_INSERT_ACK).
 
-        Client handler: 0x0064AE00.
-        Registers visited portal waypoint in the world map.
+        Client handler: 0x0064AE00 (JAppPageSquarePortal::OneEGS_WAYPOINT_INSERT_ACK).
+        Registers visited portal waypoint in the world map. jData (0x00A49700) MUST carry
+        layer_net_id in its first u64 (UpdateList 0x0064FC60 looks up SquareID from high_dword).
         """
+        from darkblood.games.network.messages.quests import WaypointData, WaypointInsertAck
         layer = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
-        ack = struct.pack('<IQ', 0, layer) + square_entry(**SQUARES[0])
+        char = self.current_char()
+        if char is not None:
+            wps = char.setdefault('waypoints', [])
+            if layer not in wps:
+                wps.append(layer)
+                self.save_char()
+        ack = WaypointInsertAck(
+            result=0,
+            layer_net_id=layer,
+            waypoint=WaypointData(
+                layer_net_id=layer,
+                name=_waypoint_label(layer),
+                waypoint_id=0,
+                x=0,
+                y=0,
+            ),
+        ).encode()
         await self.transport.send_event(event(2345, ack, correlation),
                                         note='waypoint insert ack (%016x)' % layer)
 
@@ -324,6 +347,24 @@ def _is_town_layer(layer_id: int) -> bool:
     from darkblood.games.entities.character import SQUARE_IDS
     from darkblood.core.hashing import jhash
     return (layer_id >> 32) in {jhash(sq) for sq in SQUARE_IDS}
+
+
+def _waypoint_label(layer_id: int) -> str:
+    """Human-readable label for a town waypoint (high dword = jhash(SquareID), low dword = layer)."""
+    from darkblood.games.entities.character import SQUARE_IDS
+    from darkblood.core.hashing import jhash
+    sq_hash = layer_id >> 32
+    layer_idx = layer_id & 0xFFFFFFFF
+    names = {
+        jhash('Act1'): 'Elwood Village',
+        jhash('Act2'): 'Watervale Village',
+        jhash('Act4'): 'Durion Castle',
+        jhash('ArenaLobby'): 'Arena',
+    }
+    for sq in SQUARE_IDS:
+        names.setdefault(jhash(sq), sq)
+    base = names.get(sq_hash, 'Town')
+    return f'{base} #{layer_idx}' if layer_idx else base
 
 
 def _wire_square_uid(square_id: int) -> int:
