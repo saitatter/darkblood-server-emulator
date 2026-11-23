@@ -8,7 +8,7 @@
 - **Fix (`src/darkblood/games/handlers/inventory/items.py`)**:
   - `handle_delete_item` now removes any item quickslots (`type == 0`) whose `ref_uid == req.item_uid` when the item is completely deleted and sends `2045 AssignQuickslotAck(ref_id=-1, ref_uid=-1)` to clear them (stackable items bound with `ref_uid=-1` remain on the hotbar at count 0, matching `2039 UseItemAck`).
   - Follows every successful `2041 DeleteItemAck` with an unsolicited empty `2037 DragItemAck(result=0, items=[])` so the client refreshes UI `7` (Quickslot) immediately.
-- **Verification**: 226/226 headless tests pass (`test_delete_item_refreshes_quickslots_and_clears_uid_bound_slot` in `tests/test_inventory_flow.py`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`. Live client confirmation pending.
+- **Verification**: 226/226 headless tests pass (`test_delete_item_refreshes_quickslots_and_clears_uid_bound_slot` in `tests/test_inventory_flow.py`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`. Live-confirmed by user.
 
 ## Random box popup "Please try again." (`2196 RandomboxResultItemNot`) — saita machine, 2026-11-23
 
@@ -21,7 +21,7 @@
 - **Missing `item_randombox.lua` & `item_disposable.lua` boxes/packages (`src/darkblood/games/game_data/items.py`, `assets/`)**:
   - `cash_items()`, `cash_packages()`, and `random_boxes()` previously only parsed `item_cash.lua` (and only the first `LoadRandomBoxState`/`LoadRandomBoxGroup` block), missing `RboxEEtc150R628` (Card Booster Pack `IRanCashEtc260`) and hundreds of non-cash random boxes/packages from `item_randombox.lua` and `item_disposable.lua`.
   - Updated all three loaders to scan all relevant Lua dict files and sections, and re-exported `assets/cash_items.tsv` (1,026 items), `assets/cash_packages.tsv` (2,216 rows), and `assets/random_boxes.json` (440 states, 319 groups).
-- **Verification**: 226/226 headless tests pass (`test_random_box_opens_without_disconnect` updated to assert `bSelect=True` and Card Booster Pack `IRanCashEtc260` rolling `MCard*`). Live client confirmation pending.
+- **Verification**: 226/226 headless tests pass (`test_random_box_opens_without_disconnect` updated to assert `bSelect=True` and Card Booster Pack `IRanCashEtc260` rolling `MCard*`). Live-confirmed by user.
 
 ## Standalone PyInstaller launcher release & `.bat` cleanup — saita machine, 2026-11-23
 
