@@ -162,7 +162,7 @@ class CashShopFlowTest(ServerTestCase):
                 expected_hash -= 0x100000000
             self.assertEqual(reward_hash, expected_hash)
             self.assertGreaterEqual(reward_count, 1)
-            self.assertFalse(is_jackpot)
+            self.assertTrue(is_jackpot)
             # Box was consumed and replaced by a rolled item
             self.assertEqual(len(char['items']), 1)
             self.assertNotEqual(char['items'][0]['code'], 'IRanCashbod1')

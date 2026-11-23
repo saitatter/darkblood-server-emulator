@@ -210,7 +210,7 @@ class ItemHandlersMixin:
                 if reward_hash >= 0x80000000:
                     reward_hash -= 0x100000000
                 await self.send_msg(
-                    RandomboxResultItemNot(item_code=reward_hash, count=reward_count),
+                    RandomboxResultItemNot(item_code=reward_hash, count=reward_count, is_jackpot=True),
                     note='random box result (%s x%d)' % (reward_code, reward_count),
                 )
 

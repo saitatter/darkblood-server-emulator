@@ -1,5 +1,9 @@
 # Research status and handoff
 
+- **2026-11-23:** Random box `2196 RandomboxResultItemNot` now sends
+  `bSelect=True` (`is_jackpot=True`), which `0x00614030` requires to populate
+  `Page_RandomBox` (icon/count/name) instead of leaving `GAME_432` ("Please try
+  again."). Verified headlessly (226/226); live client check pending.
 - **2026-11-23:** Deleting an inventory item (`2040 -> 2041`) now follows up with
   an empty `2037 DragItemAck` to refresh client UI `7` (Quickslot) — since
   `0x00557420` only refreshes UI `0` — and clears UID-bound quickslots (`2045`

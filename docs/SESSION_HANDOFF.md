@@ -10,6 +10,16 @@
   - Follows every successful `2041 DeleteItemAck` with an unsolicited empty `2037 DragItemAck(result=0, items=[])` so the client refreshes UI `7` (Quickslot) immediately.
 - **Verification**: 226/226 headless tests pass (`test_delete_item_refreshes_quickslots_and_clears_uid_bound_slot` in `tests/test_inventory_flow.py`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`. Live client confirmation pending.
 
+## Random box popup "Please try again." (`2196 RandomboxResultItemNot`) — saita machine, 2026-11-23
+
+- **Root cause (static analysis of `0x0075A2E0` & `0x00614030`)**:
+  - Assert at `0x00CF0A30` is `nItemID >> sAmount >> bSelect`.
+  - In `JAppPageRandomBox::ShowResult` (`0x00614030`), `bSelect == False` skips updating the `Page_RandomBox` widgets (`ResultItemImage`, `ResultItemCapsule`, `ResultItemAmount`, `ResultItemName`) and only prints `GAME_040`/`GAME_041` in chat, leaving the popup on `GAME_432` (`"Please try again."`).
+  - `bSelect == True` populates the popup icon, glow capsule, amount, and colored item name.
+- **Fix (`src/darkblood/games/handlers/inventory/items.py`)**:
+  - `handle_use_item` now sends `RandomboxResultItemNot(..., is_jackpot=True)` (`bSelect=True`) for rolled random boxes.
+- **Verification**: 226/226 headless tests pass (`test_random_box_opens_without_disconnect` updated to assert `bSelect=True`). Live client confirmation pending.
+
 ## Standalone PyInstaller launcher release & `.bat` cleanup — saita machine, 2026-11-23
 
 - **Merged PRs #18, #19, #20, #21** into `main` (`d991899`) after resolving minor doc/combat conflicts and verifying 224/224 headless tests.
