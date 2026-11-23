@@ -87,12 +87,18 @@ class PetsWireMessagesTest(unittest.TestCase):
         self.assertEqual(decoded_ack_ride.ride_object_id, 5)
 
     def test_pet_lifecycle_messages_encoding_and_decoding(self):
-        # 2464 / 2465: Create
+        # 2464 / 2465: Create (vecItem >> nItemID >> jNewPetInfo 0x00A52CF0)
+        from darkblood.games.network.messages.pets import PetInfo
         req_create = PetCreateReq(pet_uid=42)
         self.assertEqual(PetCreateReq.decode(req_create.encode()).pet_uid, 42)
-        ack_create = PetCreateAck(result=0, slot=0).encode()
-        self.assertEqual(ack_create[:10], b'\x00\x00\x00\x00\x10\x80\x00\x00\x00\x00')
-        self.assertEqual(len(ack_create), 10 + 52)  # item record follows without a 0x1E byte
+        ack_create = PetCreateAck(
+            result=0, items=[], item_id=0x12345678,
+            pet=PetInfo(pet_uid=42, pet_id=0xAABBCCDD, level=1, satiety=100, name='Pet', slot=-1),
+        ).encode()
+        self.assertEqual(ack_create[:10], b'\x00\x00\x00\x00\x10\x80\x78\x56\x34\x12')
+        # PetInfo starts with empty dye array (0x80), then i64 pet_uid, h32 pet_id, u8 level
+        self.assertEqual(ack_create[10], 0x80)
+        self.assertEqual(struct.unpack_from('<qIB', ack_create, 11), (42, 0xAABBCCDD, 1))
 
         # 2466 / 2467: Delete
         req_delete = PetDeleteReq(pet_uid=42)
@@ -190,13 +196,18 @@ class PetsFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(char.get('mounted_ride_id'), 0)
 
-            # 5. Pet Lifecycle: Create pet (2464 -> 2465)
+            # 5. Pet Lifecycle: Create pet from Pet Egg (2464 -> 2465)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char.setdefault('items', []).append(dict(code='Pegg1Cash96', uid=10, container=3, slot=0, count=1))
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
             client.send_event(2464, PetCreateReq(pet_uid=10).encode())
             _, ack2465 = await client.expect_event(2465)
             self.assertEqual(struct.unpack_from('<I', ack2465, 0)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertFalse(any(i.get('uid') == 10 for i in char.get('items', [])))
             self.assertEqual(len(char.get('pets', [])), 1)
             self.assertEqual(char['pets'][0]['uid'], 10)
+            self.assertEqual(char['pets'][0]['code'], 'PetCall001')
 
             # 6. Pet Lifecycle: Summon pet (2468 -> 2469)
             client.send_event(2468, PetSummonReq().encode())

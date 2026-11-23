@@ -235,23 +235,23 @@
 | `5051 PartyInviteNot` | `u8` | party.jsch:73 |  |
 | `PartyMemberInfo` | `i32` | party.jsch:144 |  |
 
-## pets (13 of 163 fields)
+## pets (13 of 173 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `2349 TamingMonsterInsertAck` | `vector<?>` | pets.jsch:21 | tamed monsters, element layout unknown |
 | `2351 TamingMonsterDeleteAck` | `vector<?>` | pets.jsch:33 | tamed monsters, element layout unknown |
 | `2435 RidingGetListAck` | `map<?>` | pets.jsch:44 | rides, element layout unknown |
-| `2465 PetCreateAck` | `vector<?>` | pets.jsch:67 | pets, element layout unknown |
-| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:143 | pets, element layout unknown |
-| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:157 |  |
-| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:170 |  |
-| `2436 RidingChangeListNot` | `map<?>` | pets.jsch:177 | mapRidingInfo (40-byte entries) |
-| `2516 PetDyeingNot` | `vector<?>` | pets.jsch:260 | 0x0076E600 pet skills |
-| `2647 RidingExpireUpdateAck` | `map<?>` | pets.jsch:274 | mapRidinglist (0x007656E0) |
-| `MonsterCardInfo` | `vector<?>` | pets.jsch:305 | 0x004B0BB0 card options |
-| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:444 | m_mapWinCardDeck (0x005F6640) |
-| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:445 | m_mapWinCnt (0x005F6730) |
+| `PetInfo` | `vector<?>` | pets.jsch:67 | +0x31 pet skills (0x0076E600; empty = 10 80) |
+| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:158 | pets, element layout unknown |
+| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:172 |  |
+| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:185 |  |
+| `2436 RidingChangeListNot` | `map<?>` | pets.jsch:192 | mapRidingInfo (40-byte entries) |
+| `2516 PetDyeingNot` | `vector<?>` | pets.jsch:275 | 0x0076E600 pet skills |
+| `2647 RidingExpireUpdateAck` | `map<?>` | pets.jsch:289 | mapRidinglist (0x007656E0) |
+| `MonsterCardInfo` | `vector<?>` | pets.jsch:320 | 0x004B0BB0 card options |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:459 | m_mapWinCardDeck (0x005F6640) |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:460 | m_mapWinCnt (0x005F6730) |
 
 ## quests (1 of 104 fields)
 
