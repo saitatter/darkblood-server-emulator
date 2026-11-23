@@ -41,6 +41,11 @@
 
 ## Dungeon rank calculation (`5017/5018`) & card reward table (`5090/5091`, Issue #15 item 8) — saita machine, 2026-11-22
 
+- **Finish retry (2026-11-23):** During an active run, a repeat 5017 from the
+  same character returns the saved 5018 body with the new correlation.
+  It skips bonus EXP, quest progress, and party notifications. Starting a run
+  clears the saved reply. Verified in the headless rank test.
+
 - **Dungeon end rank always SSS (`5017 FinishGameReq` -> `5018 FinishGameAck`, `src/darkblood/games/handlers/dungeon/combat.py`)**:
   - Decompiled `JUserClient::FinishGameByHostREQ` (`0x007AD380`, assert `0x00D00E08`: `bVictory << mapPartyScoreList << mapPartyDPS << nTotalMosterHP << vecUnderling << nInner`).
   - Previously `handle_finish_game` misread the second map (`mapPartyDPS`, typically 200–300+) as a `0..100` rank percentage and mapped `>= 98` to `SSS` (6), forcing every clear to `SSS`.

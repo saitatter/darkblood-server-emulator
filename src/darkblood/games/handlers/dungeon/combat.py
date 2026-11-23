@@ -122,6 +122,7 @@ class DungeonCombatHandlers:
         self.dungeon_score = 0
         self.dungeon_exp = 0
         self.visited_dungeon_layers = set()
+        self._finish_game_reply = None
         self.reward_card = None
         self.reward_card_claimed = False
 
@@ -314,6 +315,14 @@ class DungeonCombatHandlers:
         from darkblood.games.network.messages import FinishGameAck, FinishGameReq, SingleReward
         req = FinishGameReq.decode(body)
         self.transport.record('finish-game-req', body, is_clear=req.is_clear)
+        run_char_id = self.char_id if getattr(self, 'in_dungeon', False) else None
+        if run_char_id and self._finish_game_reply is not None:
+            finished_char_id, finished_ack = self._finish_game_reply
+            if finished_char_id == run_char_id:
+                await self.transport.send_event(event(5018, finished_ack, correlation),
+                                                note='repeat finish game ack')
+                return
+
         map_code = getattr(self, 'map_code', '')
         room = self._shared_run()
         # Only the host's client sends 5017 in a party run (live 2026-11-21): its
@@ -430,6 +439,8 @@ class DungeonCombatHandlers:
             box_grade=box_grade,
             extra_box_cost=0,
         ).encode()
+        if run_char_id:
+            self._finish_game_reply = (run_char_id, ack)
         await self.transport.send_event(event(5018, ack, correlation),
                                         note=f'finish game ack ({map_code} clear={req.is_clear} rank={party_rank})')
         await self._send_to([member for member, _ in members if member is not self.session], event(5018, ack),

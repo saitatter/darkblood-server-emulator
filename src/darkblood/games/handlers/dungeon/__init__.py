@@ -17,6 +17,7 @@ class DungeonHandlers(
     def __init__(self, session):
         super().__init__(session)
         self.room = None
+        self._finish_game_reply = None
         self.reward_card = None
         self.reward_card_claimed = False
 

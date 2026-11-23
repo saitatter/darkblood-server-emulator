@@ -555,6 +555,13 @@ class DungeonFlowTest(ServerTestCase):
             self.assertEqual(parsed.rank_final, 3)
             self.assertEqual(parsed.box_grade, 1)
 
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            exp_after_clear = char['level'], char['exp']
+            client.send_event(5017, w5017.to_bytes(), correlation=42)
+            correlation, repeated_result = await client.expect_event(5018)
+            self.assertEqual((correlation, repeated_result), (42, ack5018))
+            self.assertEqual((char['level'], char['exp']), exp_after_clear)
+
             # Pick a reward card (5090 -> 5091) and verify item is added to inventory
             from darkblood.player_management.characters import add_reward_items, free_bag_slots
             char = session.GameSession.store().get('OfflinePlayer', char_id)
