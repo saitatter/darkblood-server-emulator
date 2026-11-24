@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 826  
+**Tracked opcodes**: 831  
 **Client handlers mapped**: 298  
-**Server handlers**: 361  
+**Server handlers**: 364  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -252,7 +252,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2239 | `eEGS_CHEAT_PROFICIENCY_CHANGE_ACK` | — | — | `CheatProficiencyChangeAck` |  |
 | 2242 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ` | — | `inventory/depot.py` (`handle_depot_share_expire_time`) | — | Opcode 2242 (eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ) -> 2243: return shared depot expiration map. |
 | 2243 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_ACK` | 0x0076C040 | — | `DepotShareExpireTimeGetAck` |  |
-| 2245 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_ACK` | 0x0075A9C0 | — | — |  |
+| 2244 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_REQ` | — | `frontend.py` (`handle_cheat_system_delete_character`) | `CheatSystemDeleteCharacterReq` | Opcode 2244 (eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_REQ) -> 2245 (0x0075A9C0). |
+| 2245 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_ACK` | 0x0075A9C0 | — | `CheatSystemDeleteCharacterAck` |  |
 | 2246 | `eEGS_UNDELETE_CHARACTER_REQ` | — | `frontend.py` (`handle_undelete_character`) | — | Opcode 2246 (eEGS_UNDELETE_CHARACTER_REQ) -> 2247 (eEGS_UNDELETE_CHARACTER_ACK). |
 | 2247 | `eEGS_UNDELETE_CHARACTER_ACK` | 0x0075A8A0 | — | `UndeleteCharacterAck` |  |
 | 2248 | `eEGS_POST_GET_APPEND_AR_REQ` | — | `mail.py` (`handle_post_get_append_ar`) | `PostGetAppendArReq` | eEGS_POST_GET_APPEND_AR_REQ (0x00796700) -> 2249 eEGS_POST_GET_APPEND_AR_ACK (0x007967E0). |
@@ -334,9 +335,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2345 | `eEGS_WAYPOINT_INSERT_ACK` | — | — | `WaypointInsertAck` |  |
 | 2346 | `eEGS_TUTORIAL_QUEST_START_REQ` | — | `quests.py` (`handle_tutorial_quest_start`) | `TutorialQuestStartReq` | Opcode 2346 (eEGS_TUTORIAL_QUEST_START_REQ) -> 2347 (eEGS_TUTORIAL_QUEST_START_ACK). |
 | 2347 | `eEGS_TUTORIAL_QUEST_START_ACK` | — | — | `TutorialQuestStartAck` |  |
-| 2348 | `eEGS_TAMEING_MONSTER_INSERT_REQ` | — | `pets.py` (`handle_taming_monster_insert`) | `TameingMonsterInsertReq` | eEGS_TAMEING_MONSTER_INSERT_REQ (0x00799BA0) -> 2349 eEGS_TAMEING_MONSTER_INSERT_ACK (0x00771A00) |
+| 2348 | `eEGS_TAMEING_MONSTER_INSERT_REQ` | — | `pets/pets.py` (`handle_taming_monster_insert`) | `TameingMonsterInsertReq` | eEGS_TAMEING_MONSTER_INSERT_REQ (0x00799BA0) -> 2349 eEGS_TAMEING_MONSTER_INSERT_ACK (0x00771A00) |
 | 2349 | `eEGS_TAMEING_MONSTER_INSERT_ACK` | 0x00771A00 | — | `TamingMonsterInsertAck` |  |
-| 2350 | `eEGS_TAMEING_MONSTER_DELETE_REQ` | — | `pets.py` (`handle_taming_monster_delete`) | `TameingMonsterDeleteReq` | eEGS_TAMEING_MONSTER_DELETE_REQ (0x00799D30) -> 2351 eEGS_TAMEING_MONSTER_DELETE_ACK (0x00771BB0) |
+| 2350 | `eEGS_TAMEING_MONSTER_DELETE_REQ` | — | `pets/pets.py` (`handle_taming_monster_delete`) | `TameingMonsterDeleteReq` | eEGS_TAMEING_MONSTER_DELETE_REQ (0x00799D30) -> 2351 eEGS_TAMEING_MONSTER_DELETE_ACK (0x00771BB0) |
 | 2351 | `eEGS_TAMEING_MONSTER_DELETE_ACK` | 0x00771BB0 | — | `TamingMonsterDeleteAck` |  |
 | 2352 | `eEGS_IP_ADDRESS_NOT` | — | `social/friends.py` (`handle_ip_address`) | — | eEGS_IP_ADDRESS_NOT: client LAN/WAN IP notification only. |
 | 2353 | `eEGS_TUTORIAL_MONSTER_DEAD_NOT` | — | `square.py` (`handle_tutorial_monster_dead`) | `TutorialMonsterDeadNot` | Opcode 2353 (eEGS_TUTORIAL_MONSTER_DEAD_NOT). |
@@ -388,10 +389,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2429 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_ACK` | 0x0079C5E0 | — | `UseSelectedSkillChangeItemAck` |  |
 | 2432 | `eEGS_AVATAR_MERGE_REQ` | — | `inventory/crafting.py` (`handle_avatar_merge`) | `AvatarMergeReq` | Opcode 2432 (eEGS_AVATAR_MERGE_REQ) -> 2433: combine two avatar pieces. |
 | 2433 | `eEGS_AVATAR_MERGE_ACK` | — | — | `AvatarMergeAck` |  |
-| 2434 | `eEGS_RIDING_GET_LIST_REQ` | — | `pets.py` (`handle_riding_get_list`) | `RidingGetListReq` | eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0) |
+| 2434 | `eEGS_RIDING_GET_LIST_REQ` | — | `pets/mounts.py` (`handle_riding_get_list`) | `RidingGetListReq` | eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0) |
 | 2435 | `eEGS_RIDING_GET_LIST_ACK` | 0x0076C5A0 | — | `RidingGetListAck` |  |
 | 2436 | `eEGS_RIDING_CHANGE_LIST_NOT` | 0x0079C9A0 | — | `RidingChangeListNot` |  |
-| 2437 | `eEGS_RIDING_RIDE_OBJECT_REQ` | — | `pets.py` (`handle_riding_ride_object`) | `RidingRideObjectReq` | eEGS_RIDING_RIDE_OBJECT_REQ (0x0079CE00) -> 2438 eEGS_RIDING_RIDE_OBJECT_ACK (0x00753A90) |
+| 2437 | `eEGS_RIDING_RIDE_OBJECT_REQ` | — | `pets/mounts.py` (`handle_riding_ride_object`) | `RidingRideObjectReq` | eEGS_RIDING_RIDE_OBJECT_REQ (0x0079CE00) -> 2438 eEGS_RIDING_RIDE_OBJECT_ACK (0x00753A90) |
 | 2438 | `eEGS_RIDING_RIDE_OBJECT_ACK` | 0x00753A90 | — | `RidingRideObjectAck` |  |
 | 2441 | `eEGS_CHARSLOT_EXTEND_REQ` | — | `frontend.py` (`handle_char_slot_extend`) | `CharSlotExtendReq` | Opcode 2441 (eEGS_CHARSLOT_EXTEND_REQ) -> 2442 (0x00781000). |
 | 2442 | `eEGS_CHARSLOT_EXTEND_ACK` | 0x00781000 | — | `CharSlotExtendAck` |  |
@@ -412,46 +413,46 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2461 | `eEGS_DEPOT_SLOT_EXTEND_REQ` | — | `inventory/depot.py` (`handle_depot_slot_extend`) | `DepotSlotExtendReq` | Opcode 2461 (eEGS_DEPOT_SLOT_EXTEND_REQ) -> 2462 (eEGS_DEPOT_SLOT_EXTEND_ACK): expand depot storage slots. |
 | 2462 | `eEGS_DEPOT_SLOT_EXTEND_ACK` | — | — | `DepotSlotExtendAck` |  |
 | 2463 | `eEGS_DEPOT_SLOT_EXTEND_EXPIRE_NOT` | — | — | `DepotSlotExtendExpireNot` |  |
-| 2464 | `eEGS_PET_CREATE_REQ` | — | `pets.py` (`handle_pet_create`) | `PetCreateReq` | eEGS_PET_CREATE_REQ (0x0079E090) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620) |
+| 2464 | `eEGS_PET_CREATE_REQ` | — | `pets/pets.py` (`handle_pet_create`) | `PetCreateReq` | eEGS_PET_CREATE_REQ (0x0079E090) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620) |
 | 2465 | `eEGS_PET_CREATE_ACK` | 0x0079E620 | — | `PetCreateAck` |  |
-| 2466 | `eEGS_PET_DELETE_REQ` | — | `pets.py` (`handle_pet_delete`) | `PetDeleteReq` | eEGS_PET_DELETE_REQ (0x0079E260) -> 2467 eEGS_PET_DELETE_ACK (0x0079EA50) |
+| 2466 | `eEGS_PET_DELETE_REQ` | — | `pets/pets.py` (`handle_pet_delete`) | `PetDeleteReq` | eEGS_PET_DELETE_REQ (0x0079E260) -> 2467 eEGS_PET_DELETE_ACK (0x0079EA50) |
 | 2467 | `eEGS_PET_DELETE_ACK` | 0x0079EA50 | — | `PetDeleteAck` |  |
-| 2468 | `eEGS_PET_SUMMON_REQ` | — | `pets.py` (`handle_pet_summon`) | `PetSummonReq` | eEGS_PET_SUMMON_REQ (0x0079E3E0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0) |
+| 2468 | `eEGS_PET_SUMMON_REQ` | — | `pets/pets.py` (`handle_pet_summon`) | `PetSummonReq` | eEGS_PET_SUMMON_REQ (0x0079E3C0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0) |
 | 2469 | `eEGS_PET_SUMMON_ACK` | 0x0079ECF0 | — | `PetSummonAck` |  |
-| 2470 | `eEGS_PET_RELEASE_SUMMON_REQ` | — | `pets.py` (`handle_pet_release_summon`) | `PetReleaseSummonReq` | eEGS_PET_RELEASE_SUMMON_REQ (0x0079E510) -> 2471 eEGS_PET_RELEASE_SUMMON_ACK (0x0079EEE0) |
+| 2470 | `eEGS_PET_RELEASE_SUMMON_REQ` | — | `pets/pets.py` (`handle_pet_release_summon`) | `PetReleaseSummonReq` | eEGS_PET_RELEASE_SUMMON_REQ (0x0079E510) -> 2471 eEGS_PET_RELEASE_SUMMON_ACK (0x0079EEE0) |
 | 2471 | `eEGS_PET_RELEASE_SUMMON_ACK` | 0x0079EEE0 | — | `PetReleaseSummonAck` |  |
 | 2472 | `eEGS_ARENA_RANDOM_MATCHING_USER_CNT_NOT` | — | — | `ArenaRandomMatchingUserCntNot` |  |
-| 2473 | `eEGS_PET_SAVE_REQ` | — | `pets.py` (`handle_pet_save`) | `PetSaveReq` | eEGS_PET_SAVE_REQ -> 2474 eEGS_PET_SAVE_ACK (0x007758B0) |
+| 2473 | `eEGS_PET_SAVE_REQ` | — | `pets/pets.py` (`handle_pet_save`) | `PetSaveReq` | eEGS_PET_SAVE_REQ -> 2474 eEGS_PET_SAVE_ACK (0x007758B0) |
 | 2474 | `eEGS_PET_SAVE_ACK` | 0x007758B0 | — | `PetSaveAck` |  |
-| 2475 | `eEGS_PET_LOAD_REQ` | — | `pets.py` (`handle_pet_load`) | `PetLoadReq` | eEGS_PET_LOAD_REQ (0x0079F320) -> 2476 eEGS_PET_LOAD_ACK (0x0079F560) |
+| 2475 | `eEGS_PET_LOAD_REQ` | — | `pets/pets.py` (`handle_pet_load`) | `PetLoadReq` | eEGS_PET_LOAD_REQ (0x0079F320) -> 2476 eEGS_PET_LOAD_ACK (0x0079F560) |
 | 2476 | `eEGS_PET_LOAD_ACK` | 0x0079F560 | — | `PetLoadAck` |  |
-| 2477 | `eEGS_PET_REPLACE_REQ` | — | `pets.py` (`handle_pet_replace`) | `PetReplaceReq` | eEGS_PET_REPLACE_REQ -> 2478 eEGS_PET_REPLACE_ACK (0x0079F770) |
+| 2477 | `eEGS_PET_REPLACE_REQ` | — | `pets/pets.py` (`handle_pet_replace`) | `PetReplaceReq` | eEGS_PET_REPLACE_REQ -> 2478 eEGS_PET_REPLACE_ACK (0x0079F770) |
 | 2478 | `eEGS_PET_REPLACE_ACK` | 0x0079F770 | — | `PetReplaceAck` |  |
 | 2479 | `eEGS_PET_CONSUME_SATIETY_NOT` | 0x0079F980 | — | `PetConsumeSatietyNot` |  |
-| 2480 | `eEGS_PET_EAT_NORMAL_REQ` | — | `pets.py` (`handle_pet_eat_normal`) | `PetEatNormalReq` | eEGS_PET_EAT_NORMAL_REQ (0x0079FBA0) -> 2481 eEGS_PET_EAT_NORMAL_ACK (0x00781260) |
+| 2480 | `eEGS_PET_EAT_NORMAL_REQ` | — | `pets/pets.py` (`handle_pet_eat_normal`) | `PetEatNormalReq` | eEGS_PET_EAT_NORMAL_REQ (0x0079FBA0) -> 2481 eEGS_PET_EAT_NORMAL_ACK (0x00781260) |
 | 2481 | `eEGS_PET_EAT_NORMAL_ACK` | 0x00781260 | — | `PetEatNormalAck` |  |
-| 2482 | `eEGS_PET_EAT_CASH_REQ` | — | `pets.py` (`handle_pet_eat_cash`) | `PetEatCashReq` | eEGS_PET_EAT_CASH_REQ (0x0079FCC0) -> 2483 eEGS_PET_EAT_CASH_ACK (0x007815F0) |
+| 2482 | `eEGS_PET_EAT_CASH_REQ` | — | `pets/pets.py` (`handle_pet_eat_cash`) | `PetEatCashReq` | eEGS_PET_EAT_CASH_REQ (0x0079FCC0) -> 2483 eEGS_PET_EAT_CASH_ACK (0x007815F0) |
 | 2483 | `eEGS_PET_EAT_CASH_ACK` | 0x007815F0 | — | `PetEatCashAck` |  |
-| 2484 | `eEGS_PET_EVOLUTION_REQ` | — | `pets.py` (`handle_pet_evolution`) | `PetEvolutionReq` | eEGS_PET_EVOLUTION_REQ (0x0079FE20) -> 2485 eEGS_PET_EVOLUTION_ACK (0x0079FEF0) |
+| 2484 | `eEGS_PET_EVOLUTION_REQ` | — | `pets/pets.py` (`handle_pet_evolution`) | `PetEvolutionReq` | eEGS_PET_EVOLUTION_REQ (0x0079FE20) -> 2485 eEGS_PET_EVOLUTION_ACK (0x0079FEF0) |
 | 2485 | `eEGS_PET_EVOLUTION_ACK` | 0x0079FEF0 | — | `PetEvolutionAck` |  |
 | 2487 | `eEGS_CHEAT_PET_LEVEL_ACK` | 0x00775AA0 | — | — |  |
 | 2488 | `eEGS_CHEAT_PET_SATIETY_REQ` | — | `gm.py` (`handle_cheat_pet_satiety`) | `CheatPetSatietyReq` |  |
 | 2489 | `eEGS_CHEAT_PET_SATIETY_ACK` | 0x007A0280 | — | `CheatPetSatietyAck` |  |
 | 2490 | `eEGS_CHEAT_PET_EVOLUTION_REQ` | — | `gm.py` (`handle_cheat_pet_evolution`) | `CheatPetEvolutionReq` |  |
 | 2491 | `eEGS_CHEAT_PET_EVOLUTION_ACK` | 0x007A0450 | — | `CheatPetEvolutionAck` |  |
-| 2492 | `eEGS_PET_CASH_FOOD_EQUIP_REQ` | — | `pets.py` (`handle_pet_cash_food_equip`) | `PetCashFoodEquipReq` | eEGS_PET_CASH_FOOD_EQUIP_REQ (0x007A07C0) -> 2493 eEGS_PET_CASH_FOOD_EQUIP_ACK (0x007A0A20) |
+| 2492 | `eEGS_PET_CASH_FOOD_EQUIP_REQ` | — | `pets/pets.py` (`handle_pet_cash_food_equip`) | `PetCashFoodEquipReq` | eEGS_PET_CASH_FOOD_EQUIP_REQ (0x007A07C0) -> 2493 eEGS_PET_CASH_FOOD_EQUIP_ACK (0x007A0A20) |
 | 2493 | `eEGS_PET_CASH_FOOD_EQUIP_ACK` | 0x007A0A20 | — | `PetCashFoodEquipAck` |  |
-| 2494 | `eEGS_PET_CASH_FOOD_UNEQUIP_REQ` | — | `pets.py` (`handle_pet_cash_food_unequip`) | `PetCashFoodUnequipReq` | eEGS_PET_CASH_FOOD_UNEQUIP_REQ (0x007A0930) -> 2495 eEGS_PET_CASH_FOOD_UNEQUIP_ACK (0x007A0C30) |
+| 2494 | `eEGS_PET_CASH_FOOD_UNEQUIP_REQ` | — | `pets/pets.py` (`handle_pet_cash_food_unequip`) | `PetCashFoodUnequipReq` | eEGS_PET_CASH_FOOD_UNEQUIP_REQ (0x007A0930) -> 2495 eEGS_PET_CASH_FOOD_UNEQUIP_ACK (0x007A0C30) |
 | 2495 | `eEGS_PET_CASH_FOOD_UNEQUIP_ACK` | 0x007A0C30 | — | `PetCashFoodUnequipAck` |  |
 | 2496 | `eEGS_NPC_MAKING_KAIRO_REQ` | — | `quests.py` (`handle_npc_making_kairo`) | `NpcMakingKairoReq` | Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting. |
 | 2497 | `eEGS_NPC_MAKING_KAIRO_ACK` | — | — | `NpcMakingKairoAck` |  |
-| 2498 | `eEGS_PET_EXTEND_DEPOT_REQ` | — | `pets.py` (`handle_pet_extend_depot`) | `PetExtendDepotReq` | eEGS_PET_EXTEND_DEPOT_REQ (0x007A1030) -> 2499 eEGS_PET_EXTEND_DEPOT_ACK (0x00781990) |
+| 2498 | `eEGS_PET_EXTEND_DEPOT_REQ` | — | `pets/pets.py` (`handle_pet_extend_depot`) | `PetExtendDepotReq` | eEGS_PET_EXTEND_DEPOT_REQ (0x007A1030) -> 2499 eEGS_PET_EXTEND_DEPOT_ACK (0x00781990) |
 | 2499 | `eEGS_PET_EXTEND_DEPOT_ACK` | 0x00781990 | — | `PetExtendDepotAck` |  |
-| 2500 | `eEGS_PET_SWITCH_STORAGE_REQ` | — | `pets.py` (`handle_pet_switch_storage`) | `PetSwitchStorageReq` | eEGS_PET_SWITCH_STORAGE_REQ (0x007A0D00) -> 2501 eEGS_PET_SWITCH_STORAGE_ACK (0x007A0E30) |
+| 2500 | `eEGS_PET_SWITCH_STORAGE_REQ` | — | `pets/pets.py` (`handle_pet_switch_storage`) | `PetSwitchStorageReq` | eEGS_PET_SWITCH_STORAGE_REQ (0x007A0D00) -> 2501 eEGS_PET_SWITCH_STORAGE_ACK (0x007A0E30) |
 | 2501 | `eEGS_PET_SWITCH_STORAGE_ACK` | 0x007A0E30 | — | `PetSwitchStorageAck` |  |
 | 2502 | `eEGS_PET_DEPOT_EXTEND_EXPIRE_NOT` | 0x00775EA0 | — | `PetDepotExtendExpireNot` |  |
 | 2509 | `eEGS_MONSTER_LAYER_MOVE_NOT` | — | `dungeon/combat.py` (`handle_monster_layer_move`) | — | eEGS_MONSTER_LAYER_MOVE_NOT: notification without an ACK opcode |
-| 2510 | `eEGS_PET_NICK_CHANGE_REQ` | — | `pets.py` (`handle_pet_nick_change`) | `PetNickChangeReq` | eEGS_PET_NICK_CHANGE_REQ (0x007A16DA) -> 2511 eEGS_PET_NICK_CHANGE_AKC (0x00781CD0) |
+| 2510 | `eEGS_PET_NICK_CHANGE_REQ` | — | `pets/pets.py` (`handle_pet_nick_change`) | `PetNickChangeReq` | eEGS_PET_NICK_CHANGE_REQ (0x007A16DA) -> 2511 eEGS_PET_NICK_CHANGE_AKC (0x00781CD0) |
 | 2511 | `eEGS_PET_NICK_CHANGE_AKC` | 0x00781CD0 | — | `PetNickChangeAck` |  |
 | 2512 | `eEGS_CHEAT_TITLE_GET_ALL_REQ` | — | `gm.py` (`handle_cheat_title_get_all`) | `CheatTitleGetAllReq` |  |
 | 2514 | `eEGS_CHEAT_TITLE_CHANGE_REQ` | — | `gm.py` (`handle_cheat_title_change`) | `CheatTitleChangeReq` |  |
@@ -526,17 +527,17 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2601 | `eEGS_MONSTERCARD_GET_LIST_REQ` | — | `commerce/stores.py` (`handle_monster_card_list`) | — | eEGS_MONSTERCARD_GET_LIST_REQ -> 2602. |
 | 2602 | `eEGS_MONSTERCARD_GET_LIST_ACK` | — | — | `MonsterCardListAck` |  |
 | 2603 | `eEGS_MONSTERCARD_CHANGE_LIST_NOT` | — | — | `MonsterCardChangeListNot` |  |
-| 2604 | `eEGS_MONSTERCARD_INSERT_REQ` | — | `pets.py` (`handle_monster_card_insert`) | `MonsterCardInsertReq` |  |
+| 2604 | `eEGS_MONSTERCARD_INSERT_REQ` | — | `pets/cards.py` (`handle_monster_card_insert`) | `MonsterCardInsertReq` |  |
 | 2605 | `eEGS_MONSTERCARD_INSERT_ACK` | — | — | `MonsterCardInsertAck` |  |
-| 2606 | `eEGS_MONSTERCARD_MERGE_REQ` | — | `pets.py` (`handle_monster_card_merge`) | `MonsterCardMergeReq` |  |
+| 2606 | `eEGS_MONSTERCARD_MERGE_REQ` | — | `pets/cards.py` (`handle_monster_card_merge`) | `MonsterCardMergeReq` |  |
 | 2607 | `eEGS_MONSTERCARD_MERGE_ACK` | — | — | `MonsterCardMergeAck` |  |
 | 2608 | `eEGS_MONSTERCARD_GET_CHAR_DECK_REQ` | — | `commerce/stores.py` (`handle_monster_card_deck`) | — | eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609. |
 | 2609 | `eEGS_MONSTERCARD_GET_CHAR_DECK_ACK` | — | — | `MonsterCardDeckAck` |  |
-| 2610 | `eEGS_MONSTERCARD_SET_CHAR_DECK_REQ` | — | `pets.py` (`handle_monster_card_set_char_deck`) | `MonsterCardSetCharDeckReq` |  |
+| 2610 | `eEGS_MONSTERCARD_SET_CHAR_DECK_REQ` | — | `pets/cards.py` (`handle_monster_card_set_char_deck`) | `MonsterCardSetCharDeckReq` |  |
 | 2611 | `eEGS_MONSTERCARD_SET_CHAR_DECK_ACK` | — | — | `MonsterCardSetCharDeckAck` |  |
-| 2613 | `eEGS_MONSTERCARD_RELEASE_ALL_CHAR_REQ` | — | `pets.py` (`handle_monster_card_release_all_char`) | `MonsterCardReleaseAllCharReq` |  |
+| 2613 | `eEGS_MONSTERCARD_RELEASE_ALL_CHAR_REQ` | — | `pets/cards.py` (`handle_monster_card_release_all_char`) | `MonsterCardReleaseAllCharReq` |  |
 | 2614 | `eEGS_MONSTERCARD_RELEASE_ALL_CHAR_ACK` | — | — | `MonsterCardReleaseAllCharAck` |  |
-| 2615 | `eEGS_MONSTERCARD_EXTEND_SLOT_REQ` | — | `pets.py` (`handle_monster_card_extend_slot`) | `MonsterCardExtendSlotReq` |  |
+| 2615 | `eEGS_MONSTERCARD_EXTEND_SLOT_REQ` | — | `pets/cards.py` (`handle_monster_card_extend_slot`) | `MonsterCardExtendSlotReq` |  |
 | 2616 | `eEGS_MONSTERCARD_EXTEND_SLOT_ACK` | — | — | `MonsterCardExtendSlotAck` |  |
 | 2617 | `eEGS_MONSTERCARD_GET_ALBUM_REQ` | — | `commerce/stores.py` (`handle_monster_card_album`) | — | eEGS_MONSTERCARD_GET_ALBUM_REQ -> 2618. |
 | 2618 | `eEGS_MONSTERCARD_GET_ALBUM_ACK` | — | — | `MonsterCardAlbumAck` |  |
@@ -553,18 +554,18 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2630 | `eEGS_ITEM_CLASS_SMELTING_ACK` | 0x00783790 | — | `ItemClassSmeltingAck` |  |
 | 2631 | `eEGS_CIDADEL_PLAY_COUNT_UPDATE_NOT` | 0x007A5580 | — | `CitadelPlayCountUpdateNot` |  |
 | 2632 | `eEGS_MONSTERCARD_CHANGE_EVENTCARD_LIST_NOT` | — | — | `MonsterCardChangeEventCardListNot` |  |
-| 2633 | `eEGS_MONSTERCARD_LOTTO_REG_REQ` | — | `pets.py` (`handle_monster_card_lotto_reg`) | `MonsterCardLottoRegReq` |  |
+| 2633 | `eEGS_MONSTERCARD_LOTTO_REG_REQ` | — | `pets/cards.py` (`handle_monster_card_lotto_reg`) | `MonsterCardLottoRegReq` |  |
 | 2634 | `eEGS_MONSTERCARD_LOTTO_REG_ACK` | — | — | `MonsterCardLottoRegAck` |  |
 | 2635 | `eEGS_MONSTERCARD_LOTTO_NUMBER_NOT` | — | — | `MonsterCardLottoNumberNot` |  |
-| 2636 | `eEGS_MONSTERCARD_GET_REWARD_LOTTO_REQ` | — | `pets.py` (`handle_monster_card_get_reward_lotto`) | `MonsterCardGetRewardLottoReq` |  |
+| 2636 | `eEGS_MONSTERCARD_GET_REWARD_LOTTO_REQ` | — | `pets/cards.py` (`handle_monster_card_get_reward_lotto`) | `MonsterCardGetRewardLottoReq` |  |
 | 2637 | `eEGS_MONSTERCARD_GET_REWARD_LOTTO_ACK` | — | — | `MonsterCardGetRewardLottoAck` |  |
-| 2638 | `eEGS_MONSTERCARD_GET_REWARD_POINT_ARRIVAL_REQ` | — | `pets.py` (`handle_monster_card_get_reward_point_arrival`) | `MonsterCardGetRewardPointArrivalReq` |  |
+| 2638 | `eEGS_MONSTERCARD_GET_REWARD_POINT_ARRIVAL_REQ` | — | `pets/cards.py` (`handle_monster_card_get_reward_point_arrival`) | `MonsterCardGetRewardPointArrivalReq` |  |
 | 2639 | `eEGS_MONSTERCARD_GET_REWARD_POINT_ARRIVAL_ACK` | — | — | `MonsterCardGetRewardPointArrivalAck` |  |
 | 2641 | `eEGS_SERVERBUFF_ADDITION_FISHING_NOT` | 0x00779500 | — | `ServerBuffAdditionFishingNot` |  |
 | 2643 | `eEGS_MONSTERCARD_LOTTO_INFO_NOT` | — | — | `MonsterCardLottoInfoNot` |  |
 | 2644 | `eEGS_MONSTERCARD_LOTTO_NOTIFY_NOT` | — | — | `MonsterCardLottoNotifyNot` |  |
 | 2645 | `eEGS_MONSTERCARD_LOTTO_INFO_UPDATE_NOT` | — | — | `MonsterCardLottoInfoUpdateNot` |  |
-| 2646 | `eEGS_RIDING_EXPIRE_UPDATE_REQ` | — | `pets.py` (`handle_riding_expire_update`) | `RidingExpireUpdateReq` | eEGS_RIDING_EXPIRE_UPDATE_REQ (0x007A6530) -> 2647 eEGS_RIDING_EXPIRE_UPDATE_ACK (0x007839F0) |
+| 2646 | `eEGS_RIDING_EXPIRE_UPDATE_REQ` | — | `pets/mounts.py` (`handle_riding_expire_update`) | `RidingExpireUpdateReq` | eEGS_RIDING_EXPIRE_UPDATE_REQ (0x007A6530) -> 2647 eEGS_RIDING_EXPIRE_UPDATE_ACK (0x007839F0) |
 | 2647 | `eEGS_RIDING_EXPIRE_UPDATE_ACK` | 0x007839F0 | — | `RidingExpireUpdateAck` |  |
 | 2648 | `eEGS_TEACHING_STRESS_REWARD_REQ` | — | `social/party.py` (`handle_teaching_stress_reward`) | `TeachingStressRewardReq` | eEGS_TEACHING_STRESS_REWARD_REQ (0x007A60E0) -> 2649 eEGS_TEACHING_STRESS_REWARD_ACK (0x0075C7B0). |
 | 2649 | `eEGS_TEACHING_STRESS_REWARD_ACK` | 0x0075C7B0 | — | `TeachingStressRewardAck` |  |
@@ -652,11 +653,11 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5010 | `eERC_CHANGE_MAPCODE_ACK` | — | — | `ChangeMapCodeAck` |  |
 | 5011 | `eERC_CHANGE_ROOMINFO_REQ` | — | `dungeon/rooms.py` (`handle_change_room_info`) | `ChangeRoomInfoReq` | eERC_CHANGE_ROOMINFO_REQ (Party info OK) -> 5012. The request is a whole |
 | 5012 | `eERC_CHANGE_ROOMINFO_ACK` | — | — | `ChangeRoomInfoAck` |  |
-| 5013 | `eERC_START_GAME_REQ` | — | `dungeon/combat.py` (`handle_start_game`) | `StartGameReq` | The success path assumes the map code resolves to a client property. |
+| 5013 | `eERC_START_GAME_REQ` | — | `dungeon/entry.py` (`handle_start_game`) | `StartGameReq` | The success path assumes the map code resolves to a client property. |
 | 5014 | `eERC_START_GAME_ACK` | 0x007880A0 | — | `StartGameAck` |  |
 | 5015 | `eERC_CHANGE_TEAM_REQ` | — | `dungeon/rooms.py` (`handle_change_team`) | `ChangeTeamReq` | eERC_CHANGE_TEAM_REQ -> 5016 eERC_CHANGE_TEAM_ACK. |
 | 5016 | `eERC_CHANGE_TEAM_ACK` | — | — | `ChangeTeamAck` |  |
-| 5017 | `eERC_FINISH_GAME_REQ` | — | `dungeon/combat.py` (`handle_finish_game`) | `FinishGameReq` | eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60). |
+| 5017 | `eERC_FINISH_GAME_REQ` | — | `dungeon/rewards.py` (`handle_finish_game`) | `FinishGameReq` | eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60). |
 | 5018 | `eERC_FINISH_GAME_ACK` | 0x007ADB60 | — | `FinishGameAck` |  |
 | 5027 | `eERC_JOIN_LAYER_NOT` | 0x00787790 | — | `JoinLayerNot` |  |
 | 5028 | `eERC_JOIN_SQUARE_REQ` | — | `frontend.py` (`handle_join_square`) | — | Opcode 5028 (eERC_JOIN_SQUARE_REQ) -> 5029 (eERC_JOIN_SQUARE_ACK). |
@@ -690,7 +691,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5061 | `eERC_ROOM_MEM_INFO_ACK` | 0x0076BC60 | — | `RoomMemInfoAck` |  |
 | 5063 | `eERC_MONSTER_DEAD_REQ` | — | `dungeon/combat.py` (`handle_monster_dead`) | `MonsterDeadReq` | eERC_MONSTER_DEAD_REQ (sender 0x78A690): ffffff7f + u32 monster_id + u32 param. |
 | 5064 | `eERC_DROP_ITEM_NOT` | 0x0078A870 | — | `DropItemNot` |  |
-| 5065 | `eERC_PICK_UP_ITEM_REQ` | — | `dungeon/combat.py` (`handle_pick_up_item`) | `PickUpItemReq` | eERC_PICK_UP_ITEM_REQ (prefix + u32 drop uid). 5066 has no client |
+| 5065 | `eERC_PICK_UP_ITEM_REQ` | — | `dungeon/rewards.py` (`handle_pick_up_item`) | `PickUpItemReq` | eERC_PICK_UP_ITEM_REQ (prefix + u32 drop uid). 5066 has no client |
 | 5066 | `eERC_PICK_UP_ITEM_ACK` | — | — | `PickUpItemAck` |  |
 | 5068 | `eERC_PICK_UP_ITEM_RESULT_ACK` | 0x0078AD80 | — | `PickUpItemResultAck` |  |
 | 5069 | `eERC_REQUEST_TRADE_REQ` | — | `commerce/trade.py` (`handle_request_trade`) | `RequestTradeReq` | eERC_REQUEST_TRADE_REQ -> 5070 eERC_REQUEST_TRADE_ACK (0x00770E50). |
@@ -714,7 +715,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5087 | `eERC_LEVEL_UP_NOT` | 0x0078CCF0 | — | `LevelUpNot` |  |
 | 5088 | `eERC_CHANGE_ITEM_OBTAIN_REQ` | — | `dungeon/rooms.py` (`handle_change_item_obtain`) | `ChangeItemObtainReq` | eERC_CHANGE_ITEM_OBTAIN_REQ (looting mode button) -> 5089 (i32 result, bool). |
 | 5089 | `eERC_CHANGE_ITEM_OBTAIN_ACK` | — | — | `ChangeItemObtainAck` |  |
-| 5090 | `eERC_CHOICE_REWARD_PARTYRANK_REQ` | — | `dungeon/combat.py` (`handle_choice_reward_party_rank`) | `ChoiceRewardPartyRankReq` | eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660). |
+| 5090 | `eERC_CHOICE_REWARD_PARTYRANK_REQ` | — | `dungeon/rewards.py` (`handle_choice_reward_party_rank`) | `ChoiceRewardPartyRankReq` | eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660). |
 | 5091 | `eERC_CHOICE_REWARD_PARTYRANK_ACK` | 0x0078D660 | — | `ChoiceRewardPartyRankAck` |  |
 | 5092 | `eERC_INVITE_USE_NICK_REQ` | — | `social/party.py` (`handle_party_invite_by_nick`) | `InviteUseNickReq` | Opcode 5092 (eERC_INVITE_USE_NICK_REQ): party invite by nickname. |
 | 5093 | `eERC_GAMEPLAY_DIE_CHAR_REQ` | — | `dungeon/combat.py` (`handle_gameplay_die_char`) | `GameplayDieCharReq` | eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0) -> 5094 (0x0078F090). |
@@ -830,6 +831,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5355 | `eERC_TEACHING_GET_INFO_NOT` | 0x007A5890 | — | `TeachingGetInfoNot` |  |
 | 5356 | `eERC_TEACHING_SUMMON_ACCEPT_REQ` | — | `social/party.py` (`handle_teaching_summon_accept`) | `TeachingSummonAcceptReq` | eERC_TEACHING_SUMMON_ACCEPT_REQ (0x007A6490) -> 5357 eERC_TEACHING_SUMMON_ACCEPT_ACK (0x0077B780). |
 | 5357 | `eERC_TEACHING_SUMMON_ACCEPT_ACK` | 0x0077B780 | — | `TeachingSummonAcceptAck` |  |
+| 5358 | `eERC_EXPLORE_JOIN_REQ` | — | `dungeon/events.py` (`handle_explore_join`) | `ExploreJoinReq` | Opcode 5358 (eERC_EXPLORE_JOIN_REQ) -> 5359 (0x006C35B0, Forest of Oblivion). |
+| 5359 | `eERC_EXPLORE_JOIN_ACK` | — | — | `ExploreJoinAck` |  |
+| 5360 | `eERC_EXPLORE_LEAVE_REQ` | — | `dungeon/events.py` (`handle_explore_leave`) | `ExploreLeaveReq` | Opcode 5360 (eERC_EXPLORE_LEAVE_REQ) -> 5361 (0x006B5F00, return to town). |
+| 5361 | `eERC_EXPLORE_LEAVE_ACK` | — | — | `ExploreLeaveAck` |  |
 | 5362 | `eERC_GOLDGOBLIEN_APPEAR_NOT` | 0x007A6D10 | — | `GoldGoblinAppearNot` |  |
 | 5363 | `eERC_GOLDGOBLIEN_ATTACK_REQ` | — | `dungeon/combat.py` (`handle_gold_goblin_attack`) | `GoldGoblinAttackReq` | eERC_GOLDGOBLIEN_ATTACK_REQ -> 5364 eERC_GOLDGOBLIEN_ATTACK_ACK (0x00784A10). |
 | 5364 | `eERC_GOLDGOBLIEN_ATTACK_ACK` | 0x00784A10 | — | `GoldGoblinAttackAck` |  |
