@@ -41,11 +41,11 @@ OPTIONS = {
         'Lowers the town P2P position revision throttle from 2000 ms to 100 ms (0x00966C9C).',
     ),
     'skip_logos': (
-        'client', False, 'Skip start-up logos',
+        'client', True, 'Skip start-up logos',
         'Ends the logo clips at once (JAppStateLogo 0x006F39AB, je -> jmp).',
     ),
     'skip_tutorial_always': (
-        'client', False, 'Always allow tutorial skip (Esc)',
+        'client', True, 'Always allow tutorial skip (Esc)',
         "Allows skipping the tutorial even on an account's first character (0x006FBCEE).",
     ),
     'adult_content': (

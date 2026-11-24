@@ -36,6 +36,7 @@ if not IS_FROZEN:
     sys.path.insert(0, str(ROOT / 'tools'))
 
 from darkblood.core import options  # noqa: E402
+from darkblood.games.gm_bridge import GM_BRIDGE_HOST, GM_BRIDGE_PORT, SERVER_LIVE_COMMANDS  # noqa: E402
 import gamectl  # noqa: E402
 import updater  # noqa: E402
 
@@ -162,11 +163,12 @@ def _resolve_github_username(name: str, email: str = '', login: str = '') -> str
 
 def _current_release_tags(flags):
     """Return (current_tag, previous_tag) for the installed/latest release."""
+    cur = ''
     ver_file = ROOT / updater.VERSION_FILE
     if ver_file.is_file():
         v = ver_file.read_text(encoding='utf-8', errors='replace').strip()
         if v.startswith('v'):
-            return v, ''
+            cur = v
     try:
         proc = subprocess.run(
             ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
@@ -174,15 +176,71 @@ def _current_release_tags(flags):
         )
         if proc.returncode == 0:
             tags = [t.strip() for t in proc.stdout.splitlines() if t.strip()]
+            if cur:
+                if cur in tags:
+                    idx = tags.index(cur)
+                    return cur, (tags[idx + 1] if idx + 1 < len(tags) else '')
+                return cur, (tags[0] if tags else '')
             if tags:
                 return tags[0], (tags[1] if len(tags) > 1 else '')
     except Exception:
         pass
-    return '', ''
+    return cur, ''
+
+
+def _resolve_github_release_range(cur_tag: str, prev_tag: str):
+    """Resolve (cur_tag, prev_tag) from GitHub Releases API when prev_tag is unknown."""
+    if cur_tag and prev_tag:
+        return cur_tag, prev_tag
+    try:
+        api = f'https://api.github.com/repos/{updater.GITHUB_REPO}/releases?per_page=15'
+        req = urllib.request.Request(api, headers={'User-Agent': 'DarkBlood-Launcher'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            releases = json.loads(resp.read().decode('utf-8'))
+        tags = [
+            (r.get('tag_name') or '').strip()
+            for r in releases
+            if not r.get('draft') and (r.get('tag_name') or '').strip()
+        ]
+        if not tags:
+            return cur_tag, prev_tag
+        if cur_tag and cur_tag in tags:
+            idx = tags.index(cur_tag)
+            return cur_tag, (tags[idx + 1] if idx + 1 < len(tags) else '')
+        if not cur_tag:
+            return tags[0], (tags[1] if len(tags) > 1 else '')
+    except Exception:
+        pass
+    return cur_tag, prev_tag
+
+
+def _parse_github_commit_items(items, limit=None):
+    commits = []
+    for item in items:
+        sha = item.get('sha', '')
+        c = item.get('commit', {})
+        gh_author = item.get('author') or {}
+        c_author = c.get('author') or {}
+        subject = (c.get('message', '') or '').splitlines()[0]
+        if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
+            continue
+        author = _resolve_github_username(
+            c_author.get('name', ''),
+            c_author.get('email', ''),
+            gh_author.get('login', ''),
+        )
+        date = (c_author.get('date', '') or '')[:10]
+        commits.append({
+            'sha': sha, 'short': sha[:7],
+            'date': date, 'author': author, 'subject': subject,
+        })
+        if limit is not None and len(commits) >= limit:
+            break
+    return commits
 
 
 def fetch_recent_commits(limit=None):
-    """Return list of dicts {sha, short, date, author, subject} for the current release."""
+    """Return list of dicts {sha, short, date, author, subject} strictly for the current release."""
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     cur_tag, prev_tag = _current_release_tags(flags)
     rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
@@ -217,35 +275,25 @@ def fetch_recent_commits(limit=None):
     except Exception:
         pass
 
-    # Fallback: GitHub REST API (scoped to release tag when known, up to 100/page)
+    # Fallback: GitHub REST API — use /compare/{prev_tag}...{cur_tag} so ONLY commits
+    # belonging to the current release are shown (never commits from older releases).
     try:
+        cur_tag, prev_tag = _resolve_github_release_range(cur_tag, prev_tag)
+        if cur_tag and prev_tag:
+            api_url = f'https://api.github.com/repos/{updater.GITHUB_REPO}/compare/{prev_tag}...{cur_tag}'
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'DarkBlood-Launcher'})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+            # GitHub /compare returns commits oldest-first; reverse for newest-first display.
+            items = list(reversed(data.get('commits') or []))
+            return _parse_github_commit_items(items, limit=limit), f'release {cur_tag}'
+
         base_api = f'https://api.github.com/repos/{updater.GITHUB_REPO}/commits?per_page=100'
         api_url = base_api + (f'&sha={cur_tag}' if cur_tag else '')
         req = urllib.request.Request(api_url, headers={'User-Agent': 'DarkBlood-Launcher'})
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode('utf-8'))
-        commits = []
-        for item in data:
-            sha = item.get('sha', '')
-            c = item.get('commit', {})
-            gh_author = item.get('author') or {}
-            c_author = c.get('author') or {}
-            subject = (c.get('message', '') or '').splitlines()[0]
-            if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
-                continue
-            author = _resolve_github_username(
-                c_author.get('name', ''),
-                c_author.get('email', ''),
-                gh_author.get('login', ''),
-            )
-            date = (c_author.get('date', '') or '')[:10]
-            commits.append({
-                'sha': sha, 'short': sha[:7],
-                'date': date, 'author': author, 'subject': subject,
-            })
-            if limit is not None and len(commits) >= limit:
-                break
-        return commits, (f'release {cur_tag}' if cur_tag else 'GitHub')
+        return _parse_github_commit_items(data, limit=limit), (f'release {cur_tag}' if cur_tag else 'GitHub')
     except Exception as exc:
         # Offline portable fallback: parse bundled RELEASE_NOTES.md if present
         notes_file = ROOT / 'RELEASE_NOTES.md'
@@ -333,12 +381,113 @@ def stage_client_folder(exe_path: Path, target_dir: Path = CLIENT_DIR,
     return target_dir
 
 
+def ensure_hook_deployed(client_dir: Path = CLIENT_DIR, hook_dll: Path = HOOK_BUILT_DLL) -> bool:
+    """Ensure the bundled `client_hook/steam_api.dll` is installed in `client_dir`.
+
+    Backs up any original `steam_api.dll` to `steam_api.dll.bak` on first deploy.
+    Returns True if a fresh copy was written, False if already up to date or unavailable.
+    """
+    src = Path(hook_dll)
+    dst_dir = Path(client_dir)
+    dst = dst_dir / 'steam_api.dll'
+    if not src.is_file() or not dst_dir.is_dir():
+        return False
+    src_bytes = src.read_bytes()
+    if dst.is_file():
+        try:
+            if dst.read_bytes() == src_bytes:
+                return False
+        except OSError:
+            pass
+        bak = dst_dir / 'steam_api.dll.bak'
+        if not bak.exists():
+            try:
+                shutil.copy2(dst, bak)
+            except OSError:
+                pass
+    try:
+        shutil.copy2(src, dst)
+        return True
+    except PermissionError:
+        # Another game instance already has steam_api.dll mapped; keep going if present.
+        if dst.is_file():
+            return False
+        raise
+
+
+def parse_gm_commands_doc(doc_path: Path = None) -> list:
+    """Parse `docs/GM_COMMANDS.md` tables into structured command dicts."""
+    path = doc_path or (ROOT / 'docs' / 'GM_COMMANDS.md')
+    if not path.is_file():
+        return []
+    commands = []
+    category = 'General'
+    link_re = re.compile(r'\[([^\]]+)\]\([^)]+\)')
+    for raw in path.read_text(encoding='utf-8', errors='replace').splitlines():
+        line = raw.strip()
+        if line.startswith('### '):
+            category = line[4:].strip()
+            continue
+        if not line.startswith('| `'):
+            continue
+        cols = [c.strip() for c in line.strip('|').split('|')]
+        if len(cols) < 4:
+            continue
+        name = cols[0].strip('`').strip()
+        if not name:
+            continue
+        desc = cols[1]
+        params = cols[2].replace('`', '').replace('\\|', '|')
+        example = link_re.sub(r'\1', cols[3]).replace('`', '')
+        commands.append({
+            'name': name,
+            'category': category,
+            'description': desc,
+            'params': params,
+            'example': example,
+            'live': name.lower() in SERVER_LIVE_COMMANDS,
+        })
+    if not any(c['name'] == 'dualskill' for c in commands):
+        commands.append({
+            'name': 'dualskill',
+            'category': 'Skills & Buffs',
+            'description': 'Activate or extend Dual Skill duration directly',
+            'params': '[days=30]',
+            'example': '%dualskill 30',
+            'live': True,
+        })
+    return commands
+
+
+def query_gm_bridge(payload: dict, host: str = GM_BRIDGE_HOST, port: int = GM_BRIDGE_PORT,
+                    timeout: float = 2.5) -> dict:
+    """Send a single JSON-line request to the localhost GM bridge and return its response dict."""
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout) as sock:
+            sock.settimeout(timeout)
+            sock.sendall((json.dumps(payload) + '\n').encode('utf-8'))
+            buf = bytearray()
+            while b'\n' not in buf:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                buf.extend(chunk)
+            if not buf:
+                return {'ok': False, 'message': 'Empty response from server.'}
+            return json.loads(buf.decode('utf-8', errors='replace').splitlines()[0])
+    except OSError as exc:
+        return {'ok': False, 'offline': True, 'message': f'Server GM bridge offline ({exc}).'}
+    except Exception as exc:
+        return {'ok': False, 'message': str(exc)}
+
+
 def launch_clients(account, count=1):
     """Launch 1..4 DarkBlood.exe instances directly against the configured server."""
     if not CLIENT_EXE.exists():
         raise RuntimeError(f'Client executable not found: {CLIENT_EXE}')
+    ensure_hook_deployed(CLIENT_DIR, HOOK_BUILT_DLL)
     if not CLIENT_DLL.exists():
-        raise RuntimeError(f'Hook DLL not found: {CLIENT_DLL} (click "Build Hook")')
+        raise RuntimeError(f'Hook DLL not found: {CLIENT_DLL}')
 
     import multibox
     for pid in multibox._running_clients():
@@ -373,14 +522,15 @@ def launch_clients(account, count=1):
 
 
 class ScrollFrame(tk.Frame):
-    """Dark-themed vertical scrollable container."""
+    """Dark-themed vertical scrollable container with flicker-free atomic swaps."""
     def __init__(self, parent, bg=BG_CARD, **kwargs):
         super().__init__(parent, bg=bg, **kwargs)
+        self._bg = bg
         self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
         self.scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview,
                                        style='Dark.Vertical.TScrollbar')
         self.inner = tk.Frame(self.canvas, bg=bg)
-        self.inner.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox('all')))
+        self._bind_inner(self.inner)
         self._win = self.canvas.create_window((0, 0), window=self.inner, anchor='nw')
         self.canvas.bind('<Configure>', lambda e: self.canvas.itemconfigure(self._win, width=e.width))
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -391,8 +541,26 @@ class ScrollFrame(tk.Frame):
         # Bind wheel only while pointer is over this scroll area
         self.canvas.bind('<Enter>', self._bind_wheel)
         self.canvas.bind('<Leave>', self._unbind_wheel)
-        self.inner.bind('<Enter>', self._bind_wheel)
-        self.inner.bind('<Leave>', self._unbind_wheel)
+
+    def _bind_inner(self, frame):
+        frame.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox('all')))
+        frame.bind('<Enter>', self._bind_wheel)
+        frame.bind('<Leave>', self._unbind_wheel)
+
+    def new_offscreen_inner(self):
+        return tk.Frame(self.canvas, bg=self._bg)
+
+    def swap_inner(self, new_inner):
+        """Atomically replace inner frame to avoid Win32 white/light-theme redraw flash."""
+        old = self.inner
+        self._bind_inner(new_inner)
+        new_inner.update_idletasks()
+        self.inner = new_inner
+        self.canvas.itemconfigure(self._win, window=new_inner, width=max(1, self.canvas.winfo_width()))
+        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
+        self.canvas.yview_moveto(0.0)
+        if old is not None and old is not new_inner:
+            old.destroy()
 
     def _bind_wheel(self, _event=None):
         self.canvas.bind_all('<MouseWheel>', self._on_wheel)
@@ -521,16 +689,17 @@ class DarkBloodLauncher(tk.Tk):
                  bg=BG_HEADER, fg=GOLD, font=('Segoe UI', 8, 'bold')).pack(anchor='w')
 
         # Center/Right Navigation Tabs
-        nav = tk.Frame(header, bg=BG_HEADER)
-        nav.pack(side='left', padx=(34, 0), fill='y')
+        self._nav_frame = tk.Frame(header, bg=BG_HEADER)
+        self._nav_frame.pack(side='left', padx=(34, 0), fill='y')
         self._tab_btns = {}
-        for tab_id, label in (('news', 'NEWS & SERVER'), ('patches', 'PATCHES & HACKS')):
+        for tab_id, label in (('news', 'NEWS & SERVER'), ('patches', 'PATCHES & HACKS'), ('gm', 'GM COMMANDS')):
             b = tk.Button(
-                nav, text=label, command=lambda t=tab_id: self._switch_tab(t),
-                bg=BG_HEADER, fg=TEXT_DIM, activebackground=BG_HEADER, activeforeground=TEXT_MAIN,
+                self._nav_frame, text=label, command=lambda t=tab_id: self._switch_tab(t),
+                bg=BG_HEADER, fg=TEXT_DIM, activebackground=BG_CARD, activeforeground=TEXT_MAIN,
                 relief='flat', bd=0, cursor='hand2', font=('Segoe UI', 9, 'bold'), padx=14,
             )
-            b.pack(side='left', fill='y')
+            if tab_id != 'gm':
+                b.pack(side='left', fill='y')
             self._tab_btns[tab_id] = b
 
         # Right status pills
@@ -555,30 +724,59 @@ class DarkBloodLauncher(tk.Tk):
         tk.Frame(self, bg=ACCENT, height=2).pack(fill='x')
 
     def _switch_tab(self, tab_id):
+        if tab_id == 'gm' and not self._is_gm_enabled():
+            tab_id = 'news'
         self._active_tab = tab_id
         for tid, btn in self._tab_btns.items():
             if tid == tab_id:
                 btn.configure(fg=TEXT_MAIN, bg=BG_CARD)
             else:
                 btn.configure(fg=TEXT_DIM, bg=BG_HEADER)
-        if tab_id == 'news':
-            self.patches_page.pack_forget()
-            self.news_page.pack(fill='both', expand=True)
-        else:
-            self.news_page.pack_forget()
-            self.patches_page.pack(fill='both', expand=True)
+        page = self._pages.get(tab_id)
+        if page is not None:
+            page.tkraise()
+        if tab_id == 'gm':
+            self._refresh_gm_players_async()
 
-    # ---- Body (News & Server Page + Patches Page) -----------------------
+    def _is_gm_enabled(self) -> bool:
+        var = self._patch_vars.get('gm_mode')
+        return bool(var.get()) if var is not None else bool(options.get('gm_mode'))
+
+    def _sync_gm_tab_visibility(self):
+        btn = self._tab_btns.get('gm')
+        if btn is None:
+            return
+        if self._is_gm_enabled():
+            if not btn.winfo_ismapped():
+                btn.pack(side='left', fill='y')
+        else:
+            if btn.winfo_ismapped():
+                btn.pack_forget()
+            if self._active_tab == 'gm':
+                self._switch_tab('news')
+
+    # ---- Body (News & Server + Patches + GM Commands) -------------------
 
     def _build_body(self):
         self.body = tk.Frame(self, bg=BG_DARK)
         self.body.pack(fill='both', expand=True, padx=16, pady=14)
+        self.body.grid_rowconfigure(0, weight=1)
+        self.body.grid_columnconfigure(0, weight=1)
 
         self.news_page = tk.Frame(self.body, bg=BG_DARK)
         self.patches_page = tk.Frame(self.body, bg=BG_DARK)
+        self.gm_page = tk.Frame(self.body, bg=BG_DARK)
+        self._pages = {
+            'news': self.news_page,
+            'patches': self.patches_page,
+            'gm': self.gm_page,
+        }
+        for page in self._pages.values():
+            page.grid(row=0, column=0, sticky='nsew')
 
         self._build_news_page()
         self._build_patches_page()
+        self._build_gm_page()
 
     def _build_news_page(self):
         # Two-column Bifrost layout: Left = News/Commits feed, Right = Server & Account panel
@@ -757,6 +955,261 @@ class DarkBloodLauncher(tk.Tk):
                          font=('Segoe UI', 8), wraplength=820, justify='left').pack(
                     anchor='w', padx=(34, 10), pady=(0, 7))
 
+    def _build_gm_page(self):
+        """Build the searchable GM Commands console & live execution tab (visible when gm_mode=1)."""
+        self._gm_commands = parse_gm_commands_doc()
+        self._gm_players = []
+        self._gm_selected_cmd = None
+
+        card = tk.Frame(self.gm_page, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+        card.pack(fill='both', expand=True)
+
+        # Header + Search + Target Player selector
+        hdr = tk.Frame(card, bg=BG_CARD_ALT, height=44)
+        hdr.pack(fill='x')
+        hdr.pack_propagate(False)
+        tk.Label(hdr, text='GM COMMANDS', bg=BG_CARD_ALT, fg=GOLD,
+                 font=('Segoe UI', 9, 'bold')).pack(side='left', padx=(12, 10))
+
+        self.gm_search_var = tk.StringVar()
+        self.gm_search_var.trace_add('write', lambda *_: self._render_gm_list())
+        tk.Label(hdr, text='Search:', bg=BG_CARD_ALT, fg=TEXT_DIM,
+                 font=('Segoe UI', 8, 'bold')).pack(side='left', padx=(4, 4))
+        search_entry = self._make_entry(hdr, self.gm_search_var, width=24)
+        search_entry.pack(side='left', ipady=3, pady=8)
+
+        self.gm_cat_var = tk.StringVar(value='All')
+        cats = ['All', 'Live Executable'] + sorted({c['category'] for c in self._gm_commands})
+        cat_menu = tk.OptionMenu(hdr, self.gm_cat_var, *cats, command=lambda *_: self._render_gm_list())
+        cat_menu.configure(
+            bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
+            highlightthickness=1, highlightbackground=BORDER, relief='flat', bd=0,
+            font=('Segoe UI', 8), cursor='hand2',
+        )
+        cat_menu['menu'].configure(bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white')
+        cat_menu.pack(side='left', padx=(8, 4), pady=8)
+
+        self._make_btn(
+            hdr, 'Refresh Players', self._refresh_gm_players_async,
+            bg=BG_CARD, hover=BORDER, fg=TEXT_DIM, font=('Segoe UI', 8, 'bold'), padx=8, pady=3,
+        ).pack(side='right', padx=(4, 10), pady=8)
+
+        self.gm_player_var = tk.StringVar(value='Auto (active character)')
+        self.gm_player_menu = tk.OptionMenu(hdr, self.gm_player_var, 'Auto (active character)')
+        self.gm_player_menu.configure(
+            bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
+            highlightthickness=1, highlightbackground=BORDER, relief='flat', bd=0,
+            font=('Segoe UI', 8), cursor='hand2',
+        )
+        self.gm_player_menu['menu'].configure(bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white')
+        self.gm_player_menu.pack(side='right', padx=(4, 4), pady=8)
+        tk.Label(hdr, text='Target:', bg=BG_CARD_ALT, fg=TEXT_DIM,
+                 font=('Segoe UI', 8, 'bold')).pack(side='right', padx=(8, 2))
+
+        # Main split: Left = command list, Right = command details
+        split = tk.Frame(card, bg=BG_CARD)
+        split.pack(fill='both', expand=True, padx=8, pady=(8, 6))
+
+        list_wrap = tk.Frame(split, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+        list_wrap.pack(side='left', fill='both', expand=True, padx=(0, 8))
+
+        self.gm_listbox = tk.Listbox(
+            list_wrap, bg=BG_CARD_ALT, fg=TEXT_MAIN,
+            selectbackground=ACCENT, selectforeground='white',
+            activestyle='none', relief='flat', bd=0, highlightthickness=0,
+            font=('Consolas', 9),
+        )
+        gm_sb = ttk.Scrollbar(list_wrap, orient='vertical', command=self.gm_listbox.yview,
+                              style='Dark.Vertical.TScrollbar')
+        self.gm_listbox.configure(yscrollcommand=gm_sb.set)
+        self.gm_listbox.pack(side='left', fill='both', expand=True)
+        gm_sb.pack(side='right', fill='y')
+        self.gm_listbox.bind('<<ListboxSelect>>', self._on_gm_select)
+        self.gm_listbox.bind('<Double-Button-1>', lambda e: self._fill_gm_example())
+
+        detail_card = tk.Frame(split, bg=BG_CARD_ALT, width=320,
+                               highlightbackground=BORDER, highlightthickness=1)
+        detail_card.pack(side='right', fill='y')
+        detail_card.pack_propagate(False)
+
+        self.gm_detail_title = tk.Label(
+            detail_card, text='Select a GM command', bg=BG_CARD_ALT, fg=GOLD,
+            font=('Consolas', 11, 'bold'), anchor='w',
+        )
+        self.gm_detail_title.pack(fill='x', padx=12, pady=(12, 4))
+
+        self.gm_detail_badge = tk.Label(
+            detail_card, text='', bg=BG_CARD_ALT, fg=TEXT_DIM,
+            font=('Segoe UI', 8, 'bold'), anchor='w',
+        )
+        self.gm_detail_badge.pack(fill='x', padx=12, pady=(0, 8))
+
+        self.gm_detail_body = tk.Label(
+            detail_card,
+            text='Search any command on the left.\n\n'
+                 '• [LIVE] commands execute directly on the online character from this launcher.\n'
+                 '• [CHAT] commands are client-side cheats — click Copy %cmd and paste in game chat (Enter) or press Ctrl+Shift+C.',
+            bg=BG_CARD_ALT, fg=TEXT_MAIN, font=('Segoe UI', 9),
+            justify='left', wraplength=294, anchor='nw',
+        )
+        self.gm_detail_body.pack(fill='both', expand=True, padx=12, pady=(0, 8))
+
+        self.gm_count_lbl = tk.Label(
+            detail_card, text='', bg=BG_CARD_ALT, fg=TEXT_MUTED,
+            font=('Segoe UI', 8), anchor='w',
+        )
+        self.gm_count_lbl.pack(fill='x', padx=12, pady=(0, 10))
+
+        # Bottom execution bar
+        tk.Frame(card, bg=BORDER, height=1).pack(fill='x')
+        exec_bar = tk.Frame(card, bg=BG_CARD_ALT, padx=10, pady=8)
+        exec_bar.pack(fill='x')
+
+        tk.Label(exec_bar, text='%', bg=BG_CARD_ALT, fg=GOLD,
+                 font=('Consolas', 10, 'bold')).pack(side='left', padx=(0, 4))
+        self.gm_cmd_var = tk.StringVar()
+        cmd_entry = self._make_entry(exec_bar, self.gm_cmd_var, width=42)
+        cmd_entry.pack(side='left', fill='x', expand=True, ipady=4, padx=(0, 8))
+        cmd_entry.bind('<Return>', lambda e: self._send_gm_command())
+
+        self._make_btn(
+            exec_bar, 'Copy %cmd', self._copy_gm_command,
+            bg=BG_CARD, hover=BORDER, fg=TEXT_DIM, font=('Segoe UI', 8, 'bold'), padx=10, pady=5,
+        ).pack(side='left', padx=(0, 6))
+        self.gm_send_btn = self._make_btn(
+            exec_bar, '▶ Send to Game', self._send_gm_command,
+            bg=ACCENT, hover=ACCENT_HOVER, fg='white', font=('Segoe UI', 8, 'bold'), padx=14, pady=5,
+        )
+        self.gm_send_btn.pack(side='left')
+
+        self.gm_result_lbl = tk.Label(
+            card, text='Ready — start local server & log in a character to execute [LIVE] commands.',
+            bg=BG_CARD, fg=TEXT_MUTED, font=('Segoe UI', 8), anchor='w', padx=12, pady=4,
+        )
+        self.gm_result_lbl.pack(fill='x')
+
+        self._gm_filtered = []
+        self._render_gm_list()
+
+    def _render_gm_list(self):
+        q = (self.gm_search_var.get() or '').strip().lower()
+        cat = self.gm_cat_var.get()
+        filtered = []
+        for c in self._gm_commands:
+            if cat == 'Live Executable' and not c['live']:
+                continue
+            elif cat not in ('All', 'Live Executable') and c['category'] != cat:
+                continue
+            if q:
+                hay = f"{c['name']} {c['description']} {c['params']} {c['category']}".lower()
+                if q not in hay:
+                    continue
+            filtered.append(c)
+        self._gm_filtered = filtered
+        self.gm_listbox.delete(0, 'end')
+        for c in filtered:
+            tag = '[LIVE]' if c['live'] else '[CHAT]'
+            self.gm_listbox.insert('end', f" {tag} {c['name']:<18}  {c['description']}")
+        live_cnt = sum(1 for c in filtered if c['live'])
+        self.gm_count_lbl.config(text=f'{len(filtered)} commands shown ({live_cnt} live-executable)')
+
+    def _on_gm_select(self, _event=None):
+        sel = self.gm_listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        if idx >= len(self._gm_filtered):
+            return
+        c = self._gm_filtered[idx]
+        self._gm_selected_cmd = c
+        self.gm_detail_title.config(text=f"%{c['name']}")
+        if c['live']:
+            self.gm_detail_badge.config(text=f"● SERVER LIVE  •  {c['category']}", fg=OK_GREEN)
+        else:
+            self.gm_detail_badge.config(text=f"● IN-GAME CHAT ONLY  •  {c['category']}", fg=WARN_AMBER)
+        body = (
+            f"{c['description']}\n\n"
+            f"Parameters:\n  {c['params']}\n\n"
+            f"Example:\n  {c['example']}"
+        )
+        self.gm_detail_body.config(text=body)
+        self._fill_gm_example()
+
+    def _fill_gm_example(self):
+        c = self._gm_selected_cmd
+        if not c:
+            return
+        ex = c['example'].split('—')[0].split('/')[0].strip()
+        if ex.startswith('%'):
+            ex = ex[1:].strip()
+        self.gm_cmd_var.set(ex if ex else c['name'])
+
+    def _refresh_gm_players_async(self):
+        def worker():
+            resp = query_gm_bridge({'action': 'list_players'})
+            self.after(0, lambda: self._apply_gm_players(resp))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _apply_gm_players(self, resp):
+        menu = self.gm_player_menu['menu']
+        menu.delete(0, 'end')
+        self._gm_players = resp.get('players', []) if resp.get('ok') else []
+        choices = ['Auto (active character)'] + [
+            f"{p['name']} (Lv.{p['level']}, #{p['char_id']})" for p in self._gm_players
+        ]
+        for ch in choices:
+            menu.add_command(label=ch, command=lambda v=ch: self.gm_player_var.set(v))
+        if self.gm_player_var.get() not in choices:
+            self.gm_player_var.set(choices[0])
+        if resp.get('offline'):
+            self.gm_result_lbl.config(text='Local server offline — start server to execute [LIVE] commands.', fg=TEXT_MUTED)
+        elif not self._gm_players:
+            self.gm_result_lbl.config(text='Server online — log in a character to execute [LIVE] commands.', fg=WARN_AMBER)
+        else:
+            self.gm_result_lbl.config(text=f'Server online — {len(self._gm_players)} character(s) connected.', fg=OK_GREEN)
+
+    def _selected_gm_char_id(self):
+        label = self.gm_player_var.get()
+        m = re.search(r'#(\d+)\)$', label)
+        return int(m.group(1)) if m else None
+
+    def _copy_gm_command(self):
+        cmd = (self.gm_cmd_var.get() or '').strip()
+        if not cmd:
+            return
+        text = cmd if cmd.startswith('%') else f'%{cmd}'
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self.gm_result_lbl.config(text=f'Copied "{text}" to clipboard (paste in game chat).', fg=LINK_BLUE)
+
+    def _send_gm_command(self):
+        cmd = (self.gm_cmd_var.get() or '').strip()
+        if not cmd:
+            return
+        char_id = self._selected_gm_char_id()
+        self.gm_send_btn.config(state='disabled')
+        self.gm_result_lbl.config(text=f'Executing %{cmd}...', fg=TEXT_DIM)
+
+        def worker():
+            resp = query_gm_bridge({'action': 'exec', 'command': cmd, 'char_id': char_id})
+            self.after(0, lambda: self._on_gm_result(cmd, resp))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_gm_result(self, cmd, resp):
+        self.gm_send_btn.config(state='normal')
+        msg = resp.get('message', 'Done.')
+        if resp.get('ok'):
+            self.gm_result_lbl.config(text=f'✓ {msg}', fg=OK_GREEN)
+            self._refresh_gm_players_async()
+        elif resp.get('client_only'):
+            text = cmd if cmd.startswith('%') else f'%{cmd}'
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.gm_result_lbl.config(text=f'Copied "{text}" — {msg}', fg=WARN_AMBER)
+        else:
+            self.gm_result_lbl.config(text=f'✗ {msg}', fg=ERR_RED)
+
     # ---- Footer (Always-visible Bifrost-style Play Bar) -----------------
 
     def _build_footer(self):
@@ -778,9 +1231,11 @@ class DarkBloodLauncher(tk.Tk):
 
         self._make_btn(right, 'Save Config', self._save_config,
                        bg=BG_CARD_ALT, hover=BORDER, padx=12, pady=8).pack(side='left', padx=(0, 8))
-        self.build_btn = self._make_btn(right, 'Build & Deploy Hook', self._build_hook,
-                                        bg=BG_CARD_ALT, hover=BORDER, padx=12, pady=8)
-        self.build_btn.pack(side='left', padx=(0, 12))
+        self.build_btn = None
+        if not IS_FROZEN and HOOK_BUILD_BAT.is_file():
+            self.build_btn = self._make_btn(right, 'Build & Deploy Hook', self._build_hook,
+                                            bg=BG_CARD_ALT, hover=BORDER, padx=12, pady=8)
+            self.build_btn.pack(side='left', padx=(0, 12))
 
         self.play_btn = self._make_btn(
             right, '▶  PLAY DARK BLOOD', self._launch,
@@ -801,6 +1256,7 @@ class DarkBloodLauncher(tk.Tk):
         for key, var in self._patch_vars.items():
             var.set(bool(cfg['options'].get(key, options.OPTIONS[key][1])))
         self._update_patch_summary()
+        self._sync_gm_tab_visibility()
 
     def _update_patch_summary(self):
         enabled = [options.OPTIONS[k][2] for k, v in self._patch_vars.items() if v.get()]
@@ -811,6 +1267,7 @@ class DarkBloodLauncher(tk.Tk):
         if not preview:
             preview = 'No patches enabled.'
         self.patch_summary_lbl.config(text=f'{len(enabled)} / {total} enabled\n\n{preview}')
+        self._sync_gm_tab_visibility()
 
     def _refresh_commits(self):
         for child in self.news_scroll.inner.winfo_children():
@@ -846,14 +1303,14 @@ class DarkBloodLauncher(tk.Tk):
         page = max(1, min(page, total_pages))
         self._commits_page = page
 
-        for child in self.news_scroll.inner.winfo_children():
-            child.destroy()
+        # Build the next page off-screen and swap atomically to prevent Win32 light-theme flash.
+        new_inner = self.news_scroll.new_offscreen_inner()
         start = (page - 1) * psize
         for c in self._all_commits[start:start + psize]:
             ctype, scope, title = parse_commit_prefix(c['subject'])
             bg_pill, fg_pill = COMMIT_BADGES.get(ctype, ('#2b3040', '#a6afc4'))
 
-            item = tk.Frame(self.news_scroll.inner, bg=BG_CARD_ALT,
+            item = tk.Frame(new_inner, bg=BG_CARD_ALT,
                             highlightbackground=BORDER, highlightthickness=1)
             item.pack(fill='x', padx=6, pady=4)
 
@@ -878,28 +1335,27 @@ class DarkBloodLauncher(tk.Tk):
             tk.Label(item, text=f'by {c["author"]}', bg=BG_CARD_ALT, fg=TEXT_MUTED,
                      font=('Segoe UI', 8)).pack(anchor='w', padx=10, pady=(0, 6))
 
-        self.news_scroll.canvas.yview_moveto(0.0)
+        self.news_scroll.swap_inner(new_inner)
         self._render_pager(page, total_pages, total)
 
     def _render_pager(self, page: int, total_pages: int, total_items: int):
-        for child in self.news_pager.winfo_children():
-            child.destroy()
-
-        bar = tk.Frame(self.news_pager, bg=BG_CARD_ALT)
-        bar.pack(side='left', padx=8, pady=4)
+        new_bar = tk.Frame(self.news_pager, bg=BG_CARD_ALT)
+        left_bar = tk.Frame(new_bar, bg=BG_CARD_ALT)
+        left_bar.pack(side='left', padx=8, pady=4)
 
         def add_tab(label, target_page, active=False, disabled=False):
             bg = ACCENT if active else BG_CARD
             fg = 'white' if active else (TEXT_MUTED if disabled else TEXT_DIM)
-            btn = tk.Button(
-                bar, text=label,
-                command=(lambda p=target_page: self._show_commits_page(p)) if not disabled else None,
-                state='disabled' if disabled else 'normal',
-                bg=bg, fg=fg, activebackground=BORDER, activeforeground=TEXT_MAIN,
-                disabledforeground=TEXT_MUTED, relief='flat', bd=0,
+            btn = tk.Label(
+                left_bar, text=label, bg=bg, fg=fg,
                 cursor='arrow' if disabled else 'hand2',
-                font=('Segoe UI', 8, 'bold'), padx=7, pady=2,
+                font=('Segoe UI', 8, 'bold'), padx=8, pady=3,
             )
+            if not disabled:
+                btn.bind('<Button-1>', lambda e, p=target_page: self._show_commits_page(p))
+                if not active:
+                    btn.bind('<Enter>', lambda e, b=btn: b.configure(bg=BORDER, fg=TEXT_MAIN))
+                    btn.bind('<Leave>', lambda e, b=btn: b.configure(bg=BG_CARD, fg=TEXT_DIM))
             btn.pack(side='left', padx=2)
 
         add_tab('‹', page - 1, disabled=(page <= 1))
@@ -920,7 +1376,7 @@ class DarkBloodLauncher(tk.Tk):
 
         for p in pages:
             if p is None:
-                tk.Label(bar, text='…', bg=BG_CARD_ALT, fg=TEXT_MUTED,
+                tk.Label(left_bar, text='…', bg=BG_CARD_ALT, fg=TEXT_MUTED,
                          font=('Segoe UI', 8)).pack(side='left', padx=2)
             else:
                 add_tab(str(p), p, active=(p == page))
@@ -928,9 +1384,15 @@ class DarkBloodLauncher(tk.Tk):
         add_tab('›', page + 1, disabled=(page >= total_pages))
 
         tk.Label(
-            self.news_pager, text=f'Page {page}/{total_pages}  •  {total_items} changes',
+            new_bar, text=f'Page {page}/{total_pages}  •  {total_items} changes',
             bg=BG_CARD_ALT, fg=TEXT_MUTED, font=('Segoe UI', 8),
         ).pack(side='right', padx=10)
+
+        old_children = list(self.news_pager.winfo_children())
+        new_bar.update_idletasks()
+        new_bar.pack(fill='both', expand=True)
+        for child in old_children:
+            child.destroy()
 
     def _collect_and_save(self):
         net = options.validate_network(
@@ -1092,7 +1554,8 @@ class DarkBloodLauncher(tk.Tk):
         threading.Thread(target=run, daemon=True).start()
 
     def _finish_build(self, ok, message):
-        self.build_btn.config(state='normal')
+        if self.build_btn is not None:
+            self.build_btn.config(state='normal')
         self.status_var.set(message)
         if ok:
             self._refresh_client_badge()
@@ -1101,7 +1564,7 @@ class DarkBloodLauncher(tk.Tk):
         self.update_btn.config(state='disabled', text='Checking...')
 
         def run():
-            st = updater.check_for_updates(ROOT)
+            st = updater.check_for_updates(ROOT, releases_only=True)
             self.after(0, lambda: self._apply_update_status(st))
 
         threading.Thread(target=run, daemon=True).start()
@@ -1110,15 +1573,14 @@ class DarkBloodLauncher(tk.Tk):
         self._update_status = st
         self.update_btn.config(state='normal')
         if st.error:
-            self.update_btn.config(text='Check Updates', bg=BG_CARD, fg=TEXT_MUTED)
+            self.update_btn.config(text='Check Releases', bg=BG_CARD, fg=TEXT_MUTED)
             return
         if st.up_to_date:
             self.update_btn.config(text=f'Up to date ({st.short_current})', bg=BG_CARD, fg=OK_GREEN)
             return
-        label = f'⬆ Update ({st.behind})' if st.mode == 'git' and st.behind > 0 else '⬆ Update Available'
-        self.update_btn.config(text=label, bg=ACCENT, fg='white')
+        self.update_btn.config(text=f'⬆ Release {st.short_remote}', bg=ACCENT, fg='white')
         self.status_var.set(
-            f'Update available on GitHub: {st.short_current} -> {st.short_remote} ({st.behind} new commit(s))'
+            f'New release available on GitHub: {st.short_current} -> {st.short_remote}'
         )
 
     def _on_update_click(self):
@@ -1127,11 +1589,10 @@ class DarkBloodLauncher(tk.Tk):
             self._check_updates_async()
             return
         msg = (
-            f'Update Dark Blood Server Emulator from {st.short_current} to {st.short_remote}?\n\n'
-            f'Mode: {st.mode.upper()} ({st.behind} new commit(s))\n'
+            f'Update Dark Blood Server Emulator from {st.short_current} to published release {st.short_remote}?\n\n'
             'User data (data/, research/, darkblood_options.ini) is preserved.'
         )
-        if not messagebox.askyesno('Update from GitHub', msg):
+        if not messagebox.askyesno('Update to Published Release', msg):
             return
         # Stop local server if started by this launcher so updated code loads cleanly
         if self._server_proc is not None and self._server_proc.poll() is None:
@@ -1140,10 +1601,10 @@ class DarkBloodLauncher(tk.Tk):
             self.local_srv_btn.config(text='Start Local Server')
 
         self.update_btn.config(state='disabled', text='Updating...')
-        self.status_var.set('Downloading latest version from GitHub...')
+        self.status_var.set(f'Downloading release {st.short_remote} from GitHub...')
 
         def run():
-            res = updater.apply_update(ROOT)
+            res = updater.apply_update(ROOT, releases_only=True)
             self.after(0, lambda: self._finish_update(res))
 
         threading.Thread(target=run, daemon=True).start()
@@ -1155,12 +1616,13 @@ class DarkBloodLauncher(tk.Tk):
             self.update_btn.config(text='Retry Update', bg=ACCENT, fg='white')
             messagebox.showerror('Update Failed', res.message)
             return
-        self.update_btn.config(text=f'Up to date ({res.new_sha[:7]})', bg=BG_CARD, fg=OK_GREEN)
+        ver_label = res.new_sha if res.new_sha.startswith('v') else res.new_sha[:7]
+        self.update_btn.config(text=f'Up to date ({ver_label})', bg=BG_CARD, fg=OK_GREEN)
         self._update_status = updater.UpdateStatus(
             mode=res.mode, current_sha=res.new_sha, remote_sha=res.new_sha, up_to_date=True,
         )
         self._refresh_commits()
-        if res.hook_changed and HOOK_BUILD_BAT.exists():
+        if res.hook_changed and not IS_FROZEN and HOOK_BUILD_BAT.exists():
             self._build_hook()
         if res.launcher_changed:
             if messagebox.askyesno('Launcher Updated',

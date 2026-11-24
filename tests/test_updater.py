@@ -157,7 +157,7 @@ class GitUpdaterTest(unittest.TestCase):
             self._git(clone, 'config', 'user.email', 'test@example.com')
             self._git(clone, 'config', 'user.name', 'Test')
 
-            st0 = updater.check_for_updates(clone)
+            st0 = updater.check_for_updates(clone, releases_only=False)
             self.assertEqual(st0.mode, 'git')
             self.assertTrue(st0.up_to_date)
             self.assertEqual(st0.behind, 0)
@@ -169,15 +169,60 @@ class GitUpdaterTest(unittest.TestCase):
             self._git(upstream, 'commit', '-m', 'fix(hook): update common.c')
             self._git(upstream, 'push', 'origin', 'main')
 
-            st1 = updater.check_for_updates(clone)
+            st1 = updater.check_for_updates(clone, releases_only=False)
             self.assertFalse(st1.up_to_date)
             self.assertEqual(st1.behind, 1)
 
-            res = updater.apply_update(clone)
+            res = updater.apply_update(clone, releases_only=False)
             self.assertTrue(res.ok)
             self.assertTrue(res.hook_changed)
             self.assertFalse(res.launcher_changed)
             self.assertEqual((clone / 'client_hook' / 'common.c').read_text(encoding='utf-8'), '// v2\n')
+
+    def test_releases_only_never_falls_back_to_random_commits(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.version').write_text('v0.1.0\n', encoding='utf-8')
+            with patch.object(updater, '_fetch_latest_release_api', return_value=(None, None)), \
+                 patch.object(updater, '_fetch_remote_sha_api', side_effect=AssertionError('must not query commits')):
+                st = updater.check_for_updates(root, releases_only=True)
+                self.assertEqual(st.mode, 'release')
+                self.assertTrue(st.up_to_date)
+                self.assertTrue(bool(st.error))
+                res = updater.apply_update(root, releases_only=True)
+                self.assertFalse(res.ok)
+
+            with patch.object(updater, '_fetch_latest_release_api',
+                              return_value=('v0.2.0', 'https://example.invalid/release.zip')):
+                st2 = updater.check_for_updates(root, releases_only=True)
+                self.assertEqual(st2.mode, 'release')
+                self.assertFalse(st2.up_to_date)
+                self.assertEqual(st2.remote_sha, 'v0.2.0')
+
+    def test_launcher_ensure_hook_deployed_and_gm_doc_parser(self):
+        import launcher
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            client_dir = base / 'client'
+            client_dir.mkdir()
+            (client_dir / 'steam_api.dll').write_bytes(b'ORIG_STEAM_API')
+            hook_dll = base / 'hook_steam_api.dll'
+            hook_dll.write_bytes(b'CUSTOM_HOOK_V2')
+
+            self.assertTrue(launcher.ensure_hook_deployed(client_dir, hook_dll))
+            self.assertEqual((client_dir / 'steam_api.dll.bak').read_bytes(), b'ORIG_STEAM_API')
+            self.assertEqual((client_dir / 'steam_api.dll').read_bytes(), b'CUSTOM_HOOK_V2')
+            # Second call is a no-op when already up to date
+            self.assertFalse(launcher.ensure_hook_deployed(client_dir, hook_dll))
+
+        cmds = launcher.parse_gm_commands_doc()
+        names = {c['name'] for c in cmds}
+        self.assertIn('lv', names)
+        self.assertIn('itemcall', names)
+        self.assertIn('dualskill', names)
+        lv_cmd = next(c for c in cmds if c['name'] == 'lv')
+        self.assertTrue(lv_cmd['live'])
 
 
 if __name__ == '__main__':
