@@ -58,6 +58,44 @@ from darkblood.player_management.characters import (
 class ItemHandlersMixin:
     """Item drag/equip/use/dye/delete/divide/decompose/seal and misc consumables."""
 
+    @staticmethod
+    def _locate_dragged_item(char: dict, account_chars: dict, item_uid: int):
+        dragged = next((i for i in char.get('items', []) if i.get('uid') == item_uid), None)
+        if dragged is not None:
+            return char, dragged
+        # Item may reside in another account character's depot.
+        for other in account_chars.values():
+            if other is char:
+                continue
+            found = next(
+                (i for i in other.get('items', [])
+                 if i.get('uid') == item_uid and i.get('container') == DEPOT_CONTAINER),
+                None,
+            )
+            if found is not None:
+                return other, found
+        return char, None
+
+    @staticmethod
+    def _resolve_drag_destination(char: dict, account_chars: dict, to_container: int):
+        # JAppPageStorage::OnDragItem (0x00650D00) sends to_container = pjDepot->m_nCharUID
+        # (whereas JAppPageInven sends bag_id and equipment uses 2042 EquipItemReq).
+        bag_ids = {
+            b.get('bag_id') for b in char.get('bags', [])
+            if b.get('bag_id') not in (EQUIPPED, DEPOT_CONTAINER)
+        }
+        if to_container == DEPOT_CONTAINER:
+            return account_chars.get(DEPOT_CONTAINER, char), DEPOT_CONTAINER
+        if to_container in account_chars and to_container not in bag_ids:
+            return account_chars[to_container], DEPOT_CONTAINER
+        return char, to_container
+
+    def _save_drag_chars(self, src_char: dict, dest_char: dict):
+        if dest_char is src_char:
+            self.store().save_char(self.account, src_char['id'])
+        else:
+            self.store().save_chars([(self.account, src_char['id']), (self.account, dest_char['id'])])
+
     @packet_handler(DragItemReq)
     async def handle_drag_item(self, correlation, body):
         """Opcode 2036 (eEGS_DRAG_ITEM_REQ) -> 2037 (eEGS_DRAG_ITEM_ACK): move or swap an item between bags/depot."""
@@ -67,39 +105,13 @@ class ItemHandlersMixin:
             await self.reply(DragItemAck(result=1), correlation, note='drag item fail (no char)')
             return
         account_chars = {int(c['id']): c for c in self.store().characters(self.account) if 'id' in c}
-        src_char = char
-        dragged = next((i for i in char.get('items', []) if i.get('uid') == req.item_uid), None)
-        if not dragged:
-            # Item may reside in another account character's depot.
-            for other in account_chars.values():
-                if other is char:
-                    continue
-                found = next((i for i in other.get('items', [])
-                              if i.get('uid') == req.item_uid and i.get('container') == DEPOT_CONTAINER), None)
-                if found:
-                    src_char = other
-                    dragged = found
-                    break
+        src_char, dragged = self._locate_dragged_item(char, account_chars, req.item_uid)
         if not dragged:
             await self.reply(DragItemAck(result=1), correlation, note='drag item fail (not found)')
             return
 
         old_container, old_slot = dragged.get('container'), dragged.get('slot')
-        bag_ids = {b.get('bag_id') for b in char.get('bags', [])
-                   if b.get('bag_id') not in (EQUIPPED, DEPOT_CONTAINER)}
-
-        # JAppPageStorage::OnDragItem (0x00650D00) sends to_container = pjDepot->m_nCharUID
-        # (whereas JAppPageInven sends bag_id and equipment uses 2042 EquipItemReq).
-        dest_char = char
-        if req.to_container == DEPOT_CONTAINER:
-            dest_container = DEPOT_CONTAINER
-            dest_char = account_chars.get(DEPOT_CONTAINER, char)
-        elif req.to_container in account_chars and req.to_container not in bag_ids:
-            dest_container = DEPOT_CONTAINER
-            dest_char = account_chars[req.to_container]
-        else:
-            dest_container = req.to_container
-
+        dest_char, dest_container = self._resolve_drag_destination(char, account_chars, req.to_container)
         if dest_container == EQUIPPED and not fits_equip_slot(dragged.get('code', ''), req.to_slot):
             await self.reply(DragItemAck(result=1), correlation,
                              note='drag item fail (item does not fit equip slot %d)' % req.to_slot)
@@ -113,8 +125,10 @@ class ItemHandlersMixin:
         target = next((i for i in dest_items
                        if i.get('container') == dest_container and i.get('slot') == req.to_slot), None)
         if target is dragged:
-            await self.reply(DragItemAck(result=0, items=[Item(owner=_wire_owner(dest_container, dest_char), **dragged)]),
-                             correlation, note='drag item ack (no move)')
+            await self.reply(
+                DragItemAck(result=0, items=[Item(owner=_wire_owner(dest_container, dest_char), **dragged)]),
+                correlation, note='drag item ack (no move)',
+            )
             return
         if target:
             if old_container == EQUIPPED and not fits_equip_slot(target.get('code', ''), old_slot):
@@ -128,9 +142,7 @@ class ItemHandlersMixin:
                 dest_items.append(dragged)
             target['container'], target['slot'] = old_container, old_slot
             dragged['container'], dragged['slot'] = dest_container, req.to_slot
-            self.store().save_char(self.account, src_char['id'])
-            if dest_char is not src_char:
-                self.store().save_char(self.account, dest_char['id'])
+            self._save_drag_chars(src_char, dest_char)
             wire_items = [
                 Item(owner=_wire_owner(old_container, src_char), **target),
                 Item(owner=_wire_owner(dest_container, dest_char), **dragged),
@@ -140,9 +152,7 @@ class ItemHandlersMixin:
                 src_items.remove(dragged)
                 dest_items.append(dragged)
             dragged['container'], dragged['slot'] = dest_container, req.to_slot
-            self.store().save_char(self.account, src_char['id'])
-            if dest_char is not src_char:
-                self.store().save_char(self.account, dest_char['id'])
+            self._save_drag_chars(src_char, dest_char)
             wire_items = [
                 Item(owner=_wire_owner(dest_container, dest_char), **dragged),
                 Item(owner=_wire_owner(old_container, src_char), uid=0, code='',
@@ -150,6 +160,70 @@ class ItemHandlersMixin:
             ]
         await self.reply(DragItemAck(result=0, items=wire_items), correlation,
                          note='drag item ack (uid=%d to c=%d s=%d)' % (req.item_uid, dest_container, req.to_slot))
+
+    async def _apply_special_consumable(self, char: dict, item_str_code: str, item_code: int, use_count: int):
+        """Apply side effects of special consumable items (Book of AP, Dual Skill, Agreement of Rune, Pets/Mounts)."""
+        if item_str_code == 'Ispaa0001':
+            from darkblood.games.network.messages.skills import InsertApNot
+            from darkblood.games.progression import add_ap
+            add_ap(char, max(1, use_count))
+            self.save_char()
+            await self.send_msg(
+                InsertApNot(current_ap=char['sp'], total_ap=char['total_ap']),
+                note='book of ap used (+%d AP -> sp=%d total=%d)' % (max(1, use_count), char['sp'], char['total_ap']),
+            )
+        elif item_str_code in DUAL_SKILL_ITEM_DAYS:
+            from darkblood.games.network.messages.skills import DualSkillActiveNot
+            add_days = DUAL_SKILL_ITEM_DAYS[item_str_code] * max(1, int(use_count))
+            now = int(time.time())
+            base_expire = max(now, int(char.get('dual_skill_expire', 0)))
+            new_expire = base_expire + add_days * 86400
+            char['dual_skill_expire'] = new_expire
+            remain_sec = new_expire - now
+            cur_idx = int(char.get('dual_skill_index', 0))
+            self.save_char()
+            await self.send_msg(
+                DualSkillActiveNot(
+                    extend_time=remain_sec,
+                    add_day=add_days,
+                    cur_dual_skill_index=cur_idx,
+                    item_id=item_code,
+                ),
+                note=f'dual skill active not (+{add_days}d, remain={remain_sec}s, idx={cur_idx})',
+            )
+        elif item_str_code == 'IAMk1R190':
+            from darkblood.games.entities.character import mark_base_count
+            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
+            char['mark_active'] = True
+            base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(char.get('level', 1)), 3)
+            bonus_cnt = min(3, int(char.get('mark_bonus_cnt', 0)) + max(1, int(use_count)))
+            char['mark_base_cnt'] = base_cnt
+            char['mark_bonus_cnt'] = bonus_cnt
+            self.save_char()
+            await self.send_msg(MarkTabActiveNot(active_mark=True), note='mark tab active not (IAMk1R190)')
+            await self.send_msg(
+                MarkItemActiveNot(base_count=base_cnt, bonus_count=bonus_cnt),
+                note=f'mark item active not (base={base_cnt}, bonus={bonus_cnt})',
+            )
+        await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
+
+    async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, random_box: bool):
+        stored = add_reward_items(char, contents)
+        self.save_char()
+        wire_items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
+        await self.send_msg(
+            DragItemAck(result=0, items=wire_items),
+            note='cash box opened (%s -> %s)' % (box_code, ', '.join(i['code'] for i in stored)),
+        )
+        if random_box:
+            reward_code, reward_count = contents[0]
+            reward_hash = jhash(reward_code)
+            if reward_hash >= 0x80000000:
+                reward_hash -= 0x100000000
+            await self.send_msg(
+                RandomboxResultItemNot(item_code=reward_hash, count=reward_count, is_jackpot=True),
+                note='random box result (%s x%d)' % (reward_code, reward_count),
+            )
 
     @packet_handler(UseItemReq)
     async def handle_use_item(self, correlation, body):
@@ -165,14 +239,14 @@ class ItemHandlersMixin:
             await self.reply(UseItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
                              note='use item fail (not found)')
             return
-        contents, random_box = self._cash_box_contents(used_item.get('code', ''))
+        item_str_code = used_item.get('code', '')
+        contents, random_box = self._cash_box_contents(item_str_code)
         if contents:
             free = free_bag_slots(char)
             if free is not None and slots_needed(contents) > free:
                 await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
                                  note='use item fail (bag full: need %d, free %d)' % (slots_needed(contents), free))
                 return
-        item_str_code = used_item.get('code', '')
         item_code = jhash(item_str_code)
         count = used_item.get('count', 1) - req.use_count
         updated = []
@@ -195,68 +269,9 @@ class ItemHandlersMixin:
 
         await self.reply(UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count),
                          correlation, note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
-        if item_str_code == 'Ispaa0001':
-            from darkblood.games.network.messages.skills import InsertApNot
-            from darkblood.games.progression import add_ap
-            add_ap(char, max(1, req.use_count))
-            self.save_char()
-            await self.send_msg(
-                InsertApNot(current_ap=char['sp'], total_ap=char['total_ap']),
-                note='book of ap used (+%d AP -> sp=%d total=%d)' % (max(1, req.use_count), char['sp'], char['total_ap']),
-            )
-        elif item_str_code in DUAL_SKILL_ITEM_DAYS:
-            from darkblood.games.network.messages.skills import DualSkillActiveNot
-            add_days = DUAL_SKILL_ITEM_DAYS[item_str_code] * max(1, int(req.use_count))
-            now = int(time.time())
-            base_expire = max(now, int(char.get('dual_skill_expire', 0)))
-            new_expire = base_expire + add_days * 86400
-            char['dual_skill_expire'] = new_expire
-            remain_sec = new_expire - now
-            cur_idx = int(char.get('dual_skill_index', 0))
-            self.save_char()
-            await self.send_msg(
-                DualSkillActiveNot(
-                    extend_time=remain_sec,
-                    add_day=add_days,
-                    cur_dual_skill_index=cur_idx,
-                    item_id=item_code,
-                ),
-                note=f'dual skill active not (+{add_days}d, remain={remain_sec}s, idx={cur_idx})',
-            )
-        elif item_str_code == 'IAMk1R190':
-            from darkblood.games.entities.character import mark_base_count
-            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
-            char['mark_active'] = True
-            base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(char.get('level', 1)), 3)
-            bonus_cnt = min(3, int(char.get('mark_bonus_cnt', 0)) + max(1, int(req.use_count)))
-            char['mark_base_cnt'] = base_cnt
-            char['mark_bonus_cnt'] = bonus_cnt
-            self.save_char()
-            await self.send_msg(
-                MarkTabActiveNot(active_mark=True),
-                note='mark tab active not (IAMk1R190)',
-            )
-            await self.send_msg(
-                MarkItemActiveNot(base_count=base_cnt, bonus_count=bonus_cnt),
-                note=f'mark item active not (base={base_cnt}, bonus={bonus_cnt})',
-            )
-        await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
+        await self._apply_special_consumable(char, item_str_code, item_code, req.use_count)
         if contents:
-            stored = add_reward_items(char, contents)
-            self.save_char()
-            wire_items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
-            await self.send_msg(DragItemAck(result=0, items=wire_items),
-                                note='cash box opened (%s -> %s)' % (
-                                    used_item.get('code'), ', '.join(i['code'] for i in stored)))
-            if random_box:
-                reward_code, reward_count = contents[0]
-                reward_hash = jhash(reward_code)
-                if reward_hash >= 0x80000000:
-                    reward_hash -= 0x100000000
-                await self.send_msg(
-                    RandomboxResultItemNot(item_code=reward_hash, count=reward_count, is_jackpot=True),
-                    note='random box result (%s x%d)' % (reward_code, reward_count),
-                )
+            await self._grant_opened_box_contents(char, item_str_code, contents, random_box)
 
     @packet_handler(UseDyeingItemReq)
     async def handle_use_dyeing_item(self, correlation, body):

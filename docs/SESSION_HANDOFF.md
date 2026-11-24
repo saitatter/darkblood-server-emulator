@@ -4,6 +4,11 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-24)
 
+- **Codebase refactoring & modularization (2026-11-24)**:
+  - Removed duplicate handler definitions (`DungeonRoom` across `dungeon/*`, `store_record` / `MONSTER_CARD_ACKS` across `commerce/*`) and cleaned up 300+ unused top-level imports across `src/darkblood/`.
+  - Unified shared GM mutations in `src/darkblood/games/gm_commands.py` (used by both `handlers/gm.py` and `gm_bridge.py`, decomposing `execute_gm_command` into a dispatch table and fixing Rune Slate unlock drift on `lv 30+` via the launcher GM bridge).
+  - Replaced all remaining whole-store `store.save()` calls in `dungeon/combat.py` and `games/stalls.py` with targeted `save_char()` / atomic `save_chars()` and indexed `get_by_id()` lookups; added regression guardrails in `tests/test_architecture.py`.
+  - Modularized `dungeon/combat.py` into `dungeon/{entry,combat,rewards}.py`, split `handlers/pets.py` into `handlers/pets/{pets,mounts,cards}.py`, extracted `PartyManager` into `src/darkblood/games/party.py` (re-exported from `world.py`), and decomposed `handle_drag_item` / `handle_use_item` in `handlers/inventory/items.py`.
 - **Fortress/Special dungeon entry limits & required entry items (Issue #22 — live-verified)**:
   - Extracted all 16 special/Citadel map entry rules (`EnterItemID`, `EnterItemAmount`, `EnterLimit`, `ClearLimit`, `is_citadel`) from `maplist.lua` into `assets/dungeon_entry_rules.json` (`dungeon_entry_rule()` in `src/darkblood/games/game_data/world.py`).
   - Mapped `daily_dun_enter_counts` (`+0x3D1` -> `0x009646F0`), `daily_dun_clear_counts` (`+0x3DD` -> `0x00964A00`), and `citadel_play_count` (`+0x3E9` -> `player +0x304`, `UI_3408`) in `2007 SelectCharacterAck` (`schemas/lobby.jsch`, `src/darkblood/games/handlers/frontend.py`).
@@ -49,7 +54,7 @@
 
 ## Verification status
 
-- **Headless suite**: **230/230** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **238/238** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
