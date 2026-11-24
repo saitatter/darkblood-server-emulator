@@ -916,6 +916,7 @@ class ArenaStartGameAck(WireMessage):
     result: u32 = 0
     rand_sync: i32 = 0
     played_map_id: i32 = 0
+    proficiencies: Map[i64, Vector[f32]] = field(default_factory=dict)  # mapProficiency (0x004B7550)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'rand_sync',
@@ -924,7 +925,7 @@ class ArenaStartGameAck(WireMessage):
         Const(EmptyMap),
         Const(EmptyMap),
         Const(EmptyMap),
-        Const(EmptyMap),
+        'proficiencies',
     )
 
 

@@ -1,0 +1,378 @@
+{
+  "IRdp1M274": {
+    "ride_code": "ridecall24",
+    "valid_hours": 168
+  },
+  "IRdp1MD": {
+    "ride_code": "ridecall14",
+    "valid_hours": 168
+  },
+  "IRdp1ME": {
+    "ride_code": "ridecall15",
+    "valid_hours": 168
+  },
+  "IRdp1MF": {
+    "ride_code": "ridecall16",
+    "valid_hours": 672
+  },
+  "IRdp1MG": {
+    "ride_code": "ridecall17",
+    "valid_hours": 168
+  },
+  "IRid1Cash101": {
+    "ride_code": "ridecall8",
+    "valid_hours": 240
+  },
+  "IRid1Cash102": {
+    "ride_code": "ridecall8",
+    "valid_hours": 720
+  },
+  "IRid1Cash104": {
+    "ride_code": "ridecall9",
+    "valid_hours": 240
+  },
+  "IRid1Cash105": {
+    "ride_code": "ridecall9",
+    "valid_hours": 720
+  },
+  "IRid1Cash107": {
+    "ride_code": "ridecall10",
+    "valid_hours": 240
+  },
+  "IRid1Cash108": {
+    "ride_code": "ridecall10",
+    "valid_hours": 720
+  },
+  "IRid1Cash143": {
+    "ride_code": "ridecall11",
+    "valid_hours": 240
+  },
+  "IRid1Cash144": {
+    "ride_code": "ridecall11",
+    "valid_hours": 720
+  },
+  "IRid1Cash146": {
+    "ride_code": "ridecall12",
+    "valid_hours": 240
+  },
+  "IRid1Cash147": {
+    "ride_code": "ridecall12",
+    "valid_hours": 720
+  },
+  "IRid1Cash208": {
+    "ride_code": "ridecall18",
+    "valid_hours": 240
+  },
+  "IRid1Cash209": {
+    "ride_code": "ridecall18",
+    "valid_hours": 720
+  },
+  "IRid1Cash210": {
+    "ride_code": "ridecall23",
+    "valid_hours": 240
+  },
+  "IRid1Cash211": {
+    "ride_code": "ridecall23",
+    "valid_hours": 720
+  },
+  "IRid1Cash212": {
+    "ride_code": "ridecall20",
+    "valid_hours": 240
+  },
+  "IRid1Cash213": {
+    "ride_code": "ridecall20",
+    "valid_hours": 720
+  },
+  "IRid1Cash214": {
+    "ride_code": "ridecall22",
+    "valid_hours": 240
+  },
+  "IRid1Cash215": {
+    "ride_code": "ridecall22",
+    "valid_hours": 720
+  },
+  "IRid1Cash391": {
+    "ride_code": "ridecall21",
+    "valid_hours": 240
+  },
+  "IRid1Cash392": {
+    "ride_code": "ridecall21",
+    "valid_hours": 720
+  },
+  "IRid1Cash46": {
+    "ride_code": "ridecall2",
+    "valid_hours": 240
+  },
+  "IRid1Cash50": {
+    "ride_code": "ridecall2",
+    "valid_hours": 720
+  },
+  "IRid1Cash52": {
+    "ride_code": "ridecall3",
+    "valid_hours": 240
+  },
+  "IRid1Cash53": {
+    "ride_code": "ridecall3",
+    "valid_hours": 720
+  },
+  "IRid1Cash55": {
+    "ride_code": "ridecall4",
+    "valid_hours": 240
+  },
+  "IRid1Cash56": {
+    "ride_code": "ridecall4",
+    "valid_hours": 720
+  },
+  "IRid1Cash58": {
+    "ride_code": "ridecall5",
+    "valid_hours": 240
+  },
+  "IRid1Cash59": {
+    "ride_code": "ridecall5",
+    "valid_hours": 720
+  },
+  "IRid1Cash61": {
+    "ride_code": "ridecall6",
+    "valid_hours": 240
+  },
+  "IRid1Cash62": {
+    "ride_code": "ridecall6",
+    "valid_hours": 720
+  },
+  "IRid1Cash64": {
+    "ride_code": "ridecall7",
+    "valid_hours": 240
+  },
+  "IRid1Cash65": {
+    "ride_code": "ridecall7",
+    "valid_hours": 720
+  },
+  "IRid1Cash68": {
+    "ride_code": "ridecall2",
+    "valid_hours": 240
+  },
+  "IRid1Cash69": {
+    "ride_code": "ridecall2",
+    "valid_hours": 720
+  },
+  "IRid1Cash70": {
+    "ride_code": "ridecall3",
+    "valid_hours": 240
+  },
+  "IRid1Cash71": {
+    "ride_code": "ridecall3",
+    "valid_hours": 720
+  },
+  "IRid1Cash72": {
+    "ride_code": "ridecall4",
+    "valid_hours": 240
+  },
+  "IRid1Cash73": {
+    "ride_code": "ridecall4",
+    "valid_hours": 720
+  },
+  "IRid1Cash74": {
+    "ride_code": "ridecall5",
+    "valid_hours": 240
+  },
+  "IRid1Cash75": {
+    "ride_code": "ridecall5",
+    "valid_hours": 720
+  },
+  "IRid1Cash76": {
+    "ride_code": "ridecall6",
+    "valid_hours": 240
+  },
+  "IRid1Cash77": {
+    "ride_code": "ridecall6",
+    "valid_hours": 720
+  },
+  "IRid1Cash78": {
+    "ride_code": "ridecall7",
+    "valid_hours": 240
+  },
+  "IRid1Cash79": {
+    "ride_code": "ridecall7",
+    "valid_hours": 720
+  },
+  "IRid1M139": {
+    "ride_code": "ridecall2",
+    "valid_hours": 72
+  },
+  "IRid1M140": {
+    "ride_code": "ridecall3",
+    "valid_hours": 72
+  },
+  "IRid1M141": {
+    "ride_code": "ridecall4",
+    "valid_hours": 72
+  },
+  "IRid1M142": {
+    "ride_code": "ridecall5",
+    "valid_hours": 72
+  },
+  "IRid1M143": {
+    "ride_code": "ridecall6",
+    "valid_hours": 72
+  },
+  "IRid1M144": {
+    "ride_code": "ridecall7",
+    "valid_hours": 72
+  },
+  "IRid1M145": {
+    "ride_code": "ridecall8",
+    "valid_hours": 72
+  },
+  "IRid1M146": {
+    "ride_code": "ridecall9",
+    "valid_hours": 72
+  },
+  "IRid1M147": {
+    "ride_code": "ridecall10",
+    "valid_hours": 72
+  },
+  "IRid1M148": {
+    "ride_code": "ridecall11",
+    "valid_hours": 72
+  },
+  "IRid1M149": {
+    "ride_code": "ridecall12",
+    "valid_hours": 72
+  },
+  "IRid1M150": {
+    "ride_code": "ridecall0",
+    "valid_hours": 72
+  },
+  "IRid1M242": {
+    "ride_code": "ridecall2",
+    "valid_hours": 240
+  },
+  "IRid1M243": {
+    "ride_code": "ridecall3",
+    "valid_hours": 240
+  },
+  "IRid1M244": {
+    "ride_code": "ridecall4",
+    "valid_hours": 240
+  },
+  "IRid1M245": {
+    "ride_code": "ridecall5",
+    "valid_hours": 240
+  },
+  "IRid1M246": {
+    "ride_code": "ridecall6",
+    "valid_hours": 240
+  },
+  "IRid1M247": {
+    "ride_code": "ridecall7",
+    "valid_hours": 240
+  },
+  "IRid1M248": {
+    "ride_code": "ridecall8",
+    "valid_hours": 240
+  },
+  "IRid1M249": {
+    "ride_code": "ridecall9",
+    "valid_hours": 240
+  },
+  "IRid1M250": {
+    "ride_code": "ridecall10",
+    "valid_hours": 240
+  },
+  "IRid1M251": {
+    "ride_code": "ridecall11",
+    "valid_hours": 240
+  },
+  "IRid1M252": {
+    "ride_code": "ridecall12",
+    "valid_hours": 240
+  },
+  "IRid1M253": {
+    "ride_code": "ridecall13",
+    "valid_hours": 240
+  },
+  "IRid1M254": {
+    "ride_code": "ridecall18",
+    "valid_hours": 240
+  },
+  "IRid1M255": {
+    "ride_code": "ridecall23",
+    "valid_hours": 240
+  },
+  "IRid1M256": {
+    "ride_code": "ridecall20",
+    "valid_hours": 240
+  },
+  "IRid1M257": {
+    "ride_code": "ridecall21",
+    "valid_hours": 240
+  },
+  "IRid1M258": {
+    "ride_code": "ridecall22",
+    "valid_hours": 240
+  },
+  "IRid1M262": {
+    "ride_code": "ridecall19",
+    "valid_hours": 360
+  },
+  "IRid1M276": {
+    "ride_code": "ridecall26",
+    "valid_hours": 240
+  },
+  "IRid1M411": {
+    "ride_code": "ridecall21",
+    "valid_hours": 720
+  },
+  "IRid1M421": {
+    "ride_code": "ridecall10",
+    "valid_hours": 720
+  },
+  "IRid1M422": {
+    "ride_code": "ridecall12",
+    "valid_hours": 720
+  },
+  "IRid1MC": {
+    "ride_code": "ridecall13",
+    "valid_hours": 240
+  },
+  "IRid1MD": {
+    "ride_code": "ridecall14",
+    "valid_hours": 168
+  },
+  "IRid1ME": {
+    "ride_code": "ridecall15",
+    "valid_hours": 168
+  },
+  "IRid1MF": {
+    "ride_code": "ridecall16",
+    "valid_hours": 672
+  },
+  "IRid1MG": {
+    "ride_code": "ridecall17",
+    "valid_hours": 168
+  },
+  "IRid1R152": {
+    "ride_code": "ridecall21",
+    "valid_hours": 240
+  },
+  "IRid1R435": {
+    "ride_code": "ridecall12",
+    "valid_hours": 720
+  },
+  "IRid1RCHK": {
+    "ride_code": "ridecall1",
+    "valid_hours": 72
+  },
+  "IRid1UA": {
+    "ride_code": "ridecall0",
+    "valid_hours": 240
+  },
+  "IRid1UB": {
+    "ride_code": "ridecall1",
+    "valid_hours": 168
+  },
+  "IRid1UB10": {
+    "ride_code": "ridecall1",
+    "valid_hours": 240
+  }
+}

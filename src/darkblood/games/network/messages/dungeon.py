@@ -309,15 +309,9 @@ class SelectDungeonAck(WireMessage):
     OPCODE: ClassVar[int] = 5044
     result: u32 = 0
     dun_history: Map[wstr, DungeonHistory] = field(default_factory=dict)  # dungeon id -> history
+    cleared_maps: Set[wstr] = field(default_factory=list)  # 0x00765450 (gate +0x268), cleared/unlocked map codes
     gate_id: wstr = ''
     quest_ids: Set[h32] = field(default_factory=list)  # 0x005EAB90; pass sorted unique u32 ids
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'dun_history',
-        Const(EmptySet),
-        'gate_id',
-        'quest_ids',
-    )
 
 
 @dataclass
@@ -357,6 +351,7 @@ class StartGameAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     map_code: wstr = ''
+    proficiencies: Map[i64, Vector[f32]] = field(default_factory=dict)  # 0x004B7550 (char_uid -> proficiency exp vector)
     item_updates: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B94C0
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
@@ -365,7 +360,7 @@ class StartGameAck(WireMessage):
         'map_code',
         Const(EmptyMap),
         Const(EmptyMap),
-        Const(EmptyMap),
+        'proficiencies',
         'item_updates',
     )
 
@@ -843,9 +838,7 @@ class ServerBuffAddNot(WireMessage):
     Handler 0x0079B880 (assert: mapNewBuffList, 0x005F6640).
     """
     OPCODE: ClassVar[int] = 2418
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyMap),
-    )
+    new_buffs: Map[u32, Set[u32]] = field(default_factory=dict)  # mapNewBuffList (0x005F6640)
 
 
 @dataclass
@@ -855,9 +848,7 @@ class ServerBuffDeleteNot(WireMessage):
     Handler 0x0079BD10 (assert: mapEndBuffList, 0x005F6640).
     """
     OPCODE: ClassVar[int] = 2419
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyMap),
-    )
+    end_buffs: Map[u32, Set[u32]] = field(default_factory=dict)  # mapEndBuffList (0x005F6640)
 
 
 @dataclass

@@ -34,14 +34,22 @@ message 2351 TamingMonsterDeleteAck
   i32 deleted_slot
 end
 
+struct RidingInfo
+  ## Mount record 0x00A4BD80 (40 bytes, used by 2007, 2435, 2436, 2647).
+  array<raw[10]> dye_colors  # +0x0C (0x00A4B250, up to 2 x 10-byte dye blocks)
+  h32 riding_id              # +0x00 (jhash("ridecall2"), matches riding.lua ID)
+  i64 remain_sec             # +0x04 remaining seconds (> 0; 0 triggers dismount in 2436)
+  u64 expire_date            # +0x20 expiration timestamp
+end
+
 message 2434 RidingGetListReq header?
   ## No sender recovered; no fields known.
 end
 
 message 2435 RidingGetListAck ok_only
-  ## Handler 0x0076C5A0.
+  ## Handler 0x0076C5A0 (reader 0x007656E0).
   u32 result
-  map<?> _                   # rides, element layout unknown
+  map<h32,RidingInfo> ridings  # mapRidingInfo (0x007656E0)
 end
 
 message 2437 RidingRideObjectReq header?
@@ -189,7 +197,7 @@ end
 
 message 2436 RidingChangeListNot
   ## Handler 0x0079C9A0 (assert: mapRidingInfo, reader 0x007656E0).
-  map<?> _                   # mapRidingInfo (40-byte entries)
+  map<h32,RidingInfo> ridings  # mapRidingInfo (0x007656E0)
 end
 
 message 2479 PetConsumeSatietyNot
@@ -280,13 +288,13 @@ end
 message 2646 RidingExpireUpdateReq header?
   ## Sender 0x007A6530 (assert: nItemUID << iRidingID).
   i64 item_uid
-  i32 riding_id
+  h32 riding_id
 end
 
 message 2647 RidingExpireUpdateAck ok_only
   ## Handler 0x007839F0 (assert: mapRidinglist >> vecOutItem).
   u32 result
-  map<?> _                   # mapRidinglist (0x007656E0)
+  map<h32,RidingInfo> ridings  # mapRidinglist (0x007656E0)
   vector<Item> items
 end
 
@@ -456,7 +464,7 @@ message 2643 MonsterCardLottoInfoNot
   raw[12] event_start_date
   raw[12] event_end_date
   raw[12] lotto_start_date
-  map<?> _                   # m_mapWinCardDeck (0x005F6640)
+  map<u32,set<u32>> win_card_decks  # m_mapWinCardDeck (0x005F6640)
   map<?> _                   # m_mapWinCnt (0x005F6730)
 end
 

@@ -424,7 +424,7 @@ message 5173 ArenaStartGameAck ok_only
   map<?> _                   # mapSubCharInfo (0x004BA530)
   map<?> _                   # mapQuickSlot (0x004B7460)
   map<?> _                   # mapLeagueArenaCharInfo (0x0048B380)
-  map<?> _                   # mapProficiency (0x004B7550)
+  map<i64,vector<f32>> proficiencies  # mapProficiency (0x004B7550)
 end
 
 message 5182 ArenaReadyGameReq header?

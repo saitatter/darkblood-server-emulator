@@ -164,7 +164,7 @@ message 6012 RequestCharInfoAck ok_only
   raw[28] _                  # +0x08..+0x23 (7 x i32)
   raw[32] _                  # 0x00A4A0C0 (+0x24..+0x43, 8 x i32)
   map<?> _                   # 0x00481E90
-  vector<?> _                # 0x004B13E0
+  vector<f32> proficiencies  # 0x004B13E0 (proficiency exp vector)
 end
 
 message 6028 RequestItemInfoReq header?

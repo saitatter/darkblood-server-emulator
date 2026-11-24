@@ -337,6 +337,7 @@ class RequestCharInfoAck(WireMessage):
     is_other: bool = True
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    proficiencies: Vector[f32] = field(default_factory=list)  # 0x004B13E0 (proficiency exp vector)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'is_other',
@@ -349,7 +350,7 @@ class RequestCharInfoAck(WireMessage):
         Const(Raw[28], bytes(28)),
         Const(Raw[32], bytes(32)),
         Const(EmptyMap),
-        Const(EmptyVector),
+        'proficiencies',
     )
 
 

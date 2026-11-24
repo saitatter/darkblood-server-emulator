@@ -1,4 +1,8 @@
 """Pet, Mount and Taming domain handlers."""
+import json
+import time
+from pathlib import Path
+
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.entities.items import Item, UPDATE_OWNER
@@ -24,8 +28,10 @@ from darkblood.games.network.messages.pets import (
     PetSaveReq,
     PetSummonAck,
     PetSummonReq,
+    RidingChangeListNot,
     RidingGetListAck,
     RidingGetListReq,
+    RidingInfo,
     RidingRideObjectAck,
     RidingRideObjectReq,
     TameingMonsterDeleteReq,
@@ -35,6 +41,62 @@ from darkblood.games.network.messages.pets import (
 )
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+
+_MOUNT_ITEMS_CACHE = None
+
+
+def _load_mount_items() -> dict:
+    """Load Type=38 mount item -> {ride_code, valid_hours} from assets/mount_items.json."""
+    global _MOUNT_ITEMS_CACHE
+    if _MOUNT_ITEMS_CACHE is None:
+        path = Path(__file__).resolve().parents[4] / 'assets' / 'mount_items.json'
+        if path.is_file():
+            _MOUNT_ITEMS_CACHE = json.loads(path.read_text(encoding='utf-8'))
+        else:
+            _MOUNT_ITEMS_CACHE = {}
+    return _MOUNT_ITEMS_CACHE
+
+
+def mount_item_info(code: str):
+    """Return (ride_code, valid_hours) for a mount item code, or None."""
+    if not code:
+        return None
+    entry = _load_mount_items().get(code)
+    if entry:
+        return entry['ride_code'], int(entry.get('valid_hours', 720))
+    if code.startswith('ridecall'):
+        return code, 720
+    return None
+
+
+def build_ridings_map(char: dict) -> dict:
+    """Build {jhash(ride_code): RidingInfo} for 2007, 2435, 2436, 2647."""
+    if not char:
+        return {}
+    now = int(time.time())
+    ridings = char.get('ridings', {})
+    out = {}
+    if isinstance(ridings, dict):
+        for ride_code, info in ridings.items():
+            if not isinstance(info, dict):
+                continue
+            expire_ts = int(info.get('expire_ts', 0))
+            if expire_ts <= 0:
+                remain_sec = 30 * 86400
+                expire_ts = now + remain_sec
+            else:
+                remain_sec = expire_ts - now
+                if remain_sec <= 0:
+                    continue
+            rid = jhash(str(ride_code))
+            dyes = [bytes.fromhex(h) for h in info.get('dye_colors', []) if isinstance(h, str)]
+            out[rid] = RidingInfo(
+                dye_colors=dyes[:2],
+                riding_id=rid,
+                remain_sec=remain_sec,
+                expire_date=expire_ts,
+            )
+    return out
 
 
 class PetHandlers(BaseDomainService):
@@ -85,10 +147,10 @@ class PetHandlers(BaseDomainService):
     async def handle_riding_get_list(self, correlation, body):
         # eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0)
         char = self.current_char()
-        mounts = char.get('mounts', []) if char else []
-        ack = RidingGetListAck(result=0).encode()
+        ridings = build_ridings_map(char)
+        ack = RidingGetListAck(result=0, ridings=ridings).encode()
         await self.transport.send_event(event(2435, ack, correlation),
-                                        note=f'riding get list ack (count={len(mounts)})')
+                                        note=f'riding get list ack (count={len(ridings)})')
 
     @packet_handler(RidingRideObjectReq)
     async def handle_riding_ride_object(self, correlation, body):
@@ -373,8 +435,44 @@ class PetHandlers(BaseDomainService):
         # eEGS_RIDING_EXPIRE_UPDATE_REQ (0x007A6530) -> 2647 eEGS_RIDING_EXPIRE_UPDATE_ACK (0x007839F0)
         from darkblood.games.network.messages.pets import RidingExpireUpdateAck, RidingExpireUpdateReq
         req = RidingExpireUpdateReq.decode(body)
-        await self.reply(RidingExpireUpdateAck(result=0, items=[]), correlation,
-                         note=f'riding expire update ack (ride={req.riding_id})')
+        char = self.current_char()
+        updated = []
+        if char is not None and req.item_uid:
+            items = char.get('items', [])
+            used = next((i for i in items if i.get('uid') == req.item_uid), None)
+            if used is not None:
+                minfo = mount_item_info(used.get('code', ''))
+                if minfo is not None:
+                    ride_code, valid_hours = minfo
+                    now = int(time.time())
+                    ridings = char.setdefault('ridings', {})
+                    existing = ridings.get(ride_code, {})
+                    base_expire = max(now, int(existing.get('expire_ts', 0)))
+                    ridings[ride_code] = {
+                        'expire_ts': base_expire + max(1, valid_hours) * 3600,
+                        'dye_colors': existing.get('dye_colors', []),
+                    }
+                    count = int(used.get('count', 1)) - 1
+                    if count <= 0:
+                        items.remove(used)
+                        updated.append(Item(
+                            owner=UPDATE_OWNER,
+                            uid=0,
+                            code='',
+                            container=used.get('container', 1),
+                            slot=used.get('slot', 0),
+                            count=0,
+                        ))
+                    else:
+                        used['count'] = count
+                        updated.append(Item(owner=UPDATE_OWNER, **used))
+                    self.save_char()
+        ridings_map = build_ridings_map(char)
+        await self.reply(
+            RidingExpireUpdateAck(result=0, ridings=ridings_map, items=updated),
+            correlation,
+            note=f'riding expire update ack (ride={req.riding_id}, count={len(ridings_map)})',
+        )
 
     # =========================================================================
     # Monster Card & Card Lotto Handlers (2604 - 2639)
@@ -465,7 +563,7 @@ class PetHandlers(BaseDomainService):
 
     # Helper for item use integration
     async def apply_pet_or_mount_item(self, char, code):
-        """When an inventory item starting with PetCall or ridecall is consumed."""
+        """When an inventory item for a pet or mount (Type=38 / ridecall*) is consumed."""
         if not char or not code:
             return
         if code.startswith('PetCall'):
@@ -480,18 +578,21 @@ class PetHandlers(BaseDomainService):
                 'slot': len(pets),
             })
             self.save_char()
-        elif code.startswith('ridecall'):
-            mounts = char.setdefault('mounts', [])
-            try:
-                num = int(''.join(c for c in code if c.isdigit()))
-            except ValueError:
-                num = 0
-            ride_id = num + 1
-            if not any(m.get('ride_id') == ride_id for m in mounts):
-                mounts.append({
-                    'ride_id': ride_id,
-                    'code': code,
-                    'name': 'Mount',
-                    'expire_time': 0,
-                })
+            return
+        minfo = mount_item_info(code)
+        if minfo is not None:
+            ride_code, valid_hours = minfo
+            now = int(time.time())
+            ridings = char.setdefault('ridings', {})
+            existing = ridings.get(ride_code, {})
+            base_expire = max(now, int(existing.get('expire_ts', 0)))
+            ridings[ride_code] = {
+                'expire_ts': base_expire + max(1, valid_hours) * 3600,
+                'dye_colors': existing.get('dye_colors', []),
+            }
             self.save_char()
+            ridings_map = build_ridings_map(char)
+            await self.transport.send_event(
+                event(2436, RidingChangeListNot(ridings=ridings_map).encode()),
+                note=f'riding change list not ({ride_code}, +{valid_hours}h, count={len(ridings_map)})',
+            )

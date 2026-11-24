@@ -14,6 +14,7 @@ __all__ = [
     'TamingMonsterInsertAck',
     'TameingMonsterDeleteReq',
     'TamingMonsterDeleteAck',
+    'RidingInfo',
     'RidingGetListReq',
     'RidingGetListAck',
     'RidingRideObjectReq',
@@ -143,6 +144,15 @@ class TamingMonsterDeleteAck(WireMessage):
 
 
 @dataclass
+class RidingInfo(WireMessage):
+    """Mount record 0x00A4BD80 (40 bytes, used by 2007, 2435, 2436, 2647)."""
+    dye_colors: Array[Raw[10]] = field(default_factory=list)  # +0x0C (0x00A4B250, up to 2 x 10-byte dye blocks)
+    riding_id: h32 = 0  # +0x00 (jhash("ridecall2"), matches riding.lua ID)
+    remain_sec: i64 = 0  # +0x04 remaining seconds (> 0; 0 triggers dismount in 2436)
+    expire_date: u64 = 0  # +0x20 expiration timestamp
+
+
+@dataclass
 class RidingGetListReq(WireMessage):
     """Opcode 2434: eEGS_RIDING_GET_LIST_REQ (request).
 
@@ -157,15 +167,12 @@ class RidingGetListReq(WireMessage):
 class RidingGetListAck(WireMessage):
     """Opcode 2435: eEGS_RIDING_GET_LIST_ACK (reply).
 
-    Handler 0x0076C5A0.
+    Handler 0x0076C5A0 (reader 0x007656E0).
     """
     OPCODE: ClassVar[int] = 2435
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyMap),
-    )
+    ridings: Map[h32, RidingInfo] = field(default_factory=dict)  # mapRidingInfo (0x007656E0)
 
 
 @dataclass
@@ -482,9 +489,7 @@ class RidingChangeListNot(WireMessage):
     Handler 0x0079C9A0 (assert: mapRidingInfo, reader 0x007656E0).
     """
     OPCODE: ClassVar[int] = 2436
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyMap),
-    )
+    ridings: Map[h32, RidingInfo] = field(default_factory=dict)  # mapRidingInfo (0x007656E0)
 
 
 @dataclass
@@ -672,7 +677,7 @@ class RidingExpireUpdateReq(WireMessage):
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
     item_uid: i64 = 0
-    riding_id: i32 = 0
+    riding_id: h32 = 0
 
 
 @dataclass
@@ -684,12 +689,8 @@ class RidingExpireUpdateAck(WireMessage):
     OPCODE: ClassVar[int] = 2647
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
+    ridings: Map[h32, RidingInfo] = field(default_factory=dict)  # mapRidinglist (0x007656E0)
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyMap),
-        'items',
-    )
 
 
 @dataclass
@@ -1005,12 +1006,13 @@ class MonsterCardLottoInfoNot(WireMessage):
     event_start_date: Raw[12] = bytes(12)
     event_end_date: Raw[12] = bytes(12)
     lotto_start_date: Raw[12] = bytes(12)
+    win_card_decks: Map[u32, Set[u32]] = field(default_factory=dict)  # m_mapWinCardDeck (0x005F6640)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'cur_lotto_key',
         'event_start_date',
         'event_end_date',
         'lotto_start_date',
-        Const(EmptyMap),
+        'win_card_decks',
         Const(EmptyMap),
     )
 

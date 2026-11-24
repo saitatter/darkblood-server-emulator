@@ -515,9 +515,10 @@ class MonsterCardListAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 2602
     result: u32 = 0
+    card_uids: Vector[u64] = field(default_factory=list)  # cards (0x004AFD30)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
-        Const(EmptyVector),
+        'card_uids',
         Const(EmptyMap),
     )
 
@@ -530,10 +531,7 @@ class MonsterCardDeckAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 2609
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-    )
+    card_uids: Vector[u64] = field(default_factory=list)  # cards (0x004AFD30)
 
 
 @dataclass
@@ -544,10 +542,7 @@ class MonsterCardAlbumAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 2618
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-    )
+    album_ids: Vector[u32] = field(default_factory=list)  # album (0x004D6E60)
 
 
 @dataclass

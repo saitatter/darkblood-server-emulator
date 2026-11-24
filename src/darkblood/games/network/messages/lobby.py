@@ -10,6 +10,7 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
+from darkblood.games.network.messages.pets import RidingInfo
 from darkblood.games.network.messages.quests import WaypointData
 from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
 
@@ -113,10 +114,19 @@ class SelectCharacterAck(WireMessage):
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B9830 (+0x2A3), inserted by 0x00835990 after the bags
     quickslots: Vector[Extern[QuickSlot, 'encode', False]] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
     skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # 0x004B1240, element reader 0x004ACB80 (as 2698)
+    cleared_maps: Set[wstr] = field(default_factory=list)  # 0x0076A8C0 -> 0x00765450 (set of map codes)
     active_quests: Pairs[Extern[ActiveQuest, 'encode_entry', False]] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
+    u32_set_a: Set[u32] = field(default_factory=list)  # 0x005EE0F0
+    u32_set_b: Set[u32] = field(default_factory=list)  # 0x005EE0F0
     daily_dun_enter_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3D1 -> 0x009646F0)
     daily_dun_clear_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3DD -> 0x00964A00)
     waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
+    u32_vec_a: Vector[u32] = field(default_factory=list)  # 0x004DA660
+    u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
+    buff_map_a: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9190 -> 0x005F6640
+    ridings: Map[h32, Extern[RidingInfo, 'encode', False]] = field(default_factory=dict)  # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
+    u32_vec_c: Vector[u32] = field(default_factory=list)  # 0x004DA660
+    buff_map_b: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9150 -> 0x005F6640
     citadel_play_count: i16 = 0  # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
@@ -136,15 +146,15 @@ class SelectCharacterAck(WireMessage):
         Const(EmptyVector),
         'skills',
         Const(EmptyMap),
-        Const(EmptySet),
+        'cleared_maps',
         Const(EmptyMap),
         Const(u64, 0),
         Const(u32, 0),
         Const(u32, 0),
         'active_quests',
-        Const(EmptySet),
+        'u32_set_a',
         Const(Raw[18], bytes(18)),
-        Const(EmptySet),
+        'u32_set_b',
         Const(u64, 0),
         Const(u64, 0),
         Const(u64, 0),
@@ -168,13 +178,13 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         Const(u64, 0),
         Const(u32, 0),
-        Const(EmptyVector),
-        Const(EmptyVector),
+        'u32_vec_a',
+        'u32_vec_b',
         Const(u16, 0),
         Const(u64, 0),
         Const(u64, 0),
-        Const(EmptyMap),
-        Const(EmptyMap),
+        'buff_map_a',
+        'ridings',
         Const(EmptyMap),
         Const(u64, 0),
         Const(bool, False),
@@ -187,8 +197,8 @@ class SelectCharacterAck(WireMessage):
         Const(EmptyMap),
         Const(EmptyVector),
         Const(u16, 0),
-        Const(EmptyVector),
-        Const(EmptyMap),
+        'u32_vec_c',
+        'buff_map_b',
         'citadel_play_count',
         Const(EmptyMap),
         Const(EmptyVector),

@@ -269,9 +269,9 @@ class PetsFlowTest(ServerTestCase):
             client.send_event(2038, struct.pack('<iqI', 0x7fffffff, 1002, 1))
             _, ack2039_ride = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039_ride, 0)[0], 0)
+            await client.expect_event(2436)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            self.assertEqual(len(char.get('mounts', [])), 1)
-            self.assertEqual(char['mounts'][0]['code'], 'ridecall0')
+            self.assertIn('ridecall0', char.get('ridings', {}))
 
         self.run_async(self.with_server(scenario))
 
@@ -488,6 +488,75 @@ class PetsFlowTest(ServerTestCase):
             client.send_event(5228, ClearRankInfoReq(map_id=100, page=1).encode())
             _, r = await client.expect_event(5229)
             self.assertEqual(ClearRankInfoAck.decode(r).map_id, 100)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_mount_item_unlock_and_relog_persistence(self):
+        from darkblood.core.hashing import jhash
+        from darkblood.games.network.messages.inventory import UseItemReq
+        from darkblood.games.network.messages.lobby import SelectCharacterAck
+        from darkblood.games.network.messages.pets import (
+            RidingChangeListNot,
+            RidingExpireUpdateAck,
+            RidingExpireUpdateReq,
+            RidingInfo,
+        )
+
+        # Round-trip RidingInfo wire layout (0x00A4BD80)
+        rid = jhash('ridecall2')
+        info = RidingInfo(dye_colors=[], riding_id=rid, remain_sec=864000, expire_date=1800000000)
+        decoded_info = RidingInfo.decode(info.encode())
+        self.assertEqual(decoded_info.riding_id, rid)
+        self.assertEqual(decoded_info.remain_sec, 864000)
+        self.assertEqual(decoded_info.expire_date, 1800000000)
+        self.assertEqual(decoded_info.dye_colors, [])
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('MountHero', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            # Give two mount items (IRid1Cash46 -> ridecall2, 240h)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char.setdefault('items', []).append(dict(code='IRid1Cash46', uid=501, container=3, slot=0, count=2))
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+
+            # Use one mount item via 2038 -> expect 2039 + 2436 RidingChangeListNot
+            client.send_event(2038, UseItemReq(item_uid=501, use_count=1).encode())
+            _, ack2039 = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<I', ack2039, 0)[0], 0)
+            _, not2436 = await client.expect_event(2436)
+            msg2436 = RidingChangeListNot.decode(not2436)
+            self.assertIn(rid, msg2436.ridings)
+            self.assertGreater(msg2436.ridings[rid].remain_sec, 239 * 3600)
+
+            # 2434 -> 2435 RidingGetListAck returns the unlocked mount
+            client.send_event(2434, RidingGetListReq().encode())
+            _, ack2435 = await client.expect_event(2435)
+            msg2435 = RidingGetListAck.decode(ack2435)
+            self.assertEqual(msg2435.result, 0)
+            self.assertIn(rid, msg2435.ridings)
+
+            # 2646 -> 2647 RidingExpireUpdateAck extends duration using second item
+            from darkblood.core.serialization.jser import JSerBufferReader
+            prev_remain = msg2435.ridings[rid].remain_sec
+            client.send_event(2646, RidingExpireUpdateReq(item_uid=501, riding_id=rid).encode())
+            _, ack2647 = await client.expect_event(2647)
+            r = JSerBufferReader(ack2647)
+            self.assertEqual(r.read_u32(), 0)
+            ridings2647 = r.read_tagged_map(JSerBufferReader.read_u32, RidingInfo.read)
+            self.assertIn(rid, ridings2647)
+            self.assertGreater(ridings2647[rid].remain_sec, prev_remain + 239 * 3600)
+
+            # Relog (2006 -> 2007 SelectCharacterAck) persists the mount in 2007.ridings
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            # Verify raw wire contains the RidingInfo map entry (0x0F + rid + 0x80 + rid)
+            marker = b'\x0f' + struct.pack('<I', rid) + b'\x80' + struct.pack('<I', rid)
+            self.assertIn(marker, ack2007)
 
         self.run_async(self.with_server(scenario))
 

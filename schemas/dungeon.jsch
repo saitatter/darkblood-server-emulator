@@ -129,7 +129,7 @@ message 5044 SelectDungeonAck
   ## map's QuestLink (+0x44) is in it (0x006B5930, 0x006C77E0, 0x006D1120).
   u32 result
   map<wstr,DungeonHistory> dun_history  # dungeon id -> history
-  set<?> _                   # 0x00765450 (gate +0x268), element meaning not recovered
+  set<wstr> cleared_maps     # 0x00765450 (gate +0x268), cleared/unlocked map codes
   wstr gate_id
   set<h32> quest_ids         # 0x005EAB90; pass sorted unique u32 ids
 end
@@ -157,7 +157,7 @@ message 5014 StartGameAck ok_only
   wstr map_code
   map<?> _                   # 0x004B8B80
   map<?> _                   # 0x0064E7D0
-  map<?> _                   # 0x004B7550
+  map<i64,vector<f32>> proficiencies  # 0x004B7550 (char_uid -> proficiency exp vector)
   vector<Item> item_updates  # 0x004B94C0
 end
 
@@ -421,12 +421,12 @@ end
 
 message 2418 ServerBuffAddNot
   ## Handler 0x0079B880 (assert: mapNewBuffList, 0x005F6640).
-  map<?> _                   # mapNewBuffList
+  map<u32,set<u32>> new_buffs  # mapNewBuffList (0x005F6640)
 end
 
 message 2419 ServerBuffDeleteNot
   ## Handler 0x0079BD10 (assert: mapEndBuffList, 0x005F6640).
-  map<?> _                   # mapEndBuffList
+  map<u32,set<u32>> end_buffs  # mapEndBuffList (0x005F6640)
 end
 
 message 2421 MonsterDeadNot

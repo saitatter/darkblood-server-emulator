@@ -139,8 +139,15 @@ def build_select_char_ack(char, account_chars=None):
             str(k): int(v) for k, v in (char.get('daily_dun_clear_counts', {}) if isinstance(char, dict) else {}).items()
         },
         waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
+        ridings=_build_ridings_map(char) if isinstance(char, dict) else {},
         citadel_play_count=int(char.get('citadel_play_count', 3)) if isinstance(char, dict) else 3,
     ).encode()
+
+
+def _build_ridings_map(char: dict) -> dict:
+    """Build {jhash(ride_code): RidingInfo} for 2007 SelectCharacterAck (0x0076ABA0)."""
+    from darkblood.games.handlers.pets import build_ridings_map
+    return build_ridings_map(char)
 
 
 def _build_waypoints_map(char: dict) -> dict:
