@@ -76,15 +76,15 @@ message 2311 CharNickChangeAck
   wstr new_name
 end
 
-message 2319 KeyboardSetCustomKeyReq
-  ## No sender recovered; the body is kept raw.
-  rest keys_blob
+message 2319 KeyboardSetCustomKeyReq header?
+  ## Sender 0x0045FC10: writes REQUEST_HEADER + wstr (0x00B358D0).
+  wstr keys
 end
 
-message 2320 KeyboardSetCustomKeyAck
-  ## Handler 0x00753960.
-  i32 result
-  wstr keys                  # the request blob decoded as UTF-16 (earlier behaviour)
+message 2320 KeyboardSetCustomKeyAck ok_only
+  ## Handler 0x00753960 (assert: strCustomKey, reads u32 result + wstr 0x00B35AB0).
+  u32 result
+  wstr keys
 end
 
 message 2335 TitleChangeReq header?

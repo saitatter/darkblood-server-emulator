@@ -175,15 +175,15 @@ class FriendsHandlers:
 
     @packet_handler(2319)
     async def handle_keyboard_set_custom_key(self, correlation, body):
-        # eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960).
+        # eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ (0x0045FC10) -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960).
         from darkblood.games.network.messages import KeyboardSetCustomKeyAck, KeyboardSetCustomKeyReq
         req = KeyboardSetCustomKeyReq.decode(body)
-        self.transport.record('keyboard-set-custom-key-req', body)
-        char = self.store().get(self.account, self.char_id) 
-        if char:
-            char['custom_keys'] = body.hex()
+        self.transport.record('keyboard-set-custom-key-req', body, keys=req.keys)
+        char = self.store().get(self.account, self.char_id)
+        if char is not None:
+            char['custom_keys'] = req.keys
             self.save_char()
-        ack = KeyboardSetCustomKeyAck(result=0, keys=req.keys_blob.decode('utf-16le', errors='ignore')).encode()
+        ack = KeyboardSetCustomKeyAck(result=0, keys=req.keys).encode()
         await self.transport.send_event(event(2320, ack, correlation), note='keyboard set custom key ack')
 
 

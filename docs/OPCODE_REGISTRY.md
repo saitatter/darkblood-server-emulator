@@ -312,7 +312,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2314 | `eEGS_GUILD_NAME_CHANGE_REQ` | — | `social/guild.py` (`handle_guild_name_change`) | `GuildNameChangeReq` | eEGS_GUILD_NAME_CHANGE_REQ -> 2315 eEGS_GUILD_NAME_CHANGE_ACK (0x00780590). |
 | 2315 | `eEGS_GUILD_NAME_CHANGE_ACK` | 0x00780590 | — | `GuildNameChangeAck` |  |
 | 2318 | `eEGS_DAILY_DUN_ENTER_COUNT_UPDATE_NOT` | 0x00798D20 | — | `DailyDunEnterCountUpdateNot` |  |
-| 2319 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ` | — | `social/friends.py` (`handle_keyboard_set_custom_key`) | `KeyboardSetCustomKeyReq` | eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960). |
+| 2319 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ` | — | `social/friends.py` (`handle_keyboard_set_custom_key`) | `KeyboardSetCustomKeyReq` | eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ (0x0045FC10) -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960). |
 | 2320 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK` | 0x00753960 | — | `KeyboardSetCustomKeyAck` |  |
 | 2321 | `eEGS_ITEM_REMAIN_TIME_NOT` | 0x0077AED0 | — | `ItemRemainTimeNot` |  |
 | 2322 | `eEGS_ITEM_DELETE_NOT` | 0x00774DD0 | — | `ItemDeleteNot` |  |

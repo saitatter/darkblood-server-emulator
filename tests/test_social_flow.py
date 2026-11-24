@@ -171,10 +171,17 @@ class SocialFlowTest(ServerTestCase):
             _, ack2315 = await client.expect_event(2315)
             self.assertEqual(struct.unpack_from('<i', ack2315)[0], 0)
 
-            # 33. Keyboard custom key set (2319 -> 2320)
-            client.send_event(2319, b'\x01\x02\x03\x04')
+            # 33. Keyboard custom key set (2319 -> 2320) + 2007 relog persistence
+            from darkblood.games.network.messages.system import KeyboardSetCustomKeyAck, KeyboardSetCustomKeyReq
+            custom_keys_str = '0=17;1=31;2=30;3=32;'
+            client.send_event(2319, KeyboardSetCustomKeyReq(keys=custom_keys_str).encode())
             _, ack2320 = await client.expect_event(2320)
-            self.assertEqual(struct.unpack_from('<i', ack2320)[0], 0)
+            decoded2320 = KeyboardSetCustomKeyAck.decode(ack2320)
+            self.assertEqual(decoded2320.result, 0)
+            self.assertEqual(decoded2320.keys, custom_keys_str)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007_keys = await client.expect_event(2007)
+            self.assertIn(custom_keys_str.encode('utf-16le'), ack2007_keys)
 
             # 34. Request teaching / mentorship (5351 -> 5352)
             client.send_event(5351, struct.pack('<q', 12345))

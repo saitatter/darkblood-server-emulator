@@ -140,7 +140,7 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (56 of 143 fields)
+## lobby (55 of 143 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -173,7 +173,6 @@
 | `2007 SelectCharacterAck` | `f32` | lobby.jsch:96 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:97 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:98 |  |
-| `2007 SelectCharacterAck` | `wstr` | lobby.jsch:101 | 0x00B35AB0 |
 | `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:102 | 0x0074C1D0: two maps and a bool |
 | `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:103 |  |
 | `2007 SelectCharacterAck` | `bool` | lobby.jsch:104 |  |

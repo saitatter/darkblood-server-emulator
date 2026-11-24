@@ -547,12 +547,13 @@ class WireMessagesTest(unittest.TestCase):
         self.assertIn(b'N\x00e\x00w\x00G\x00u\x00i\x00l\x00d\x00', ack)
 
     def test_keyboard_custom_key_mapping(self):
-        payload = b'\x01\x02\x03\x04'
-        req = messages.KeyboardSetCustomKeyReq.decode(payload)
-        self.assertEqual(req.keys_blob, payload)
-        ack = messages.KeyboardSetCustomKeyAck(result=0, keys=payload.decode('utf-16le')).encode()
-        self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
-        self.assertIn(payload, ack)
+        req = messages.KeyboardSetCustomKeyReq(keys='0=17;1=31;2=30;3=32;')
+        decoded = messages.KeyboardSetCustomKeyReq.decode(req.encode())
+        self.assertEqual(decoded.keys, '0=17;1=31;2=30;3=32;')
+        ack = messages.KeyboardSetCustomKeyAck(result=0, keys=decoded.keys).encode()
+        decoded_ack = messages.KeyboardSetCustomKeyAck.decode(ack)
+        self.assertEqual(decoded_ack.result, 0)
+        self.assertEqual(decoded_ack.keys, '0=17;1=31;2=30;3=32;')
 
     def test_item_spirit_weapon_transformation(self):
         req = messages.ItemSpiritChangeReq.decode(struct.pack('<qq', 100, 200))

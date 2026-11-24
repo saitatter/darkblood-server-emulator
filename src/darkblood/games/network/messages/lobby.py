@@ -120,6 +120,7 @@ class SelectCharacterAck(WireMessage):
     u32_set_b: Set[u32] = field(default_factory=list)  # 0x005EE0F0
     daily_dun_enter_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3D1 -> 0x009646F0)
     daily_dun_clear_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3DD -> 0x00964A00)
+    custom_keys: wstr = ''  # 0x00B35AB0 (+0x25D -> 0x0045FCF0 custom keyboard bindings)
     waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
     u32_vec_a: Vector[u32] = field(default_factory=list)  # 0x004DA660
     u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
@@ -170,7 +171,7 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         'daily_dun_enter_counts',
         'daily_dun_clear_counts',
-        Const(wstr, ''),
+        'custom_keys',
         Const(EmptyMap),
         Const(EmptyMap),
         Const(bool, False),

@@ -175,21 +175,24 @@ class CharNickChangeAck(WireMessage):
 class KeyboardSetCustomKeyReq(WireMessage):
     """Opcode 2319: eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ (request).
 
-    No sender recovered; the body is kept raw.
+    Sender 0x0045FC10: writes REQUEST_HEADER + wstr (0x00B358D0).
     """
     OPCODE: ClassVar[int] = 2319
-    keys_blob: rest = b''
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    keys: wstr = ''
 
 
 @dataclass
 class KeyboardSetCustomKeyAck(WireMessage):
     """Opcode 2320: eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (reply).
 
-    Handler 0x00753960.
+    Handler 0x00753960 (assert: strCustomKey, reads u32 result + wstr 0x00B35AB0).
     """
     OPCODE: ClassVar[int] = 2320
-    result: i32 = 0
-    keys: wstr = ''  # the request blob decoded as UTF-16 (earlier behaviour)
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    keys: wstr = ''
 
 
 @dataclass
