@@ -10,6 +10,7 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
+from darkblood.games.network.messages.quests import WaypointData
 from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
 
 __all__ = [
@@ -113,6 +114,7 @@ class SelectCharacterAck(WireMessage):
     quickslots: Vector[Extern[QuickSlot, 'encode', False]] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
     skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # 0x004B1240, element reader 0x004ACB80 (as 2698)
     active_quests: Pairs[Extern[ActiveQuest, 'encode_entry', False]] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
+    waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         Const(EmptyArray),
@@ -159,7 +161,7 @@ class SelectCharacterAck(WireMessage):
         Const(EmptyMap),
         Const(EmptyMap),
         Const(bool, False),
-        Const(EmptyMap),
+        'waypoints',
         Const(u64, 0),
         Const(u64, 0),
         Const(u32, 0),

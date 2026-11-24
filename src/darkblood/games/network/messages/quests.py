@@ -9,7 +9,6 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.inventory import AddedItemNotice, ItemDropEntry
-from darkblood.games.network.messages.lobby import ChannelSquare
 from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [

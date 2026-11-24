@@ -4,7 +4,6 @@
 domain quests Dark Blood protocol wire messages - Quests domain.
 
 extern Item from darkblood.games.entities.items
-extern ChannelSquare from darkblood.games.network.messages.lobby
 extern AddedItemNotice from darkblood.games.network.messages.inventory
 extern ItemDropEntry from darkblood.games.network.messages.inventory
 extern LearnedSkill from darkblood.games.network.messages.skills

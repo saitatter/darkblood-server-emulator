@@ -199,6 +199,65 @@ class WorldFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_waypoint_insert_cost_deduction_and_relog_persistence(self):
+        async def scenario(client):
+            from darkblood.core.hashing import jhash
+            from darkblood.games.game_data.world import portal_cost
+            from darkblood.games.network.messages.lobby import BackToSquareAck
+            from darkblood.games.network.messages.quests import WaypointInsertAck
+
+            await lobby_flow(client)
+            client.send_event(2012, create_request('WpTester'))
+            _, created = await client.expect_event(2013)
+            uid = struct.unpack_from('<q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iq', 0x7fffffff, uid))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+            client.send_event(5124)
+            await client.expect_event(5125)
+
+            # Give the character enough AR to cover waypoint teleport cost.
+            from darkblood.games.world import GameWorldManager
+            char = GameWorldManager.get().get_player(uid).char_data
+            char['gold'] = 5000
+
+            wp0 = layer_net_id('Act1', 0)  # act1_01: @LayerName_2, (1536, -1792)
+            wp4 = layer_net_id('Act1', 4)  # act1_02: @LayerName_10, (2688, -1408)
+
+            client.send_event(2344, struct.pack('<iQ', 0x7fffffff, wp0))
+            _, ack0_raw = await client.expect_event(2345)
+            ack0 = WaypointInsertAck.decode(ack0_raw)
+            self.assertEqual(ack0.result, 0)
+            self.assertEqual(ack0.waypoint.layer_net_id, wp0)
+            self.assertEqual(ack0.waypoint.name, '@LayerName_2')
+            self.assertEqual(ack0.waypoint.waypoint_id, jhash('act1_01') & 0xFFFFFFFF)
+            self.assertEqual((ack0.waypoint.x, ack0.waypoint.y), (1536, -1792))
+
+            client.send_event(2344, struct.pack('<iQ', 0x7fffffff, wp4))
+            _, ack4_raw = await client.expect_event(2345)
+            ack4 = WaypointInsertAck.decode(ack4_raw)
+            self.assertEqual(ack4.waypoint.name, '@LayerName_10')
+            self.assertEqual(ack4.waypoint.waypoint_id, jhash('act1_02') & 0xFFFFFFFF)
+            self.assertEqual((ack4.waypoint.x, ack4.waypoint.y), (2688, -1408))
+
+            # Teleport from Act1 layer 0 -> Act1 layer 4 with use_waypoint=True
+            expected_cost = portal_cost('act1_01', 'act1_02', char.get('level', 1))
+            self.assertGreater(expected_cost, 0)
+            client.send_event(5030, struct.pack('<iQ?', 0x7fffffff, wp4, True))
+            _, tp_raw = await client.expect_event(5031)
+            tp = BackToSquareAck.decode(tp_raw)
+            self.assertTrue(tp.use_waypoint)
+            self.assertEqual(tp.layer_net_id, wp4)
+            self.assertEqual(tp.cur_ar, 5000 - expected_cost)
+
+            # Relog (2006 -> 2007) includes saved waypoints in SelectCharacterAck
+            client.send_event(2006, struct.pack('<iq', 0x7fffffff, uid))
+            _, sel_raw = await client.expect_event(2007)
+            self.assertIn('@LayerName_2'.encode('utf-16-le'), sel_raw)
+            self.assertIn('@LayerName_10'.encode('utf-16-le'), sel_raw)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

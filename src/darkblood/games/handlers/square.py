@@ -221,10 +221,21 @@ class SquareHandlers(BaseDomainService):
     @packet_handler(5030)
     async def handle_join_layer(self, correlation: int, body: bytes):
         """Opcode 5030 changes the town layer; positions travel via the relay."""
+        from darkblood.games.game_data.world import portal_cost, waypoint_info
         from darkblood.games.world import GameWorldManager
 
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         use_waypoint = bool(body[12]) if len(body) >= 13 else False
+        prev_layer = self._town_layer()
+        if use_waypoint:
+            char = self.current_char()
+            src_wp = waypoint_info(prev_layer)
+            dst_wp = waypoint_info(layer_id)
+            if char is not None and src_wp and dst_wp and src_wp['id'] != dst_wp['id']:
+                cost = portal_cost(src_wp['id'], dst_wp['id'], char.get('level', 1))
+                if cost > 0:
+                    char['gold'] = max(0, int(char.get('gold', 0)) - cost)
+                    self.save_char()
         self._remember_layer(layer_id)
         world = GameWorldManager.get()
         player, previous_layer = world.change_layer(self.session, layer_id)
@@ -258,9 +269,10 @@ class SquareHandlers(BaseDomainService):
 
         Client handler: 0x0064AE00 (JAppPageSquarePortal::OneEGS_WAYPOINT_INSERT_ACK).
         Registers visited portal waypoint in the world map. jData (0x00A49700) MUST carry
-        layer_net_id in its first u64 (UpdateList 0x0064FC60 looks up SquareID from high_dword).
+        layer_net_id, localization name (@LayerName_*), waypoint_id hash (for DictSquarePortal::GetCost),
+        and destination (x, y) from the town map file.
         """
-        from darkblood.games.network.messages.quests import WaypointData, WaypointInsertAck
+        from darkblood.games.network.messages.quests import WaypointInsertAck
         layer = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         char = self.current_char()
         if char is not None:
@@ -271,13 +283,7 @@ class SquareHandlers(BaseDomainService):
         ack = WaypointInsertAck(
             result=0,
             layer_net_id=layer,
-            waypoint=WaypointData(
-                layer_net_id=layer,
-                name=_waypoint_label(layer),
-                waypoint_id=0,
-                x=0,
-                y=0,
-            ),
+            waypoint=waypoint_data(layer),
         ).encode()
         await self.transport.send_event(event(2345, ack, correlation),
                                         note='waypoint insert ack (%016x)' % layer)
@@ -347,6 +353,28 @@ def _is_town_layer(layer_id: int) -> bool:
     from darkblood.games.entities.character import SQUARE_IDS
     from darkblood.core.hashing import jhash
     return (layer_id >> 32) in {jhash(sq) for sq in SQUARE_IDS}
+
+
+def waypoint_data(layer_id: int):
+    """Build WaypointData (0x00A49700) for a town layer from assets/waypoints.json."""
+    from darkblood.games.game_data.world import waypoint_info
+    from darkblood.games.network.messages.quests import WaypointData
+    info = waypoint_info(layer_id)
+    if info is not None:
+        return WaypointData(
+            layer_net_id=layer_id,
+            name=info['name'],
+            waypoint_id=info['id_hash'],
+            x=info['x'],
+            y=info['y'],
+        )
+    return WaypointData(
+        layer_net_id=layer_id,
+        name=_waypoint_label(layer_id),
+        waypoint_id=0,
+        x=0,
+        y=0,
+    )
 
 
 def _waypoint_label(layer_id: int) -> str:
