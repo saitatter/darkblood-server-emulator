@@ -3,6 +3,7 @@ import io
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -200,6 +201,7 @@ class GitUpdaterTest(unittest.TestCase):
                 self.assertFalse(st2.up_to_date)
                 self.assertEqual(st2.remote_sha, 'v0.2.0')
 
+    @unittest.skipUnless(sys.platform == 'win32', 'launcher/gamectl requires Windows')
     def test_launcher_ensure_hook_deployed_and_gm_doc_parser(self):
         import launcher
         with tempfile.TemporaryDirectory() as tmp:
