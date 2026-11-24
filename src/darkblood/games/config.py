@@ -7,7 +7,7 @@ OFFLINE_SERVER_ID = 1
 SERVERS = [(OFFLINE_SERVER_ID, dict(name='Offline'))]
 
 
-CHAR_SLOTS = 4  # first u8 of 2009: shown as "4 SLOT" on character select (observed)
+CHAR_SLOTS = 14  # first u8 of 2009: 14 subclasses (client natively paginates 6/page across 3 pages)
 
 
 SQUARES = [dict(square_id=1, name='Channel 1')]

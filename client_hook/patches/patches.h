@@ -11,6 +11,7 @@ void Patch_BorderlessFullscreen_Install(void);
 void Patch_AutoReconnect_Install(void);
 int  Patch_AutoReconnect_HandleException(PEXCEPTION_POINTERS info);
 void Patch_PeerUpdateInterval_Install(void);
+void Patch_CharSlots_Install(void);
 
 /* Hacks & Gameplay */
 void Patch_SkipLogos_Install(void);

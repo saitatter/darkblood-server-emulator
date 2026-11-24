@@ -40,6 +40,10 @@ OPTIONS = {
         'client', True, 'Faster town peer sync (100 ms)',
         'Lowers the town P2P position revision throttle from 2000 ms to 100 ms (0x00966C9C).',
     ),
+    'char_slots_14': (
+        'client', True, '14 character slots counter (X / 14)',
+        'Updates the character select slot label from "X / 6" to "X / 14" (0x006DD64A).',
+    ),
     'skip_logos': (
         'client', True, 'Skip start-up logos',
         'Ends the logo clips at once (JAppStateLogo 0x006F39AB, je -> jmp).',
@@ -71,6 +75,7 @@ PATCH_META = {
     'borderless_fullscreen': ('improvement', 'patches/borderless_fullscreen.c'),
     'auto_reconnect':        ('improvement', 'patches/auto_reconnect.c'),
     'peer_update_interval':  ('improvement', 'patches/peer_update_interval.c'),
+    'char_slots_14':         ('improvement', 'patches/char_slots.c'),
     'skip_logos':            ('hack',        'patches/skip_logos.c'),
     'skip_tutorial_always':  ('hack',        'patches/skip_tutorial_always.c'),
     'adult_content':         ('server',      'server/frontend.py'),

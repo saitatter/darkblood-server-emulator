@@ -430,7 +430,7 @@ class FrontendHandlers(BaseDomainService):
         from darkblood.games.network.messages.lobby import CharSlotExtendAck, CharSlotExtendReq
         req = CharSlotExtendReq.decode(body)
         self.transport.record('char-slot-extend-req', body, item_uid=req.item_uid)
-        await self.reply(CharSlotExtendAck(result=0, limit_create_char=6, items=[]), correlation,
+        await self.reply(CharSlotExtendAck(result=0, limit_create_char=CHAR_SLOTS, items=[]), correlation,
                          note='char slot extend ack')
 
     @packet_handler(5128)

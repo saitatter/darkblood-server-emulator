@@ -364,7 +364,7 @@ class DungeonFlowTest(ServerTestCase):
 
             client.send_event(2441, CharSlotExtendReq(item_uid=900).encode())
             _, r = await client.expect_event(2442)
-            self.assertEqual(struct.unpack_from('<IB', r), (0, 6))
+            self.assertEqual(struct.unpack_from('<IB', r), (0, 14))
 
             # Select char and enter town
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char1_id))

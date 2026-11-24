@@ -48,6 +48,7 @@ jobs:
             patches\borderless_fullscreen.c ^
             patches\auto_reconnect.c ^
             patches\peer_update_interval.c ^
+            patches\char_slots.c ^
             patches\skip_logos.c ^
             patches\skip_tutorial_always.c ^
             patches\diagnostic_hooks.c ^

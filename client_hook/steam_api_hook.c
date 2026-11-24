@@ -76,6 +76,7 @@ static void InstallAllPatches(void) {
 
     /* Improvements & QoL */
     Patch_PeerUpdateInterval_Install();
+    Patch_CharSlots_Install();
     Patch_AutoReconnect_Install();
     Patch_BorderlessFullscreen_Install();
 
