@@ -477,6 +477,62 @@ class QuestFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_promotion_trial_grants_and_clears_temp_skills(self):
+        """Starting a PromotionLv=1 trial quest (2073) with 2 chosen tempSkills
+        grants both skills (2051) and returns QuestSpecialInfo(action_type=1)
+        in 2074; abandoning (2078 -> 2079) removes them with action_type=3.
+        """
+        q_hash = hashing.jhash('QMA061') & 0xFFFFFFFF  # Paladin trial (class 0x11)
+        s1_hash = hashing.jhash('san22401') & 0xFFFFFFFF  # NameIndex 224
+        s2_hash = hashing.jhash('san29501') & 0xFFFFFFFF  # NameIndex 295
+        stamp = '2015-02-23 15:42:11, '.encode('utf-16le')
+        req_start = (
+            jser.varuint(len(stamp)) + stamp
+            + struct.pack('<IiHIII', q_hash, -1, 0x11, s1_hash, s2_hash, q_hash)
+        )
+        req_giveup = jser.varuint(len(stamp)) + stamp + struct.pack('<I', q_hash)
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('TrialPaladin', char_class=1))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            client.send_event(2073, req_start, compressed=True)
+            _, s1_ack = await client.expect_event(2051)
+            _, s2_ack = await client.expect_event(2051)
+            self.assertEqual(struct.unpack_from('<iHB', s1_ack, 0), (0, 224, 1))
+            self.assertEqual(struct.unpack_from('<iHB', s2_ack, 0), (0, 295, 1))
+
+            _, ack2074 = await client.expect_event(2074)
+            # 2074: u32 result, u32 quest_id, i64 quest_uid, 18-byte QuestSpecialInfo
+            res, r_qid, _ = struct.unpack_from('<IIq', ack2074, 0)
+            self.assertEqual((res, r_qid), (0, q_hash))
+            action, t_cls, idx1, idx2, tail_qid = struct.unpack_from('<iHiiI', ack2074, 16)
+            self.assertEqual((action, t_cls, idx1, idx2, tail_qid), (1, 0x11, 224, 295, q_hash))
+
+            store = session.GameSession.store()
+            char = store.get('OfflinePlayer', char_id)
+            self.assertEqual(char['skills'].get('224'), 1)
+            self.assertEqual(char['skills'].get('295'), 1)
+
+            # Abandoning the trial quest removes temp skills and sends action_type=3
+            client.send_event(2078, req_giveup, compressed=True)
+            _, ack2079 = await client.expect_event(2079)
+            # 2079: i32 result (4), vector<h32> quest_ids (2 + 4 = 6), QuestSpecialInfo at +10
+            action3, t_cls3, r_idx1, r_idx2, r_tail = struct.unpack_from('<iHiiI', ack2079, 10)
+            self.assertEqual((action3, t_cls3, r_idx1, r_idx2, r_tail), (3, 0x11, 224, 295, q_hash))
+
+            char_after = store.get('OfflinePlayer', char_id)
+            self.assertNotIn('224', char_after.get('skills', {}))
+            self.assertNotIn('295', char_after.get('skills', {}))
+            self.assertNotIn('temp_skills', char_after)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

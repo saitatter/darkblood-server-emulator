@@ -31,6 +31,8 @@ from darkblood.games.game_data.quests import (  # noqa: F401
     quest_dungeon_objectives,
     quest_promotion_classes,
     quest_promotion_class,
+    quest_temp_skill_indices,
+    quest_temp_skill_index,
 )
 from darkblood.games.game_data.items import (  # noqa: F401
     default_equipment,
@@ -93,6 +95,8 @@ __all__ = [
     "quest_dungeon_objectives",
     "quest_promotion_classes",
     "quest_promotion_class",
+    "quest_temp_skill_indices",
+    "quest_temp_skill_index",
     "default_equipment",
     "ITEM_FIELD_RE",
     "item_int_fields",

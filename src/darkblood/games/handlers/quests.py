@@ -14,6 +14,7 @@ from darkblood.games.network.messages import (
     GetQuestTagAck,
     GetQuestTagReq,
     KairoResult,
+    LearnSkillAck,
     LevelUpNot,
     NpcMakingKairoAck,
     NpcMakingKairoReq,
@@ -30,6 +31,7 @@ from darkblood.games.network.messages import (
     QuestGiveupReq,
     QuestItemDropAck,
     QuestItemDropReq,
+    QuestSpecialInfo,
     QuestStartAck,
     TutorialQuestStartAck,
 )
@@ -43,6 +45,31 @@ def _quest_id_after_tag(body: bytes) -> int:
         return struct.unpack_from('<I', body, offset + length)[0]
     except (WireError, struct.error):
         return 0
+
+
+def _parse_quest_start_body(body: bytes):
+    """Parse 2073 body -> (quest_id, target_class, [skill_hash_1, skill_hash_2]).
+
+    Observed wire format for 2073: J-wstring tag + u32 quest_id + optional 18-byte
+    QuestSpecialInfo (i32 action_type, u16 target_class, u32 skill_1_hash,
+    u32 skill_2_hash, u32 quest_id). For promotion trial quests (PromotionLv=1),
+    the client populates target_class and the jhashes of the 2 chosen tempSkills.
+    """
+    try:
+        length, offset = read_varuint(body, 0)
+        tail_off = offset + length
+        quest_id = struct.unpack_from('<I', body, tail_off)[0]
+        if len(body) >= tail_off + 22:
+            _, target_class, s1, s2, _ = struct.unpack_from('<iHIII', body, tail_off + 4)
+            return quest_id, target_class, [s1, s2]
+        return quest_id, 0xFFFF, []
+    except (WireError, struct.error):
+        return 0, 0xFFFF, []
+
+
+def _to_i32(val: int) -> int:
+    val &= 0xFFFFFFFF
+    return val - 0x100000000 if val >= 0x80000000 else val
 
 
 from darkblood.games.dispatcher import packet_handler
@@ -59,12 +86,59 @@ class QuestHandlers(BaseDomainService):
         Client dispatcher: 0x00659F00 -> 0x00659790.
         Decodes target quest ID hash, assigns new active quest UID, initializes
         objective counters, and persists in character's active quest list.
+        For class-promotion trial quests (PromotionLv=1), resolves the 2 chosen
+        tempSkill jhashes into numeric skill indices, grants them at level 1,
+        and echoes QuestSpecialInfo(action_type=1) so the HUD TempSkillSet activates.
         """
-        quest_id = _quest_id_after_tag(body)
+        from darkblood.games.game_data.client_dict import quest_temp_skill_index
+        quest_id, target_class, skill_hashes = _parse_quest_start_body(body)
         char = self.store().get(self.account, self.char_id)
         is_new = bool(char) and str(quest_id) not in char.get('quests_active', {})
         uid = self._activate_quest(quest_id)
-        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
+
+        temp_indices = [
+            idx for h in skill_hashes
+            for idx in (quest_temp_skill_index(h),)
+            if idx is not None
+        ]
+        special_info = QuestSpecialInfo()
+        if char and temp_indices:
+            skills_map = char.setdefault('skills', {})
+            granted = []
+            for idx in temp_indices[:2]:
+                key = str(idx)
+                if key not in skills_map:
+                    skills_map[key] = 1
+                    granted.append(idx)
+            char['temp_skills'] = {
+                'quest_id': quest_id,
+                'target_class': target_class,
+                'skills': temp_indices[:2],
+                'granted': granted,
+            }
+            self.save_char()
+            sp = int(char.get('sp', 0))
+            gold = int(char.get('gold', 0))
+            for idx in temp_indices[:2]:
+                await self.send_msg(
+                    LearnSkillAck(
+                        result=0,
+                        skill_index=idx,
+                        level=int(skills_map.get(str(idx), 1)),
+                        remain_sp=sp,
+                        remain_gold=gold,
+                    ),
+                    note=f'promotion trial temp skill ({idx})',
+                )
+            special_info = QuestSpecialInfo(
+                action_type=1,
+                skill_1_index=target_class & 0xFFFF,
+                skill_1_value=temp_indices[0],
+                skill_2_index=temp_indices[1] if len(temp_indices) > 1 else -1,
+                skill_2_value=_to_i32(quest_id),
+            )
+
+        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid, info=special_info).encode()
         await self.transport.send_event(event(2074, ack, correlation),
                                         note='quest start ack (%08x)' % quest_id)
         if is_new:
@@ -259,6 +333,7 @@ class QuestHandlers(BaseDomainService):
                 char['skills'] = {}
                 char['locked_skills'] = []
                 char['skill_show_cooltime'] = []
+                char.pop('temp_skills', None)
                 self.save_char()
                 await self.send_msg(
                     PromotionNot(result=0, new_class=promo_class, sp=new_sp, skills={}),
@@ -332,6 +407,27 @@ class QuestHandlers(BaseDomainService):
         await self.transport.send_event(event(2114, struct.pack('<I', 0), correlation),
                                         note='quest update mission ack (%s, %d quests)' % (mission, len(updates)))
 
+    def _clear_temp_skills_for_quest(self, char, quest_id: int) -> QuestSpecialInfo:
+        """Remove promotion trial temporary skills if `quest_id` owns them."""
+        if not char:
+            return QuestSpecialInfo()
+        ts = char.get('temp_skills')
+        if not isinstance(ts, dict) or ts.get('quest_id') != quest_id:
+            return QuestSpecialInfo()
+        skills_map = char.get('skills') or {}
+        for idx in ts.get('granted', ts.get('skills', [])):
+            skills_map.pop(str(idx), None)
+        t_skills = ts.get('skills') or []
+        info = QuestSpecialInfo(
+            action_type=3,
+            skill_1_index=int(ts.get('target_class', 0xFFFF)) & 0xFFFF,
+            skill_1_value=t_skills[0] if len(t_skills) > 0 else -1,
+            skill_2_index=t_skills[1] if len(t_skills) > 1 else -1,
+            skill_2_value=_to_i32(quest_id),
+        )
+        char.pop('temp_skills', None)
+        return info
+
     @packet_handler(QuestGiveupReq)
     async def handle_quest_giveup(self, correlation: int, body: bytes):
         """Opcode 2078 (eEGS_QUEST_GIVEUP_REQ) -> 2079 (eEGS_QUEST_GIVEUP_ACK).
@@ -341,11 +437,17 @@ class QuestHandlers(BaseDomainService):
         """
         req = QuestGiveupReq.decode(body)
         char = self.current_char()
+        special_info = QuestSpecialInfo()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
+            special_info = self._clear_temp_skills_for_quest(char, req.quest_id)
             self.save_char()
         self.transport.record('quest-giveup', body, quest_id=req.quest_id)
-        ack = QuestGiveupAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
+        ack = QuestGiveupAck(
+            result=0,
+            quest_ids=[req.quest_id] if req.quest_id else [],
+            info=special_info,
+        ).encode()
         await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
 
     @packet_handler(QuestFailReq)

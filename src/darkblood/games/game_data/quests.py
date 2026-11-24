@@ -422,3 +422,21 @@ def quest_promotion_class(quest_hash: int):
     """Return the promoted class ID (u8) granted by completing quest_hash, or None."""
     return quest_promotion_classes().get(quest_hash & 0xFFFFFFFF)
 
+
+@lru_cache(maxsize=None)
+def quest_temp_skill_indices():
+    """Mapping: jhash(temp_skill_id) -> NameIndex (u16) for promotion trial skills."""
+    tsv = ASSETS_DIR / 'quest_temp_skills.tsv'
+    out = {}
+    if tsv.is_file():
+        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
+            parts = line.split('\t')
+            if len(parts) >= 3 and parts[1] and parts[2]:
+                out[int(parts[1], 0) & 0xFFFFFFFF] = int(parts[2])
+    return out
+
+
+def quest_temp_skill_index(skill_hash: int):
+    """Return the numeric skill NameIndex for a promotion trial tempSkill jhash, or None."""
+    return quest_temp_skill_indices().get(skill_hash & 0xFFFFFFFF)
+
