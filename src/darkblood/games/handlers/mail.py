@@ -94,9 +94,8 @@ class MailHandlers(BaseDomainService):
         unread_count = len([m for m in inbox.values() if not m.is_read])
         notify = unread_count > 0
 
-        ack = PostListAck(result=0, inbox=inbox, outbox=outbox, unread_count=unread_count, notify=notify).encode()
-        await self.transport.send_event(event(2220, ack, correlation),
-                                        note=f'post list ack (inbox={len(inbox)}, outbox={len(outbox)}, unread={unread_count})')
+        ack = PostListAck(result=0, inbox=inbox, outbox=outbox, unread_count=unread_count, notify=notify)
+        await self.reply(ack, correlation, note=f'post list ack (inbox={len(inbox)}, outbox={len(outbox)}, unread={unread_count})')
 
     @packet_handler(PostSendReq)
     async def handle_post_send(self, correlation, body):
@@ -110,21 +109,21 @@ class MailHandlers(BaseDomainService):
 
         if not req.recipient:
             # Empty / test request
-            ack = PostSendAck(result=0, remain_gold=current_gold).encode()
-            await self.transport.send_event(event(2222, ack, correlation), note='post send ack (default/empty)')
+            ack = PostSendAck(result=0, remain_gold=current_gold)
+            await self.reply(ack, correlation, note='post send ack (default/empty)')
             return
 
         _, recipient_char = self.store().get_by_name(req.recipient)
         if not recipient_char:
             # 0xCE = player not found / offline
-            ack = PostSendAck(result=0xCE, remain_gold=current_gold).encode()
-            await self.transport.send_event(event(2222, ack, correlation), note=f'post send fail ({req.recipient} not found)')
+            ack = PostSendAck(result=0xCE, remain_gold=current_gold)
+            await self.reply(ack, correlation, note=f'post send fail ({req.recipient} not found)')
             return
 
         # Check gold
         if current_gold < req.gold:
-            ack = PostSendAck(result=1, remain_gold=current_gold).encode()
-            await self.transport.send_event(event(2222, ack, correlation), note='post send fail (insufficient gold)')
+            ack = PostSendAck(result=1, remain_gold=current_gold)
+            await self.reply(ack, correlation, note='post send fail (insufficient gold)')
             return
 
         # Deduct gold
@@ -169,8 +168,8 @@ class MailHandlers(BaseDomainService):
         except Exception:
             pass
 
-        ack = PostSendAck(result=0, items=[], remain_gold=int(char.get('gold', 0)) if char else 0).encode()
-        await self.transport.send_event(event(2222, ack, correlation), note=f'post send ack to {req.recipient}')
+        ack = PostSendAck(result=0, items=[], remain_gold=int(char.get('gold', 0)) if char else 0)
+        await self.reply(ack, correlation, note=f'post send ack to {req.recipient}')
 
     @packet_handler(PostReadReq)
     async def handle_post_read(self, correlation, body):
@@ -178,8 +177,8 @@ class MailHandlers(BaseDomainService):
         req = PostReadReq.decode(body)
         self.transport.record('post-read-req', body, mail_uid=req.mail_uid)
         self.store().read_mail(req.mail_uid)
-        ack = PostReadAck(result=0, mail_uid=req.mail_uid).encode()
-        await self.transport.send_event(event(2224, ack, correlation), note=f'post read ack (uid={req.mail_uid})')
+        ack = PostReadAck(result=0, mail_uid=req.mail_uid)
+        await self.reply(ack, correlation, note=f'post read ack (uid={req.mail_uid})')
 
     @packet_handler(PostGetAppendItemReq)
     async def handle_post_get_append_item(self, correlation, body):
@@ -188,8 +187,7 @@ class MailHandlers(BaseDomainService):
         self.transport.record('post-get-append-item-req', body, mail_uid=req.mail_uid)
         char = self.current_char()
         if not char:
-            await self.transport.send_event(event(2226, PostGetAppendItemAck(result=1).encode(), correlation),
-                                            note='post get append fail (no char)')
+            await self.reply(PostGetAppendItemAck(result=1), correlation, note='post get append fail (no char)')
             return
 
         claimed_gold, claimed_items = self.store().claim_mail_append(req.mail_uid)
@@ -226,11 +224,8 @@ class MailHandlers(BaseDomainService):
                 ))
 
         self.save_char()
-        ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=claimed_gold, items=new_items).encode()
-        await self.transport.send_event(
-            event(2226, ack, correlation),
-            note=f'post get append item ack (uid={req.mail_uid}, gold={claimed_gold}, items={len(new_items)})'
-        )
+        ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=claimed_gold, items=new_items)
+        await self.reply(ack, correlation, note=f'post get append item ack (uid={req.mail_uid}, gold={claimed_gold}, items={len(new_items)})')
 
     @packet_handler(PostReturnReq)
     async def handle_post_return(self, correlation, body):
@@ -238,8 +233,8 @@ class MailHandlers(BaseDomainService):
         req = PostReturnReq.decode(body)
         self.transport.record('post-return-req', body, mail_id=req.mail_id)
         self.store().return_mail(req.mail_id)
-        ack = PostReturnAck(result=0, mail_uids=[req.mail_id]).encode()
-        await self.transport.send_event(event(2235, ack, correlation), note=f'post return ack (mail={req.mail_id})')
+        ack = PostReturnAck(result=0, mail_uids=[req.mail_id])
+        await self.reply(ack, correlation, note=f'post return ack (mail={req.mail_id})')
 
     @packet_handler(PostDeleteReq)
     async def handle_post_delete(self, correlation, body):
@@ -247,8 +242,8 @@ class MailHandlers(BaseDomainService):
         req = PostDeleteReq.decode(body)
         self.transport.record('post-delete-req', body, mail_uids=req.mail_uids)
         self.store().delete_mail(req.mail_uids)
-        ack = PostDeleteAck(result=0, mail_uids=req.mail_uids).encode()
-        await self.transport.send_event(event(2237, ack, correlation), note=f'post delete ack (count={len(req.mail_uids)})')
+        ack = PostDeleteAck(result=0, mail_uids=req.mail_uids)
+        await self.reply(ack, correlation, note=f'post delete ack (count={len(req.mail_uids)})')
 
     @packet_handler(PostGetAppendArReq)
     async def handle_post_get_append_ar(self, correlation, body):

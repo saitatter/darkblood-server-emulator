@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from darkblood.core.serialization.jser import event
 from darkblood.games.network.messages import (
     ArenaCreateRoomAck,
     ArenaCreateRoomReq,
@@ -119,9 +118,8 @@ class ArenaHandlers(BaseDomainService):
             target_name="Challenger",
             char_class=1,
             level=20
-        ).encode()
-        await self.transport.send_event(event(5101, ack, correlation),
-                                        note=f'duel request ack (target={req.target_uid})')
+        )
+        await self.reply(ack, correlation, note=f'duel request ack (target={req.target_uid})')
 
     @packet_handler(DuelStartReq)
     async def handle_duel_start(self, correlation: int, body: bytes):
@@ -132,12 +130,10 @@ class ArenaHandlers(BaseDomainService):
         """
         req = DuelStartReq.decode(body)
         self.transport.record('duel-start-req', body, opponent_uid=req.opponent_uid)
-        ack = DuelStartAck(result=0).encode()
-        await self.transport.send_event(event(5098, ack, correlation),
-                                        note=f'duel start ack (opponent={req.opponent_uid})')
-        not_start = DuelStartNot().encode()
-        await self.transport.send_event(event(5099, not_start),
-                                        note=f'duel start not (opponent={req.opponent_uid})')
+        ack = DuelStartAck(result=0)
+        await self.reply(ack, correlation, note=f'duel start ack (opponent={req.opponent_uid})')
+        not_start = DuelStartNot()
+        await self.send_msg(not_start, note=f'duel start not (opponent={req.opponent_uid})')
 
     @packet_handler(DuelResultReq)
     async def handle_duel_result(self, correlation: int, body: bytes):
@@ -148,8 +144,8 @@ class ArenaHandlers(BaseDomainService):
         """
         req = DuelResultReq.decode(body)
         self.transport.record('duel-result-req', body, winner=req.winner_uid, loser=req.loser_uid)
-        ack = DuelResultAck(result=0).encode()
-        await self.transport.send_event(event(5106, ack, correlation), note='duel result ack')
+        ack = DuelResultAck(result=0)
+        await self.reply(ack, correlation, note='duel result ack')
 
     @packet_handler(DuelRefuseReq)
     async def handle_duel_refuse(self, correlation: int, body: bytes):
@@ -166,9 +162,8 @@ class ArenaHandlers(BaseDomainService):
             target_name="Challenger",
             char_class=1,
             level=20
-        ).encode()
-        await self.transport.send_event(event(5113, ack, correlation),
-                                        note=f'duel refuse ack (challenger={req.challenger_uid})')
+        )
+        await self.reply(ack, correlation, note=f'duel refuse ack (challenger={req.challenger_uid})')
 
     # ==========================================================================
     # Arena Channels / Square (Opcodes 2304 / 2305)
@@ -187,8 +182,8 @@ class ArenaHandlers(BaseDomainService):
             ArenaSquare(square_id=101, name='Colosseum Channel 1', load=45),
             ArenaSquare(square_id=102, name='Gladiator Channel 2', load=20),
         ]
-        ack = ArenaSquareListAck(result=0, squares=squares).encode()
-        await self.transport.send_event(event(2305, ack, correlation), note='arena square list ack')
+        ack = ArenaSquareListAck(result=0, squares=squares)
+        await self.reply(ack, correlation, note='arena square list ack')
 
     # ==========================================================================
     # Arena Room Management (Opcodes 2306 / 2307, 5145-5154)
@@ -204,8 +199,8 @@ class ArenaHandlers(BaseDomainService):
         req = ArenaGetRoomListReq.decode(body)
         self.transport.record('arena-get-roomlist-req', body, page=req.page)
         rooms = list(self._arena_rooms.values())
-        ack = ArenaGetRoomListAck(result=0, flag=True, room_count=len(rooms), rooms=rooms).encode()
-        await self.transport.send_event(event(2307, ack, correlation), note='arena get room list ack')
+        ack = ArenaGetRoomListAck(result=0, flag=True, room_count=len(rooms), rooms=rooms)
+        await self.reply(ack, correlation, note='arena get room list ack')
 
     @packet_handler(ArenaCreateRoomReq)
     async def handle_arena_create_room(self, correlation: int, body: bytes):
@@ -234,9 +229,8 @@ class ArenaHandlers(BaseDomainService):
         self._current_arena_room_id = room.room_id
 
         self.transport.record('arena-create-room-req', body, room_id=room.room_id, name=room.room_name)
-        ack = ArenaCreateRoomAck(result=0, room=room).encode()
-        await self.transport.send_event(event(5154, ack, correlation),
-                                        note=f'arena create room ack (id={room.room_id}, name={room.room_name})')
+        ack = ArenaCreateRoomAck(result=0, room=room)
+        await self.reply(ack, correlation, note=f'arena create room ack (id={room.room_id}, name={room.room_name})')
 
     @packet_handler(ArenaJoinRoomReq)
     async def handle_arena_join_room(self, correlation: int, body: bytes):
@@ -263,9 +257,8 @@ class ArenaHandlers(BaseDomainService):
         self._current_arena_room_id = room.room_id
 
         self.transport.record('arena-join-room-req', body, room_id=req.room_id)
-        ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid).encode()
-        await self.transport.send_event(event(5146, ack, correlation),
-                                        note=f'arena join room ack (room={room.room_id})')
+        ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid)
+        await self.reply(ack, correlation, note=f'arena join room ack (room={room.room_id})')
 
     @packet_handler(ArenaLeaveRoomReq)
     async def handle_arena_leave_room(self, correlation: int, body: bytes):
@@ -287,8 +280,8 @@ class ArenaHandlers(BaseDomainService):
             self._current_arena_room_id = None
 
         self.transport.record('arena-leave-room-req', body)
-        ack = ArenaLeaveRoomAck(result=0).encode()
-        await self.transport.send_event(event(5149, ack, correlation), note='arena leave room ack')
+        ack = ArenaLeaveRoomAck(result=0)
+        await self.reply(ack, correlation, note='arena leave room ack')
 
     @packet_handler(ArenaGetInviteListReq)
     async def handle_arena_get_invite_list(self, correlation: int, body: bytes):
@@ -297,8 +290,8 @@ class ArenaHandlers(BaseDomainService):
         Client handler: 0x004C5200 -> 0x004B4680.
         Returns pending arena match invitations.
         """
-        ack = ArenaGetInviteListAck(result=0).encode()
-        await self.transport.send_event(event(2309, ack, correlation), note='arena get invite list ack')
+        ack = ArenaGetInviteListAck(result=0)
+        await self.reply(ack, correlation, note='arena get invite list ack')
 
     # ==========================================================================
     # Arena Teams (Opcodes 5269 - 5275)
@@ -339,9 +332,8 @@ class ArenaHandlers(BaseDomainService):
             team_name=team.team_name,
             leader_name=team.leader_name,
             notice=team.notice,
-        ).encode()
-        await self.transport.send_event(event(5270, ack, correlation),
-                                        note=f'arena team create ack (name={req.team_name})')
+        )
+        await self.reply(ack, correlation, note=f'arena team create ack (name={req.team_name})')
 
     @packet_handler(ArenaTeamJoinReq)
     async def handle_arena_team_join(self, correlation: int, body: bytes):
@@ -377,9 +369,8 @@ class ArenaHandlers(BaseDomainService):
             team_name=team.team_name,
             leader_name=team.leader_name,
             notice=team.notice,
-        ).encode()
-        await self.transport.send_event(event(5272, ack, correlation),
-                                        note=f'arena team join ack (team={req.team_id})')
+        )
+        await self.reply(ack, correlation, note=f'arena team join ack (team={req.team_id})')
 
     @packet_handler(ArenaTeamLeaveReq)
     async def handle_arena_team_leave(self, correlation: int, body: bytes):
@@ -394,8 +385,8 @@ class ArenaHandlers(BaseDomainService):
             team.member_count = max(0, team.member_count - 1)
             self._current_arena_team_id = None
 
-        ack = ArenaTeamLeaveAck(result=0).encode()
-        await self.transport.send_event(event(5275, ack, correlation), note='arena team leave ack')
+        ack = ArenaTeamLeaveAck(result=0)
+        await self.reply(ack, correlation, note='arena team leave ack')
 
     # ==========================================================================
     # League Season Arena Rankings (Opcodes 2550 - 2553)
@@ -410,9 +401,8 @@ class ArenaHandlers(BaseDomainService):
         """
         req = LeagueSeasonArenaGetRankReq.decode(body)
         ranks = ArenaHandlers.get_leaderboard(req.season_id)
-        ack = LeagueSeasonArenaGetRankAck(result=0, season_id=req.season_id, ranks=ranks).encode()
-        await self.transport.send_event(event(2551, ack, correlation),
-                                        note=f'league season arena get rank ack (season={req.season_id})')
+        ack = LeagueSeasonArenaGetRankAck(result=0, season_id=req.season_id, ranks=ranks)
+        await self.reply(ack, correlation, note=f'league season arena get rank ack (season={req.season_id})')
 
     @packet_handler(LeagueSeasonArenaGetMyRankReq)
     async def handle_league_season_arena_get_my_rank(self, correlation: int, body: bytes):
@@ -429,9 +419,8 @@ class ArenaHandlers(BaseDomainService):
             if entry.char_uid == char_uid or entry.char_name == char_name:
                 my_rank = entry.rank
                 break
-        ack = LeagueSeasonArenaGetMyRankAck(result=0, my_rank=my_rank).encode()
-        await self.transport.send_event(event(2553, ack, correlation),
-                                        note=f'league season arena get my rank ack (season={req.season_id})')
+        ack = LeagueSeasonArenaGetMyRankAck(result=0, my_rank=my_rank)
+        await self.reply(ack, correlation, note=f'league season arena get my rank ack (season={req.season_id})')
 
     # ==========================================================================
     # Rock-Paper-Scissors Minigame (GBB: Opcodes 2715 - 2720)

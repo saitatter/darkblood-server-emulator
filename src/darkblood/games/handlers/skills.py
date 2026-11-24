@@ -1,5 +1,4 @@
 """Skill learning, quickslots, locked skills, cooltime display, dual skill, proficiency and speech handlers."""
-from darkblood.core.serialization.jser import event
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
@@ -76,17 +75,15 @@ class SkillHandlers(BaseDomainService):
         remain_sp = remain_gold = 0
         if char:
             if not self._charge_skills(char, [(req.skill_index, req.level)]):
-                await self.transport.send_event(event(2051, LearnSkillAck(result=1).encode(), correlation),
-                                                note='learn skill fail (not enough SP/AR)')
+                await self.reply(LearnSkillAck(result=1), correlation, note='learn skill fail (not enough SP/AR)')
                 return
             char.setdefault('skills', {})[str(req.skill_index)] = req.level
             self.save_char()
             remain_gold = char.get('gold', 0)
             remain_sp = char.get('sp', 0)
         ack = LearnSkillAck(result=0, skill_index=req.skill_index, level=req.level,
-                            remain_sp=remain_sp, remain_gold=remain_gold).encode()
-        await self.transport.send_event(event(2051, ack, correlation),
-                                        note=f'learn skill ack (skill={req.skill_index} lvl={req.level})')
+                            remain_sp=remain_sp, remain_gold=remain_gold)
+        await self.reply(ack, correlation, note=f'learn skill ack (skill={req.skill_index} lvl={req.level})')
 
     @packet_handler(LearnSkillListReq)
     async def handle_learn_skill_list(self, correlation, body):
@@ -97,8 +94,7 @@ class SkillHandlers(BaseDomainService):
         learned_skills = {}
         if char:
             if not self._charge_skills(char, [(s.skill_index, s.level) for s in req.skills]):
-                await self.transport.send_event(event(2698, LearnSkillListAck(result=1).encode(), correlation),
-                                                note='learn skill list fail (not enough SP/AR)')
+                await self.reply(LearnSkillListAck(result=1), correlation, note='learn skill list fail (not enough SP/AR)')
                 return
             skills = char.setdefault('skills', {})
             for s in req.skills:
@@ -111,9 +107,8 @@ class SkillHandlers(BaseDomainService):
         else:
             learned_skills = {s.skill_index: s.level for s in req.skills}
         ack = LearnSkillListAck(result=0, skills=learned_skill_map(learned_skills),
-                                remain_sp=remain_sp, remain_gold=remain_gold).encode()
-        await self.transport.send_event(event(2698, ack, correlation),
-                                        note=f'learn skill list ack ({len(learned_skills)} skills)')
+                                remain_sp=remain_sp, remain_gold=remain_gold)
+        await self.reply(ack, correlation, note=f'learn skill list ack ({len(learned_skills)} skills)')
 
     @packet_handler(ModifySkillSpeechReq)
     async def handle_modify_skill_speech(self, correlation, body):
@@ -124,9 +119,8 @@ class SkillHandlers(BaseDomainService):
             speeches = char.setdefault('skill_speeches', {})
             speeches[str(req.skill_index)] = req.speech
             self.save_char()
-        ack = ModifySkillSpeechAck(result=0, skill_index=req.skill_index, speech=req.speech).encode()
-        await self.transport.send_event(event(2054, ack, correlation),
-                                        note=f'modify skill speech ack (skill={req.skill_index})')
+        ack = ModifySkillSpeechAck(result=0, skill_index=req.skill_index, speech=req.speech)
+        await self.reply(ack, correlation, note=f'modify skill speech ack (skill={req.skill_index})')
 
     @packet_handler(DeleteSkillSpeechReq)
     async def handle_delete_skill_speech(self, correlation, body):
@@ -137,9 +131,8 @@ class SkillHandlers(BaseDomainService):
             speeches = char.setdefault('skill_speeches', {})
             speeches.pop(str(req.skill_index), None)
             self.save_char()
-        ack = DeleteSkillSpeechAck(result=0, skill_index=req.skill_index).encode()
-        await self.transport.send_event(event(2056, ack, correlation),
-                                        note=f'delete skill speech ack (skill={req.skill_index})')
+        ack = DeleteSkillSpeechAck(result=0, skill_index=req.skill_index)
+        await self.reply(ack, correlation, note=f'delete skill speech ack (skill={req.skill_index})')
 
     @packet_handler(UpdateSkillLockedReq)
     async def handle_update_skill_locked(self, correlation, body):
@@ -155,9 +148,8 @@ class SkillHandlers(BaseDomainService):
                 locked.discard(req.skill_index)
             char['locked_skills'] = sorted(list(locked))
             self.save_char()
-        ack = UpdateSkillLockedAck(result=0, skill_index=req.skill_index, locked=req.locked).encode()
-        await self.transport.send_event(event(2118, ack, correlation),
-                                        note=f'update skill locked ack (skill={req.skill_index} locked={req.locked})')
+        ack = UpdateSkillLockedAck(result=0, skill_index=req.skill_index, locked=req.locked)
+        await self.reply(ack, correlation, note=f'update skill locked ack (skill={req.skill_index} locked={req.locked})')
 
     @packet_handler(UseLearnSkillItemReq)
     async def handle_use_learn_skill_item(self, correlation, body):
@@ -167,10 +159,7 @@ class SkillHandlers(BaseDomainService):
         self.transport.record('use-learn-skill-item-req', body, item_uid=req.item_uid, skill_id=req.skill_id)
         char = self.current_char()
         if not char:
-            await self.transport.send_event(
-                event(2112, UseLearnSkillItemAck(result=results.NO_EXIST_CHAR).encode(), correlation),
-                note='use learn skill item fail (no char)',
-            )
+            await self.reply(UseLearnSkillItemAck(result=results.NO_EXIST_CHAR), correlation, note='use learn skill item fail (no char)')
             return
         skills = char.setdefault('skills', {})
         new_lv = int(skills.get(str(req.skill_id), 0)) + 1
@@ -206,11 +195,8 @@ class SkillHandlers(BaseDomainService):
             count=1,
             items=wire_items,
             sp=int(char.get('sp', 0)),
-        ).encode()
-        await self.transport.send_event(
-            event(2112, ack, correlation),
-            note=f'use learn skill item ack (skill={req.skill_id} lv={new_lv} sp={char.get("sp", 0)})',
         )
+        await self.reply(ack, correlation, note=f'use learn skill item ack (skill={req.skill_id} lv={new_lv} sp={char.get("sp", 0)})')
 
     @packet_handler(SkillUpdateShowCoolTimeReq)
     async def handle_skill_update_show_cooltime(self, correlation, body):

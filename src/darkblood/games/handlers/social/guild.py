@@ -12,15 +12,13 @@ class GuildHandlers:
         self.transport.record('guild-create-req', body, name=req.guild_name)
         char = self.current_char()
         if char is None:
-            await self.transport.send_event(event(2151, GuildCreateAck(result=1).encode(), correlation),
-                                            note='guild create fail (no character)')
+            await self.reply(GuildCreateAck(result=1), correlation, note='guild create fail (no character)')
             return
         char['guild_name'] = req.guild_name
         gold = char.get('gold', 100000)
         self.save_char()
-        ack = GuildCreateAck(result=0, guild_uid=1001, guild_name=req.guild_name, remain_gold=gold).encode()
-        await self.transport.send_event(event(2151, ack, correlation),
-                                        note=f'guild create ack (name={req.guild_name})')
+        ack = GuildCreateAck(result=0, guild_uid=1001, guild_name=req.guild_name, remain_gold=gold)
+        await self.reply(ack, correlation, note=f'guild create ack (name={req.guild_name})')
 
 
     @packet_handler(5121)
@@ -29,9 +27,8 @@ class GuildHandlers:
         from darkblood.games.network.messages import GuildCreateProposalAck, GuildCreateProposalReq
         req = GuildCreateProposalReq.decode(body)
         self.transport.record('guild-proposal-req', body, name=req.guild_name)
-        ack = GuildCreateProposalAck(result=0).encode()
-        await self.transport.send_event(event(5122, ack, correlation),
-                                        note=f'guild create proposal ack (name={req.guild_name})')
+        ack = GuildCreateProposalAck(result=0)
+        await self.reply(ack, correlation, note=f'guild create proposal ack (name={req.guild_name})')
 
 
     @packet_handler(2155)
@@ -44,9 +41,8 @@ class GuildHandlers:
         if char:
             char['guild_uid'] = req.guild_uid
             self.save_char()
-        ack = GuildPersonJoinAck(result=0).encode()
-        await self.transport.send_event(event(2156, ack, correlation),
-                                        note=f'guild person join ack (guild={req.guild_uid})')
+        ack = GuildPersonJoinAck(result=0)
+        await self.reply(ack, correlation, note=f'guild person join ack (guild={req.guild_uid})')
 
 
     @packet_handler(2160)
@@ -76,9 +72,8 @@ class GuildHandlers:
                 member_count=1,
             ).encode()
             await target.session.transport.send_event(event(6015, notice), note=f'guild invite not to {target_name}')
-        ack = GuildInviteAck(result=0).encode()
-        await self.transport.send_event(event(2161, ack, correlation),
-                                        note=f'guild invite ack (target={target_name})')
+        ack = GuildInviteAck(result=0)
+        await self.reply(ack, correlation, note=f'guild invite ack (target={target_name})')
 
 
     @packet_handler(2162)
@@ -92,8 +87,8 @@ class GuildHandlers:
             char.pop('guild_uid', None)
             char.pop('guild_name', None)
             self.save_char()
-        ack = GuildPersonLeaveAck(result=0).encode()
-        await self.transport.send_event(event(2163, ack, correlation), note='guild person leave ack')
+        ack = GuildPersonLeaveAck(result=0)
+        await self.reply(ack, correlation, note='guild person leave ack')
 
 
     @packet_handler(2179)
@@ -113,9 +108,8 @@ class GuildHandlers:
             guild_money = char.setdefault('guild_money', 0) + deposit
             char['guild_money'] = guild_money
             self.save_char()
-        ack = GuildMoneyInAck(result=0, remain_gold=guild_money).encode()
-        await self.transport.send_event(event(2180, ack, correlation),
-                                        note=f'guild money in ack (deposited={req.amount} guild_money={guild_money})')
+        ack = GuildMoneyInAck(result=0, remain_gold=guild_money)
+        await self.reply(ack, correlation, note=f'guild money in ack (deposited={req.amount} guild_money={guild_money})')
 
 
     @packet_handler(2181)
@@ -134,9 +128,8 @@ class GuildHandlers:
             char['u66'] = char['gold']
             guild_money = char['guild_money']
             self.save_char()
-        ack = GuildMoneyOutAck(result=0, remain_gold=guild_money).encode()
-        await self.transport.send_event(event(2182, ack, correlation),
-                                        note=f'guild money out ack (withdrawn={req.amount} remain_guild_money={guild_money})')
+        ack = GuildMoneyOutAck(result=0, remain_gold=guild_money)
+        await self.reply(ack, correlation, note=f'guild money out ack (withdrawn={req.amount} remain_guild_money={guild_money})')
 
 
     @packet_handler(2183)
@@ -151,9 +144,8 @@ class GuildHandlers:
             new_level = char.get('guild_level', 1) + 1
             char['guild_level'] = new_level
             self.save_char()
-        ack = GuildLevelUpAck(result=0, new_level=new_level).encode()
-        await self.transport.send_event(event(2184, ack, correlation),
-                                        note=f'guild level up ack (new_level={new_level})')
+        ack = GuildLevelUpAck(result=0, new_level=new_level)
+        await self.reply(ack, correlation, note=f'guild level up ack (new_level={new_level})')
 
 
     @packet_handler(2185)
@@ -166,9 +158,8 @@ class GuildHandlers:
         if char:
             char['guild_notice'] = req.notice
             self.save_char()
-        ack = GuildNoticeModifyAck(result=0).encode()
-        await self.transport.send_event(event(2186, ack, correlation),
-                                        note='guild notice modify ack')
+        ack = GuildNoticeModifyAck(result=0)
+        await self.reply(ack, correlation, note='guild notice modify ack')
 
 
     @packet_handler(2188)
@@ -181,9 +172,8 @@ class GuildHandlers:
         if char:
             char.pop('guild_notice', None)
             self.save_char()
-        ack = GuildNoticeDeleteAck(result=0).encode()
-        await self.transport.send_event(event(2189, ack, correlation),
-                                        note='guild notice delete ack')
+        ack = GuildNoticeDeleteAck(result=0)
+        await self.reply(ack, correlation, note='guild notice delete ack')
 
 
     @packet_handler(2214)
@@ -196,9 +186,8 @@ class GuildHandlers:
         if char:
             char['guild_skills'] = {}
             self.save_char()
-        ack = GuildAllSkillInitAck(result=0, param=0).encode()
-        await self.transport.send_event(event(2215, ack, correlation),
-                                        note='guild all skill init ack')
+        ack = GuildAllSkillInitAck(result=0, param=0)
+        await self.reply(ack, correlation, note='guild all skill init ack')
 
 
     @packet_handler(2314)
@@ -208,8 +197,8 @@ class GuildHandlers:
         req = GuildNameChangeReq.decode(body)
         new_name = req.new_name.strip()
         self.transport.record('guild-name-change-req', body, new_name=new_name)
-        ack = GuildNameChangeAck(result=0, items=[], new_name=new_name).encode()
-        await self.transport.send_event(event(2315, ack, correlation), note=f'guild name change ack ({new_name})')
+        ack = GuildNameChangeAck(result=0, items=[], new_name=new_name)
+        await self.reply(ack, correlation, note=f'guild name change ack ({new_name})')
 
 
     @packet_handler(2164)
@@ -219,8 +208,8 @@ class GuildHandlers:
         req = GuildPersonGradeModifyReq.decode(body)
         member_uid = req.member_uids[0] if req.member_uids else 0
         self.transport.record('guild-person-grade-modify-req', body, member_uids=req.member_uids, new_grade=req.new_grade)
-        ack = GuildPersonGradeModifyAck(result=0, member_uid=member_uid, new_grade=req.new_grade).encode()
-        await self.transport.send_event(event(2165, ack, correlation), note=f'guild person grade modify ack (member={member_uid})')
+        ack = GuildPersonGradeModifyAck(result=0, member_uid=member_uid, new_grade=req.new_grade)
+        await self.reply(ack, correlation, note=f'guild person grade modify ack (member={member_uid})')
 
 
     @packet_handler(2166)

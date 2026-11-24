@@ -14,9 +14,8 @@ class FriendsHandlers:
         char = self.current_char()
         friends = [self._friend_entry(uid) for uid in (char or {}).get('friends', [])]
         friends = [f for f in friends if f]
-        ack = FriendListAck(friends={f.uid: f for f in friends}).encode()
-        await self.transport.send_event(event(2132, ack, correlation),
-                                        note='friend list ack (%d)' % len(friends))
+        ack = FriendListAck(friends={f.uid: f for f in friends})
+        await self.reply(ack, correlation, note='friend list ack (%d)' % len(friends))
         # Live, 2131 follows 2006 by ~2 s, right before the relay JoinGroup:
         # the earliest point where a town peer sent by 5027 is displayed.
         from darkblood.games.world import GameWorldManager
@@ -50,8 +49,8 @@ class FriendsHandlers:
     async def handle_guild_or_attendance(self, correlation, body):
         # Opcode 2569 -> 2570 ACK, handler 0x772160:
         # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
-        ack = GuildOrAttendanceAck().encode()
-        await self.transport.send_event(event(2570, ack, correlation), note='opcode 2570 ack')
+        ack = GuildOrAttendanceAck()
+        await self.reply(ack, correlation, note='opcode 2570 ack')
 
 
     @packet_handler(2352)
@@ -81,8 +80,7 @@ class FriendsHandlers:
         try:
             req = GetInviteListReq.decode(body)
         except (WireError, struct.error):
-            await self.transport.send_event(event(2025, GetInviteListAck().encode(), correlation),
-                                            note='invite list ack (bad request)')
+            await self.reply(GetInviteListAck(), correlation, note='invite list ack (bad request)')
             return
         square = req.square_uid & SQUARE_UID_MASK if req.square_uid >= 0 else None
         users = []
@@ -103,9 +101,8 @@ class FriendsHandlers:
             users.append(RoomMemberInfo(square_uid=square_uid(player.square_id), char_uid=player.char_id,
                                         name=record.get('name', ''), char_class=char_class, level=min(level, 0xFF)))
         # Page size not recovered: everything is sent as page 0.
-        ack = GetInviteListAck(users=users).encode()
-        await self.transport.send_event(event(2025, ack, correlation),
-                                        note='invite list ack (%d users, lv %d-%d, job %d)'
+        ack = GetInviteListAck(users=users)
+        await self.reply(ack, correlation, note='invite list ack (%d users, lv %d-%d, job %d)'
                                              % (len(users), req.low_level, req.high_level, req.job))
 
 
@@ -118,15 +115,14 @@ class FriendsHandlers:
         char = self.current_char()
         _, target = self.store().get_by_name(req.char_name)
         if not char or not target or target.get('id') == char.get('id'):
-            await self.transport.send_event(event(2140, FriendListAddAck(result=0xCE).encode(), correlation),
-                                            note=f'friend add fail ({req.char_name} not found)')
+            await self.reply(FriendListAddAck(result=0xCE), correlation, note=f'friend add fail ({req.char_name} not found)')
             return
         friends = char.setdefault('friends', [])
         if target['id'] not in friends:
             friends.append(target['id'])
             self.save_char()
-        ack = FriendListAddAck(result=0, friend=self._friend_entry(target['id'])).encode()
-        await self.transport.send_event(event(2140, ack, correlation), note=f'friend add ack ({req.char_name})')
+        ack = FriendListAddAck(result=0, friend=self._friend_entry(target['id']))
+        await self.reply(ack, correlation, note=f'friend add ack ({req.char_name})')
 
 
     @packet_handler(2135)
@@ -139,8 +135,8 @@ class FriendsHandlers:
         if char and req.char_uid in char.get('friends', []):
             char['friends'].remove(req.char_uid)
             self.save_char()
-        ack = FriendListDeleteAck(result=0, char_uid=req.char_uid).encode()
-        await self.transport.send_event(event(2136, ack, correlation), note=f'friend delete ack ({req.char_uid})')
+        ack = FriendListDeleteAck(result=0, char_uid=req.char_uid)
+        await self.reply(ack, correlation, note=f'friend delete ack ({req.char_uid})')
 
 
     @packet_handler(2133)
@@ -153,9 +149,8 @@ class FriendsHandlers:
         if char is not None:
             char.setdefault('friend_memos', {})[str(req.char_uid)] = req.comment
             self.save_char()
-        ack = FriendListUpdateAck(result=0, char_uid=req.char_uid, comment=req.comment).encode()
-        await self.transport.send_event(event(2134, ack, correlation),
-                                        note=f'friend list update ack (uid={req.char_uid})')
+        ack = FriendListUpdateAck(result=0, char_uid=req.char_uid, comment=req.comment)
+        await self.reply(ack, correlation, note=f'friend list update ack (uid={req.char_uid})')
 
 
     @packet_handler(2310)
@@ -169,8 +164,8 @@ class FriendsHandlers:
         if char and new_name:
             char['name'] = new_name
             self.save_char()
-        ack = CharNickChangeAck(result=0, items=[], new_name=new_name).encode()
-        await self.transport.send_event(event(2311, ack, correlation), note=f'char nick change ack ({new_name})')
+        ack = CharNickChangeAck(result=0, items=[], new_name=new_name)
+        await self.reply(ack, correlation, note=f'char nick change ack ({new_name})')
 
 
     @packet_handler(2319)
@@ -183,8 +178,8 @@ class FriendsHandlers:
         if char is not None:
             char['custom_keys'] = req.keys
             self.save_char()
-        ack = KeyboardSetCustomKeyAck(result=0, keys=req.keys).encode()
-        await self.transport.send_event(event(2320, ack, correlation), note='keyboard set custom key ack')
+        ack = KeyboardSetCustomKeyAck(result=0, keys=req.keys)
+        await self.reply(ack, correlation, note='keyboard set custom key ack')
 
 
     @packet_handler(2335)
@@ -193,8 +188,8 @@ class FriendsHandlers:
         from darkblood.games.network.messages import TitleChangeAck, TitleChangeReq
         req = TitleChangeReq.decode(body)
         self.transport.record('title-change-req', body, title_id=req.title_id)
-        ack = TitleChangeAck(result=0, title_id=req.title_id).encode()
-        await self.transport.send_event(event(2336, ack, correlation), note=f'title change ack (title={req.title_id})')
+        ack = TitleChangeAck(result=0, title_id=req.title_id)
+        await self.reply(ack, correlation, note=f'title change ack (title={req.title_id})')
 
 
     @packet_handler(2327)
@@ -206,9 +201,8 @@ class FriendsHandlers:
         entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char)]
         ack = AchieveGetListAck(divisions=achievements.division_totals(char),
                                 completed={e.achieve_hash: e for e in entries},
-                                completions=[AchieveCompletion(e.achieve_hash) for e in entries]).encode()
-        await self.transport.send_event(event(2328, ack, correlation),
-                                        note=f'achieve get list ack ({len(entries)} completed)')
+                                completions=[AchieveCompletion(e.achieve_hash) for e in entries])
+        await self.reply(ack, correlation, note=f'achieve get list ack ({len(entries)} completed)')
 
 
     @packet_handler(2444)
@@ -231,8 +225,7 @@ class FriendsHandlers:
                                         note='achieve update ack')
         if completed:
             entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
-            await self.transport.send_event(event(2330, AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]).encode()),
-                                            note='achievements completed: %s' % ', '.join(completed))
+            await self.send_msg(AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]), note='achievements completed: %s' % ', '.join(completed))
 
 
     @packet_handler(2446)
@@ -255,40 +248,39 @@ class FriendsHandlers:
                                         note='achieve div update ack')
         if completed:
             entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
-            await self.transport.send_event(event(2330, AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]).encode()),
-                                            note='achievements completed: %s' % ', '.join(completed))
+            await self.send_msg(AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]), note='achievements completed: %s' % ', '.join(completed))
 
 
     @packet_handler(5165)
     async def handle_arena_back_to_square(self, correlation, body):
         # eERC_ARENA_BACK_TO_SQUARE_REQ -> 5166 eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550).
         from darkblood.games.network.messages import ArenaBackToSquareAck
-        ack = ArenaBackToSquareAck(result=0).encode()
-        await self.transport.send_event(event(5166, ack, correlation), note='arena back to square ack')
+        ack = ArenaBackToSquareAck(result=0)
+        await self.reply(ack, correlation, note='arena back to square ack')
 
 
     @packet_handler(5256)
     async def handle_second_pass_create(self, correlation, body):
         # eERC_SECOND_PASS_CREATE_REQ -> 5257 eERC_SECOND_PASS_CREATE_ACK (0x0075B020).
         from darkblood.games.network.messages import SecondPassCreateAck
-        ack = SecondPassCreateAck(result=0).encode()
-        await self.transport.send_event(event(5257, ack, correlation), note='second pass create ack')
+        ack = SecondPassCreateAck(result=0)
+        await self.reply(ack, correlation, note='second pass create ack')
 
 
     @packet_handler(5258)
     async def handle_second_pass_modify(self, correlation, body):
         # eERC_SECOND_PASS_MODIFY_REQ -> 5259 eERC_SECOND_PASS_MODIFY_ACK (0x0075B050).
         from darkblood.games.network.messages import SecondPassModifyAck
-        ack = SecondPassModifyAck(result=0).encode()
-        await self.transport.send_event(event(5259, ack, correlation), note='second pass modify ack')
+        ack = SecondPassModifyAck(result=0)
+        await self.reply(ack, correlation, note='second pass modify ack')
 
 
     @packet_handler(5260)
     async def handle_second_pass_auth(self, correlation, body):
         # eERC_SECOND_PASS_AUTH_REQ -> 5261 eERC_SECOND_PASS_AUTH_ACK (0x0075B080).
         from darkblood.games.network.messages import SecondPassAuthAck
-        ack = SecondPassAuthAck(result=0).encode()
-        await self.transport.send_event(event(5261, ack, correlation), note='second pass auth ack')
+        ack = SecondPassAuthAck(result=0)
+        await self.reply(ack, correlation, note='second pass auth ack')
 
 
     def _build_char_info_ack(self, target, is_other=True):
@@ -369,8 +361,8 @@ class FriendsHandlers:
         from darkblood.games.network.messages import RequestItemInfoAck, RequestItemInfoReq
         req = RequestItemInfoReq.decode(body)
         self.transport.record('request-item-info-req', body, item_uid=req.item_uid)
-        ack = RequestItemInfoAck(result=0, item_uid=req.item_uid).encode()
-        await self.transport.send_event(event(6029, ack, correlation), note=f'request item info ack (item={req.item_uid})')
+        ack = RequestItemInfoAck(result=0, item_uid=req.item_uid)
+        await self.reply(ack, correlation, note=f'request item info ack (item={req.item_uid})')
 
 
     @packet_handler(2565)

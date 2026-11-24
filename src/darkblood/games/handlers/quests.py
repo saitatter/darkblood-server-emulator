@@ -137,9 +137,8 @@ class QuestHandlers(BaseDomainService):
                 skill_2_value=_to_i32(quest_id),
             )
 
-        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid, info=special_info).encode()
-        await self.transport.send_event(event(2074, ack, correlation),
-                                        note='quest start ack (%08x)' % quest_id)
+        ack = QuestStartAck(quest_id=quest_id, quest_uid=uid, info=special_info)
+        await self.reply(ack, correlation, note='quest start ack (%08x)' % quest_id)
         if is_new:
             await self._give_offer_items(char, quest_id)
         await self.check_quest_item_objectives(char)
@@ -159,9 +158,7 @@ class QuestHandlers(BaseDomainService):
             return
         stored = add_reward_items(char, offered)
         self.save_char()
-        await self.transport.send_event(
-            event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
-            note='quest offer items (%s: %s)' % (group, ', '.join(c for c, _ in offered)))
+        await self.send_msg(DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]), note='quest offer items (%s: %s)' % (group, ', '.join(c for c, _ in offered)))
         await self.check_quest_item_objectives(char)
 
     async def check_quest_item_objectives(self, char=None):
@@ -211,8 +208,7 @@ class QuestHandlers(BaseDomainService):
 
         if updates:
             self.save_char()
-            await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
-                                            note=f'quest update not (item objectives: {updates})')
+            await self.send_msg(QuestUpdateNot(updates=updates), note=f'quest update not (item objectives: {updates})')
 
     def _activate_quest(self, quest_id: int) -> int:
         """Add quest_id to the selected character's active quests; return its UID."""
@@ -268,8 +264,8 @@ class QuestHandlers(BaseDomainService):
                     note=f'mark item active not (base={new_base})',
                 )
         # The client displays the gained XP from jGainExp +0x08.
-        exp_ack = ChangeExpNot(exp_total=char_exp, total_gain_exp=exp).encode()
-        await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
+        exp_ack = ChangeExpNot(exp_total=char_exp, total_gain_exp=exp)
+        await self.send_msg(exp_ack, note=f'change exp not (+{exp}, total={char_exp})')
 
     @packet_handler(2076)
     async def handle_quest_complete(self, correlation: int, body: bytes):
@@ -327,9 +323,8 @@ class QuestHandlers(BaseDomainService):
                               gold=str(gold), gp=str(gp), items=repr(items))
         owner = UPDATE_OWNER  # see items.UPDATE_OWNER
         ack = QuestCompleteAck(quest_id=quest_id, total=total, exp=exp, gp=gp,
-                               items=[Item(owner=owner, **i) for i in reward_items]).encode()
-        await self.transport.send_event(event(2077, ack, correlation),
-                                        note='quest complete ack (%08x)' % quest_id)
+                               items=[Item(owner=owner, **i) for i in reward_items])
+        await self.reply(ack, correlation, note='quest complete ack (%08x)' % quest_id)
         if char and not already:
             from darkblood.games.game_data.client_dict import quest_promotion_class
             promo_class = quest_promotion_class(quest_id)
@@ -374,11 +369,10 @@ class QuestHandlers(BaseDomainService):
         if record and record.get('counters'):
             record['counters'] = [0] * len(record['counters'])
             self.save_char()
-        ack = TutorialQuestStartAck().encode()
-        await self.transport.send_event(event(2347, ack, correlation), note='tutorial quest start ack')
-        start = QuestStartAck(quest_id=quest_id, quest_uid=uid).encode()
-        await self.transport.send_event(event(2074, start),
-                                        note='tutorial quest start -> quest start ack (%08x)' % quest_id)
+        ack = TutorialQuestStartAck()
+        await self.reply(ack, correlation, note='tutorial quest start ack')
+        start = QuestStartAck(quest_id=quest_id, quest_uid=uid)
+        await self.send_msg(start, note='tutorial quest start -> quest start ack (%08x)' % quest_id)
 
     @packet_handler(2113)
     async def handle_quest_update_mission(self, correlation: int, body: bytes):
@@ -413,8 +407,7 @@ class QuestHandlers(BaseDomainService):
             updates.append(QuestObjective(q_hash, idx, target))
         if updates:
             self.save_char()
-            await self.transport.send_event(event(2075, QuestUpdateNot(updates=updates).encode()),
-                                            note='quest update not (mission %s: %s)' % (mission, updates))
+            await self.send_msg(QuestUpdateNot(updates=updates), note='quest update not (mission %s: %s)' % (mission, updates))
         await self.transport.send_event(event(2114, struct.pack('<I', 0), correlation),
                                         note='quest update mission ack (%s, %d quests)' % (mission, len(updates)))
 
@@ -458,8 +451,8 @@ class QuestHandlers(BaseDomainService):
             result=0,
             quest_ids=[req.quest_id] if req.quest_id else [],
             info=special_info,
-        ).encode()
-        await self.transport.send_event(event(2079, ack, correlation), note=f'quest giveup ack ({req.quest_id:#010x})')
+        )
+        await self.reply(ack, correlation, note=f'quest giveup ack ({req.quest_id:#010x})')
 
     @packet_handler(QuestFailReq)
     async def handle_quest_fail(self, correlation: int, body: bytes):
@@ -474,8 +467,8 @@ class QuestHandlers(BaseDomainService):
             del char['quests_active'][str(req.quest_id)]
             self.save_char()
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
-        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []).encode()
-        await self.transport.send_event(event(2081, ack, correlation), note=f'quest fail ack ({req.quest_id:#010x})')
+        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [])
+        await self.reply(ack, correlation, note=f'quest fail ack ({req.quest_id:#010x})')
 
     @packet_handler(QuestDiscardReq)
     async def handle_quest_discard(self, correlation: int, body: bytes):

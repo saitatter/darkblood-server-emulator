@@ -116,13 +116,11 @@ class DungeonRoomHandlers:
         try:
             req = ChangeRoomInfoReq.decode(body).room
         except (WireError, struct.error):
-            await self.transport.send_event(event(5012, ChangeRoomInfoAck(result=results.INVALID_STATE).encode(),
-                                                  correlation), note='change room info refused (bad request)')
+            await self.reply(ChangeRoomInfoAck(result=results.INVALID_STATE), correlation, note='change room info refused (bad request)')
             return
         room = self.room
         if room is None or room.host is not self.session:
-            await self.transport.send_event(event(5012, ChangeRoomInfoAck(result=results.INVALID_STATE).encode(),
-                                                  correlation), note='change room info refused (not host)')
+            await self.reply(ChangeRoomInfoAck(result=results.INVALID_STATE), correlation, note='change room info refused (not host)')
             return
         info = room.info
         info.name = req.name
@@ -191,14 +189,12 @@ class DungeonRoomHandlers:
         # eERC_CREATE_ROOM_REQ (sender 0x0058B060) -> 5002 CREATE_ROOM_ACK.
         char = self.current_char()
         if char is None:
-            await self.transport.send_event(event(5002, CreateRoomAck(result=results.NO_EXIST_CHAR).encode(), correlation),
-                                            note='create room refused (no character)')
+            await self.reply(CreateRoomAck(result=results.NO_EXIST_CHAR), correlation, note='create room refused (no character)')
             return
         try:
             req = CreateRoomReq.decode(body)
         except WireError:
-            await self.transport.send_event(event(5002, CreateRoomAck(result=results.INVALID_STATE).encode(), correlation),
-                                            note='create room refused (invalid request)')
+            await self.reply(CreateRoomAck(result=results.INVALID_STATE), correlation, note='create room refused (invalid request)')
             return
         await self.leave_room()
         server = self.transport.server
@@ -239,8 +235,7 @@ class DungeonRoomHandlers:
             elif len(room.members) >= room.info.max_users:
                 result = results.JOIN_FAIL_ROOM_FULL
         if result:
-            await self.transport.send_event(event(5004, JoinRoomAck(result=result).encode(), correlation),
-                                            note='join room refused (%d)' % result)
+            await self.reply(JoinRoomAck(result=result), correlation, note='join room refused (%d)' % result)
             return
 
         is_new = self.room is not room
@@ -415,8 +410,8 @@ class DungeonRoomHandlers:
         self.in_dungeon = False
         self.dungeon_cleared = False
         await self.leave_room()
-        ack = LeaveRoomAck(result=0).encode()
-        await self.transport.send_event(event(5006, ack, correlation), note='leave room ack')
+        ack = LeaveRoomAck(result=0)
+        await self.reply(ack, correlation, note='leave room ack')
         if was_in_dungeon:
             from darkblood.games.handlers.square import _wire_square_uid
             from darkblood.games.network.messages import BackToSquareAck, ChangeDungeonPenaltyNot
@@ -424,8 +419,8 @@ class DungeonRoomHandlers:
                 square_uid=_wire_square_uid(self.session.square_id),
                 layer_net_id=self.session.square._town_layer(),
                 cur_ar=self.session.square._current_gold(),
-            ).encode()
-            await self.transport.send_event(event(5046, back_ack), note='back to square ack (dungeon exit)')
+            )
+            await self.send_msg(back_ack, note='back to square ack (dungeon exit)')
             await self.session.square._sync_passive_stress()
             if not was_cleared:
                 char = self.current_char()
@@ -444,8 +439,8 @@ class DungeonRoomHandlers:
         # eERC_CHANGE_TEAM_REQ -> 5016 eERC_CHANGE_TEAM_ACK.
         req = ChangeTeamReq.decode(body)
         self.transport.record('change-team-req', body, team_id=req.team_id)
-        ack = ChangeTeamAck(result=0, team_id=req.team_id).encode()
-        await self.transport.send_event(event(5016, ack, correlation), note=f'change team ack (team={req.team_id})')
+        ack = ChangeTeamAck(result=0, team_id=req.team_id)
+        await self.reply(ack, correlation, note=f'change team ack (team={req.team_id})')
 
 
     @staticmethod

@@ -86,9 +86,8 @@ class SquareHandlers(BaseDomainService):
             # the tutorial showed no armour until relogging, so the whole
             # inventory (worn gear included) is resent, not only the rewards.
             items = [Item(owner=UPDATE_OWNER, **i) for i in char.get('items', [])]
-        ack = ClearTutorialAck(elements=items).encode()
-        await self.transport.send_event(event(2083, ack, correlation),
-                                        note='clear tutorial ack (completed=%d, %d rewards, %d items)'
+        ack = ClearTutorialAck(elements=items)
+        await self.reply(ack, correlation, note='clear tutorial ack (completed=%d, %d rewards, %d items)'
                                              % (completed, granted, len(items)))
 
     @packet_handler(2084)
@@ -136,11 +135,8 @@ class SquareHandlers(BaseDomainService):
             counters[obj_idx] += 1
             self.save_char()
 
-            update = QuestUpdateNot(updates=[QuestObjective(TUTORIAL_QUEST_ID, obj_idx, counters[obj_idx])]).encode()
-            await self.transport.send_event(
-                event(2075, update),
-                note=f'quest update not (Q0882S01 obj={obj_idx} count={counters[obj_idx]}/{target})'
-            )
+            update = QuestUpdateNot(updates=[QuestObjective(TUTORIAL_QUEST_ID, obj_idx, counters[obj_idx])])
+            await self.send_msg(update, note=f'quest update not (Q0882S01 obj={obj_idx} count={counters[obj_idx]}/{target})')
 
     @packet_handler(2094)
     async def handle_npc_first_meet(self, correlation: int, body: bytes):
@@ -150,9 +146,8 @@ class SquareHandlers(BaseDomainService):
         Acknowledges dialogue greeting when a player interacts with an NPC for the first time.
         """
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
-        ack = NpcFirstMeetAck(result=0, npc_id=npc_id).encode()
-        await self.transport.send_event(event(2095, ack, correlation),
-                                        note='npc first meet ack (npc %d)' % npc_id)
+        ack = NpcFirstMeetAck(result=0, npc_id=npc_id)
+        await self.reply(ack, correlation, note='npc first meet ack (npc %d)' % npc_id)
 
     @packet_handler(5045)
     async def handle_back_to_square(self, correlation: int, body: bytes):
@@ -184,9 +179,8 @@ class SquareHandlers(BaseDomainService):
         # Return to the layer the player left town from: after GamePlay the
         # client places the unit by that layer's waypoint (0x008EC230).
         ack = BackToSquareAck(square_uid=_wire_square_uid(self.session.square_id), layer_net_id=self._town_layer(),
-                              cur_ar=self._current_gold()).encode()
-        await self.transport.send_event(event(5046, ack, correlation),
-                                        note='back to square ack')
+                              cur_ar=self._current_gold())
+        await self.reply(ack, correlation, note='back to square ack')
         await self._sync_passive_stress()
         for member in party_members:
             try:
@@ -235,10 +229,7 @@ class SquareHandlers(BaseDomainService):
         gathering nodes) on the current town square.
         """
         targets = _gtargets_for_layer(self._town_layer())
-        await self.transport.send_event(
-            event(5125, GTargetListAck(result=0, targets=targets).encode(), correlation),
-            note=f'gtarget list ack ({len(targets)})',
-        )
+        await self.reply(GTargetListAck(result=0, targets=targets), correlation, note=f'gtarget list ack ({len(targets)})')
         # Sent once the town has loaded: show the players already there.
         from darkblood.games.world import GameWorldManager
         await GameWorldManager.get().player_ready(self.session)
@@ -309,9 +300,8 @@ class SquareHandlers(BaseDomainService):
             result=0,
             layer_net_id=layer,
             waypoint=waypoint_data(layer),
-        ).encode()
-        await self.transport.send_event(event(2345, ack, correlation),
-                                        note='waypoint insert ack (%016x)' % layer)
+        )
+        await self.reply(ack, correlation, note='waypoint insert ack (%016x)' % layer)
 
     @packet_handler(5037)
     async def handle_leave_layer(self, correlation: int, body: bytes):

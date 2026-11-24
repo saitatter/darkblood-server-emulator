@@ -58,9 +58,8 @@ class StoreHandlers:
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
         from darkblood.games.game_data import client_dict
         npc, items = client_dict.items_for_npc(npc_id)
-        ack = StoreInfoAck(npc_id=npc_id, records=[store_record(i, c) for i, c in items]).encode()
-        await self.transport.send_event(event(2066, ack, correlation),
-                                        note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
+        ack = StoreInfoAck(npc_id=npc_id, records=[store_record(i, c) for i, c in items])
+        await self.reply(ack, correlation, note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 
 
     @packet_handler(BuyItemReq)
@@ -71,8 +70,8 @@ class StoreHandlers:
         self.transport.record('buy-item-req', body, store_id=req.store_id, item_id=req.item_id, count=req.count)
         char = self.current_char()
         if not char:
-            ack = BuyItemAck(result=1).encode()
-            await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (no char)')
+            ack = BuyItemAck(result=1)
+            await self.reply(ack, correlation, note='buy item fail (no char)')
             return
 
         from darkblood.games.game_data import client_dict
@@ -100,8 +99,8 @@ class StoreHandlers:
         count = max(1, req.count)
         free = free_bag_slots(char)
         if free is not None and slots_needed([(item_code, count)]) > free:
-            ack = BuyItemAck(result=results.INVEN_FULL).encode()
-            await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (inventory full)')
+            ack = BuyItemAck(result=results.INVEN_FULL)
+            await self.reply(ack, correlation, note='buy item fail (inventory full)')
             return
 
         unit_price = client_dict.item_field(item_code, 'BuyPrice', 0)
@@ -125,12 +124,11 @@ class StoreHandlers:
                 item_num=count,
                 pvp_point=char.get('pvp_points', 0),
                 league_point=char.get('league_points', 0),
-            ).encode()
-            await self.transport.send_event(event(2068, ack, correlation),
-                                            note=f'buy item ack (code={item_code} count={count} gold={char_gold})')
+            )
+            await self.reply(ack, correlation, note=f'buy item ack (code={item_code} count={count} gold={char_gold})')
         else:
-            ack = BuyItemAck(result=1).encode()
-            await self.transport.send_event(event(2068, ack, correlation), note='buy item fail (insufficient gold)')
+            ack = BuyItemAck(result=1)
+            await self.reply(ack, correlation, note='buy item fail (insufficient gold)')
 
 
     @packet_handler(SellItemReq)
@@ -140,15 +138,15 @@ class StoreHandlers:
         self.transport.record('sell-item-req', body, npc_id=req.npc_id, item_uid=req.item_uid, count=req.count)
         char = self.current_char()
         if not char:
-            ack = SellItemAck(result=1).encode()
-            await self.transport.send_event(event(2070, ack, correlation), note='sell item fail (no char)')
+            ack = SellItemAck(result=1)
+            await self.reply(ack, correlation, note='sell item fail (no char)')
             return
 
         items = char.get('items', [])
         target = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not target:
-            ack = SellItemAck(result=1).encode()
-            await self.transport.send_event(event(2070, ack, correlation), note='sell item fail (not found)')
+            ack = SellItemAck(result=1)
+            await self.reply(ack, correlation, note='sell item fail (not found)')
             return
 
         cnt = max(1, req.count)
@@ -198,9 +196,8 @@ class StoreHandlers:
             repurchase_item=repurchase_wire,
             repurchase_price=earned,
             sell_time=int(time.time()),
-        ).encode()
-        await self.transport.send_event(event(2070, ack, correlation),
-                                        note=f'sell item ack (uid={req.item_uid} code={target.get("code")} del={del_cnt} price={earned} gold={char_gold})')
+        )
+        await self.reply(ack, correlation, note=f'sell item ack (uid={req.item_uid} code={target.get("code")} del={del_cnt} price={earned} gold={char_gold})')
 
 
     @packet_handler(RepurchaseItemReq)
@@ -284,8 +281,8 @@ class StoreHandlers:
     @packet_handler(2390)
     async def handle_roulette_manager_info(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0.
-        ack = RouletteManagerInfoAck().encode()
-        await self.transport.send_event(event(2391, ack, correlation), note='roulette manager info ack')
+        ack = RouletteManagerInfoAck()
+        await self.reply(ack, correlation, note='roulette manager info ack')
 
 
     @packet_handler(DurabilityChangeReq)
@@ -313,9 +310,8 @@ class StoreHandlers:
                     broken_uids.append(int(item_uid))
             if changed:
                 self.save_char()
-        ack = DurabilityChangeAck(result=0, changed_item_uids=broken_uids).encode()
-        await self.transport.send_event(event(2144, ack, correlation),
-                                        note=f'durability change ack (updated={len(req.durabilities)}, broken={len(broken_uids)})')
+        ack = DurabilityChangeAck(result=0, changed_item_uids=broken_uids)
+        await self.reply(ack, correlation, note=f'durability change ack (updated={len(req.durabilities)}, broken={len(broken_uids)})')
 
 
     @packet_handler(2416)

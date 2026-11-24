@@ -10,8 +10,8 @@ class PartyHandlers:
         from darkblood.games.network.messages import RequestTeachingAck, RequestTeachingReq
         req = RequestTeachingReq.decode(body)
         self.transport.record('request-teaching-req', body, target_uid=req.target_uid)
-        ack = RequestTeachingAck(result=0, target_uid=req.target_uid, target_name='Student').encode()
-        await self.transport.send_event(event(5352, ack, correlation), note=f'request teaching ack (target={req.target_uid})')
+        ack = RequestTeachingAck(result=0, target_uid=req.target_uid, target_name='Student')
+        await self.reply(ack, correlation, note=f'request teaching ack (target={req.target_uid})')
 
 
     @packet_handler(5353)
@@ -20,8 +20,8 @@ class PartyHandlers:
         from darkblood.games.network.messages import AcceptRequestTeachingAck, AcceptRequestTeachingReq
         req = AcceptRequestTeachingReq.decode(body)
         self.transport.record('accept-request-teaching-req', body, mentor_uid=req.mentor_uid)
-        ack = AcceptRequestTeachingAck(result=0, accepted=True, mentor_uid=req.mentor_uid, mentor_name='Master').encode()
-        await self.transport.send_event(event(5354, ack, correlation), note=f'accept request teaching ack (mentor={req.mentor_uid})')
+        ack = AcceptRequestTeachingAck(result=0, accepted=True, mentor_uid=req.mentor_uid, mentor_name='Master')
+        await self.reply(ack, correlation, note=f'accept request teaching ack (mentor={req.mentor_uid})')
 
 
     @packet_handler(2100)
@@ -194,9 +194,8 @@ class PartyHandlers:
             party = None
         res, party = pm.accept_invite(char_id, party, char_name, char_class, level, session=self)
         party_id = party.party_id if party else 0
-        ack = PartyAcceptInviteAck(result=res).encode()
-        await self.transport.send_event(event(5055, ack, correlation),
-                                        note=f'party accept invite ack (res={res} party={party_id})')
+        ack = PartyAcceptInviteAck(result=res)
+        await self.reply(ack, correlation, note=f'party accept invite ack (res={res} party={party_id})')
 
         if res == 0 and party:
             notif = PartyAcceptInviteNot(party_id=party_id, member_uid=char_id, member_name=char_name).encode()

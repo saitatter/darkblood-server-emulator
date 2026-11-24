@@ -235,15 +235,9 @@ class FrontendHandlers(BaseDomainService):
         """
         square_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 1
         self.session.square_id = square_id
-        await self.transport.send_event(
-            event(5029, JoinSquareAck(result=0, square_id=square_id).encode(), correlation),
-            note='join square ack'
-        )
+        await self.reply(JoinSquareAck(result=0, square_id=square_id), correlation, note='join square ack')
         # eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT (5134)
-        await self.transport.send_event(
-            event(5134, RelayAddressNot(port=RELAY_PORT).encode()),
-            note='relay address not'
-        )
+        await self.send_msg(RelayAddressNot(port=RELAY_PORT), note='relay address not')
         from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         previous = world.get_player(self.session.active_char_id)
@@ -311,8 +305,7 @@ class FrontendHandlers(BaseDomainService):
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)
         done = [int(q) for q in char.get('quests_done', [])]
-        await self.transport.send_event(event(2410, QuestHistoryNot(quest_ids=done).encode()),
-                                        note='quest history not (%d)' % len(done))
+        await self.send_msg(QuestHistoryNot(quest_ids=done), note='quest history not (%d)' % len(done))
         for ptype in (0, 1):
             pen_not = active_penalty_notice(char, penalty_type=ptype)
             if pen_not is not None:
@@ -373,9 +366,8 @@ class FrontendHandlers(BaseDomainService):
                 self.save_char()
             complete_time = delete_seconds_left(char['delete_time'])
         ack = DeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid,
-                                 complete_time=complete_time).encode()
-        await self.transport.send_event(event(2015, ack, correlation),
-                                        note=f'delete character ack ({req.char_uid}, {complete_time} s left)')
+                                 complete_time=complete_time)
+        await self.reply(ack, correlation, note=f'delete character ack ({req.char_uid}, {complete_time} s left)')
 
     @packet_handler(CheatSystemDeleteCharacterReq)
     async def handle_cheat_system_delete_character(self, correlation: int, body: bytes):
@@ -408,9 +400,8 @@ class FrontendHandlers(BaseDomainService):
         if char:
             char.pop('delete_time', None)
             self.save_char()
-        ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid).encode()
-        await self.transport.send_event(event(2247, ack, correlation),
-                                        note=f'undelete character ack ({req.char_uid})')
+        ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid)
+        await self.reply(ack, correlation, note=f'undelete character ack ({req.char_uid})')
 
     @packet_handler(2323)
     async def handle_char_nick_change_by_integrate(self, correlation: int, body: bytes):

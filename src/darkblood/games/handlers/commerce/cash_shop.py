@@ -1,5 +1,4 @@
 """Offline Steam Cash Shop, cash packages, HTTP notices and play options."""
-from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.game_data import cash_shop
@@ -22,8 +21,7 @@ class CashShopHandlers:
         # eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: result, u64 cash, u32 mileage.
         # Cash is per account (store meta, set from the dashboard); mileage 0.
         cash = self.store().account_cash(self.account)
-        await self.transport.send_event(event(2370, CurrentCashAck(cash=cash).encode(), correlation),
-                                        note='current cash ack (%d)' % cash)
+        await self.reply(CurrentCashAck(cash=cash), correlation, note='current cash ack (%d)' % cash)
 
 
     @packet_handler(SteamInitBuyItemNot)
@@ -46,9 +44,8 @@ class CashShopHandlers:
                 result, reason = 24, f'cash catalog unavailable: {exc}'
             else:
                 result, reason = await self._grant_cash_products(char, req.product_ids, products)
-        ack = SteamFinalizeBuyItemAck(result=result, applied=result == 0).encode()
-        await self.transport.send_event(event(2714, ack),
-                                        note=f'steam buy ack (products {req.product_ids}: {reason})')
+        ack = SteamFinalizeBuyItemAck(result=result, applied=result == 0)
+        await self.send_msg(ack, note=f'steam buy ack (products {req.product_ids}: {reason})')
 
 
     async def _grant_cash_products(self, char, product_ids, products):
@@ -61,8 +58,7 @@ class CashShopHandlers:
         stored = add_reward_items(char, rewards)
         self.save_char()
         items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
-        await self.transport.send_event(event(2037, DragItemAck(result=0, items=items).encode()),
-                                        note='cash shop items (%s)' % ', '.join(i['code'] for i in stored))
+        await self.send_msg(DragItemAck(result=0, items=items), note='cash shop items (%s)' % ', '.join(i['code'] for i in stored))
         return 0, f'{len(stored)} items'
 
 
@@ -70,15 +66,14 @@ class CashShopHandlers:
     async def handle_steam_finalize_buy_item(self, correlation, body):
         # eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id,
         # bool authorized). Not reached offline; acknowledge without items.
-        await self.transport.send_event(event(2714, SteamFinalizeBuyItemAck(applied=False).encode(), correlation),
-                                        note='steam finalize ack (no order)')
+        await self.reply(SteamFinalizeBuyItemAck(applied=False), correlation, note='steam finalize ack (no order)')
 
 
     @packet_handler(2594)
     async def handle_http_notice_check(self, correlation, body):
         # eEGS_HTTPNOTICE_CHECK_REQ -> 2595 eEGS_HTTPNOTICE_CHECK_ACK (0x005A5110).
-        ack = HttpNoticeCheckAck(result=0, watch=False).encode()
-        await self.transport.send_event(event(2595, ack, correlation), note='http notice check ack')
+        ack = HttpNoticeCheckAck(result=0, watch=False)
+        await self.reply(ack, correlation, note='http notice check ack')
 
 
     @packet_handler(PlayOptionUpdateReq)
@@ -93,9 +88,8 @@ class CashShopHandlers:
         # eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80).
         req = ContractUpdateReq.decode(body)
         self.transport.record('contract-update-req', body, contract_id=req.contract_id)
-        ack = ContractUpdateAck(result=0, contract_id=req.contract_id).encode()
-        await self.transport.send_event(event(2122, ack, correlation),
-                                        note=f'contract update ack (contract={req.contract_id})')
+        ack = ContractUpdateAck(result=0, contract_id=req.contract_id)
+        await self.reply(ack, correlation, note=f'contract update ack (contract={req.contract_id})')
 
 
     @packet_handler(2721)

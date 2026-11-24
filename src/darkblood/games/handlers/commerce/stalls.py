@@ -48,8 +48,8 @@ class StallHandlers:
         req = PersonalShopOpenReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = PersonalShopOpenAck(result=1).encode()
-            await self.transport.send_event(event(2341, ack, correlation), note='personal shop open fail (no char)')
+            ack = PersonalShopOpenAck(result=1)
+            await self.reply(ack, correlation, note='personal shop open fail (no char)')
             return
 
         char_uid = char.get('id', self.char_id)
@@ -64,16 +64,14 @@ class StallHandlers:
                 title=stall.title,
                 items=stall.wire_items(),
                 expire_time=stall.expire_seconds
-            ).encode()
-            await self.transport.send_event(event(2341, ack, correlation),
-                                            note=f'personal shop open ack (uid={char_uid} items={len(stall.items)})')
+            )
+            await self.reply(ack, correlation, note=f'personal shop open ack (uid={char_uid} items={len(stall.items)})')
             # Broadcast stall opening to town square
             notif = event(5254, PersonalShopStartNot(seller_uid=char_uid, title=stall.title).encode())
             await self._broadcast_square(notif)
         else:
-            ack = PersonalShopOpenAck(result=1).encode()
-            await self.transport.send_event(event(2341, ack, correlation),
-                                            note=f'personal shop open fail ({msg})')
+            ack = PersonalShopOpenAck(result=1)
+            await self.reply(ack, correlation, note=f'personal shop open fail ({msg})')
 
 
     @packet_handler(PersonalShopBuyReq)
@@ -82,8 +80,8 @@ class StallHandlers:
         req = PersonalShopBuyReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = PersonalShopBuyAck(result=1).encode()
-            await self.transport.send_event(event(5243, ack, correlation), note='personal shop buy fail (no char)')
+            ack = PersonalShopBuyAck(result=1)
+            await self.reply(ack, correlation, note='personal shop buy fail (no char)')
             return
 
         mgr = PersonalShopManager.get()
@@ -100,9 +98,8 @@ class StallHandlers:
                 items=wire_items,
                 stall_items=remaining_stall,
                 seller_uid=req.seller_uid
-            ).encode()
-            await self.transport.send_event(event(5243, ack, correlation),
-                                            note=f'personal shop buy ack (cost={total_cost} gold={char.get("gold", 0)})')
+            )
+            await self.reply(ack, correlation, note=f'personal shop buy ack (cost={total_cost} gold={char.get("gold", 0)})')
             if stall:
                 notif = event(5250, PersonalShopChangeNot(
                     seller_uid=req.seller_uid,
@@ -111,9 +108,8 @@ class StallHandlers:
                 ).encode())
                 await self._broadcast_square(notif)
         else:
-            ack = PersonalShopBuyAck(result=1).encode()
-            await self.transport.send_event(event(5243, ack, correlation),
-                                            note=f'personal shop buy fail ({msg})')
+            ack = PersonalShopBuyAck(result=1)
+            await self.reply(ack, correlation, note=f'personal shop buy fail ({msg})')
 
 
     @packet_handler(PersonalShopCloseReq)
@@ -123,9 +119,8 @@ class StallHandlers:
         char_uid = char.get('id', self.char_id) if char else self.char_id
         mgr = PersonalShopManager.get()
         success, returned = mgr.close_stall(char_uid, char, self.store())
-        ack = PersonalShopCloseAck(result=0 if success else 1, owner_uid=char_uid).encode()
-        await self.transport.send_event(event(2343, ack, correlation),
-                                        note=f'personal shop close ack (uid={char_uid})')
+        ack = PersonalShopCloseAck(result=0 if success else 1, owner_uid=char_uid)
+        await self.reply(ack, correlation, note=f'personal shop close ack (uid={char_uid})')
         if success:
             notif = event(5255, PersonalShopCloseNot(seller_uid=char_uid).encode())
             await self._broadcast_square(notif)
@@ -157,9 +152,8 @@ class StallHandlers:
         req = BrokerListReq.decode(body)
         mgr = BrokerManager.get()
         products, total = mgr.get_listings(page=req.page, category=req.category, filter_name=req.filter_name)
-        ack = BrokerListAck(result=0, products=products, page=req.page, total_count=total).encode()
-        await self.transport.send_event(event(2263, ack, correlation),
-                                        note=f'broker list ack (page={req.page} count={len(products)} total={total})')
+        ack = BrokerListAck(result=0, products=products, page=req.page, total_count=total)
+        await self.reply(ack, correlation, note=f'broker list ack (page={req.page} count={len(products)} total={total})')
 
 
     @packet_handler(BrokerMyListReq)
@@ -169,9 +163,8 @@ class StallHandlers:
         char_uid = char.get('id', self.char_id) if char else self.char_id
         mgr = BrokerManager.get()
         my_products = mgr.get_my_listings(char_uid)
-        ack = BrokerMyListAck(result=0, products=my_products).encode()
-        await self.transport.send_event(event(2265, ack, correlation),
-                                        note=f'broker mylist ack (uid={char_uid} count={len(my_products)})')
+        ack = BrokerMyListAck(result=0, products=my_products)
+        await self.reply(ack, correlation, note=f'broker mylist ack (uid={char_uid} count={len(my_products)})')
 
 
     @packet_handler(BrokerRegistItemReq)
@@ -180,17 +173,16 @@ class StallHandlers:
         req = BrokerRegistItemReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerRegistItemAck(result=1).encode()
-            await self.transport.send_event(event(2267, ack, correlation), note='broker regist item fail (no char)')
+            ack = BrokerRegistItemAck(result=1)
+            await self.reply(ack, correlation, note='broker regist item fail (no char)')
             return
 
         mgr = BrokerManager.get()
         success, msg, listing = mgr.register_item(
             char, req.item_uid, req.count, req.price, req.period_hours, self.store()
         )
-        ack = BrokerRegistItemAck(result=0 if success else 1).encode()
-        await self.transport.send_event(event(2267, ack, correlation),
-                                        note=f'broker regist item ack (success={success} msg={msg})')
+        ack = BrokerRegistItemAck(result=0 if success else 1)
+        await self.reply(ack, correlation, note=f'broker regist item ack (success={success} msg={msg})')
 
 
     @packet_handler(BrokerBuyItemReq)
@@ -199,8 +191,8 @@ class StallHandlers:
         req = BrokerBuyItemReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerBuyItemAck(result=1, gold=0).encode()
-            await self.transport.send_event(event(2269, ack, correlation), note='broker buy item fail (no char)')
+            ack = BrokerBuyItemAck(result=1, gold=0)
+            await self.reply(ack, correlation, note='broker buy item fail (no char)')
             return
 
         mgr = BrokerManager.get()
@@ -208,9 +200,8 @@ class StallHandlers:
             char, req.listing_id, req.count, self.store()
         )
         gold = char.get('gold', 0)
-        ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold).encode()
-        await self.transport.send_event(event(2269, ack, correlation),
-                                        note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
+        ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold)
+        await self.reply(ack, correlation, note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
 
 
     @packet_handler(BrokerCancelReq)
@@ -219,15 +210,14 @@ class StallHandlers:
         req = BrokerCancelReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerCancelAck(result=1).encode()
-            await self.transport.send_event(event(2271, ack, correlation), note='broker cancel fail (no char)')
+            ack = BrokerCancelAck(result=1)
+            await self.reply(ack, correlation, note='broker cancel fail (no char)')
             return
 
         mgr = BrokerManager.get()
         success, msg = mgr.cancel_listing(char, req.listing_id, self.store())
-        ack = BrokerCancelAck(result=0 if success else 1).encode()
-        await self.transport.send_event(event(2271, ack, correlation),
-                                        note=f'broker cancel ack (success={success} msg={msg})')
+        ack = BrokerCancelAck(result=0 if success else 1)
+        await self.reply(ack, correlation, note=f'broker cancel ack (success={success} msg={msg})')
 
 
     @packet_handler(BrokerPriceReq)
@@ -246,9 +236,8 @@ class StallHandlers:
                 break
         mgr = BrokerManager.get()
         avg_price, min_price = mgr.get_price_stats(item_code)
-        ack = BrokerPriceAck(result=0, avg_price=avg_price, min_price=min_price).encode()
-        await self.transport.send_event(event(2273, ack, correlation),
-                                        note=f'broker price ack (avg={avg_price} min={min_price})')
+        ack = BrokerPriceAck(result=0, avg_price=avg_price, min_price=min_price)
+        await self.reply(ack, correlation, note=f'broker price ack (avg={avg_price} min={min_price})')
 
 
     @packet_handler(2586)

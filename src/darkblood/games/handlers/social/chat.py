@@ -10,9 +10,8 @@ class ChatHandlers:
         from darkblood.games.network.messages import UseSpeakerItemAck, UseSpeakerItemReq
         req = UseSpeakerItemReq.decode(body)
         self.transport.record('use-speaker-req', body, speaker=req.speaker_uid, msg=req.message)
-        ack = UseSpeakerItemAck(result=0, speaker_uid=req.speaker_uid).encode()
-        await self.transport.send_event(event(2129, ack, correlation),
-                                        note=f'use speaker ack (speaker={req.speaker_uid} msg={req.message[:20]})')
+        ack = UseSpeakerItemAck(result=0, speaker_uid=req.speaker_uid)
+        await self.reply(ack, correlation, note=f'use speaker ack (speaker={req.speaker_uid} msg={req.message[:20]})')
 
 
     @packet_handler(5040)
