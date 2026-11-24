@@ -1,75 +1,12 @@
 """Cronos attendance, Explore, Clear Rank, war flags and dungeon telemetry."""
 import struct
 import time
-from dataclasses import dataclass, field
 
-from darkblood.core.hashing import jhash
-from darkblood.core.network.proudnet import relay_address
-from darkblood.core.serialization.jser import WireError, event, read_varuint, strip_prefix
-from darkblood.games.entities.character import Character
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
-    ChangeDungeonLayerNot,
-    ChangeItemObtainAck,
-    ChangeItemObtainReq,
-    ChangeRoomInfoAck,
-    ChangeRoomInfoReq,
-    ChangeMapCodeAck,
-    ChangeTeamAck,
-    ChangeTeamReq,
-    ChoiceRewardPartyRankAck,
-    ChoiceRewardPartyRankReq,
-    CreateRoomAck,
-    CreateRoomReq,
-    DailyRebirthCoinUseAck,
-    DailyRebirthCoinUseReq,
-    DropItemNot,
-    GameplayDieCharAck,
-    GameplayDieCharReq,
     GuideBeginnerUpdateReq,
-    JoinRoomAck,
-    JoinRoomReq,
-    LeaveRoomAck,
-    MonsterDeadReq,
-    PartyAcceptInviteAck,
-    PartyAcceptInviteReq,
-    PartyInviteAck,
-    PartyInviteReq,
-    RebirthCoinChangeNot,
-    RoomInfo,
-    RoomInfoListAck,
-    RoomMember,
-    RoomMemberJoinedNot,
-    RoomMemberLeftNot,
-    DungeonHistory,
-    SelectDungeonAck,
-    StartGameAck,
-    StartGameReq,
 )
-from darkblood.games.dispatcher import packet_handler
-from darkblood.games.handlers.base import BaseDomainService
-from darkblood.games.network import results
-
-# The daily-claim sender refuses when owned or received coins reach 3.
-DAILY_REBIRTH_COINS = 3
-
-
-@dataclass
-class DungeonRoom:
-    info: RoomInfo
-    host: object
-    members: dict = field(default_factory=dict)
-    started: bool = False
-    # Shared run state (reset at the host's 5013): monster kills already credited
-    # ((monster id, instance) from 5063) and the floor drops all members see.
-    dead: set = field(default_factory=set)
-    floor_drops: dict = field(default_factory=dict)
-    floor_gold: dict = field(default_factory=dict)
-    next_drop_uid: int = 0
-    # 5047 join requests waiting for the host: char id -> (session, correlation).
-    join_requests: dict = field(default_factory=dict)
-    loot_mode: int = 1  # 5088 mode: 1 = free for all (fresh page default), 0 = random looting (0x00584460)
-
 
 
 class DungeonEventsHandlers:

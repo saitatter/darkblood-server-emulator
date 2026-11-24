@@ -1,9 +1,6 @@
 """Guild creation, roster, bank, skills, broker, siege and citadel handlers."""
-import struct
-
-from darkblood.core.serialization.jser import WireError, event
+from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck, PostListAck
 
 
 class GuildHandlers:

@@ -1,9 +1,9 @@
 """Dungeon domain controller composed from rooms, combat and events mixins."""
 from darkblood.core.network.proudnet import relay_address
 from darkblood.games.handlers.base import BaseDomainService
-from darkblood.games.handlers.dungeon.combat import DungeonCombatHandlers
+from darkblood.games.handlers.dungeon.combat import DAILY_REBIRTH_COINS, DungeonCombatHandlers
 from darkblood.games.handlers.dungeon.events import DungeonEventsHandlers
-from darkblood.games.handlers.dungeon.rooms import DAILY_REBIRTH_COINS, DungeonRoom, DungeonRoomHandlers
+from darkblood.games.handlers.dungeon.rooms import DungeonRoom, DungeonRoomHandlers
 
 
 class DungeonHandlers(

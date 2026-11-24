@@ -1,11 +1,9 @@
 """Town (square) play: tutorial, layers, NPCs, waypoints."""
-from darkblood.games.entities.items import UPDATE_OWNER
 import struct
 
 from darkblood.core.serialization.jser import event
-from darkblood.games.config import SQUARES, square_entry
 from darkblood.games.entities.character import layer_net_id
-from darkblood.games.entities.items import Item
+from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network.messages import (
     BackToSquareAck,
     ClearTutorialAck,

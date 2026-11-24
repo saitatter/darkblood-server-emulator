@@ -10,8 +10,7 @@ and verified against client dispatchers:
 """
 from __future__ import annotations
 
-import struct
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 from darkblood.core.serialization.jser import event
 from darkblood.games.network.messages import (
@@ -36,7 +35,6 @@ from darkblood.games.network.messages import (
     ArenaTeamJoinReq,
     ArenaTeamLeaveAck,
     ArenaTeamLeaveReq,
-    DuelGiveupNot,
     DuelRefuseAck,
     DuelRefuseReq,
     DuelRequestAck,

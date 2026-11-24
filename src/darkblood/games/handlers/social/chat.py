@@ -1,9 +1,6 @@
 """Town/party/whisper chat and speaker item handlers."""
-import struct
-
-from darkblood.core.serialization.jser import WireError, event
+from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck, PostListAck
 
 
 class ChatHandlers:

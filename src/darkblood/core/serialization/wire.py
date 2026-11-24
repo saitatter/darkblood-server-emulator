@@ -16,7 +16,6 @@ from darkblood.core.serialization.jser import (
     JSerBufferReader,
     REQUEST_HEADER,
     REQUEST_HEADER_BYTES,
-    WireError,
     varuint,
     wide_string,
 )

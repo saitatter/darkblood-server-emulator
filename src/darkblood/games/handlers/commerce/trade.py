@@ -1,98 +1,21 @@
 """Player-to-player trade request, item/gold staking and completion."""
-"""Store / NPC commerce, cash shop, Steam purchases, player trade and notices."""
-import struct
-
-from darkblood.core.hashing import jhash
-from darkblood.core.serialization.jser import event, strip_prefix
-from darkblood.games.entities.items import Item, UPDATE_OWNER
-from darkblood.games.game_data import cash_shop
+from darkblood.core.serialization.jser import event
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
     AcceptRequestTradeAck,
     AcceptRequestTradeReq,
     AcceptTradeAck,
-    BuyItemAck,
-    BuyItemReq,
     CancelTradeAck,
-    ContractUpdateAck,
-    ContractUpdateReq,
-    CurrentCashAck,
     DeleteTradeItemAck,
     DeleteTradeItemReq,
-    DragItemAck,
-    DurabilityChangeAck,
-    DurabilityChangeReq,
     FinallyAcceptTradeAck,
-    HttpNoticeCheckAck,
     InsertTradeItemAck,
     InsertTradeItemReq,
-    MonsterCardAlbumAck,
-    MonsterCardDeckAck,
-    MonsterCardListAck,
-    StoreRecord,
-    PlayOptionUpdateReq,
-    RepurchaseItemAck,
-    RepurchaseItemReq,
     RequestTradeAck,
     RequestTradeReq,
-    RouletteManagerInfoAck,
-    SellItemAck,
-    SellItemReq,
-    SteamFinalizeBuyItemAck,
-    SteamInitBuyItemNot,
-    StoreInfoAck,
-    TamingMonsterDeleteAck,
-    TamingMonsterInsertAck,
     UpdateTradeArAck,
     UpdateTradeArReq,
-    PersonalShopOpenReq,
-    PersonalShopOpenAck,
-    PersonalShopCloseReq,
-    PersonalShopCloseAck,
-    PersonalShopBuyReq,
-    PersonalShopBuyAck,
-    PersonalShopGetProductsReq,
-    PersonalShopGetProductsAck,
-    PersonalShopChangeNot,
-    PersonalShopStartNot,
-    PersonalShopCloseNot,
-    BrokerListReq,
-    BrokerListAck,
-    BrokerMyListReq,
-    BrokerMyListAck,
-    BrokerRegistItemReq,
-    BrokerRegistItemAck,
-    BrokerBuyItemReq,
-    BrokerBuyItemAck,
-    BrokerCancelReq,
-    BrokerCancelAck,
-    BrokerPriceReq,
-    BrokerPriceAck,
-    StallItem,
-    BrokerProduct,
 )
-from darkblood.games.stalls import PersonalShopManager, BrokerManager
-from darkblood.player_management.characters import (
-    add_reward_items,
-    free_bag_slots,
-    slots_needed,
-)
-from darkblood.games.dispatcher import packet_handler
-from darkblood.games.handlers.base import BaseDomainService
-
-MONSTER_CARD_ACKS = {2602: MonsterCardListAck, 2609: MonsterCardDeckAck, 2618: MonsterCardAlbumAck}
-
-
-def store_record(item: str, stock: int = -1, price: int = None) -> StoreRecord:
-    """Store record for an item id; price defaults to the item's BuyPrice.
-
-    The stock is clamped to i16 (storelist.lua -1 = unlimited)."""
-    if price is None:
-        from darkblood.games.game_data.client_dict import item_field
-        price = item_field(item, 'BuyPrice', 0)
-    return StoreRecord(item_hash=jhash(item), price=price & 0xFFFFFFFF,
-                       stock=max(-0x8000, min(0x7FFF, stock)))
-
-
 
 
 class TradeHandlers:

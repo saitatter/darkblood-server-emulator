@@ -15,7 +15,6 @@ from darkblood.games.network.messages import (
     GetQuestTagReq,
     KairoResult,
     LearnSkillAck,
-    LevelUpNot,
     NpcMakingKairoAck,
     NpcMakingKairoReq,
     NpcSealItemAck,

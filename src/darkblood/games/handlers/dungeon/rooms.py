@@ -1,57 +1,33 @@
 """Dungeon room creation, joining, leaving, host promotion, gate selection and map code."""
 import struct
-import time
 from dataclasses import dataclass, field
 
-from darkblood.core.hashing import jhash
 from darkblood.core.network.proudnet import relay_address
 from darkblood.core.serialization.jser import WireError, event, read_varuint, strip_prefix
+from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.character import Character
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
-    ActiveWarFlagReq,
-    ChangeDungeonLayerNot,
     ChangeItemObtainAck,
     ChangeItemObtainReq,
+    ChangeMapCodeAck,
     ChangeRoomInfoAck,
     ChangeRoomInfoReq,
-    ChangeMapCodeAck,
     ChangeTeamAck,
     ChangeTeamReq,
-    ChoiceRewardPartyRankAck,
-    ChoiceRewardPartyRankReq,
     CreateRoomAck,
     CreateRoomReq,
-    DailyRebirthCoinUseAck,
-    DailyRebirthCoinUseReq,
-    DropItemNot,
-    GameplayDieCharAck,
-    GameplayDieCharReq,
-    GuideBeginnerUpdateReq,
+    DungeonHistory,
     JoinRoomAck,
     JoinRoomReq,
     LeaveRoomAck,
-    MonsterDeadReq,
-    PartyAcceptInviteAck,
-    PartyAcceptInviteReq,
-    PartyInviteAck,
-    PartyInviteReq,
-    RebirthCoinChangeNot,
     RoomInfo,
     RoomInfoListAck,
     RoomMember,
     RoomMemberJoinedNot,
     RoomMemberLeftNot,
-    DungeonHistory,
     SelectDungeonAck,
-    StartGameAck,
-    StartGameReq,
 )
-from darkblood.games.dispatcher import packet_handler
-from darkblood.games.handlers.base import BaseDomainService
-from darkblood.games.network import results
-
-# The daily-claim sender refuses when owned or received coins reach 3.
-DAILY_REBIRTH_COINS = 3
 
 
 @dataclass
@@ -69,7 +45,6 @@ class DungeonRoom:
     # 5047 join requests waiting for the host: char id -> (session, correlation).
     join_requests: dict = field(default_factory=dict)
     loot_mode: int = 1  # 5088 mode: 1 = free for all (fresh page default), 0 = random looting (0x00584460)
-
 
 
 class DungeonRoomHandlers:

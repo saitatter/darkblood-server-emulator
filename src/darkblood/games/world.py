@@ -4,23 +4,16 @@ Coordinates town square channels, player visibility
 broadcasts (Opcode 5096 UpdateCharInfoNot), square join/leave presence notifications
 (Opcode 5021/5022), and party management (Opcodes 2100-2107, 5049-5056).
 """
-import asyncio
 import logging
-import struct
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
-from darkblood.core.network.proudnet import (
-    PEER_SERVER_BITS, SQUARE_UID_KEY_BITS, SQUARE_UID_MASK, square_uid,
-)
-from darkblood.core.serialization.jser import event, wide_string
+from darkblood.core.network.proudnet import SQUARE_UID_MASK, square_uid
+from darkblood.core.serialization.jser import event
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.network.messages.lobby import JoinLayerNot, LeaveLayerNot, PageCharTemp
 from darkblood.games.network.messages.system import UpdateCharInfoNot
-from darkblood.games.network.messages.party import (
-    PartyAcceptInviteNot, PartyInfoNot, PartyInviteNot, PartyMemberInfo,
-    UserJoinSquareNot, UserLeaveSquareNot
-)
+from darkblood.games.network.messages.party import UserJoinSquareNot, UserLeaveSquareNot
 
 logger = logging.getLogger(__name__)
 
