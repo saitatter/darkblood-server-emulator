@@ -9,6 +9,9 @@ research/
 logs/
 dist/
 .version
+.manifest.json
+.update_staging/
+scratch/
 *.log
 extracted_sample/
 *.exe
