@@ -22,6 +22,13 @@ class WireMessagesTest(unittest.TestCase):
         encoded = ack.encode()
         self.assertEqual(struct.unpack_from('<iqi', encoded), (0, 123456789, 0))
 
+        cheat_req = messages.CheatSystemDeleteCharacterReq.decode(raw_req)
+        self.assertEqual(cheat_req.char_uid, 123456789)
+        cheat_ack = messages.CheatSystemDeleteCharacterAck(result=0, char_uid=123456789)
+        self.assertEqual(struct.unpack_from('<Iq', cheat_ack.encode()), (0, 123456789))
+        cheat_fail = messages.CheatSystemDeleteCharacterAck(result=1, char_uid=123456789)
+        self.assertEqual(cheat_fail.encode(), struct.pack('<I', 1))
+
     def test_delete_item_messages(self):
         raw_req = struct.pack('<iqi', 0x7fffffff, 9999, 5)  # captures always carry the header
         req = messages.DeleteItemReq.decode(raw_req)

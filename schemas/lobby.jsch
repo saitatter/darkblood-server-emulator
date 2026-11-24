@@ -197,6 +197,17 @@ message 2015 DeleteCharacterAck
   i32 complete_time          # nUserDelCompleteTime (0 = instant)
 end
 
+message 2244 CheatSystemDeleteCharacterReq header?
+  ## Live: ffffff7f 0800000000000000 (Instant Delete button on character select).
+  i64 char_uid               # nDelCharUID
+end
+
+message 2245 CheatSystemDeleteCharacterAck ok_only
+  ## Handler 0x0075A9C0: reads u32 result; if 0 reads i64 char_uid and removes slot immediately.
+  u32 result
+  i64 char_uid
+end
+
 message 2247 UndeleteCharacterAck
   ## Handler 0x0075A8A0. Result 0 clears the pending deletion of that slot
   ## (0x006F02E0 with flag 0, time 0). Request 2246 has the same body as 2014.

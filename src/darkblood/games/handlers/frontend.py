@@ -11,6 +11,8 @@ from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
+    CheatSystemDeleteCharacterAck,
+    CheatSystemDeleteCharacterReq,
     DeleteCharacterAck,
     DeleteCharacterReq,
     DepotInfo,
@@ -357,6 +359,24 @@ class FrontendHandlers(BaseDomainService):
                                  complete_time=complete_time).encode()
         await self.transport.send_event(event(2015, ack, correlation),
                                         note=f'delete character ack ({req.char_uid}, {complete_time} s left)')
+
+    @packet_handler(CheatSystemDeleteCharacterReq)
+    async def handle_cheat_system_delete_character(self, correlation: int, body: bytes):
+        """Opcode 2244 (eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_REQ) -> 2245 (0x0075A9C0).
+
+        Sent by the "Instant Delete" button on character select. Immediately deletes
+        the character record (bypassing the 48h delay) and replies with 2245.
+        """
+        req = CheatSystemDeleteCharacterReq.decode(body)
+        self.transport.record('cheat-delete-character', body, char_uid=req.char_uid)
+        deleted = self.store().delete(self.account, req.char_uid)
+        if deleted and self.char_id == req.char_uid:
+            self.char_id = None
+        await self.reply(
+            CheatSystemDeleteCharacterAck(result=0 if deleted else 1, char_uid=req.char_uid),
+            correlation,
+            note=f'cheat system delete character ack ({req.char_uid}, deleted={deleted})',
+        )
 
     @packet_handler(2246)
     async def handle_undelete_character(self, correlation: int, body: bytes):

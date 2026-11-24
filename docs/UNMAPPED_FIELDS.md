@@ -140,7 +140,7 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (55 of 143 fields)
+## lobby (55 of 146 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

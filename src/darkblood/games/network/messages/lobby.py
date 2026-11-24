@@ -28,6 +28,8 @@ __all__ = [
     'JoinLayerNot',
     'DeleteCharacterReq',
     'DeleteCharacterAck',
+    'CheatSystemDeleteCharacterReq',
+    'CheatSystemDeleteCharacterAck',
     'UndeleteCharacterAck',
     'ArenaBackToSquareReq',
     'ArenaBackToSquareAck',
@@ -316,6 +318,30 @@ class DeleteCharacterAck(WireMessage):
     result: i32 = 0
     char_uid: i64 = 0  # nDelCharUID
     complete_time: i32 = 0  # nUserDelCompleteTime (0 = instant)
+
+
+@dataclass
+class CheatSystemDeleteCharacterReq(WireMessage):
+    """Opcode 2244: eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_REQ (request).
+
+    Live: ffffff7f 0800000000000000 (Instant Delete button on character select).
+    """
+    OPCODE: ClassVar[int] = 2244
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    char_uid: i64 = 0  # nDelCharUID
+
+
+@dataclass
+class CheatSystemDeleteCharacterAck(WireMessage):
+    """Opcode 2245: eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_ACK (reply).
+
+    Handler 0x0075A9C0: reads u32 result; if 0 reads i64 char_uid and removes slot immediately.
+    """
+    OPCODE: ClassVar[int] = 2245
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    char_uid: i64 = 0
 
 
 @dataclass

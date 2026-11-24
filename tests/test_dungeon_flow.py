@@ -344,6 +344,24 @@ class DungeonFlowTest(ServerTestCase):
             ack = EventDeleteCharacterAck.decode(r)
             self.assertEqual((ack.result, ack.delete_char_uid), (0, char2_id))
 
+            # Instant Delete (2244 -> 2245) removes character immediately (even when pending delete)
+            from darkblood.games.network.messages.lobby import (
+                CheatSystemDeleteCharacterAck, CheatSystemDeleteCharacterReq,
+            )
+            client.send_event(2012, create_request('InstantDel'))
+            _, c3 = await client.expect_event(2013)
+            char3_id = struct.unpack_from('<Q', c3, 10)[0]
+            client.send_event(2014, struct.pack('<iq', 0x7fffffff, char3_id))
+            await client.expect_event(2015)
+            client.send_event(2244, CheatSystemDeleteCharacterReq(char_uid=char3_id).encode())
+            _, r = await client.expect_event(2245)
+            ack2245 = CheatSystemDeleteCharacterAck.decode(r)
+            self.assertEqual((ack2245.result, ack2245.char_uid), (0, char3_id))
+            # Second instant delete on same UID fails cleanly (result=1)
+            client.send_event(2244, CheatSystemDeleteCharacterReq(char_uid=char3_id).encode())
+            _, r_fail = await client.expect_event(2245)
+            self.assertEqual(struct.unpack_from('<I', r_fail)[0], 1)
+
             client.send_event(2441, CharSlotExtendReq(item_uid=900).encode())
             _, r = await client.expect_event(2442)
             self.assertEqual(struct.unpack_from('<IB', r), (0, 6))
