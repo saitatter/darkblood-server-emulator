@@ -4,6 +4,11 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-24)
 
+- **Fortress/Special dungeon entry limits & required entry items (Issue #22 — live-verified)**:
+  - Extracted all 16 special/Citadel map entry rules (`EnterItemID`, `EnterItemAmount`, `EnterLimit`, `ClearLimit`, `is_citadel`) from `maplist.lua` into `assets/dungeon_entry_rules.json` (`dungeon_entry_rule()` in `src/darkblood/games/game_data/world.py`).
+  - Mapped `daily_dun_enter_counts` (`+0x3D1` -> `0x009646F0`), `daily_dun_clear_counts` (`+0x3DD` -> `0x00964A00`), and `citadel_play_count` (`+0x3E9` -> `player +0x304`, `UI_3408`) in `2007 SelectCharacterAck` (`schemas/lobby.jsch`, `src/darkblood/games/handlers/frontend.py`).
+  - Added `refresh_dungeon_entry_limits()` in `src/darkblood/games/progression.py` (Monday weekly reset to 3 Citadel challenges, +1 daily charge up to 7, daily reset of `daily_dun_enter_counts`).
+  - Enforced & consumed Citadel play count (`2631 CitadelPlayCountUpdateNot`), daily enter limits (`2318 DailyDunEnterCountUpdateNot`), and required entry items (`2037 DragItemAck`) in `handle_start_game` (`5013 -> 5014`), rejecting missing items with `5136 FailDungeonEnterItemNot` + `5014(result=138)` and limit exhaustion with `5222 FailDungeonEnterLimitNot` + `5014(result=139)` (matching `0x007880A0` silent range `0x8A..0x8B`).
 - **Dual Skill Activation Order (`2038 -> 2039 + 2578 DualSkillActiveNot`, `2007`, PR #24 / Issue #15 item 6)**:
   - Mapped all 3 `Type = 54` Dual Skill items (`IDSk1Cash269` 30d, `IDSk20S159` 10d, `IDSk20R434` 30d) in `src/darkblood/games/handlers/inventory/items.py`: using an item persists `dual_skill_expire` and sends `2578 DualSkillActiveNot` (`extend_time` in remaining seconds, multiplied by 1000 in `0x00945C60`).
   - Mapped `+0x18A` (`dual_skill_index`) and `+0x194` (`dual_skill_remain_sec`) in `Character.encode_world_details` (`0x00A52630`, `2007 SelectCharacterAck`) so active Dual Skill persists across relogging.
@@ -44,7 +49,7 @@
 
 ## Verification status
 
-- **Headless suite**: **229/229** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **230/230** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
