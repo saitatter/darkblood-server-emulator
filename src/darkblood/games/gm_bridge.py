@@ -11,61 +11,71 @@ import json
 import logging
 import shlex
 import struct
-import time
+from dataclasses import dataclass
+from typing import Awaitable, Callable, Dict, List
 
 from darkblood.core import options
-from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.entities.character import Character
-from darkblood.games.entities.items import EQUIPPED, Item, UPDATE_OWNER
+from darkblood.games.entities.items import EQUIPPED, UPDATE_OWNER
+from darkblood.games.gm_commands import (
+    apply_ap_delta,
+    apply_ar_delta,
+    apply_clear_bag,
+    apply_depot_expand,
+    apply_dual_skill,
+    apply_equip_durability,
+    apply_equip_upgrade,
+    apply_item_call,
+    apply_learn_skill,
+    apply_level_up,
+    apply_quest_reset,
+    apply_rebirth_coins_delta,
+    apply_skill_reset,
+    apply_stress,
+)
 from darkblood.games.network.messages.gm import (
     CheatDeleteAllInvenItemAck,
     CheatDepotSizeIncreaseAck,
     CheatLevelUpAck,
     CheatQuestResetAck,
 )
-from darkblood.games.network.messages.inventory import DragItemAck
+from darkblood.games.network.messages.inventory import (
+    DragItemAck,
+    MarkItemActiveNot,
+    MarkTabActiveNot,
+)
 from darkblood.games.network.messages.skills import (
-    DualSkillActiveNot,
     InitSkillNot,
     InsertApNot,
     LearnSkillListAck,
 )
 from darkblood.games.network.messages.system import RebirthCoinChangeNot
-from darkblood.games.progression import (
-    MAX_LEVEL,
-    add_ap,
-    advance_level,
-    level_up_not,
-    stress_changed_not,
-    total_ap,
-)
+from darkblood.games.progression import level_up_not
 from darkblood.games.world import GameWorldManager
-from darkblood.player_management.characters import add_reward_items
 
 logger = logging.getLogger(__name__)
 
 GM_BRIDGE_HOST = '127.0.0.1'
 GM_BRIDGE_PORT = 9402
 
-SERVER_LIVE_COMMANDS = frozenset({
-    'lv',
-    'ar',
-    'ap',
-    'coin',
-    'cash',
-    'stress',
-    'itemcall',
-    'clearbag',
-    'upgrade',
-    'forceupgrade',
-    'durability',
-    'incdepot',
-    'skill',
-    'skillinit',
-    'questcancel',
-    'dualskill',
-})
+
+@dataclass
+class _BridgeCtx:
+    session: object
+    char_id: int
+    char: dict
+    transport: object
+    cname: str
+
+    def save(self) -> None:
+        self.session.store().save_char(self.session.account, self.char_id)
+
+    async def send(self, msg, note: str) -> None:
+        await self.transport.send_event(event(msg.OPCODE, msg.encode()), note=note)
+
+    async def send_raw(self, opcode: int, payload: bytes, note: str) -> None:
+        await self.transport.send_event(event(opcode, payload), note=note)
 
 
 def _list_players() -> list:
@@ -88,11 +98,206 @@ def _resolve_player(char_id=None):
     world = GameWorldManager.get()
     if char_id is not None:
         return world.get_player(int(char_id))
-    if len(world.players) == 1:
-        return next(iter(world.players.values()))
     if world.players:
         return next(iter(world.players.values()))
     return None
+
+
+# ------------------------------------------------------------ command handlers
+
+async def _cmd_lv(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: lv <1..60>'}
+    target, mark_base = apply_level_up(ctx.char, int(args[0]))
+    ctx.save()
+    await ctx.send(CheatLevelUpAck(result=0, character=Character.from_dict(ctx.char)), f'gm bridge lv={target}')
+    await ctx.send(level_up_not(ctx.char), f'gm bridge levelup not lv={target}')
+    if mark_base is not None:
+        await ctx.send(MarkTabActiveNot(active_mark=True), f'gm bridge mark tab active lv={target}')
+        await ctx.send(
+            MarkItemActiveNot(base_count=mark_base, bonus_count=int(ctx.char.get('mark_bonus_cnt', 0))),
+            f'gm bridge mark item active base={mark_base}',
+        )
+    return {'ok': True, 'message': f'{ctx.cname}: level set to {target}.'}
+
+
+async def _cmd_ar(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: ar <amount>'}
+    cur_ar = apply_ar_delta(ctx.char, int(args[0]))
+    ctx.save()
+    await ctx.send_raw(2104, struct.pack('<Iq', 0, cur_ar), f'gm bridge ar={cur_ar}')
+    return {'ok': True, 'message': f'{ctx.cname}: AR is now {cur_ar:,}.'}
+
+
+async def _cmd_ap(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: ap <amount>'}
+    delta = int(args[0])
+    cur_sp, tot_ap = apply_ap_delta(ctx.char, delta)
+    ctx.save()
+    await ctx.send(InsertApNot(current_ap=cur_sp, total_ap=tot_ap), f'gm bridge ap +{delta}')
+    return {'ok': True, 'message': f'{ctx.cname}: +{delta} AP (SP={cur_sp}, total={tot_ap}).'}
+
+
+async def _cmd_coin(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: coin <count>'}
+    total = apply_rebirth_coins_delta(ctx.char, int(args[0]))
+    ctx.save()
+    clamped = min(total, 32767)
+    await ctx.send_raw(2102, struct.pack('<Ih', 0, clamped), 'gm bridge coin')
+    await ctx.send(RebirthCoinChangeNot(result=0, coins=clamped), 'gm bridge coin not')
+    return {'ok': True, 'message': f'{ctx.cname}: rebirth coins = {total}.'}
+
+
+async def _cmd_cash(ctx: _BridgeCtx, args: List[str]) -> dict:
+    delta = int(args[0]) if args else 100000
+    ctx.char['cash'] = max(0, int(ctx.char.get('cash', 0)) + delta)
+    ctx.save()
+    return {'ok': True, 'message': f'{ctx.cname}: cash balance = {ctx.char["cash"]:,}.'}
+
+
+async def _cmd_stress(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: stress <daily> [pcbang] [weekly]'}
+    s_not = apply_stress(
+        ctx.char,
+        int(args[0]),
+        int(args[1]) if len(args) > 1 else None,
+        int(args[2]) if len(args) > 2 else None,
+    )
+    ctx.save()
+    await ctx.send(s_not, 'gm bridge stress')
+    return {'ok': True, 'message': f'{ctx.cname}: stress set to {ctx.char["stress"]}.'}
+
+
+async def _cmd_itemcall(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: itemcall <item_id> [count=1]'}
+    code = args[0]
+    count = max(1, int(args[1])) if len(args) > 1 else 1
+    wire_items = apply_item_call(ctx.char, code, count, owner=UPDATE_OWNER)
+    ctx.save()
+    await ctx.send(DragItemAck(result=0, items=wire_items), f'gm bridge itemcall {code} x{count}')
+    return {'ok': True, 'message': f'{ctx.cname}: spawned {code} x{count}.'}
+
+
+async def _cmd_clearbag(ctx: _BridgeCtx, _args: List[str]) -> dict:
+    deleted = apply_clear_bag(ctx.char)
+    ctx.save()
+    await ctx.send(CheatDeleteAllInvenItemAck(result=0, items=deleted), f'gm bridge clearbag ({len(deleted)})')
+    return {'ok': True, 'message': f'{ctx.cname}: cleared {len(deleted)} bag item(s).'}
+
+
+async def _cmd_upgrade(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: upgrade <level>'}
+    target_lv = max(0, min(20, int(args[0])))
+    changed = apply_equip_upgrade(
+        ctx.char, target_lv, lambda it: it.get('container') == EQUIPPED and it.get('slot') == 0
+    )
+    if not changed:
+        return {'ok': False, 'message': f'{ctx.cname}: no matching equipped item found.'}
+    ctx.save()
+    await ctx.send(DragItemAck(result=0, items=changed), f'gm bridge upgrade +{target_lv}')
+    return {'ok': True, 'message': f'{ctx.cname}: set {len(changed)} equipped item(s) to +{target_lv}.'}
+
+
+async def _cmd_forceupgrade(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if len(args) < 2:
+        return {'ok': False, 'message': 'Usage: forceupgrade <weapon|cloth> <level>'}
+    kind = args[0].lower()
+    target_lv = max(0, min(20, int(args[1])))
+    slot_filter = (
+        (lambda it: it.get('container') == EQUIPPED and it.get('slot') == 0)
+        if kind == 'weapon'
+        else (lambda it: it.get('container') == EQUIPPED and it.get('slot') != 0)
+    )
+    changed = apply_equip_upgrade(ctx.char, target_lv, slot_filter)
+    if not changed:
+        return {'ok': False, 'message': f'{ctx.cname}: no matching equipped item found.'}
+    ctx.save()
+    await ctx.send(DragItemAck(result=0, items=changed), f'gm bridge forceupgrade +{target_lv}')
+    return {'ok': True, 'message': f'{ctx.cname}: set {len(changed)} equipped item(s) to +{target_lv}.'}
+
+
+async def _cmd_durability(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if not args:
+        return {'ok': False, 'message': 'Usage: durability <value>'}
+    val = max(0, int(args[0]))
+    changed = apply_equip_durability(ctx.char, val)
+    ctx.save()
+    if changed:
+        await ctx.send(DragItemAck(result=0, items=changed), f'gm bridge durability={val}')
+    return {'ok': True, 'message': f'{ctx.cname}: durability set to {val} on {len(changed)} equipped item(s).'}
+
+
+async def _cmd_incdepot(ctx: _BridgeCtx, _args: List[str]) -> dict:
+    apply_depot_expand(ctx.char, days=30)
+    ctx.save()
+    await ctx.send(CheatDepotSizeIncreaseAck(result=0), 'gm bridge incdepot')
+    return {'ok': True, 'message': f'{ctx.cname}: depot expanded.'}
+
+
+async def _cmd_skill(ctx: _BridgeCtx, args: List[str]) -> dict:
+    if len(args) < 2:
+        return {'ok': False, 'message': 'Usage: skill <skill_index> <level>'}
+    from darkblood.games.handlers.skills import learned_skill_map
+    sidx, slv = apply_learn_skill(ctx.char, int(args[0]), int(args[1]))
+    ctx.save()
+    ack = LearnSkillListAck(
+        result=0,
+        skills=learned_skill_map({sidx: slv}),
+        remain_sp=int(ctx.char.get('sp', 0)),
+        remain_gold=int(ctx.char.get('gold', 0)),
+    )
+    await ctx.send(ack, f'gm bridge skill {sidx}={slv}')
+    return {'ok': True, 'message': f'{ctx.cname}: skill {sidx} set to Lv.{slv}.'}
+
+
+async def _cmd_skillinit(ctx: _BridgeCtx, _args: List[str]) -> dict:
+    sp = apply_skill_reset(ctx.char)
+    ctx.save()
+    await ctx.send(InitSkillNot(result=0, sp=sp, skills={}), 'gm bridge skillinit')
+    return {'ok': True, 'message': f'{ctx.cname}: skills reset, refunded {sp} AP.'}
+
+
+async def _cmd_questcancel(ctx: _BridgeCtx, _args: List[str]) -> dict:
+    apply_quest_reset(ctx.char)
+    ctx.save()
+    await ctx.send(CheatQuestResetAck(result=0), 'gm bridge questcancel')
+    return {'ok': True, 'message': f'{ctx.cname}: active quests cleared.'}
+
+
+async def _cmd_dualskill(ctx: _BridgeCtx, args: List[str]) -> dict:
+    add_days = max(1, int(args[0])) if args else 30
+    ds_not = apply_dual_skill(ctx.char, add_days)
+    ctx.save()
+    await ctx.send(ds_not, f'gm bridge dualskill +{add_days}d')
+    return {'ok': True, 'message': f'{ctx.cname}: Dual Skill activated for {add_days} day(s).'}
+
+
+_BRIDGE_HANDLERS: Dict[str, Callable[[_BridgeCtx, List[str]], Awaitable[dict]]] = {
+    'lv': _cmd_lv,
+    'ar': _cmd_ar,
+    'ap': _cmd_ap,
+    'coin': _cmd_coin,
+    'cash': _cmd_cash,
+    'stress': _cmd_stress,
+    'itemcall': _cmd_itemcall,
+    'clearbag': _cmd_clearbag,
+    'upgrade': _cmd_upgrade,
+    'forceupgrade': _cmd_forceupgrade,
+    'durability': _cmd_durability,
+    'incdepot': _cmd_incdepot,
+    'skill': _cmd_skill,
+    'skillinit': _cmd_skillinit,
+    'questcancel': _cmd_questcancel,
+    'dualskill': _cmd_dualskill,
+}
+
+SERVER_LIVE_COMMANDS = frozenset(_BRIDGE_HANDLERS)
 
 
 async def execute_gm_command(command_line: str, char_id=None) -> dict:
@@ -113,7 +318,8 @@ async def execute_gm_command(command_line: str, char_id=None) -> dict:
     cmd = tokens[0].lower()
     args = tokens[1:]
 
-    if cmd not in SERVER_LIVE_COMMANDS:
+    handler = _BRIDGE_HANDLERS.get(cmd)
+    if handler is None:
         return {
             'ok': False,
             'client_only': True,
@@ -124,236 +330,20 @@ async def execute_gm_command(command_line: str, char_id=None) -> dict:
     if player is None or player.session is None or getattr(player.session, 'transport', None) is None:
         return {'ok': False, 'message': 'No character is currently online in the server.'}
 
-    session = player.session
-    char = player.char_data
-    transport = session.transport
-    cname = char.get('name', f'Char#{player.char_id}')
-
-    def save():
-        session.store().save_char(session.account, player.char_id)
-
+    ctx = _BridgeCtx(
+        session=player.session,
+        char_id=player.char_id,
+        char=player.char_data,
+        transport=player.session.transport,
+        cname=player.char_data.get('name', f'Char#{player.char_id}'),
+    )
     try:
-        if cmd == 'lv':
-            if not args:
-                return {'ok': False, 'message': 'Usage: lv <1..60>'}
-            target = max(1, min(int(args[0]), MAX_LEVEL))
-            advance_level(char, target, exp=0)
-            save()
-            await transport.send_event(
-                event(2058, CheatLevelUpAck(result=0, character=Character.from_dict(char)).encode()),
-                note=f'gm bridge lv={target}',
-            )
-            await transport.send_event(
-                event(level_up_not(char).OPCODE, level_up_not(char).encode()),
-                note=f'gm bridge levelup not lv={target}',
-            )
-            return {'ok': True, 'message': f'{cname}: level set to {target}.'}
-
-        if cmd == 'ar':
-            if not args:
-                return {'ok': False, 'message': 'Usage: ar <amount>'}
-            delta = int(args[0])
-            cur_ar = max(0, int(char.get('gold', 0)) + delta)
-            char['gold'] = cur_ar
-            char['u66'] = cur_ar
-            save()
-            await transport.send_event(
-                event(2104, struct.pack('<Iq', 0, cur_ar)),
-                note=f'gm bridge ar={cur_ar}',
-            )
-            return {'ok': True, 'message': f'{cname}: AR is now {cur_ar:,}.'}
-
-        if cmd == 'ap':
-            if not args:
-                return {'ok': False, 'message': 'Usage: ap <amount>'}
-            delta = int(args[0])
-            add_ap(char, delta)
-            save()
-            msg = InsertApNot(current_ap=char['sp'], total_ap=char['total_ap'])
-            await transport.send_event(event(msg.OPCODE, msg.encode()), note=f'gm bridge ap +{delta}')
-            return {'ok': True, 'message': f'{cname}: +{delta} AP (SP={char["sp"]}, total={char["total_ap"]}).'}
-
-        if cmd == 'coin':
-            if not args:
-                return {'ok': False, 'message': 'Usage: coin <count>'}
-            delta = int(args[0])
-            total = max(0, int(char.get('rebirth_coins', 3)) + delta)
-            char['rebirth_coins'] = total
-            save()
-            await transport.send_event(event(2102, struct.pack('<Ih', 0, min(total, 32767))), note='gm bridge coin')
-            not_msg = RebirthCoinChangeNot(result=0, coins=min(total, 32767))
-            await transport.send_event(event(not_msg.OPCODE, not_msg.encode()), note='gm bridge coin not')
-            return {'ok': True, 'message': f'{cname}: rebirth coins = {total}.'}
-
-        if cmd == 'cash':
-            delta = int(args[0]) if args else 100000
-            char['cash'] = max(0, int(char.get('cash', 0)) + delta)
-            save()
-            return {'ok': True, 'message': f'{cname}: cash balance = {char["cash"]:,}.'}
-
-        if cmd == 'stress':
-            if not args:
-                return {'ok': False, 'message': 'Usage: stress <daily> [pcbang] [weekly]'}
-            char['stress'] = max(0, min(330, int(args[0])))
-            if len(args) > 1:
-                char['stress_pcb'] = max(0, min(330, int(args[1])))
-            if len(args) > 2:
-                char['stress_week'] = max(0, min(330, int(args[2])))
-            save()
-            s_not = stress_changed_not(char)
-            await transport.send_event(event(s_not.OPCODE, s_not.encode()), note='gm bridge stress')
-            return {'ok': True, 'message': f'{cname}: stress set to {char["stress"]}.'}
-
-        if cmd == 'itemcall':
-            if not args:
-                return {'ok': False, 'message': 'Usage: itemcall <item_id> [count=1]'}
-            code = args[0]
-            count = max(1, int(args[1])) if len(args) > 1 else 1
-            stored = add_reward_items(char, [(code, count)])
-            save()
-            wire_items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
-            await transport.send_event(
-                event(2037, DragItemAck(result=0, items=wire_items).encode()),
-                note=f'gm bridge itemcall {code} x{count}',
-            )
-            return {'ok': True, 'message': f'{cname}: spawned {code} x{count}.'}
-
-        if cmd == 'clearbag':
-            deleted, kept = [], []
-            for it in char.get('items', []):
-                if it.get('container') == EQUIPPED:
-                    kept.append(it)
-                else:
-                    deleted.append(Item(
-                        code=it.get('code', ''), uid=it.get('uid', 0), owner=-1,
-                        container=it.get('container', 3), slot=it.get('slot', 0), count=0,
-                    ))
-            char['items'] = kept
-            save()
-            await transport.send_event(
-                event(2108, CheatDeleteAllInvenItemAck(result=0, items=deleted).encode()),
-                note=f'gm bridge clearbag ({len(deleted)})',
-            )
-            return {'ok': True, 'message': f'{cname}: cleared {len(deleted)} bag item(s).'}
-
-        if cmd in ('upgrade', 'forceupgrade'):
-            if cmd == 'upgrade':
-                if not args:
-                    return {'ok': False, 'message': 'Usage: upgrade <level>'}
-                target_lv = max(0, min(20, int(args[0])))
-                slot_filter = lambda it: it.get('container') == EQUIPPED and it.get('slot') == 0
-            else:
-                if len(args) < 2:
-                    return {'ok': False, 'message': 'Usage: forceupgrade <weapon|cloth> <level>'}
-                kind = args[0].lower()
-                target_lv = max(0, min(20, int(args[1])))
-                slot_filter = (
-                    (lambda it: it.get('container') == EQUIPPED and it.get('slot') == 0)
-                    if kind == 'weapon'
-                    else (lambda it: it.get('container') == EQUIPPED and it.get('slot') != 0)
-                )
-            changed = []
-            for it in char.get('items', []):
-                if slot_filter(it):
-                    it['upgrade'] = target_lv
-                    changed.append(Item(owner=UPDATE_OWNER, **it))
-            if not changed:
-                return {'ok': False, 'message': f'{cname}: no matching equipped item found.'}
-            save()
-            await transport.send_event(
-                event(2037, DragItemAck(result=0, items=changed).encode()),
-                note=f'gm bridge {cmd} +{target_lv}',
-            )
-            return {'ok': True, 'message': f'{cname}: set {len(changed)} equipped item(s) to +{target_lv}.'}
-
-        if cmd == 'durability':
-            if not args:
-                return {'ok': False, 'message': 'Usage: durability <value>'}
-            val = max(0, int(args[0]))
-            changed = []
-            for it in char.get('items', []):
-                if it.get('container') == EQUIPPED:
-                    it['durability'] = val
-                    changed.append(Item(owner=UPDATE_OWNER, **it))
-            save()
-            if changed:
-                await transport.send_event(
-                    event(2037, DragItemAck(result=0, items=changed).encode()),
-                    note=f'gm bridge durability={val}',
-                )
-            return {'ok': True, 'message': f'{cname}: durability set to {val} on {len(changed)} equipped item(s).'}
-
-        if cmd == 'incdepot':
-            rem = list(char.get('depot_extend_remain', [0, 0]))
-            while len(rem) < 2:
-                rem.append(0)
-            rem[0] = max(rem[0], 30 * 86400)
-            char['depot_extend_remain'] = rem
-            save()
-            await transport.send_event(
-                event(CheatDepotSizeIncreaseAck.OPCODE, CheatDepotSizeIncreaseAck(result=0).encode()),
-                note='gm bridge incdepot',
-            )
-            return {'ok': True, 'message': f'{cname}: depot expanded.'}
-
-        if cmd == 'skill':
-            if len(args) < 2:
-                return {'ok': False, 'message': 'Usage: skill <skill_index> <level>'}
-            from darkblood.games.handlers.skills import learned_skill_map
-            sidx = int(args[0])
-            slv = max(1, int(args[1]))
-            char.setdefault('skills', {})[str(sidx)] = slv
-            save()
-            ack = LearnSkillListAck(
-                result=0,
-                skills=learned_skill_map({sidx: slv}),
-                remain_sp=int(char.get('sp', 0)),
-                remain_gold=int(char.get('gold', 0)),
-            )
-            await transport.send_event(event(2698, ack.encode()), note=f'gm bridge skill {sidx}={slv}')
-            return {'ok': True, 'message': f'{cname}: skill {sidx} set to Lv.{slv}.'}
-
-        if cmd == 'skillinit':
-            char['skills'] = {}
-            char['sp'] = total_ap(char)
-            save()
-            not_msg = InitSkillNot(result=0, sp=char['sp'], skills={})
-            await transport.send_event(event(not_msg.OPCODE, not_msg.encode()), note='gm bridge skillinit')
-            return {'ok': True, 'message': f'{cname}: skills reset, refunded {char["sp"]} AP.'}
-
-        if cmd == 'questcancel':
-            char['quests_active'] = {}
-            char['quests'] = []
-            save()
-            await transport.send_event(
-                event(2097, CheatQuestResetAck(result=0).encode()),
-                note='gm bridge questcancel',
-            )
-            return {'ok': True, 'message': f'{cname}: active quests cleared.'}
-
-        if cmd == 'dualskill':
-            add_days = max(1, int(args[0])) if args else 30
-            now = int(time.time())
-            base_exp = max(now, int(char.get('dual_skill_expire', 0)))
-            char['dual_skill_expire'] = base_exp + add_days * 86400
-            remain_sec = char['dual_skill_expire'] - now
-            cur_idx = int(char.get('dual_skill_index', 0))
-            save()
-            ds_not = DualSkillActiveNot(
-                extend_time=remain_sec,
-                add_day=add_days,
-                cur_dual_skill_index=cur_idx,
-                item_id=jhash('IDSk1Cash269'),
-            )
-            await transport.send_event(event(ds_not.OPCODE, ds_not.encode()), note=f'gm bridge dualskill +{add_days}d')
-            return {'ok': True, 'message': f'{cname}: Dual Skill activated for {add_days} day(s).'}
+        return await handler(ctx, args)
     except ValueError as exc:
         return {'ok': False, 'message': f'Invalid argument: {exc}'}
     except Exception as exc:
         logger.exception('GM bridge execution failed')
         return {'ok': False, 'message': f'Error: {exc}'}
-
-    return {'ok': False, 'message': f'Unhandled command: {cmd}'}
 
 
 async def _handle_bridge_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
@@ -363,7 +353,7 @@ async def _handle_bridge_client(reader: asyncio.StreamReader, writer: asyncio.St
             return
         req = json.loads(line.decode('utf-8', errors='replace'))
         action = req.get('action')
-        if action == 'list_players':
+        if action == 'status':
             resp = {
                 'ok': True,
                 'gm_mode': bool(options.get('gm_mode')),
@@ -371,17 +361,19 @@ async def _handle_bridge_client(reader: asyncio.StreamReader, writer: asyncio.St
                 'live_commands': sorted(SERVER_LIVE_COMMANDS),
             }
         elif action == 'exec':
-            resp = await execute_gm_command(req.get('command', ''), char_id=req.get('char_id'))
+            resp = await execute_gm_command(
+                str(req.get('command', '')),
+                char_id=req.get('char_id'),
+            )
         else:
             resp = {'ok': False, 'message': f'Unknown action: {action}'}
+    except Exception as exc:
+        resp = {'ok': False, 'message': str(exc)}
+    try:
         writer.write((json.dumps(resp) + '\n').encode('utf-8'))
         await writer.drain()
-    except Exception as exc:
-        try:
-            writer.write((json.dumps({'ok': False, 'message': str(exc)}) + '\n').encode('utf-8'))
-            await writer.drain()
-        except OSError:
-            pass
+    except OSError:
+        pass
     finally:
         try:
             writer.close()
@@ -391,7 +383,11 @@ async def _handle_bridge_client(reader: asyncio.StreamReader, writer: asyncio.St
 
 
 async def start_gm_bridge(host: str = GM_BRIDGE_HOST, port: int = GM_BRIDGE_PORT):
-    """Start the localhost-only GM bridge TCP server."""
-    server = await asyncio.start_server(_handle_bridge_client, host, port)
-    logger.info('GM bridge listening on %s:%d (localhost only)', host, port)
-    return server
+    """Start the localhost GM bridge TCP server (best-effort; returns None if port busy)."""
+    try:
+        srv = await asyncio.start_server(_handle_bridge_client, host, port)
+        logger.info('GM bridge listening on %s:%d', host, port)
+        return srv
+    except OSError as exc:
+        logger.warning('GM bridge could not bind %s:%d: %s', host, port, exc)
+        return None

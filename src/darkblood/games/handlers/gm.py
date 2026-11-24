@@ -7,11 +7,23 @@ from __future__ import annotations
 
 import struct
 
-from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.character import Character
-from darkblood.games.entities.items import EQUIPPED, Item
+from darkblood.games.entities.items import Item
+from darkblood.games.gm_commands import (
+    apply_ap_delta,
+    apply_ar_delta,
+    apply_clear_bag,
+    apply_depot_expand,
+    apply_item_call,
+    apply_learn_skill,
+    apply_level_up,
+    apply_quest_reset,
+    apply_rebirth_coins_delta,
+    apply_stress,
+    resolve_item_code_by_hash,
+)
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.network.messages.gm import (
     CheatAchieveCompleteReq,
@@ -78,8 +90,7 @@ from darkblood.games.network.messages.gm import (
     CheatTitleChangeReq,
     CheatTitleGetAllReq,
 )
-from darkblood.games.progression import MAX_LEVEL, add_ap, advance_level, level_up_not
-from darkblood.player_management.characters import add_reward_items
+from darkblood.games.progression import level_up_not
 
 
 class GmHandlers(BaseDomainService):
@@ -93,8 +104,7 @@ class GmHandlers(BaseDomainService):
         if not char:
             await self.reply(CheatLevelUpAck(result=1), correlation, note='cheat lv fail (no char)')
             return
-        target = max(1, min(int(req.target_level), MAX_LEVEL))
-        advance_level(char, target, exp=0)
+        target, mark_base = apply_level_up(char, req.target_level)
         self.save_char()
         await self.reply(
             CheatLevelUpAck(result=0, character=Character.from_dict(char)),
@@ -102,17 +112,12 @@ class GmHandlers(BaseDomainService):
             note=f'cheat level up ack (lv={target})',
         )
         await self.send_msg(level_up_not(char), note=f'cheat levelup not (lv={target})')
-        if target >= 30:
-            from darkblood.games.entities.character import mark_base_count
+        if mark_base is not None:
             from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
-            base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(target))
-            char['mark_active'] = True
-            char['mark_base_cnt'] = base_cnt
-            self.save_char()
             await self.send_msg(MarkTabActiveNot(active_mark=True), note=f'mark tab active not (lv={target})')
             await self.send_msg(
-                MarkItemActiveNot(base_count=base_cnt, bonus_count=int(char.get('mark_bonus_cnt', 0))),
-                note=f'mark item active not (base={base_cnt})',
+                MarkItemActiveNot(base_count=mark_base, bonus_count=int(char.get('mark_bonus_cnt', 0))),
+                note=f'mark item active not (base={mark_base})',
             )
 
     @packet_handler(CheatItemDropReq)
@@ -137,8 +142,7 @@ class GmHandlers(BaseDomainService):
         req = CheatLearnSkillReq.decode(body)
         char = self.current_char()
         if char is not None:
-            skills = char.setdefault('skills', {})
-            skills[str(req.skill_id)] = max(1, int(req.skill_level))
+            apply_learn_skill(char, req.skill_id, req.skill_level)
             self.save_char()
         await self.reply(CheatLearnSkillAck(result=0), correlation,
                          note=f'cheat learn skill ack (id={req.skill_id} lv={req.skill_level})')
@@ -172,7 +176,7 @@ class GmHandlers(BaseDomainService):
         # 2096 -> 2097: questcancel / questreset
         char = self.current_char()
         if char is not None:
-            char['quests'] = []
+            apply_quest_reset(char)
             self.save_char()
         await self.reply(CheatQuestResetAck(result=0), correlation, note='cheat quest reset ack')
 
@@ -198,8 +202,7 @@ class GmHandlers(BaseDomainService):
         char = self.current_char()
         total = max(0, int(req.coins))
         if char is not None:
-            total = max(0, int(char.get('rebirth_coins', 3)) + int(req.coins))
-            char['rebirth_coins'] = total
+            total = apply_rebirth_coins_delta(char, req.coins)
             self.save_char()
         await self.transport.send_event(event(2102, struct.pack('<Ih', 0, min(total, 32767)), correlation),
                                         note=f'cheat insert coin ack (total={total})')
@@ -213,9 +216,7 @@ class GmHandlers(BaseDomainService):
         char = self.current_char()
         cur_ar = 0
         if char is not None:
-            cur_ar = max(0, int(char.get('gold', 0)) + int(req.amount))
-            char['gold'] = cur_ar
-            char['u66'] = cur_ar
+            cur_ar = apply_ar_delta(char, req.amount)
             self.save_char()
         await self.transport.send_event(event(2104, struct.pack('<Iq', 0, cur_ar), correlation),
                                         note=f'cheat insert ar ack (ar={cur_ar})')
@@ -226,7 +227,7 @@ class GmHandlers(BaseDomainService):
         req = CheatInsertApReq.decode(body)
         char = self.current_char()
         if char is not None:
-            add_ap(char, int(req.amount))
+            apply_ap_delta(char, req.amount)
             self.save_char()
         await self.transport.send_event(event(2106, struct.pack('<I', 0), correlation),
                                         note=f'cheat insert ap ack (added={req.amount})')
@@ -237,15 +238,7 @@ class GmHandlers(BaseDomainService):
         char = self.current_char()
         deleted = []
         if char is not None:
-            kept = []
-            for it in char.get('items', []):
-                if it.get('container') == EQUIPPED:
-                    kept.append(it)
-                else:
-                    deleted.append(Item(code=it.get('code', ''), uid=it.get('uid', 0),
-                                        owner=-1, container=it.get('container', 3),
-                                        slot=it.get('slot', 0), count=0))
-            char['items'] = kept
+            deleted = apply_clear_bag(char)
             self.save_char()
         await self.reply(CheatDeleteAllInvenItemAck(result=0, items=deleted), correlation,
                          note=f'cheat clearbag ack (deleted={len(deleted)})')
@@ -278,13 +271,11 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatChangeStressReq)
     async def handle_cheat_change_stress(self, correlation: int, body: bytes):
         # 2130 -> 2023 StressChangedNot: stress
-        from darkblood.games.progression import set_stress, stress_changed_not
         req = CheatChangeStressReq.decode(body)
         char = self.current_char()
         if char is not None:
-            set_stress(char, req.stress, req.stress_pcb, req.stress_week)
+            msg = apply_stress(char, req.stress, req.stress_pcb, req.stress_week)
             self.save_char()
-            msg = stress_changed_not(char)
         else:
             from darkblood.games.network.messages.system import StressChangedNot
             msg = StressChangedNot(stress=req.stress, stress_pcb=req.stress_pcb, stress_week=req.stress_week)
@@ -293,42 +284,16 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatItemCallReq)
     async def handle_cheat_item_call(self, correlation: int, body: bytes):
         # 2137 -> 2138 (0x004E3F90): itemcall <item_id> <count>
-        from darkblood.games.game_data import client_dict
         req = CheatItemCallReq.decode(body)
         char = self.current_char()
         if not char:
             await self.reply(CheatItemCallAck(result=1), correlation, note='cheat itemcall fail (no char)')
             return
-        # Resolve item_id hash back to item code from item/durability/store dicts
-        code = None
-        for table in (client_dict.item_int_fields(), client_dict.item_durabilities()):
-            for c in table:
-                if jhash(c) == (req.item_id & 0xFFFFFFFF):
-                    code = c
-                    break
-            if code:
-                break
-        if code is None:
-            for entries in client_dict.store_items().values():
-                for c, _ in entries:
-                    if jhash(c) == (req.item_id & 0xFFFFFFFF):
-                        code = c
-                        break
-                if code:
-                    break
-        if code is None:
-            rune_codes = [f'MMrk{i:03d}' for i in range(181)] + [
-                'IAMk1R190', 'IRor1R278', 'IRor1R325', 'IRpr1R277', 'IRpr1R324',
-            ]
-            for c in rune_codes:
-                if jhash(c) == (req.item_id & 0xFFFFFFFF):
-                    code = c
-                    break
+        code = resolve_item_code_by_hash(req.item_id)
         granted = []
         if code:
-            added = add_reward_items(char, [(code, max(1, int(req.count)))])
+            granted = apply_item_call(char, code, req.count, owner=char['id'])
             self.save_char()
-            granted = [Item(owner=char['id'], **i) for i in added]
         await self.reply(
             CheatItemCallAck(result=0 if code else 1, char_uid=char['id'], items=granted),
             correlation,
@@ -388,6 +353,10 @@ class GmHandlers(BaseDomainService):
 
     @packet_handler(CheatDepotSizeIncreaseReq)
     async def handle_cheat_depot_size_increase(self, correlation: int, body: bytes):
+        char = self.current_char()
+        if char is not None:
+            apply_depot_expand(char, days=30)
+            self.save_char()
         await self.reply(CheatDepotSizeIncreaseAck(result=0), correlation, note='cheat depot size increase ack')
 
     @packet_handler(CheatProficiencyChangeReq)

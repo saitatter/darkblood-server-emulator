@@ -245,6 +245,29 @@ class GmFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_gm_bridge_shares_level_up_rune_slate_unlock(self):
+        from darkblood.games.gm_bridge import execute_gm_command
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('BridgeTester'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            res = await execute_gm_command('lv 30', char_id=char_id)
+            self.assertTrue(res['ok'], res)
+            await client.expect_event(2058)
+            await client.expect_event(5087)
+            _, not2621 = await client.expect_event(2621)
+            self.assertTrue(messages.MarkTabActiveNot.decode(not2621).active_mark)
+            _, not2620 = await client.expect_event(2620)
+            parsed2620 = messages.MarkItemActiveNot.decode(not2620)
+            self.assertEqual((parsed2620.base_count, parsed2620.bonus_count), (3, 0))
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()
