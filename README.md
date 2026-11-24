@@ -257,7 +257,7 @@ src/darkblood/
 └── __main__.py               # Entry point: ``python -m darkblood`` (with src/ on sys.path) or ``python…
 
 client_hook/
-├── patches/                  # 8 modular patches: auto_reconnect, borderless_fullscreen, debug_tools, diagnostic_hooks, network_redirect, peer_update_interval, skip_logos, skip_tutorial_always
+├── patches/                  # 9 modular patches: auto_reconnect, borderless_fullscreen, char_slots, debug_tools, diagnostic_hooks, network_redirect, peer_update_interval, skip_logos, skip_tutorial_always
 ├── build.bat
 ├── common.c
 ├── common.h

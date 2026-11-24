@@ -108,8 +108,8 @@ class PetsWireMessagesTest(unittest.TestCase):
 
         # 2468 / 2469: Summon
         self.assertEqual(PetSummonReq().encode(), b'')  # sender 0x0079E3C0 writes no fields
-        ack_summon = PetSummonAck(result=0, pet_slot=1).encode()
-        self.assertEqual(struct.unpack_from('<IH', ack_summon, 0), (0, 1))
+        ack_summon = PetSummonAck(result=0, satiety=100).encode()
+        self.assertEqual(struct.unpack_from('<IH', ack_summon, 0), (0, 100))
 
         # 2470 / 2471: Release summon
         ack_release = PetReleaseSummonAck(result=0).encode()
@@ -212,11 +212,11 @@ class PetsFlowTest(ServerTestCase):
             # 6. Pet Lifecycle: Summon pet (2468 -> 2469)
             client.send_event(2468, PetSummonReq().encode())
             _, ack2469 = await client.expect_event(2469)
-            res, slot = struct.unpack_from('<IH', ack2469, 0)
+            res, satiety = struct.unpack_from('<IH', ack2469, 0)
             self.assertEqual(res, 0)
-            self.assertEqual(slot, 0)
+            self.assertEqual(satiety, 100)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            self.assertEqual(char.get('summoned_pet'), 0)
+            self.assertEqual(char.get('summoned_pet'), 10)
 
             # 7. Pet Lifecycle: Feed pet (2480 -> 2481)
             client.send_event(2480, PetEatNormalReq(item_uid=999).encode())

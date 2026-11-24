@@ -220,12 +220,12 @@
 | `2349 TamingMonsterInsertAck` | `vector<?>` | pets.jsch:21 | tamed monsters, element layout unknown |
 | `2351 TamingMonsterDeleteAck` | `vector<?>` | pets.jsch:33 | tamed monsters, element layout unknown |
 | `PetInfo` | `vector<?>` | pets.jsch:75 | +0x31 pet skills (0x0076E600; empty = 10 80) |
-| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:166 | pets, element layout unknown |
-| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:180 |  |
-| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:193 |  |
-| `2516 PetDyeingNot` | `vector<?>` | pets.jsch:283 | 0x0076E600 pet skills |
-| `MonsterCardInfo` | `vector<?>` | pets.jsch:328 | 0x004B0BB0 card options |
-| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:468 | m_mapWinCnt (0x005F6730) |
+| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:168 | pets, element layout unknown |
+| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:182 |  |
+| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:195 |  |
+| `2516 PetDyeingNot` | `vector<?>` | pets.jsch:285 | 0x0076E600 pet skills |
+| `MonsterCardInfo` | `vector<?>` | pets.jsch:330 | 0x004B0BB0 card options |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:470 | m_mapWinCnt (0x005F6730) |
 
 ## quests (1 of 109 fields)
 

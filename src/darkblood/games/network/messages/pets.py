@@ -290,12 +290,14 @@ class PetSummonReq(WireMessage):
 class PetSummonAck(WireMessage):
     """Opcode 2469: eEGS_PET_SUMMON_ACK (reply).
 
-    Handler 0x0079ECF0.
+    Handler 0x0079ECF0 (assert 0x00CFD7A0: sNurturePoint).
+    Updates active pet's sNurturePoint (0x009524F0), sets user+0x31C = 1,
+    and broadcasts UI/peer refresh [0x13].
     """
     OPCODE: ClassVar[int] = 2469
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    pet_slot: u16 = 0
+    satiety: u16 = 100  # sNurturePoint (0x0079ECF0)
 
 
 @dataclass

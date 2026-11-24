@@ -261,19 +261,25 @@ class PetHandlers(BaseDomainService):
 
     @packet_handler(PetSummonReq)
     async def handle_pet_summon(self, correlation, body):
-        # eEGS_PET_SUMMON_REQ (0x0079E3E0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0)
+        # eEGS_PET_SUMMON_REQ (0x0079E3C0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0)
+        # 0x0079ECF0 reads u16 sNurturePoint (satiety) and writes it via 0x009524F0.
+        # Sending 0 zeroed the pet's satiety, blocking subsequent summons (0x008625D0).
         PetSummonReq.decode(body)
-        pet_slot = 0  # 2468 carries no fields (sender 0x0079E3C0)
         char = self.current_char()
         if not char:
             await self.transport.send_event(event(2469, PetSummonAck(result=1).encode(), correlation),
                                             note='pet summon fail (no char)')
             return
-        char['summoned_pet'] = pet_slot
+        pets = char.get('pets', [])
+        active = next((p for p in pets if p.get('slot', -1) == -1), pets[0] if pets else None)
+        satiety = max(2, int(active.get('satiety', 100))) if active else 100
+        if active is not None:
+            active['satiety'] = satiety
+        char['summoned_pet'] = active['uid'] if active else 0
         self.save_char()
-        ack = PetSummonAck(result=0, pet_slot=pet_slot).encode()
+        ack = PetSummonAck(result=0, satiety=satiety).encode()
         await self.transport.send_event(event(2469, ack, correlation),
-                                        note=f'pet summon ack (slot={pet_slot})')
+                                        note=f'pet summon ack (satiety={satiety})')
 
     @packet_handler(PetReleaseSummonReq)
     async def handle_pet_release_summon(self, correlation, body):
