@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import List, Tuple
 import struct
+import time
 
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import varuint, wide_string
@@ -135,6 +136,9 @@ class Character:
     stress: int = 0
     stress_week: int = 0
     stress_pcb: int = 0
+    # Details +0x18A (u16 cur_dual_skill_index -> skill_mgr+0x18) and +0x194 (u64 remain_sec -> 0x00945C60).
+    dual_skill_index: int = 0
+    dual_skill_remain_sec: int = 0
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -188,6 +192,11 @@ class Character:
             stress=int(data.get('stress', 0)),
             stress_week=int(data.get('stress_week', 0)),
             stress_pcb=int(data.get('stress_pcb', 0)),
+            dual_skill_index=int(data.get('dual_skill_index', 0)),
+            dual_skill_remain_sec=(
+                max(0, int(data['dual_skill_expire']) - int(time.time()))
+                if data.get('dual_skill_expire') else 0
+            ),
         )
 
     def to_dict(self) -> dict:
@@ -308,7 +317,8 @@ class Character:
         # 2 x tag 0x17 maps
         b += b'\x17' + varuint(0)
         b += b'\x17' + varuint(0)
-        b += struct.pack('<HQQQQI', 0, 0, 0, 0, 0, 0)
+        # Details +0x18A u16 dual_skill_index, +0x18C u64, +0x194 u64 dual_skill_remain_sec, +0x19C/+0x1A4 u64, +0x1AC u32
+        b += struct.pack('<HQQQQI', self.dual_skill_index & 0xFFFF, 0, self.dual_skill_remain_sec, 0, 0, 0)
         # tag 0x10 vector
         b += b'\x10' + varuint(0)
         b += struct.pack('<?HH', False, 0, 0)

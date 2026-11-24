@@ -1,6 +1,14 @@
 """Core item movement, equip, consumption, dyeing, splitting and sealing handlers."""
 import random
 import struct
+import time
+
+# Dual Skill Activation Order items (Type=54 in item_cash.lua / item_disposable.lua): ItemID -> AdjValue (days).
+DUAL_SKILL_ITEM_DAYS = {
+    'IDSk1Cash269': 30,
+    'IDSk20S159': 10,
+    'IDSk20R434': 30,
+}
 
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
@@ -195,6 +203,25 @@ class ItemHandlersMixin:
             await self.send_msg(
                 InsertApNot(current_ap=char['sp'], total_ap=char['total_ap']),
                 note='book of ap used (+%d AP -> sp=%d total=%d)' % (max(1, req.use_count), char['sp'], char['total_ap']),
+            )
+        elif item_str_code in DUAL_SKILL_ITEM_DAYS:
+            from darkblood.games.network.messages.skills import DualSkillActiveNot
+            add_days = DUAL_SKILL_ITEM_DAYS[item_str_code] * max(1, int(req.use_count))
+            now = int(time.time())
+            base_expire = max(now, int(char.get('dual_skill_expire', 0)))
+            new_expire = base_expire + add_days * 86400
+            char['dual_skill_expire'] = new_expire
+            remain_sec = new_expire - now
+            cur_idx = int(char.get('dual_skill_index', 0))
+            self.save_char()
+            await self.send_msg(
+                DualSkillActiveNot(
+                    extend_time=remain_sec,
+                    add_day=add_days,
+                    cur_dual_skill_index=cur_idx,
+                    item_id=item_code,
+                ),
+                note=f'dual skill active not (+{add_days}d, remain={remain_sec}s, idx={cur_idx})',
             )
         await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
         if contents:

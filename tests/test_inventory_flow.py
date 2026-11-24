@@ -431,6 +431,21 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(len(DualSkillActiveNot(extend_time=86400, add_day=30, cur_dual_skill_index=1, item_id=1).encode()), 16)
             self.assertEqual(struct.unpack_from('<ii', InitSkillNot(result=0, sp=20, skills={}).encode(), 0), (0, 20))
 
+            # Use Dual Skill Activation Order (IDSk1Cash269, 30 days) -> 2039 + 2578 DualSkillActiveNot
+            ds_uid = max((i.get('uid', 0) for i in char.get('items', [])), default=0) + 1
+            char.setdefault('items', []).append({
+                'uid': ds_uid, 'code': 'IDSk1Cash269', 'container': 1, 'slot': 19, 'count': 1,
+            })
+            client.send_event(2038, struct.pack('<iqI', 0x7fffffff, ds_uid, 1))
+            _, ack2039_ds = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', ack2039_ds, 0)[0], 0)
+            _, not2578 = await client.expect_event(2578)
+            ds_not = DualSkillActiveNot.decode(not2578)
+            self.assertEqual(ds_not.add_day, 30)
+            self.assertEqual(ds_not.extend_time, 30 * 86400)
+            self.assertEqual(ds_not.cur_dual_skill_index, 0)
+            self.assertGreater(char.get('dual_skill_expire', 0), 0)
+
             # 48. Extended quests sweep: 2098 alimi tracker, 2090/2091 discard, 2126/2127 tag,
             #     2177/2178 act kairo, 2496/2497 making kairo, 2728/2729 npc seal, 5382/5383 quest item drop.
             from darkblood.games.network.messages import (
