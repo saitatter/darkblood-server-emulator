@@ -214,6 +214,14 @@ def _resolve_github_release_range(cur_tag: str, prev_tag: str):
     return cur_tag, prev_tag
 
 
+VISIBLE_COMMIT_TYPES = frozenset({'feat', 'fix'})
+
+
+def _is_user_facing_commit(subject: str) -> bool:
+    ctype, _, _ = parse_commit_prefix(subject)
+    return ctype.lower() in VISIBLE_COMMIT_TYPES
+
+
 def _parse_github_commit_items(items, limit=None):
     commits = []
     for item in items:
@@ -223,6 +231,8 @@ def _parse_github_commit_items(items, limit=None):
         c_author = c.get('author') or {}
         subject = (c.get('message', '') or '').splitlines()[0]
         if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
+            continue
+        if not _is_user_facing_commit(subject):
             continue
         author = _resolve_github_username(
             c_author.get('name', ''),
@@ -240,7 +250,7 @@ def _parse_github_commit_items(items, limit=None):
 
 
 def fetch_recent_commits(limit=None):
-    """Return list of dicts {sha, short, date, author, subject} strictly for the current release."""
+    """Return list of dicts {sha, short, date, author, subject} (FEAT/FIX only) for the current release."""
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     cur_tag, prev_tag = _current_release_tags(flags)
     rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
@@ -249,7 +259,7 @@ def fetch_recent_commits(limit=None):
         git_args = ['git', 'log', rev_spec, '--no-merges',
                     '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short']
         if limit is not None:
-            git_args.insert(3, f'-n{limit * 2}')
+            git_args.insert(3, f'-n{limit * 3}')
         proc = subprocess.run(
             git_args,
             cwd=str(ROOT), capture_output=True, text=True, encoding='utf-8',
@@ -261,6 +271,8 @@ def fetch_recent_commits(limit=None):
                 parts = line.split('\x1f')
                 if len(parts) == 6:
                     if '[skip ci]' in parts[5] or 'github-actions[bot]' in parts[3].lower():
+                        continue
+                    if not _is_user_facing_commit(parts[5]):
                         continue
                     commits.append({
                         'sha': parts[0], 'short': parts[1],
@@ -295,16 +307,29 @@ def fetch_recent_commits(limit=None):
             data = json.loads(resp.read().decode('utf-8'))
         return _parse_github_commit_items(data, limit=limit), (f'release {cur_tag}' if cur_tag else 'GitHub')
     except Exception as exc:
-        # Offline portable fallback: parse bundled RELEASE_NOTES.md if present
+        # Offline portable fallback: parse bundled RELEASE_NOTES.md (Features & Bug Fixes only)
         notes_file = ROOT / 'RELEASE_NOTES.md'
         if notes_file.is_file():
             commits = []
+            section_kind = None
             pat = re.compile(r'^- (?:(?:\*\*([^*\n]+)\*\*:\s*)?)(.+?) \(`([0-9a-f]{7})`, @([^)]+)\)$')
-            for line in notes_file.read_text(encoding='utf-8', errors='replace').splitlines():
-                m = pat.match(line.strip())
+            for raw_line in notes_file.read_text(encoding='utf-8', errors='replace').splitlines():
+                s = raw_line.strip()
+                if s.startswith('#### '):
+                    low = s.lower()
+                    if 'feature' in low:
+                        section_kind = 'feat'
+                    elif 'fix' in low:
+                        section_kind = 'fix'
+                    else:
+                        section_kind = None
+                    continue
+                if section_kind not in VISIBLE_COMMIT_TYPES:
+                    continue
+                m = pat.match(s)
                 if m:
                     scope, desc, sha, user = m.groups()
-                    subj = f'feat({scope}): {desc}' if scope else desc
+                    subj = f'{section_kind}({scope}): {desc}' if scope else f'{section_kind}: {desc}'
                     commits.append({'sha': sha, 'short': sha, 'date': cur_tag or 'release', 'author': user, 'subject': subj})
                     if limit is not None and len(commits) >= limit:
                         break
