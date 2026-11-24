@@ -558,6 +558,14 @@ class PetsFlowTest(ServerTestCase):
             marker = b'\x0f' + struct.pack('<I', rid) + b'\x80' + struct.pack('<I', rid)
             self.assertIn(marker, ack2007)
 
+            # Explore (Forest of Oblivion): 5358 -> 5359 and 5360 -> 5361
+            client.send_event(5358, b'')
+            _, ack5359 = await client.expect_event(5359)
+            self.assertEqual(struct.unpack_from('<I', ack5359, 0)[0], 0)
+            client.send_event(5360, b'')
+            _, ack5361 = await client.expect_event(5361)
+            self.assertEqual(struct.unpack_from('<I', ack5361, 0)[0], 0)
+
         self.run_async(self.with_server(scenario))
 
 

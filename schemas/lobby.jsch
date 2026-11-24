@@ -117,7 +117,7 @@ message 2007 SelectCharacterAck
   u64 _
   bool _
   u64 _
-  vector<?> _                # 0x00A3EDD0
+  vector<DepotSlotInfo> pet_depot_slots  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C)
   u32 _                      # 0x00A1EEA0: u32, 3 x u64
   u64 _
   u64 _

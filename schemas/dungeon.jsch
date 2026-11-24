@@ -687,6 +687,29 @@ message 2663 ExploreCancelByUserUidAck ok_only
   map<?> _                   # mapReward (0x00532F50)
 end
 
+message 5358 ExploreJoinReq bare
+  ## Enter Forest of Oblivion (Explore mode); live capture has empty body.
+end
+
+message 5359 ExploreJoinAck ok_only
+  ## Handler 0x006C35B0 (assert: mapExplorePoint >> ...): opens page 0x9B and
+  ## transitions to eAS_Explore (Forest of Oblivion).
+  u32 result
+  map<?> _                   # mapExplorePoint (0x006B9060)
+  map<?> _                   # 0x006C2190
+  map<?> _                   # 0x006B9130
+  u16 _                      # 0x00B351E0
+end
+
+message 5360 ExploreLeaveReq bare
+  ## Leave Forest of Oblivion (Explore mode).
+end
+
+message 5361 ExploreLeaveAck
+  ## Handler 0x006B5F00: transitions back to eAS_SquarePlay.
+  u32 result
+end
+
 struct DungeonClearRankInfo
   ## Dungeon clear rank record, reader 0x00A51AC0 (2540 / 5229).
   i64 rank_uid

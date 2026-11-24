@@ -100,6 +100,10 @@ __all__ = [
     'ExploreGetRewardAck',
     'ExploreCancelByUserUidReq',
     'ExploreCancelByUserUidAck',
+    'ExploreJoinReq',
+    'ExploreJoinAck',
+    'ExploreLeaveReq',
+    'ExploreLeaveAck',
     'DungeonClearRankInfo',
     'ClearRankHistoryInfoReq',
     'ClearRankHistoryInfoAck',
@@ -1394,6 +1398,53 @@ class ExploreCancelByUserUidAck(WireMessage):
         'explore_char_uid',
         Const(EmptyMap),
     )
+
+
+@dataclass
+class ExploreJoinReq(WireMessage):
+    """Opcode 5358: eERC_EXPLORE_JOIN_REQ (request).
+
+    Enter Forest of Oblivion (Explore mode); live capture has empty body.
+    """
+    OPCODE: ClassVar[int] = 5358
+
+
+@dataclass
+class ExploreJoinAck(WireMessage):
+    """Opcode 5359: eERC_EXPLORE_JOIN_ACK (reply).
+
+    Handler 0x006C35B0 (assert: mapExplorePoint >> ...): opens page 0x9B and
+    transitions to eAS_Explore (Forest of Oblivion).
+    """
+    OPCODE: ClassVar[int] = 5359
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(EmptyMap),
+        Const(u16, 0),
+    )
+
+
+@dataclass
+class ExploreLeaveReq(WireMessage):
+    """Opcode 5360: eERC_EXPLORE_LEAVE_REQ (request).
+
+    Leave Forest of Oblivion (Explore mode).
+    """
+    OPCODE: ClassVar[int] = 5360
+
+
+@dataclass
+class ExploreLeaveAck(WireMessage):
+    """Opcode 5361: eERC_EXPLORE_LEAVE_ACK (reply).
+
+    Handler 0x006B5F00: transitions back to eAS_SquarePlay.
+    """
+    OPCODE: ClassVar[int] = 5361
+    result: u32 = 0
 
 
 @dataclass

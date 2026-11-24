@@ -143,8 +143,25 @@ def build_select_char_ack(char, account_chars=None):
         custom_keys=str(char.get('custom_keys', '')) if isinstance(char, dict) else '',
         waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
         ridings=_build_ridings_map(char) if isinstance(char, dict) else {},
+        pet_depot_slots=_build_pet_depot_slots(char) if isinstance(char, dict) else _build_pet_depot_slots({}),
         citadel_play_count=int(char.get('citadel_play_count', 3)) if isinstance(char, dict) else 3,
     ).encode()
+
+
+def _build_pet_depot_slots(char: dict) -> list:
+    """Build 4 DepotSlotInfo entries for 2007 SelectCharacterAck (0x00A3EDD0 -> Page_Pet +0x23C)."""
+    pet_extend = list(char.get('pet_depot_extend', [0, 0, 0, 0]))
+    while len(pet_extend) < 4:
+        pet_extend.append(0)
+    return [
+        DepotSlotInfo(
+            active=rem > 0,
+            slot_index=idx if rem > 0 else 0xFFFF,
+            expire_date=0,
+            remain_sec=int(rem),
+        )
+        for idx, rem in enumerate(pet_extend)
+    ]
 
 
 def _build_ridings_map(char: dict) -> dict:

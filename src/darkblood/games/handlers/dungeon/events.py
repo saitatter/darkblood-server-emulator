@@ -168,6 +168,18 @@ class DungeonEventsHandlers:
         await self.reply(ExploreCancelByUserUidAck(result=0, explore_char_uid=req.explore_char_uid), correlation,
                          note=f'explore cancel by uid ack (char={req.explore_char_uid})')
 
+    @packet_handler(5358)
+    async def handle_explore_join(self, correlation, body):
+        """Opcode 5358 (eERC_EXPLORE_JOIN_REQ) -> 5359 (0x006C35B0, Forest of Oblivion)."""
+        from darkblood.games.network.messages.dungeon import ExploreJoinAck
+        await self.reply(ExploreJoinAck(result=0), correlation, note='explore join ack (Forest of Oblivion)')
+
+    @packet_handler(5360)
+    async def handle_explore_leave(self, correlation, body):
+        """Opcode 5360 (eERC_EXPLORE_LEAVE_REQ) -> 5361 (0x006B5F00, return to town)."""
+        from darkblood.games.network.messages.dungeon import ExploreLeaveAck
+        await self.reply(ExploreLeaveAck(result=0), correlation, note='explore leave ack')
+
 
     @packet_handler(2539)
     async def handle_clear_rank_history_info(self, correlation, body):

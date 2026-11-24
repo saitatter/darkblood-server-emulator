@@ -49,7 +49,7 @@
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
 | `2387 RouletteRollDiceAck` | `vector<?>` | commerce.jsch:350 | 0x00A3EA40 |
 
-## dungeon (48 of 277 fields)
+## dungeon (52 of 283 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -99,8 +99,12 @@
 | `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:656 | mapReward (0x00532F50) |
 | `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:663 | mapReward (0x00532F50) |
 | `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:687 | mapReward (0x00532F50) |
-| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:701 | 0x00A51060 |
-| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:702 | 0x00A3EA40 |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:698 | mapExplorePoint (0x006B9060) |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:699 | 0x006C2190 |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:700 | 0x006B9130 |
+| `5359 ExploreJoinAck` | `u16` | dungeon.jsch:701 | 0x00B351E0 |
+| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:724 | 0x00A51060 |
+| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:725 | 0x00A3EA40 |
 
 ## events (8 of 35 fields)
 
@@ -140,7 +144,7 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (55 of 146 fields)
+## lobby (54 of 146 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -186,7 +190,6 @@
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:117 |  |
 | `2007 SelectCharacterAck` | `bool` | lobby.jsch:118 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:119 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:120 | 0x00A3EDD0 |
 | `2007 SelectCharacterAck` | `u32` | lobby.jsch:121 | 0x00A1EEA0: u32, 3 x u64 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:122 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:123 |  |

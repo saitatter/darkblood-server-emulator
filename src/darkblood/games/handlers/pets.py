@@ -420,9 +420,37 @@ class PetHandlers(BaseDomainService):
         from darkblood.games.network.messages.pets import PetExtendDepotAck, PetExtendDepotReq
         req = PetExtendDepotReq.decode(body)
         extend_time = 30 * 86400
+        wire_items = []
+        char = self.current_char()
+        if char is not None:
+            pet_extend = list(char.get('pet_depot_extend', [0, 0, 0, 0]))
+            slot = max(0, int(req.depot_slot_index))
+            while len(pet_extend) <= slot:
+                pet_extend.append(0)
+            pet_extend[slot] = int(pet_extend[slot]) + extend_time
+            char['pet_depot_extend'] = pet_extend
+            items = char.get('items', [])
+            used = next((i for i in items if i.get('uid') == req.item_uid), None)
+            if used is not None:
+                rem = int(used.get('count', 1)) - 1
+                if rem <= 0:
+                    items.remove(used)
+                    wire_items.append(Item(
+                        owner=UPDATE_OWNER,
+                        uid=0,
+                        code='',
+                        container=used.get('container', 3),
+                        slot=used.get('slot', 0),
+                        count=0,
+                    ))
+                else:
+                    used['count'] = rem
+                    wire_items.append(Item(owner=UPDATE_OWNER, **used))
+            self.save_char()
         await self.reply(
-            PetExtendDepotAck(result=0, depot_slot_index=req.depot_slot_index, extend_time=extend_time, items=[]),
-            correlation, note=f'pet extend depot ack (slot={req.depot_slot_index})',
+            PetExtendDepotAck(result=0, depot_slot_index=req.depot_slot_index,
+                              extend_time=extend_time, items=wire_items),
+            correlation, note=f'pet extend depot ack (slot={req.depot_slot_index}, time={extend_time})',
         )
 
     @packet_handler(2500)

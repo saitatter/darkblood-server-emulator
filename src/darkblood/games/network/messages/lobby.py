@@ -128,6 +128,7 @@ class SelectCharacterAck(WireMessage):
     u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_a: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9190 -> 0x005F6640
     ridings: Map[h32, Extern[RidingInfo, 'encode', False]] = field(default_factory=dict)  # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
+    pet_depot_slots: Vector[DepotSlotInfo] = field(default_factory=list)  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C)
     u32_vec_c: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_b: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9150 -> 0x005F6640
     citadel_play_count: i16 = 0  # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
@@ -192,7 +193,7 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         Const(bool, False),
         Const(u64, 0),
-        Const(EmptyVector),
+        'pet_depot_slots',
         Const(u32, 0),
         Const(u64, 0),
         Const(u64, 0),
