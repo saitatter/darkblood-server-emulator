@@ -188,6 +188,63 @@ class GmFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_rune_slate_unlock_and_itemcall_issue26(self):
+        from darkblood.games.entities.character import Character
+
+        # Lv 60 character encodes bActiveMark=True, sBaseCnt=5, sBonusCnt=0 in world details.
+        details60 = Character.from_dict({'level': 60}).encode_world_details()
+        self.assertEqual(struct.unpack_from('<?HH', details60, len(details60) - 16), (True, 5, 0))
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('RuneTester'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            # %lv 30 unlocks Rune Slate (2621 MarkTabActiveNot + 2620 MarkItemActiveNot)
+            client.send_event(2057, messages.CheatLevelUpReq(target_level=30).encode())
+            _, ack2058 = await client.expect_event(2058)
+            self.assertEqual(struct.unpack_from('<I', ack2058, 0)[0], 0)
+            await client.expect_event(5087)
+            _, not2621 = await client.expect_event(2621)
+            self.assertTrue(messages.MarkTabActiveNot.decode(not2621).active_mark)
+            _, not2620 = await client.expect_event(2620)
+            parsed2620 = messages.MarkItemActiveNot.decode(not2620)
+            self.assertEqual((parsed2620.base_count, parsed2620.bonus_count), (3, 0))
+
+            # %itemcall resolves Agreement of Rune (IAMk1R190) and rune items (MMrk103)
+            client.send_event(2137, messages.CheatItemCallReq(item_id=jhash('IAMk1R190'), count=1).encode())
+            _, ack_agr = await client.expect_event(2138)
+            self.assertEqual(struct.unpack_from('<I', ack_agr, 0)[0], 0)
+            agr_uid, agr_hash = struct.unpack_from('<qI', ack_agr, len(ack_agr) - 22)
+            self.assertEqual(agr_hash, jhash('IAMk1R190'))
+            self.assertGreater(agr_uid, 0)
+
+            client.send_event(2137, messages.CheatItemCallReq(item_id=jhash('MMrk103'), count=1).encode())
+            _, ack_rune = await client.expect_event(2138)
+            self.assertEqual(struct.unpack_from('<I', ack_rune, 0)[0], 0)
+            _, rune_hash = struct.unpack_from('<qI', ack_rune, len(ack_rune) - 22)
+            self.assertEqual(rune_hash, jhash('MMrk103'))
+
+            # Using Agreement of Rune (2038 -> 2039) increments bonus slots and notifies 2621 + 2620
+            client.send_event(2038, messages.UseItemReq(item_uid=agr_uid, use_count=1).encode())
+            _, ack2039 = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<I', ack2039, 0)[0], 0)
+            _, not2621_2 = await client.expect_event(2621)
+            self.assertTrue(messages.MarkTabActiveNot.decode(not2621_2).active_mark)
+            _, not2620_2 = await client.expect_event(2620)
+            parsed2620_2 = messages.MarkItemActiveNot.decode(not2620_2)
+            self.assertEqual((parsed2620_2.base_count, parsed2620_2.bonus_count), (3, 1))
+
+            # Re-selecting character encodes persisted mark_active=True, base=3, bonus=1
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            self.assertIn(struct.pack('<?HH', True, 3, 1), ack2007)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

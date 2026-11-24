@@ -256,6 +256,18 @@ class QuestHandlers(BaseDomainService):
         for level_not in level_notifications:
             await self.transport.send_event(event(5087, level_not.encode()),
                                             note=f'level up not (level={level_not.new_level})')
+        if level_notifications and level >= 30:
+            from darkblood.games.entities.character import mark_base_count
+            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
+            new_base = max(int(char.get('mark_base_cnt', 0)), mark_base_count(level))
+            if not char.get('mark_active') or new_base > int(char.get('mark_base_cnt', 0)):
+                char['mark_active'] = True
+                char['mark_base_cnt'] = new_base
+                await self.send_msg(MarkTabActiveNot(active_mark=True), note=f'mark tab active not (lv={level})')
+                await self.send_msg(
+                    MarkItemActiveNot(base_count=new_base, bonus_count=int(char.get('mark_bonus_cnt', 0))),
+                    note=f'mark item active not (base={new_base})',
+                )
         # The client displays the gained XP from jGainExp +0x08.
         exp_ack = ChangeExpNot(exp_total=char_exp, gain_2=exp).encode()
         await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')

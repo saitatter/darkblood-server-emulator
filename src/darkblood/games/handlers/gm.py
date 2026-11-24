@@ -102,6 +102,18 @@ class GmHandlers(BaseDomainService):
             note=f'cheat level up ack (lv={target})',
         )
         await self.send_msg(level_up_not(char), note=f'cheat levelup not (lv={target})')
+        if target >= 30:
+            from darkblood.games.entities.character import mark_base_count
+            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
+            base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(target))
+            char['mark_active'] = True
+            char['mark_base_cnt'] = base_cnt
+            self.save_char()
+            await self.send_msg(MarkTabActiveNot(active_mark=True), note=f'mark tab active not (lv={target})')
+            await self.send_msg(
+                MarkItemActiveNot(base_count=base_cnt, bonus_count=int(char.get('mark_bonus_cnt', 0))),
+                note=f'mark item active not (base={base_cnt})',
+            )
 
     @packet_handler(CheatItemDropReq)
     async def handle_cheat_item_drop(self, correlation: int, body: bytes):
@@ -303,6 +315,14 @@ class GmHandlers(BaseDomainService):
                         code = c
                         break
                 if code:
+                    break
+        if code is None:
+            rune_codes = [f'MMrk{i:03d}' for i in range(181)] + [
+                'IAMk1R190', 'IRor1R278', 'IRor1R325', 'IRpr1R277', 'IRpr1R324',
+            ]
+            for c in rune_codes:
+                if jhash(c) == (req.item_id & 0xFFFFFFFF):
+                    code = c
                     break
         granted = []
         if code:

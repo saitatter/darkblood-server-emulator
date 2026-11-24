@@ -223,6 +223,23 @@ class ItemHandlersMixin:
                 ),
                 note=f'dual skill active not (+{add_days}d, remain={remain_sec}s, idx={cur_idx})',
             )
+        elif item_str_code == 'IAMk1R190':
+            from darkblood.games.entities.character import mark_base_count
+            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
+            char['mark_active'] = True
+            base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(char.get('level', 1)), 3)
+            bonus_cnt = min(3, int(char.get('mark_bonus_cnt', 0)) + max(1, int(req.use_count)))
+            char['mark_base_cnt'] = base_cnt
+            char['mark_bonus_cnt'] = bonus_cnt
+            self.save_char()
+            await self.send_msg(
+                MarkTabActiveNot(active_mark=True),
+                note='mark tab active not (IAMk1R190)',
+            )
+            await self.send_msg(
+                MarkItemActiveNot(base_count=base_cnt, bonus_count=bonus_cnt),
+                note=f'mark item active not (base={base_cnt}, bonus={bonus_cnt})',
+            )
         await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
         if contents:
             stored = add_reward_items(char, contents)

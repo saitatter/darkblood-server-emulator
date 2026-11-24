@@ -68,6 +68,18 @@ def delete_seconds_left(delete_time: int) -> int:
     import time
     return max(0, int(delete_time) - int(time.time()))
 
+
+def mark_base_count(level: int) -> int:
+    """Unlocked base Rune Slate slots by level (DictMark:LoadSlot in mark.lua)."""
+    lv = int(level)
+    if lv >= 50:
+        return 5
+    if lv >= 40:
+        return 4
+    if lv >= 30:
+        return 3
+    return 0
+
 @dataclass
 class CharacterVisuals:
     """Cosmetic and appearance parameters for a character."""
@@ -139,6 +151,9 @@ class Character:
     # Details +0x18A (u16 cur_dual_skill_index -> skill_mgr+0x18) and +0x194 (u64 remain_sec -> 0x00945C60).
     dual_skill_index: int = 0
     dual_skill_remain_sec: int = 0
+    mark_active: bool = False
+    mark_base_cnt: int = 0
+    mark_bonus_cnt: int = 0
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -197,6 +212,9 @@ class Character:
                 max(0, int(data['dual_skill_expire']) - int(time.time()))
                 if data.get('dual_skill_expire') else 0
             ),
+            mark_active=bool(data.get('mark_active', False)),
+            mark_base_cnt=int(data.get('mark_base_cnt', 0)),
+            mark_bonus_cnt=int(data.get('mark_bonus_cnt', 0)),
         )
 
     def to_dict(self) -> dict:
@@ -321,7 +339,12 @@ class Character:
         b += struct.pack('<HQQQQI', self.dual_skill_index & 0xFFFF, 0, self.dual_skill_remain_sec, 0, 0, 0)
         # tag 0x10 vector
         b += b'\x10' + varuint(0)
-        b += struct.pack('<?HH', False, 0, 0)
+        # Reader 0x00A52630: +0x1C0 bool bActiveMark, +0x1C1 u16 sBaseCnt, +0x1C3 u16 sBonusCnt
+        base_cnt = max(int(self.mark_base_cnt), mark_base_count(self.level))
+        active_mark = bool(self.mark_active or self.level >= 30)
+        if active_mark and base_cnt == 0:
+            base_cnt = 3
+        b += struct.pack('<?HH', active_mark, base_cnt & 0xFFFF, int(self.mark_bonus_cnt) & 0xFFFF)
         b += struct.pack('<f', 0.0)
         # Reader 0xA52630: bool +1C9, u8 +1CA, u16 +1CB, bool +1CD/+1CE.
         b += struct.pack('<?BH??', False, 0, 0, False, False)
