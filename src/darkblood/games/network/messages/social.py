@@ -10,6 +10,8 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.dungeon import RoomMemberInfo
+from darkblood.games.network.messages.guild import GuildSkillEntry
+from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
     'FriendEntry',
@@ -31,6 +33,7 @@ __all__ = [
     'ContractUpdateReq',
     'ContractUpdateAck',
     'RequestCharInfoReq',
+    'LeagueArenaCharInfo',
     'RequestCharInfoAck',
     'RequestItemInfoReq',
     'RequestItemInfoAck',
@@ -323,35 +326,60 @@ class RequestCharInfoReq(WireMessage):
 
 
 @dataclass
+class LeagueArenaCharInfo(WireMessage):
+    """League Arena character record, reader 0x00A50B80 (ctor 0x00481550, consumer 0x00944810 + 0x00952D40).
+    Displayed by JAppPageArenaMatch::UpdateSeasonInfo (0x004925E0) and stat UI (0x00496620).
+    """
+    rating: i32 = 1300  # +0x00 Elo rating (default 0x514 -> JUser+0x288)
+    rating_float: f32 = 1300.0  # +0x04 float MMR (default 0x00C94A44 = 1300.0f)
+    season_stat_exp: i32 = 0  # +0x08 nLeagueArenaSeasonStatExp (100k/pt -> JUser+0x28C)
+    used_league_point: i32 = 0  # +0x0C spent league points (cur = max(0, total - used) -> JUser+0x27C)
+    daily_league_point: i32 = 0  # +0x10 daily league points earned (JUser+0x280)
+    daily_league_point_bonus: i32 = 0  # +0x14 bonus daily league points under 2x buff (JUser+0x284)
+    total_league_point: i32 = 0  # +0x18 total league points earned
+    stat_reset_count: i32 = 0  # +0x1C league stat reset count (MB_ArenaMatch_StatClear -> JUser+0x290)
+    rank: i32 = -1  # +0x20 league rank (-1 = unranked -> JUser+0x278)
+    win_count: i32 = 0  # 0x00A4A0C0 +0x00 (+0x24 -> JUser+0x2A4)
+    lose_count: i32 = 0  # +0x04 (+0x28 -> JUser+0x2A8)
+    draw_count: i32 = 0  # +0x08 (+0x2C -> JUser+0x2AC; win+lose+draw < 10 = placement)
+    win_streak: i32 = 0  # +0x0C (+0x30 -> JUser+0x2B0)
+    season_stats: Map[u32, u16] = field(default_factory=dict)  # +0x44 (0x00481E90 -> 0x00475CB0; keys 0..14 -> JUser+0x2C8[15])
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'rating',
+        'rating_float',
+        'season_stat_exp',
+        'used_league_point',
+        'daily_league_point',
+        'daily_league_point_bonus',
+        'total_league_point',
+        'stat_reset_count',
+        'rank',
+        'win_count',
+        'lose_count',
+        'draw_count',
+        'win_streak',
+        Const(Raw[16], bytes(16)),
+        'season_stats',
+    )
+
+
+@dataclass
 class RequestCharInfoAck(WireMessage):
     """Opcode 6012: eERT_REQUEST_CHAR_INFO_ACK (reply).
 
-    Handler 0x00790FA0: i32 result, bool is_other, Character (0x00A52630),
-    vector<Item> (0x004B9210), 2 vectors (0x004DAE90, 0x0076E9B0),
-    0x00A50B80 (i32 + f32 + 7*i32 + 0x00A4A0C0(8*i32) + map 0x00481E90),
-    vector (0x004B13E0).
+    Handler 0x00790FA0 (assert 0x00CFA8C0: bInfoUICall >> jInfo >> vecItemOut >>
+    vecPassiveSkillOut >> vecUseGuildSkill >> jLeagueArenaCharInfo >> vecProficiency).
     """
     OPCODE: ClassVar[int] = 6012
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    is_other: bool = True
-    character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
-    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
-    proficiencies: Vector[f32] = field(default_factory=list)  # 0x004B13E0 (proficiency exp vector)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'is_other',
-        'character',
-        'items',
-        Const(EmptyVector),
-        Const(EmptyVector),
-        Const(i32, 0),
-        Const(f32, 0.0),
-        Const(Raw[28], bytes(28)),
-        Const(Raw[32], bytes(32)),
-        Const(EmptyMap),
-        'proficiencies',
-    )
+    is_other: bool = True  # bInfoUICall
+    character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)  # jInfo (0x00A52630)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItemOut (0x004B9210)
+    passive_skills: Vector[Extern[LearnedSkill, 'encode', False]] = field(default_factory=list)  # vecPassiveSkillOut (0x004DAE90 -> 0x00A491C0)
+    guild_skills: Vector[Extern[GuildSkillEntry, 'encode', False]] = field(default_factory=list)  # vecUseGuildSkill (0x0076E9B0 -> 0x00A48890)
+    league_arena: LeagueArenaCharInfo = field(default_factory=LeagueArenaCharInfo)  # jLeagueArenaCharInfo (0x00A50B80)
+    proficiencies: Vector[f32] = field(default_factory=list)  # vecProficiency (0x004B13E0, 10 floats for SetProficiency)
 
 
 @dataclass

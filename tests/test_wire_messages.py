@@ -684,8 +684,36 @@ class WireMessagesTest(unittest.TestCase):
     def test_remote_inspection_char_info(self):
         req = messages.RequestCharInfoReq.decode(struct.pack('<?qq', False, 123, 0))
         self.assertEqual(req.char_uid, 123)
-        ack = messages.RequestCharInfoAck(result=0).encode()
-        self.assertEqual(struct.unpack_from('<i', ack[:4])[0], 0)
+        default_ack = messages.RequestCharInfoAck(result=0).encode()
+        self.assertEqual(struct.unpack_from('<i', default_ack[:4])[0], 0)
+        # Default LeagueArenaCharInfo encodes rating=1300, rating_float=1300.0, rank=-1
+        self.assertIn(struct.pack('<if', 1300, 1300.0), default_ack)
+        full_ack = messages.RequestCharInfoAck(
+            result=0,
+            is_other=True,
+            passive_skills=[messages.LearnedSkill(skill_index=101, level=3)],
+            guild_skills=[messages.GuildSkillEntry(skill_id=50, skill_level=2, is_used=True)],
+            league_arena=messages.LeagueArenaCharInfo(
+                rating=1550,
+                rating_float=1550.5,
+                season_stat_exp=250000,
+                used_league_point=100,
+                daily_league_point=50,
+                total_league_point=600,
+                rank=7,
+                win_count=12,
+                lose_count=4,
+                draw_count=1,
+                win_streak=3,
+                season_stats={0: 5, 2: 3},
+            ),
+            proficiencies=[10.0, 20.0] + [0.0] * 8,
+        ).encode()
+        self.assertIn(struct.pack('<ifiiiiiii', 1550, 1550.5, 250000, 100, 50, 0, 600, 0, 7), full_ack)
+        self.assertIn(struct.pack('<iiii', 12, 4, 1, 3), full_ack)
+        # 10-float proficiency tail (0x10 + varuint(10) + 10*f32)
+        expected_prof = b'\x10' + jser.varuint(10) + struct.pack('<10f', 10.0, 20.0, *([0.0] * 8))
+        self.assertTrue(full_ack.endswith(expected_prof))
 
     def test_remote_inspection_item_info(self):
         req = messages.RequestItemInfoReq.decode(struct.pack('<iqq', 0, 456, 0))

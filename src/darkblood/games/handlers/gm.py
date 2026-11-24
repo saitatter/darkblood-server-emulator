@@ -393,6 +393,14 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatProficiencyChangeReq)
     async def handle_cheat_proficiency_change(self, correlation: int, body: bytes):
         req = CheatProficiencyChangeReq.decode(body)
+        char = self.current_char()
+        if char is not None and 0 <= int(req.prof_type) < 10:
+            profs = list(char.get('proficiencies', []))
+            while len(profs) < 10:
+                profs.append(0.0)
+            profs[int(req.prof_type)] = float(req.value)
+            char['proficiencies'] = profs
+            self.save_char()
         await self.reply(CheatProficiencyChangeAck(result=0, prof_type=req.prof_type, value=req.value),
                          correlation, note=f'cheat proficiency ack (type={req.prof_type} val={req.value})')
 

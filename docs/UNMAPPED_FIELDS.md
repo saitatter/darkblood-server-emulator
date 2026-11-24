@@ -244,28 +244,22 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (18 of 118 fields)
+## social (12 of 129 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `FriendEntry` | `i64` | social.jsch:19 | +0x4A |
-| `5041 ChatAck` | `bool` | social.jsch:109 | +0x55 sub-struct flag (0x00A52BD0) |
-| `5041 ChatAck` | `vector<?>` | social.jsch:110 |  |
-| `5041 ChatAck` | `vector<?>` | social.jsch:111 |  |
-| `5041 ChatAck` | `i64` | social.jsch:114 |  |
-| `5041 ChatAck` | `i64` | social.jsch:115 |  |
-| `5041 ChatAck` | `i32` | social.jsch:116 |  |
-| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:130 | updated item |
-| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:160 | 0x004DAE90 |
-| `6012 RequestCharInfoAck` | `vector<?>` | social.jsch:161 | 0x0076E9B0 |
-| `6012 RequestCharInfoAck` | `i32` | social.jsch:162 | 0x00A50B80 +0x00 |
-| `6012 RequestCharInfoAck` | `f32` | social.jsch:163 | +0x04 |
-| `6012 RequestCharInfoAck` | `raw[28]` | social.jsch:164 | +0x08..+0x23 (7 x i32) |
-| `6012 RequestCharInfoAck` | `raw[32]` | social.jsch:165 | 0x00A4A0C0 (+0x24..+0x43, 8 x i32) |
-| `6012 RequestCharInfoAck` | `map<?>` | social.jsch:166 | 0x00481E90 |
-| `6028 RequestItemInfoReq` | `i32` | social.jsch:173 |  |
-| `6028 RequestItemInfoReq` | `i64` | social.jsch:175 |  |
-| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:183 |  |
+| `FriendEntry` | `i64` | social.jsch:21 | +0x4A |
+| `5041 ChatAck` | `bool` | social.jsch:111 | +0x55 sub-struct flag (0x00A52BD0) |
+| `5041 ChatAck` | `vector<?>` | social.jsch:112 |  |
+| `5041 ChatAck` | `vector<?>` | social.jsch:113 |  |
+| `5041 ChatAck` | `i64` | social.jsch:116 |  |
+| `5041 ChatAck` | `i64` | social.jsch:117 |  |
+| `5041 ChatAck` | `i32` | social.jsch:118 |  |
+| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:132 | updated item |
+| `LeagueArenaCharInfo` | `raw[16]` | social.jsch:169 | +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810) |
+| `6028 RequestItemInfoReq` | `i32` | social.jsch:189 |  |
+| `6028 RequestItemInfoReq` | `i64` | social.jsch:191 |  |
+| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:199 |  |
 
 ## stalls (20 of 97 fields)
 

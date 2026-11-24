@@ -4,6 +4,8 @@ domain social Dark Blood protocol wire messages - Social domain.
 extern Character from darkblood.games.entities.character encode=encode_world_details
 extern Item from darkblood.games.entities.items
 extern RoomMemberInfo from darkblood.games.network.messages.dungeon readable
+extern LearnedSkill from darkblood.games.network.messages.skills
+extern GuildSkillEntry from darkblood.games.network.messages.guild
 
 struct FriendEntry
   ## Friend struct, reader 0x00A49450 (2140 and the 2132 map).
@@ -148,23 +150,37 @@ message 6011 RequestCharInfoReq header?
   i64 requester_uid
 end
 
+struct LeagueArenaCharInfo
+  ## League Arena character record, reader 0x00A50B80 (ctor 0x00481550, consumer 0x00944810 + 0x00952D40).
+  ## Displayed by JAppPageArenaMatch::UpdateSeasonInfo (0x004925E0) and stat UI (0x00496620).
+  i32 rating = 1300              # +0x00 Elo rating (default 0x514 -> JUser+0x288)
+  f32 rating_float = 1300.0      # +0x04 float MMR (default 0x00C94A44 = 1300.0f)
+  i32 season_stat_exp            # +0x08 nLeagueArenaSeasonStatExp (100k/pt -> JUser+0x28C)
+  i32 used_league_point          # +0x0C spent league points (cur = max(0, total - used) -> JUser+0x27C)
+  i32 daily_league_point         # +0x10 daily league points earned (JUser+0x280)
+  i32 daily_league_point_bonus   # +0x14 bonus daily league points under 2x buff (JUser+0x284)
+  i32 total_league_point         # +0x18 total league points earned
+  i32 stat_reset_count           # +0x1C league stat reset count (MB_ArenaMatch_StatClear -> JUser+0x290)
+  i32 rank = -1                  # +0x20 league rank (-1 = unranked -> JUser+0x278)
+  i32 win_count                  # 0x00A4A0C0 +0x00 (+0x24 -> JUser+0x2A4)
+  i32 lose_count                 # +0x04 (+0x28 -> JUser+0x2A8)
+  i32 draw_count                 # +0x08 (+0x2C -> JUser+0x2AC; win+lose+draw < 10 = placement)
+  i32 win_streak                 # +0x0C (+0x30 -> JUser+0x2B0)
+  raw[16] _                      # +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810)
+  map<u32,u16> season_stats      # +0x44 (0x00481E90 -> 0x00475CB0; keys 0..14 -> JUser+0x2C8[15])
+end
+
 message 6012 RequestCharInfoAck ok_only
-  ## Handler 0x00790FA0: i32 result, bool is_other, Character (0x00A52630),
-  ## vector<Item> (0x004B9210), 2 vectors (0x004DAE90, 0x0076E9B0),
-  ## 0x00A50B80 (i32 + f32 + 7*i32 + 0x00A4A0C0(8*i32) + map 0x00481E90),
-  ## vector (0x004B13E0).
+  ## Handler 0x00790FA0 (assert 0x00CFA8C0: bInfoUICall >> jInfo >> vecItemOut >>
+  ## vecPassiveSkillOut >> vecUseGuildSkill >> jLeagueArenaCharInfo >> vecProficiency).
   i32 result
-  bool is_other = true
-  Character character = Character()
-  vector<Item> items
-  vector<?> _                # 0x004DAE90
-  vector<?> _                # 0x0076E9B0
-  i32 _                      # 0x00A50B80 +0x00
-  f32 _                      # +0x04
-  raw[28] _                  # +0x08..+0x23 (7 x i32)
-  raw[32] _                  # 0x00A4A0C0 (+0x24..+0x43, 8 x i32)
-  map<?> _                   # 0x00481E90
-  vector<f32> proficiencies  # 0x004B13E0 (proficiency exp vector)
+  bool is_other = true                       # bInfoUICall
+  Character character = Character()          # jInfo (0x00A52630)
+  vector<Item> items                         # vecItemOut (0x004B9210)
+  vector<LearnedSkill> passive_skills        # vecPassiveSkillOut (0x004DAE90 -> 0x00A491C0)
+  vector<GuildSkillEntry> guild_skills       # vecUseGuildSkill (0x0076E9B0 -> 0x00A48890)
+  LeagueArenaCharInfo league_arena = LeagueArenaCharInfo()  # jLeagueArenaCharInfo (0x00A50B80)
+  vector<f32> proficiencies                  # vecProficiency (0x004B13E0, 10 floats for SetProficiency)
 end
 
 message 6028 RequestItemInfoReq header?

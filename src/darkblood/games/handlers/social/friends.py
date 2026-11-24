@@ -294,15 +294,60 @@ class FriendsHandlers:
     def _build_char_info_ack(self, target, is_other=True):
         from darkblood.games.entities.character import Character
         from darkblood.games.entities.items import Item
-        from darkblood.games.network.messages import RequestCharInfoAck
+        from darkblood.games.handlers.skills import learned_skill_map
+        from darkblood.games.network.messages import (
+            GuildSkillEntry,
+            LeagueArenaCharInfo,
+            RequestCharInfoAck,
+        )
         if target is None:
             return RequestCharInfoAck(result=0xCE)
         equipped = [Item.from_dict(it) for it in target.get('items', []) if it.get('container', 0) == 0]
+        passive_skills = list(learned_skill_map(
+            target.get('skills', {}),
+            target.get('skill_speeches', {}),
+            target.get('locked_skills', []),
+            target.get('skill_show_cooltime', []),
+        ).values())
+        guild_skills = [
+            GuildSkillEntry(
+                skill_id=int(gs.get('skill_id', 0xFFFF)),
+                skill_level=int(gs.get('skill_level', 0)),
+                is_used=bool(gs.get('is_used', False)),
+                remain_time=int(gs.get('remain_time', 0)),
+                cool_time=int(gs.get('cool_time', 0)),
+                param=int(gs.get('param', 0)),
+            )
+            for gs in target.get('guild_skills', [])
+        ]
+        la = target.get('league_arena', {}) or {}
+        league_arena = LeagueArenaCharInfo(
+            rating=int(la.get('rating', 1300)),
+            rating_float=float(la.get('rating_float', 1300.0)),
+            season_stat_exp=int(la.get('season_stat_exp', 0)),
+            used_league_point=int(la.get('used_league_point', 0)),
+            daily_league_point=int(la.get('daily_league_point', 0)),
+            daily_league_point_bonus=int(la.get('daily_league_point_bonus', 0)),
+            total_league_point=int(la.get('total_league_point', 0)),
+            stat_reset_count=int(la.get('stat_reset_count', 0)),
+            rank=int(la.get('rank', -1)),
+            win_count=int(la.get('win_count', 0)),
+            lose_count=int(la.get('lose_count', 0)),
+            draw_count=int(la.get('draw_count', 0)),
+            win_streak=int(la.get('win_streak', 0)),
+            season_stats={int(k): int(v) for k, v in (la.get('season_stats') or {}).items()},
+        )
+        raw_prof = list(target.get('proficiencies', []))
+        proficiencies = [float(raw_prof[i]) if i < len(raw_prof) else 0.0 for i in range(10)]
         return RequestCharInfoAck(
             result=0,
             is_other=bool(is_other),
             character=Character.from_dict(target),
             items=equipped,
+            passive_skills=passive_skills,
+            guild_skills=guild_skills,
+            league_arena=league_arena,
+            proficiencies=proficiencies,
         )
 
 
