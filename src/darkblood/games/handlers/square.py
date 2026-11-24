@@ -13,6 +13,7 @@ from darkblood.games.network.messages import (
     NpcFirstMeetAck,
     QuestObjective,
     QuestUpdateNot,
+    TargetState,
 )
 
 # Tutorial quest Q0882S01 (0x34c58e7c) objective mappings:
@@ -29,6 +30,28 @@ TUTORIAL_QUEST_ID = 0x34c58e7c
 
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+
+_GTARGETS_CACHE = None
+
+
+def _gtargets_for_layer(layer_id: int) -> list:
+    """Return enabled TargetState entries for the town square of `layer_id`."""
+    global _GTARGETS_CACHE
+    if _GTARGETS_CACHE is None:
+        import json
+        from darkblood import REPO_ROOT
+        from darkblood.core.hashing import jhash
+        _GTARGETS_CACHE = {}
+        path = REPO_ROOT / 'assets' / 'gtargets.json'
+        if path.is_file():
+            data = json.loads(path.read_text(encoding='utf-8'))
+            for square_name, uids in data.items():
+                _GTARGETS_CACHE[jhash(square_name) & 0xFFFFFFFF] = [
+                    TargetState(value=int(uid), flag_a=True, flag_b=False)
+                    for uid in uids
+                ]
+    sq_hash = (int(layer_id) >> 32) & 0xFFFFFFFF
+    return list(_GTARGETS_CACHE.get(sq_hash, ()))
 
 
 class SquareHandlers(BaseDomainService):
@@ -209,11 +232,15 @@ class SquareHandlers(BaseDomainService):
     async def handle_get_gtarget_list(self, correlation: int, body: bytes):
         """Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK).
 
-        Client handler: 0x006F9AB9.
-        Returns target tracking entities for current town layer.
+        Client handler: 0x00873490 -> 0x0085E150 -> 0x007F8CD0.
+        Enables 3D interactive town GTargets (furnace ma2700, potion station ma2710,
+        gathering nodes) on the current town square.
         """
-        await self.transport.send_event(event(5125, GTargetListAck().encode(), correlation),
-                                        note='gtarget list ack')
+        targets = _gtargets_for_layer(self._town_layer())
+        await self.transport.send_event(
+            event(5125, GTargetListAck(result=0, targets=targets).encode(), correlation),
+            note=f'gtarget list ack ({len(targets)})',
+        )
         # Sent once the town has loaded: show the players already there.
         from darkblood.games.world import GameWorldManager
         await GameWorldManager.get().player_ready(self.session)

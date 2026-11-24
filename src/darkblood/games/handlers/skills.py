@@ -162,10 +162,55 @@ class SkillHandlers(BaseDomainService):
     @packet_handler(UseLearnSkillItemReq)
     async def handle_use_learn_skill_item(self, correlation, body):
         # eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0).
+        from darkblood.core.hashing import jhash
         req = UseLearnSkillItemReq.decode(body)
         self.transport.record('use-learn-skill-item-req', body, item_uid=req.item_uid, skill_id=req.skill_id)
-        ack = UseLearnSkillItemAck(result=0, skill_id=req.skill_id, skill_level=1, item_code=0, count=1, items=[], sp=10).encode()
-        await self.transport.send_event(event(2112, ack, correlation), note=f'use learn skill item ack (skill={req.skill_id})')
+        char = self.current_char()
+        if not char:
+            await self.transport.send_event(
+                event(2112, UseLearnSkillItemAck(result=results.NO_EXIST_CHAR).encode(), correlation),
+                note='use learn skill item fail (no char)',
+            )
+            return
+        skills = char.setdefault('skills', {})
+        new_lv = int(skills.get(str(req.skill_id), 0)) + 1
+        skills[str(req.skill_id)] = new_lv
+
+        items = char.get('items', [])
+        used = next((i for i in items if i.get('uid') == req.item_uid), None)
+        wire_items = []
+        item_code = 0
+        if used is not None:
+            raw_hash = jhash(used.get('code', '')) & 0xFFFFFFFF
+            item_code = raw_hash - 0x100000000 if raw_hash >= 0x80000000 else raw_hash
+            rem = int(used.get('count', 1)) - 1
+            if rem <= 0:
+                items.remove(used)
+                wire_items.append(Item(
+                    owner=UPDATE_OWNER,
+                    uid=0,
+                    code='',
+                    container=used.get('container', 3),
+                    slot=used.get('slot', 0),
+                    count=0,
+                ))
+            else:
+                used['count'] = rem
+                wire_items.append(Item(owner=UPDATE_OWNER, **used))
+        self.save_char()
+        ack = UseLearnSkillItemAck(
+            result=0,
+            skill_id=req.skill_id,
+            skill_level=new_lv,
+            item_code=item_code,
+            count=1,
+            items=wire_items,
+            sp=int(char.get('sp', 0)),
+        ).encode()
+        await self.transport.send_event(
+            event(2112, ack, correlation),
+            note=f'use learn skill item ack (skill={req.skill_id} lv={new_lv} sp={char.get("sp", 0)})',
+        )
 
     @packet_handler(SkillUpdateShowCoolTimeReq)
     async def handle_skill_update_show_cooltime(self, correlation, body):
