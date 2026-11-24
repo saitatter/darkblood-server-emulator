@@ -1589,7 +1589,7 @@ class DarkBloodLauncher(tk.Tk):
         self.update_btn.config(state='disabled', text='Checking...')
 
         def run():
-            st = updater.check_for_updates(ROOT, releases_only=True)
+            st = updater.check_for_updates(ROOT)
             self.after(0, lambda: self._apply_update_status(st))
 
         threading.Thread(target=run, daemon=True).start()
@@ -1597,6 +1597,9 @@ class DarkBloodLauncher(tk.Tk):
     def _apply_update_status(self, st):
         self._update_status = st
         self.update_btn.config(state='normal')
+        if st.mode == 'dev':
+            self.update_btn.config(text='Dev Checkout', bg=BG_CARD, fg=TEXT_MUTED)
+            return
         if st.error:
             self.update_btn.config(text='Check Releases', bg=BG_CARD, fg=TEXT_MUTED)
             return
@@ -1610,11 +1613,16 @@ class DarkBloodLauncher(tk.Tk):
 
     def _on_update_click(self):
         st = self._update_status
+        if st is not None and st.mode == 'dev':
+            self.status_var.set('Running from a git development checkout — update with git pull.')
+            return
         if st is None or st.up_to_date or st.error:
             self._check_updates_async()
             return
+        size_note = f' ({st.zip_size / (1024 * 1024):.1f} MB)' if st.zip_size else ''
         msg = (
-            f'Update Dark Blood Server Emulator from {st.short_current} to published release {st.short_remote}?\n\n'
+            f'Update Dark Blood Server Emulator from {st.short_current} to {st.short_remote}{size_note}?\n\n'
+            'The archive SHA-256 will be verified before applying.\n'
             'User data (data/, research/, darkblood_options.ini) is preserved.'
         )
         if not messagebox.askyesno('Update to Published Release', msg):
@@ -1625,11 +1633,32 @@ class DarkBloodLauncher(tk.Tk):
             self._server_proc = None
             self.local_srv_btn.config(text='Start Local Server')
 
-        self.update_btn.config(state='disabled', text='Updating...')
+        self.update_btn.config(state='disabled', text='Downloading...')
         self.status_var.set(f'Downloading release {st.short_remote} from GitHub...')
+        last_ui = [0.0]
+
+        def on_progress(done, total):
+            now = time.monotonic()
+            if total and done < total and (now - last_ui[0]) < 0.12:
+                return
+            last_ui[0] = now
+            if total:
+                pct = min(100, int(done * 100 / total))
+                btn_txt = f'Downloading {pct}%'
+                stat_txt = (
+                    f'Downloading {st.short_remote}: '
+                    f'{done / (1024 * 1024):.1f} / {total / (1024 * 1024):.1f} MB ({pct}%)'
+                )
+            else:
+                btn_txt = f'{done / (1024 * 1024):.1f} MB'
+                stat_txt = f'Downloading {st.short_remote}: {done / (1024 * 1024):.1f} MB...'
+            self.after(0, lambda b=btn_txt, s=stat_txt: (
+                self.update_btn.config(text=b),
+                self.status_var.set(s),
+            ))
 
         def run():
-            res = updater.apply_update(ROOT, releases_only=True)
+            res = updater.apply_update(ROOT, on_progress=on_progress)
             self.after(0, lambda: self._finish_update(res))
 
         threading.Thread(target=run, daemon=True).start()
@@ -1641,10 +1670,10 @@ class DarkBloodLauncher(tk.Tk):
             self.update_btn.config(text='Retry Update', bg=ACCENT, fg='white')
             messagebox.showerror('Update Failed', res.message)
             return
-        ver_label = res.new_sha if res.new_sha.startswith('v') else res.new_sha[:7]
+        ver_label = res.new_version or 'latest'
         self.update_btn.config(text=f'Up to date ({ver_label})', bg=BG_CARD, fg=OK_GREEN)
         self._update_status = updater.UpdateStatus(
-            mode=res.mode, current_sha=res.new_sha, remote_sha=res.new_sha, up_to_date=True,
+            mode=res.mode, current_version=res.new_version, remote_version=res.new_version, up_to_date=True,
         )
         self._refresh_commits()
         if res.hook_changed and not IS_FROZEN and HOOK_BUILD_BAT.exists():

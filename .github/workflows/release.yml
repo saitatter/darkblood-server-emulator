@@ -76,3 +76,4 @@ jobs:
           files: |
             dist/*.zip
             dist/*.sha256
+            dist/manifest.json

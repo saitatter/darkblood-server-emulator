@@ -13,6 +13,7 @@ Strictly excludes user data (`data/`, `research/`, `logs/`, `.git/`, `*.db`, `*.
 """
 import argparse
 import hashlib
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -158,17 +159,30 @@ def create_release_zip(version: str, output_dir: Path = None, root: Path = ROOT,
         raise FileNotFoundError('client_hook/steam_api.dll is missing; build it first or omit --skip-build')
 
     count = 0
+    managed_files = []
     notes_text = generate_release_notes(version, zip_path.name, '(see .sha256)', root=root)
     with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for src, rel in iter_release_files(root, exe_path=exe_path):
             zf.write(src, f'{top_dir}/{rel}')
+            managed_files.append(rel)
             count += 1
         zf.writestr(f'{top_dir}/.version', version + '\n')
         zf.writestr(f'{top_dir}/RELEASE_NOTES.md', notes_text)
+        managed_files.append('RELEASE_NOTES.md')
         count += 2
 
-    sha256 = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+    zip_bytes = zip_path.read_bytes()
+    sha256 = hashlib.sha256(zip_bytes).hexdigest()
     (output_dir / f'{zip_path.name}.sha256').write_text(f'{sha256}  {zip_path.name}\n', encoding='utf-8')
+    manifest = {
+        'schema': 1,
+        'version': version,
+        'zip_name': zip_path.name,
+        'zip_sha256': sha256,
+        'zip_size': len(zip_bytes),
+        'files': sorted(set(managed_files)),
+    }
+    (output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     notes_path = output_dir / 'RELEASE_NOTES.md'
     notes_path.write_text(generate_release_notes(version, zip_path.name, sha256, root=root), encoding='utf-8')
     print(f'Built {zip_path} ({count} files, {zip_path.stat().st_size:,} bytes, sha256={sha256[:12]}...)')

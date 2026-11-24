@@ -1,55 +1,73 @@
-"""Unit tests for tools/updater.py (git clone mode and portable ZIP mode)."""
+"""Unit tests for tools/updater.py (GitHub Releases + manifest.json self-updater) and tools/build_release.py."""
+import hashlib
 import io
+import json
 from pathlib import Path
-import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from tests.common import ROOT  # noqa: F401 (adds tools/ to sys.path)
 import updater
 
 
-class ZipUpdaterTest(unittest.TestCase):
-    def _make_zip(self, files: dict) -> bytes:
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
-            for name, content in files.items():
-                zf.writestr(name, content)
-        return buf.getvalue()
+def _make_zip(files: dict) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, content in files.items():
+            zf.writestr(name, content)
+    return buf.getvalue()
 
-    def test_zip_update_replaces_source_and_preserves_user_data(self):
+
+class SemverTest(unittest.TestCase):
+    def test_version_ordering_and_no_downgrade(self):
+        self.assertTrue(updater.is_newer_version('', 'v0.1.0-alpha'))
+        self.assertTrue(updater.is_newer_version('v0.1.0-alpha', 'v0.1.0-beta'))
+        self.assertTrue(updater.is_newer_version('v0.1.0-beta', 'v0.1.0'))
+        self.assertTrue(updater.is_newer_version('v0.1.0', 'v0.2.0'))
+        self.assertTrue(updater.is_newer_version('v0.2.0', 'v0.10.0'))
+        # Same or older remote must never trigger an update
+        self.assertFalse(updater.is_newer_version('v0.2.0', 'v0.2.0'))
+        self.assertFalse(updater.is_newer_version('v0.2.0', 'v0.1.9'))
+        self.assertFalse(updater.is_newer_version('v0.1.0', 'v0.1.0-alpha'))
+        self.assertFalse(updater.is_newer_version('v0.1.0', ''))
+
+
+class ReleaseUpdaterTest(unittest.TestCase):
+    def test_zip_update_preserves_user_data_and_blocks_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            # Pre-existing user files that MUST NOT be overwritten
             (root / 'data').mkdir()
             (root / 'data' / 'darkblood.db').write_bytes(b'USER_DB_DATA')
             (root / 'research' / 'client').mkdir(parents=True)
             (root / 'research' / 'client' / 'darkblood_options.ini').write_text('host=192.168.1.5\n', encoding='utf-8')
             (root / 'logs').mkdir()
             (root / 'logs' / 'wire.jsonl').write_text('keep\n', encoding='utf-8')
-            (root / 'src').mkdir()
-            (root / 'src' / 'app.py').write_text('old = 1\n', encoding='utf-8')
+            (root / 'assets').mkdir()
+            (root / 'assets' / 'opcodes.tsv').write_text('old\n', encoding='utf-8')
 
-            archive = self._make_zip({
-                'darkblood-server-emulator-main/src/app.py': b'new = 2\n',
-                'darkblood-server-emulator-main/client_hook/patches/network_redirect.c': b'/* hook */\n',
-                'darkblood-server-emulator-main/tools/launcher.py': b'# updated launcher\n',
-                'darkblood-server-emulator-main/data/darkblood.db': b'SHOULD_BE_SKIPPED',
-                'darkblood-server-emulator-main/research/client/darkblood_options.ini': b'SHOULD_BE_SKIPPED',
-                'darkblood-server-emulator-main/logs/wire.jsonl': b'SHOULD_BE_SKIPPED',
-                'darkblood-server-emulator-main/../escape.txt': b'EVIL',
+            archive = _make_zip({
+                'DarkBlood-Emulator-v0.2.0/assets/opcodes.tsv': b'new\n',
+                'DarkBlood-Emulator-v0.2.0/client_hook/patches/network_redirect.c': b'/* hook */\n',
+                'DarkBlood-Emulator-v0.2.0/tools/launcher.py': b'# updated launcher\n',
+                'DarkBlood-Emulator-v0.2.0/data/darkblood.db': b'SHOULD_BE_SKIPPED',
+                'DarkBlood-Emulator-v0.2.0/research/client/darkblood_options.ini': b'SHOULD_BE_SKIPPED',
+                'DarkBlood-Emulator-v0.2.0/logs/wire.jsonl': b'SHOULD_BE_SKIPPED',
+                'DarkBlood-Emulator-v0.2.0/../escape.txt': b'EVIL',
             })
+            sha = hashlib.sha256(archive).hexdigest()
 
-            res = updater.apply_zip_archive(root, archive, new_sha='abcdef1234567890')
+            res = updater.apply_zip_archive(root, archive, new_version='v0.2.0', expected_sha256=sha)
             self.assertTrue(res.ok)
             self.assertEqual(res.files_updated, 3)
             self.assertTrue(res.hook_changed)
             self.assertTrue(res.launcher_changed)
-            self.assertEqual((root / 'src' / 'app.py').read_text(encoding='utf-8'), 'new = 2\n')
-            self.assertEqual((root / '.version').read_text(encoding='utf-8').strip(), 'abcdef1234567890')
+            self.assertEqual((root / 'assets' / 'opcodes.tsv').read_text(encoding='utf-8'), 'new\n')
+            self.assertEqual((root / '.version').read_text(encoding='utf-8').strip(), 'v0.2.0')
+            self.assertTrue((root / '.manifest.json').is_file())
+            self.assertFalse((root / '.update_staging').exists())
             # User files untouched
             self.assertEqual((root / 'data' / 'darkblood.db').read_bytes(), b'USER_DB_DATA')
             self.assertEqual((root / 'research' / 'client' / 'darkblood_options.ini').read_text(encoding='utf-8'),
@@ -57,17 +75,56 @@ class ZipUpdaterTest(unittest.TestCase):
             self.assertEqual((root / 'logs' / 'wire.jsonl').read_text(encoding='utf-8'), 'keep\n')
             self.assertFalse((root.parent / 'escape.txt').exists())
 
+    def test_sha256_mismatch_aborts_before_touching_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'assets').mkdir()
+            (root / 'assets' / 'opcodes.tsv').write_text('original\n', encoding='utf-8')
+            archive = _make_zip({'DarkBlood-Emulator-v0.2.0/assets/opcodes.tsv': b'corrupted\n'})
+
+            res = updater.apply_zip_archive(
+                root, archive, new_version='v0.2.0', expected_sha256='0' * 64,
+            )
+            self.assertFalse(res.ok)
+            self.assertIn('SHA-256 mismatch', res.message)
+            self.assertEqual((root / 'assets' / 'opcodes.tsv').read_text(encoding='utf-8'), 'original\n')
+            self.assertFalse((root / '.version').exists())
+
+    def test_orphan_files_removed_between_releases_while_user_files_preserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'user_notes.txt').write_text('keep me\n', encoding='utf-8')
+
+            v1 = _make_zip({
+                'DarkBlood-Emulator-v0.1.0/assets/keep.tsv': b'k1\n',
+                'DarkBlood-Emulator-v0.1.0/assets/obsolete.tsv': b'old\n',
+            })
+            r1 = updater.apply_zip_archive(root, v1, new_version='v0.1.0')
+            self.assertTrue(r1.ok)
+            self.assertTrue((root / 'assets' / 'obsolete.tsv').is_file())
+
+            v2 = _make_zip({
+                'DarkBlood-Emulator-v0.2.0/assets/keep.tsv': b'k2\n',
+            })
+            r2 = updater.apply_zip_archive(root, v2, new_version='v0.2.0')
+            self.assertTrue(r2.ok)
+            self.assertEqual(r2.files_updated, 1)
+            self.assertEqual(r2.files_removed, 1)
+            self.assertFalse((root / 'assets' / 'obsolete.tsv').exists())
+            self.assertEqual((root / 'assets' / 'keep.tsv').read_text(encoding='utf-8'), 'k2\n')
+            self.assertEqual((root / 'user_notes.txt').read_text(encoding='utf-8'), 'keep me\n')
+
     def test_release_zip_deploys_prebuilt_steam_api_dll(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / 'research' / 'client').mkdir(parents=True)
             (root / 'research' / 'client' / 'steam_api.dll').write_bytes(b'OLD_DLL')
 
-            archive = self._make_zip({
+            archive = _make_zip({
                 'DarkBlood-Emulator-v0.1.0/client_hook/steam_api.dll': b'NEW_PREBUILT_DLL',
-                'DarkBlood-Emulator-v0.1.0/src/darkblood/__init__.py': b'# v0.1.0\n',
+                'DarkBlood-Emulator-v0.1.0/README.md': b'# v0.1.0\n',
             })
-            res = updater.apply_zip_archive(root, archive, new_sha='v0.1.0')
+            res = updater.apply_zip_archive(root, archive, new_version='v0.1.0')
             self.assertTrue(res.ok)
             self.assertEqual(res.mode, 'release')
             self.assertFalse(res.hook_changed)  # prebuilt DLL already deployed, no MSVC needed
@@ -75,13 +132,12 @@ class ZipUpdaterTest(unittest.TestCase):
             self.assertEqual((root / '.version').read_text(encoding='utf-8').strip(), 'v0.1.0')
 
     def test_release_zip_updates_locked_launcher_exe_via_rename(self):
-        from unittest.mock import patch
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
             exe = root / updater.LAUNCHER_EXE_NAME
             exe.write_bytes(b'OLD_EXE')
 
-            archive = self._make_zip({
+            archive = _make_zip({
                 f'DarkBlood-Emulator-v0.2.0/{updater.LAUNCHER_EXE_NAME}': b'NEW_EXE',
             })
 
@@ -95,7 +151,7 @@ class ZipUpdaterTest(unittest.TestCase):
                 return orig_write_bytes(self_path, data)
 
             with patch.object(Path, 'write_bytes', fake_write_bytes):
-                res = updater.apply_zip_archive(root, archive, new_sha='v0.2.0')
+                res = updater.apply_zip_archive(root, archive, new_version='v0.2.0')
 
             self.assertTrue(res.ok)
             self.assertTrue(res.launcher_changed)
@@ -104,11 +160,71 @@ class ZipUpdaterTest(unittest.TestCase):
             self.assertEqual(updater.cleanup_old_binaries(root), 1)
             self.assertFalse((root / f'{updater.LAUNCHER_EXE_NAME}.old').exists())
 
-    def test_build_release_zip_packages_clean_standalone_and_source_archives(self):
+    def test_dev_checkout_disables_self_updater(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.git').mkdir()
+            with patch.object(updater, 'fetch_latest_release', side_effect=AssertionError('must not hit network')):
+                st = updater.check_for_updates(root)
+                self.assertEqual(st.mode, 'dev')
+                self.assertTrue(st.up_to_date)
+                res = updater.apply_update(root)
+                self.assertFalse(res.ok)
+                self.assertEqual(res.mode, 'dev')
+
+    def test_manifest_check_and_api_fallback_and_download_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.version').write_text('v0.1.0\n', encoding='utf-8')
+
+            # No release published
+            with patch.object(updater, '_fetch_latest_manifest', return_value=None), \
+                 patch.object(updater, '_fetch_latest_release_api', return_value=None):
+                st = updater.check_for_updates(root)
+                self.assertEqual(st.mode, 'release')
+                self.assertTrue(st.up_to_date)
+                self.assertTrue(bool(st.error))
+
+            # Manifest found -> does not call REST API
+            archive = _make_zip({'DarkBlood-Emulator-v0.2.0/README.md': b'v0.2.0\n'})
+            sha = hashlib.sha256(archive).hexdigest()
+            info = updater.ReleaseInfo(
+                version='v0.2.0',
+                zip_url='https://example.invalid/DarkBlood-Emulator-v0.2.0-win32.zip',
+                zip_sha256=sha,
+                zip_size=len(archive),
+            )
+            with patch.object(updater, '_fetch_latest_manifest', return_value=info), \
+                 patch.object(updater, '_fetch_latest_release_api', side_effect=AssertionError('should not call API')):
+                st2 = updater.check_for_updates(root)
+                self.assertEqual(st2.mode, 'release')
+                self.assertFalse(st2.up_to_date)
+                self.assertEqual(st2.remote_version, 'v0.2.0')
+                self.assertEqual(st2.zip_sha256, sha)
+
+            # Streaming apply with progress callback
+            progress_events = []
+
+            def fake_download(url, dest, expected_size=0, on_progress=None, timeout=60):
+                dest.write_bytes(archive)
+                if on_progress:
+                    on_progress(len(archive) // 2, len(archive))
+                    on_progress(len(archive), len(archive))
+                return sha
+
+            with patch.object(updater, 'fetch_latest_release', return_value=info), \
+                 patch.object(updater, '_download_to_file', side_effect=fake_download):
+                res = updater.apply_update(root, on_progress=lambda d, t: progress_events.append((d, t)))
+                self.assertTrue(res.ok)
+                self.assertEqual(res.new_version, 'v0.2.0')
+                self.assertEqual(len(progress_events), 2)
+                self.assertEqual(progress_events[-1], (len(archive), len(archive)))
+                self.assertEqual((root / 'README.md').read_text(encoding='utf-8'), 'v0.2.0\n')
+
+    def test_build_release_zip_packages_clean_archive_and_manifest(self):
         import build_release
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp)
-            # Standalone EXE release archive
             fake_exe = out_dir / build_release.LAUNCHER_EXE_NAME
             fake_exe.write_bytes(b'MZ_FAKE_EXE')
             zip_path = build_release.create_release_zip(
@@ -116,6 +232,15 @@ class ZipUpdaterTest(unittest.TestCase):
             )
             self.assertTrue(zip_path.is_file())
             self.assertTrue((out_dir / f'{zip_path.name}.sha256').is_file())
+            manifest_path = out_dir / 'manifest.json'
+            self.assertTrue(manifest_path.is_file())
+            manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+            self.assertEqual(manifest['schema'], 1)
+            self.assertEqual(manifest['version'], 'v0.1.0-test')
+            self.assertEqual(manifest['zip_name'], zip_path.name)
+            self.assertEqual(manifest['zip_sha256'], hashlib.sha256(zip_path.read_bytes()).hexdigest())
+            self.assertEqual(manifest['zip_size'], zip_path.stat().st_size)
+            self.assertIn(build_release.LAUNCHER_EXE_NAME, manifest['files'])
             with zipfile.ZipFile(zip_path) as zf:
                 names = set(zf.namelist())
                 self.assertIn(f'DarkBlood-Emulator-v0.1.0-test/{build_release.LAUNCHER_EXE_NAME}', names)
@@ -124,82 +249,6 @@ class ZipUpdaterTest(unittest.TestCase):
                 self.assertFalse(any(n.endswith('.bat') for n in names))
                 self.assertFalse(any('/data/' in n or '/research/' in n or '/logs/' in n for n in names))
                 self.assertFalse(any(n.endswith(('.obj', '.db', '.log')) for n in names))
-
-
-@unittest.skipUnless(shutil.which('git'), 'git CLI not available')
-class GitUpdaterTest(unittest.TestCase):
-    def _git(self, cwd: Path, *args):
-        res = subprocess.run(['git', *args], cwd=str(cwd), capture_output=True, text=True)
-        if res.returncode != 0:
-            raise AssertionError(f'git {args} failed: {res.stderr}')
-        return res.stdout.strip()
-
-    def test_git_check_and_apply_fast_forward_detects_hook_change(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp)
-            origin = base / 'origin.git'
-            upstream = base / 'upstream'
-            clone = base / 'clone'
-            origin.mkdir()
-            self._git(origin, 'init', '--bare')
-
-            # Seed upstream main branch
-            self._git(base, 'clone', str(origin), str(upstream))
-            self._git(upstream, 'config', 'user.email', 'test@example.com')
-            self._git(upstream, 'config', 'user.name', 'Test')
-            self._git(upstream, 'checkout', '-B', 'main')
-            (upstream / 'hello.txt').write_text('v1\n', encoding='utf-8')
-            self._git(upstream, 'add', 'hello.txt')
-            self._git(upstream, 'commit', '-m', 'chore: init')
-            self._git(upstream, 'push', '-u', 'origin', 'main')
-
-            # Clone as local install
-            self._git(base, 'clone', '-b', 'main', str(origin), str(clone))
-            self._git(clone, 'config', 'user.email', 'test@example.com')
-            self._git(clone, 'config', 'user.name', 'Test')
-
-            st0 = updater.check_for_updates(clone, releases_only=False)
-            self.assertEqual(st0.mode, 'git')
-            self.assertTrue(st0.up_to_date)
-            self.assertEqual(st0.behind, 0)
-
-            # Push a new commit touching client_hook/
-            (upstream / 'client_hook').mkdir()
-            (upstream / 'client_hook' / 'common.c').write_text('// v2\n', encoding='utf-8')
-            self._git(upstream, 'add', 'client_hook/common.c')
-            self._git(upstream, 'commit', '-m', 'fix(hook): update common.c')
-            self._git(upstream, 'push', 'origin', 'main')
-
-            st1 = updater.check_for_updates(clone, releases_only=False)
-            self.assertFalse(st1.up_to_date)
-            self.assertEqual(st1.behind, 1)
-
-            res = updater.apply_update(clone, releases_only=False)
-            self.assertTrue(res.ok)
-            self.assertTrue(res.hook_changed)
-            self.assertFalse(res.launcher_changed)
-            self.assertEqual((clone / 'client_hook' / 'common.c').read_text(encoding='utf-8'), '// v2\n')
-
-    def test_releases_only_never_falls_back_to_random_commits(self):
-        from unittest.mock import patch
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / '.version').write_text('v0.1.0\n', encoding='utf-8')
-            with patch.object(updater, '_fetch_latest_release_api', return_value=(None, None)), \
-                 patch.object(updater, '_fetch_remote_sha_api', side_effect=AssertionError('must not query commits')):
-                st = updater.check_for_updates(root, releases_only=True)
-                self.assertEqual(st.mode, 'release')
-                self.assertTrue(st.up_to_date)
-                self.assertTrue(bool(st.error))
-                res = updater.apply_update(root, releases_only=True)
-                self.assertFalse(res.ok)
-
-            with patch.object(updater, '_fetch_latest_release_api',
-                              return_value=('v0.2.0', 'https://example.invalid/release.zip')):
-                st2 = updater.check_for_updates(root, releases_only=True)
-                self.assertEqual(st2.mode, 'release')
-                self.assertFalse(st2.up_to_date)
-                self.assertEqual(st2.remote_sha, 'v0.2.0')
 
     @unittest.skipUnless(sys.platform == 'win32', 'launcher/gamectl requires Windows')
     def test_launcher_ensure_hook_deployed_and_gm_doc_parser(self):
