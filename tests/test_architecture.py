@@ -95,6 +95,23 @@ class ArchitectureLayeringTest(unittest.TestCase):
                 self.assertEqual(reloaded.get_by_id(99999), (None, None))
                 self.assertEqual(reloaded.get_by_name('NoSuchHero'), (None, None))
 
+    def test_handlers_avoid_duplicate_top_level_defs_and_whole_store_save(self):
+        handlers_dir = ROOT / 'src' / 'darkblood' / 'games' / 'handlers'
+        defs = {}
+        whole_saves = []
+        for f in sorted(handlers_dir.rglob('*.py')):
+            rel = str(f.relative_to(ROOT))
+            src = f.read_text(encoding='utf-8')
+            tree = ast.parse(src, rel)
+            for node in tree.body:
+                if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                    defs.setdefault(node.name, []).append(rel)
+            if f.name != 'base.py' and 'store().save()' in src:
+                whole_saves.append(rel)
+        dups = {k: v for k, v in defs.items() if len(v) > 1}
+        self.assertEqual(dups, {}, f'Duplicate top-level definitions across handlers: {dups}')
+        self.assertEqual(whole_saves, [], f'Whole-store save() found in handlers: {whole_saves}')
+
 
 if __name__ == '__main__':
     unittest.main()

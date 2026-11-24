@@ -350,7 +350,7 @@ class DungeonCombatHandlers:
                 await member.quests.grant_exp(char, exp)
             await run._update_quest_monsters(mon_target, char)
         if members:
-            self.store().save()
+            self.store().save_chars([(member.account, member.char_id) for member, _ in members])
         char = self._current_char()
         if char is not None and info:
             await self._drop_loot(msg.param, info, char)
@@ -373,7 +373,7 @@ class DungeonCombatHandlers:
                     counters.append(0)
                 if counters[obj_idx] < target_count:
                     counters[obj_idx] += 1
-                    self.store().save()
+                    self.save_char()
                     update = QuestUpdateNot(updates=[QuestObjective(q_hash, obj_idx, counters[obj_idx])]).encode()
                     await self.transport.send_event(
                         event(2075, update),
@@ -528,7 +528,7 @@ class DungeonCombatHandlers:
                 rank=user_rank,
             )
         if members and req.is_clear:
-            self.store().save()
+            self.store().save_chars([(member.account, member.char_id) for member, _ in members])
 
         # Party rank uses the exact same 0..6 (D..SSS) scale as SingleReward.rank.
         # In solo runs sum(party_scores) == member score, so party_rank == user_rank.
@@ -615,7 +615,7 @@ class DungeonCombatHandlers:
             if not req.bDie and coins > 0:
                 coins -= 1
                 char['rebirth_coins'] = coins
-                self.store().save()
+                self.save_char()
         self.die_count = getattr(self, 'die_count', 0) + (1 if req.bDie else 0)
 
         # On revive (bDie = False), other_uid must match the reviving player UID (0x0055C354)
@@ -664,7 +664,7 @@ class DungeonCombatHandlers:
         received += granted
         char['rebirth_coins'] = coins
         char['daily_rebirth_recv'] = received
-        self.store().save()
+        self.save_char()
         ack = DailyRebirthCoinUseAck(result=0, daily_recv_cnt=received, pcbang_coin_remain=0).encode()
         await self.transport.send_event(event(2449, ack, correlation),
                                         note='daily rebirth coin use ack (pcbang=%d +%d)' % (req.coin_type, granted))
@@ -749,7 +749,7 @@ class DungeonCombatHandlers:
                 amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
             char['gold'] = char.get('gold', 0) + amount
             char['u66'] = char['gold']
-            self.store().save()
+            self.store().save_char(winner.account, winner.char_id)
             ack = GetDropArNot(result=0, gold=amount, drop_id=req.drop_uid, picker_uid=char['id']).encode()
             await winner.transport.send_event(event(5114, ack),
                                               note='picked AR (%s: +%d, total %d)' % (code, amount, char['gold']))
@@ -780,7 +780,7 @@ class DungeonCombatHandlers:
         others = [member for member, _ in run if member is not winner]
         del drops[req.drop_uid]
         stored = add_reward_items(char, [(code, 1)])
-        self.store().save()
+        self.store().save_char(winner.account, winner.char_id)
         entry = ItemDropEntry(drop_uid=req.drop_uid, item_id=jhash(code))
         result = event(5068, PickUpItemResultAck(result=0, picker_uid=char['id'], drop=entry).encode())
         await winner.transport.send_event(result, note='pick up item result (drop %d: %s)' % (req.drop_uid, code))

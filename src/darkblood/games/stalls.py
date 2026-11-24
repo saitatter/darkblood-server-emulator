@@ -38,6 +38,34 @@ class PersonalStall:
         return [item.to_wire() for item in self.items.values()]
 
 
+def _persist_chars(store: any, char_ids: List[int]) -> None:
+    """Persist only the affected characters atomically when supported by the store."""
+    if store is None:
+        return
+    if hasattr(store, 'get_by_id') and hasattr(store, 'save_chars'):
+        pairs = []
+        seen = set()
+        for cid in char_ids:
+            if cid is None or cid in seen:
+                continue
+            seen.add(cid)
+            acc, _ = store.get_by_id(int(cid))
+            if acc is not None:
+                pairs.append((acc, int(cid)))
+        if pairs:
+            store.save_chars(pairs)
+            return
+    store.save()
+
+
+def _find_char_by_id(store: any, char_id: int) -> Optional[dict]:
+    """Resolve a character dict by ID using the store's indexed lookup when available."""
+    if hasattr(store, 'get_by_id'):
+        _, found = store.get_by_id(int(char_id))
+        return found
+    return next((c for _, c in store.all_characters() if c.get('id') == char_id), None)
+
+
 class PersonalShopManager:
     """Singleton managing active personal stalls in town."""
     _instance = None
@@ -134,7 +162,7 @@ class PersonalShopManager:
                         inv_item.pop('in_stall', None)
                         returned_items.append(inv_item)
                 if store:
-                    store.save()
+                    _persist_chars(store, [owner_uid])
             return True, returned_items
 
     def buy_stall_item(self, buyer_char: dict, seller_uid: int, item_uid: int,
@@ -163,8 +191,7 @@ class PersonalShopManager:
                 return False, "Insufficient gold", 0, []
 
             # Locate seller character in store to credit gold and remove item
-            all_chars = store.all_characters()
-            seller_char = next((c for _, c in all_chars if c.get('id') == seller_uid), None)
+            seller_char = _find_char_by_id(store, seller_uid)
 
             if not seller_char:
                 return False, "Seller record not found", 0, []
@@ -198,7 +225,7 @@ class PersonalShopManager:
             else:
                 stall_item.count -= buy_count
 
-            store.save()
+            _persist_chars(store, [buyer_char.get('id'), seller_uid])
             return True, "Success", total_cost, new_buyer_items
 
 
@@ -289,7 +316,7 @@ class BrokerManager:
             # Track price history
             self.price_history.setdefault(target.get('code', ''), []).append(price)
 
-            store.save()
+            _persist_chars(store, [char.get('id')])
             return True, "Item registered", listing
 
     def cancel_listing(self, char: dict, listing_id: int, store: any) -> Tuple[bool, str]:
@@ -306,7 +333,7 @@ class BrokerManager:
             # Return item to character inventory
             add_reward_items(char, [(listing.code, listing.count)])
             del self.listings[listing_id]
-            store.save()
+            _persist_chars(store, [char_uid])
             return True, "Listing cancelled"
 
     def buy_listing(self, buyer_char: dict, listing_id: int,
@@ -328,8 +355,7 @@ class BrokerManager:
                 return False, "Insufficient gold", 0, []
 
             # Credit seller
-            all_chars = store.all_characters()
-            seller_char = next((c for _, c in all_chars if c.get('id') == listing.seller_uid), None)
+            seller_char = _find_char_by_id(store, listing.seller_uid)
 
             # Deduct buyer gold
             buyer_char['gold'] = buyer_gold - total_price
@@ -349,7 +375,7 @@ class BrokerManager:
                 listing.count -= buy_cnt
                 listing.price -= total_price
 
-            store.save()
+            _persist_chars(store, [buyer_uid, listing.seller_uid])
             return True, "Purchase successful", total_price, new_items
 
     def get_listings(self, page: int = 0, page_size: int = 20,
