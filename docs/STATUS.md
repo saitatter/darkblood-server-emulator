@@ -3,8 +3,8 @@
 - **2026-11-23:** Fixed `2697 LearnSkillListReq` freeze/crash on large skill
   batches (Issue #15 item 1): zlib-decompressed `2697` bodies omit `0x7FFFFFFF`
   (`header` -> `header?`), and `_charge_skills` now tracks running per-skill
-  levels across sequential multi-level steps. Verified headlessly (226/226);
-  live client check pending.
+  levels across sequential multi-level steps. Verified headlessly (226/226) and
+  live-confirmed by user.
 - **2026-11-23:** Recovered `WaypointData` (`0x00A49700`) for `2345 WaypointInsertAck`
   (`layer_net_id`, `name`, `waypoint_id`, `x`, `y`) instead of `ChannelSquare`
   (`u64 1`, which caused `UpdateList` `0x0064FC60` to discard waypoints), and
@@ -13,8 +13,8 @@
 - **2026-11-23:** Recovered `PetInfo` (`0x00A52CF0`) and `2465 PetCreateAck`
   (`0x0079E620`: `vecItem >> nItemID >> jNewPetInfo`), replacing the invalid
   `raw[52]` stub so Pet Eggs (`Pegg1Cash96`/`Pegg1Reven`) consume the egg and
-  create `PetCall001` (Issue #15 item 4). Verified headlessly (226/226); live
-  client check pending.
+  create `PetCall001` (Issue #15 item 4). Verified headlessly (226/226) and
+  live-confirmed by user.
 - **2026-11-23:** Random box `2196 RandomboxResultItemNot` now sends
   `bSelect=True` (`is_jackpot=True`), which `0x00614030` requires to populate
   `Page_RandomBox` (icon/count/name) instead of leaving `GAME_432` ("Please try
