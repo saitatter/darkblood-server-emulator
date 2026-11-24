@@ -100,6 +100,7 @@ def build_launcher_exe(output_dir: Path = None, root: Path = ROOT) -> Path:
         '--paths', str(root / 'src'),
         '--paths', str(root / 'tools'),
         '--collect-submodules', 'darkblood',
+        '--collect-submodules', 'launcher_app',
         '--hidden-import', 'gamectl',
         '--hidden-import', 'multibox',
         '--hidden-import', 'updater',
@@ -124,7 +125,7 @@ def iter_release_files(root: Path = ROOT, exe_path: Path = None):
         subdirs = ('assets',)
     else:
         root_files = INCLUDE_ROOT_FILES + INCLUDE_SOURCE_ROOT_FILES + INCLUDE_DOC_FILES + INCLUDE_TOOLS
-        subdirs = ('src/darkblood', 'assets')
+        subdirs = ('src/darkblood', 'assets', 'tools/launcher_app')
 
     for rel in root_files:
         p = root / rel

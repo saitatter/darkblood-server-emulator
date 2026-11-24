@@ -11,20 +11,12 @@ Features:
   - Built-in TCP connection probe, local server start/stop, and hook DLL rebuild/deploy.
 """
 import io
-import json
-import hashlib
 import os
-import re
-import shutil
-import socket
-import struct
 import subprocess
 import sys
 import tempfile
 import threading
-import time
 import tkinter as tk
-import urllib.request
 import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -32,569 +24,61 @@ from tkinter import filedialog, messagebox, ttk
 IS_FROZEN = bool(getattr(sys, 'frozen', False))
 ROOT = Path(sys.executable).resolve().parent if IS_FROZEN else Path(__file__).resolve().parent.parent
 if not IS_FROZEN:
-    sys.path.insert(0, str(ROOT / 'src'))
-    sys.path.insert(0, str(ROOT / 'tools'))
+    for _p in (str(ROOT / 'src'), str(ROOT / 'tools')):
+        if _p not in sys.path:
+            sys.path.insert(0, _p)
 
 from darkblood.core import options  # noqa: E402
-from darkblood.games.gm_bridge import GM_BRIDGE_HOST, GM_BRIDGE_PORT, SERVER_LIVE_COMMANDS  # noqa: E402
 import gamectl  # noqa: E402
 import updater  # noqa: E402
 
-CLIENT_DIR = gamectl.LAB
-CLIENT_EXE = CLIENT_DIR / 'DarkBlood.exe'
-CLIENT_DLL = CLIENT_DIR / 'steam_api.dll'
-HOOK_BUILD_BAT = ROOT / 'client_hook' / 'build.bat'
-HOOK_BUILT_DLL = ROOT / 'client_hook' / 'steam_api.dll'
-REPO_URL = 'https://github.com/saitatter/darkblood-server-emulator'
-GITHUB_COMMITS_API = 'https://api.github.com/repos/saitatter/darkblood-server-emulator/commits?per_page=25'
-
-# Dark Blood / Bifrost color palette
-BG_DARK = '#111318'
-BG_HEADER = '#161922'
-BG_CARD = '#1b1e29'
-BG_CARD_ALT = '#212533'
-BG_INPUT = '#262b3b'
-BORDER = '#2e3447'
-ACCENT = '#c82333'
-ACCENT_HOVER = '#e02f40'
-ACCENT_DARK = '#991b27'
-GOLD = '#d8ae58'
-TEXT_MAIN = '#eef1f8'
-TEXT_DIM = '#9aa2b8'
-TEXT_MUTED = '#6a728a'
-OK_GREEN = '#3ddc84'
-WARN_AMBER = '#f5b041'
-ERR_RED = '#ff5c5c'
-LINK_BLUE = '#58a6ff'
-
-COMMIT_BADGES = {
-    'feat':     ('#1e4620', '#5ce07a'),
-    'fix':      ('#4a3210', '#f7b955'),
-    'docs':     ('#16324f', '#6cb6ff'),
-    'refactor': ('#37214d', '#c792ea'),
-    'test':     ('#183f47', '#56d4dd'),
-    'chore':    ('#2b3040', '#a6afc4'),
-}
-
-
-def extract_client_icon_bytes(exe_path=CLIENT_EXE):
-    """Extract the primary RT_GROUP_ICON from DarkBlood.exe as .ico bytes (or None)."""
-    if not exe_path.exists():
-        return None
-    try:
-        import pefile
-    except ImportError:
-        return None
-    pe = None
-    try:
-        pe = pefile.PE(str(exe_path), fast_load=True)
-        pe.parse_data_directories(
-            directories=[pefile.DIRECTORY_ENTRY['IMAGE_DIRECTORY_ENTRY_RESOURCE']])
-        if not hasattr(pe, 'DIRECTORY_ENTRY_RESOURCE'):
-            return None
-        rt_icon = {}
-        group_data = None
-        for entry in pe.DIRECTORY_ENTRY_RESOURCE.entries:
-            if entry.id == 3:  # RT_ICON
-                for icon_e in entry.directory.entries:
-                    if icon_e.directory.entries:
-                        s = icon_e.directory.entries[0].data.struct
-                        rt_icon[icon_e.id] = pe.get_data(s.OffsetToData, s.Size)
-            elif entry.id == 14 and group_data is None:  # RT_GROUP_ICON
-                for grp_e in entry.directory.entries:
-                    if grp_e.directory.entries:
-                        s = grp_e.directory.entries[0].data.struct
-                        group_data = pe.get_data(s.OffsetToData, s.Size)
-                        break
-        if not group_data or len(group_data) < 6:
-            return None
-        reserved, img_type, count = struct.unpack_from('<HHH', group_data, 0)
-        if img_type != 1 or count == 0:
-            return None
-        entries = []
-        for i in range(count):
-            off = 6 + i * 14
-            if off + 14 > len(group_data):
-                break
-            w, h, colors, res, planes, bpp, size, icon_id = struct.unpack_from('<BBBBHHIH', group_data, off)
-            blob = rt_icon.get(icon_id)
-            if blob:
-                entries.append((w, h, colors, res, planes, bpp, blob))
-        if not entries:
-            return None
-        out = bytearray(struct.pack('<HHH', reserved, 1, len(entries)))
-        data_offset = 6 + 16 * len(entries)
-        for w, h, colors, res, planes, bpp, blob in entries:
-            out.extend(struct.pack('<BBBBHHII', w, h, colors, res, planes, bpp, len(blob), data_offset))
-            data_offset += len(blob)
-        for *_, blob in entries:
-            out.extend(blob)
-        return bytes(out)
-    except Exception:
-        return None
-    finally:
-        if pe is not None:
-            pe.close()
-
-
-# Map local git author emails/names to GitHub usernames so offline `git log`
-# displays GitHub handles instead of local real names.
-_GITHUB_USERNAMES = {
-    'andrei.voicu133@gmail.com': 'saitatter',
-    'voicu andrei-daniel': 'saitatter',
-    'cri999sti@gmail.com': 'CristianVita',
-}
-
-
-def _resolve_github_username(name: str, email: str = '', login: str = '') -> str:
-    if login:
-        return login
-    email_low = (email or '').strip().lower()
-    if email_low in _GITHUB_USERNAMES:
-        return _GITHUB_USERNAMES[email_low]
-    if email_low.endswith('@users.noreply.github.com'):
-        local_part = email_low.split('@', 1)[0]
-        return local_part.split('+', 1)[-1]
-    name_low = (name or '').strip().lower()
-    if name_low in _GITHUB_USERNAMES:
-        return _GITHUB_USERNAMES[name_low]
-    return name or 'unknown'
-
-
-def _current_release_tags(flags):
-    """Return (current_tag, previous_tag) for the installed/latest release."""
-    cur = ''
-    ver_file = ROOT / updater.VERSION_FILE
-    if ver_file.is_file():
-        v = ver_file.read_text(encoding='utf-8', errors='replace').strip()
-        if v.startswith('v'):
-            cur = v
-    try:
-        proc = subprocess.run(
-            ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=5, creationflags=flags,
-        )
-        if proc.returncode == 0:
-            tags = [t.strip() for t in proc.stdout.splitlines() if t.strip()]
-            if cur:
-                if cur in tags:
-                    idx = tags.index(cur)
-                    return cur, (tags[idx + 1] if idx + 1 < len(tags) else '')
-                return cur, (tags[0] if tags else '')
-            if tags:
-                return tags[0], (tags[1] if len(tags) > 1 else '')
-    except Exception:
-        pass
-    return cur, ''
-
-
-def _resolve_github_release_range(cur_tag: str, prev_tag: str):
-    """Resolve (cur_tag, prev_tag) from GitHub Releases API when prev_tag is unknown."""
-    if cur_tag and prev_tag:
-        return cur_tag, prev_tag
-    try:
-        api = f'https://api.github.com/repos/{updater.GITHUB_REPO}/releases?per_page=15'
-        req = urllib.request.Request(api, headers={'User-Agent': 'DarkBlood-Launcher'})
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            releases = json.loads(resp.read().decode('utf-8'))
-        tags = [
-            (r.get('tag_name') or '').strip()
-            for r in releases
-            if not r.get('draft') and (r.get('tag_name') or '').strip()
-        ]
-        if not tags:
-            return cur_tag, prev_tag
-        if cur_tag and cur_tag in tags:
-            idx = tags.index(cur_tag)
-            return cur_tag, (tags[idx + 1] if idx + 1 < len(tags) else '')
-        if not cur_tag:
-            return tags[0], (tags[1] if len(tags) > 1 else '')
-    except Exception:
-        pass
-    return cur_tag, prev_tag
-
-
-VISIBLE_COMMIT_TYPES = frozenset({'feat', 'fix'})
-
-
-def _is_user_facing_commit(subject: str) -> bool:
-    ctype, _, _ = parse_commit_prefix(subject)
-    return ctype.lower() in VISIBLE_COMMIT_TYPES
-
-
-def _parse_github_commit_items(items, limit=None):
-    commits = []
-    for item in items:
-        sha = item.get('sha', '')
-        c = item.get('commit', {})
-        gh_author = item.get('author') or {}
-        c_author = c.get('author') or {}
-        subject = (c.get('message', '') or '').splitlines()[0]
-        if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
-            continue
-        if not _is_user_facing_commit(subject):
-            continue
-        author = _resolve_github_username(
-            c_author.get('name', ''),
-            c_author.get('email', ''),
-            gh_author.get('login', ''),
-        )
-        date = (c_author.get('date', '') or '')[:10]
-        commits.append({
-            'sha': sha, 'short': sha[:7],
-            'date': date, 'author': author, 'subject': subject,
-        })
-        if limit is not None and len(commits) >= limit:
-            break
-    return commits
-
-
-def fetch_recent_commits(limit=None):
-    """Return list of dicts {sha, short, date, author, subject} (FEAT/FIX only) for the current release."""
-    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-    cur_tag, prev_tag = _current_release_tags(flags)
-    rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
-    label = f'release {cur_tag}' if cur_tag else 'local git'
-    try:
-        git_args = ['git', 'log', rev_spec, '--no-merges',
-                    '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short']
-        if limit is not None:
-            git_args.insert(3, f'-n{limit * 3}')
-        proc = subprocess.run(
-            git_args,
-            cwd=str(ROOT), capture_output=True, text=True, encoding='utf-8',
-            errors='replace', timeout=8, creationflags=flags,
-        )
-        if proc.returncode == 0 and proc.stdout.strip():
-            commits = []
-            for line in proc.stdout.splitlines():
-                parts = line.split('\x1f')
-                if len(parts) == 6:
-                    if '[skip ci]' in parts[5] or 'github-actions[bot]' in parts[3].lower():
-                        continue
-                    if not _is_user_facing_commit(parts[5]):
-                        continue
-                    commits.append({
-                        'sha': parts[0], 'short': parts[1],
-                        'date': parts[2],
-                        'author': _resolve_github_username(parts[3], parts[4]),
-                        'subject': parts[5],
-                    })
-                    if limit is not None and len(commits) >= limit:
-                        break
-            if commits:
-                return commits, label
-    except Exception:
-        pass
-
-    # Fallback: GitHub REST API — use /compare/{prev_tag}...{cur_tag} so ONLY commits
-    # belonging to the current release are shown (never commits from older releases).
-    try:
-        cur_tag, prev_tag = _resolve_github_release_range(cur_tag, prev_tag)
-        if cur_tag and prev_tag:
-            api_url = f'https://api.github.com/repos/{updater.GITHUB_REPO}/compare/{prev_tag}...{cur_tag}'
-            req = urllib.request.Request(api_url, headers={'User-Agent': 'DarkBlood-Launcher'})
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                data = json.loads(resp.read().decode('utf-8'))
-            # GitHub /compare returns commits oldest-first; reverse for newest-first display.
-            items = list(reversed(data.get('commits') or []))
-            return _parse_github_commit_items(items, limit=limit), f'release {cur_tag}'
-
-        base_api = f'https://api.github.com/repos/{updater.GITHUB_REPO}/commits?per_page=100'
-        api_url = base_api + (f'&sha={cur_tag}' if cur_tag else '')
-        req = urllib.request.Request(api_url, headers={'User-Agent': 'DarkBlood-Launcher'})
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-        return _parse_github_commit_items(data, limit=limit), (f'release {cur_tag}' if cur_tag else 'GitHub')
-    except Exception as exc:
-        # Offline portable fallback: parse bundled RELEASE_NOTES.md (Features & Bug Fixes only)
-        notes_file = ROOT / 'RELEASE_NOTES.md'
-        if notes_file.is_file():
-            commits = []
-            section_kind = None
-            pat = re.compile(r'^- (?:(?:\*\*([^*\n]+)\*\*:\s*)?)(.+?) \(`([0-9a-f]{7})`, @([^)]+)\)$')
-            for raw_line in notes_file.read_text(encoding='utf-8', errors='replace').splitlines():
-                s = raw_line.strip()
-                if s.startswith('#### '):
-                    low = s.lower()
-                    if 'feature' in low:
-                        section_kind = 'feat'
-                    elif 'fix' in low:
-                        section_kind = 'fix'
-                    else:
-                        section_kind = None
-                    continue
-                if section_kind not in VISIBLE_COMMIT_TYPES:
-                    continue
-                m = pat.match(s)
-                if m:
-                    scope, desc, sha, user = m.groups()
-                    subj = f'{section_kind}({scope}): {desc}' if scope else f'{section_kind}: {desc}'
-                    commits.append({'sha': sha, 'short': sha, 'date': cur_tag or 'release', 'author': user, 'subject': subj})
-                    if limit is not None and len(commits) >= limit:
-                        break
-            if commits:
-                return commits, (f'release {cur_tag} (offline)' if cur_tag else 'release notes')
-        return [], f'unavailable ({exc.__class__.__name__})'
-
-
-def parse_commit_prefix(subject):
-    """Extract conventional-commit type (feat/fix/docs/...) and clean title."""
-    m = re.match(r'^([a-z]+)(?:\(([^)]+)\))?:\s*(.+)$', subject)
-    if m:
-        return m.group(1), m.group(2) or '', m.group(3)
-    return 'chore', '', subject
-
-
-def probe_tcp(host, port, timeout=1.5):
-    """Return (reachable: bool, detail: str) for a TCP endpoint."""
-    t0 = time.perf_counter()
-    try:
-        with socket.create_connection((host, int(port)), timeout=timeout):
-            ms = (time.perf_counter() - t0) * 1000.0
-            return True, f'Online ({ms:.0f} ms)'
-    except OSError:
-        return False, 'Offline'
-
-
-def stage_client_folder(exe_path: Path, target_dir: Path = CLIENT_DIR,
-                        hook_dll: Path = HOOK_BUILT_DLL, verify_hash: bool = True):
-    """Stage a clean playable copy in `target_dir` without modifying the original game folder.
-
-    Copies root files from `exe_path.parent`, backs up `steam_api.dll` to `steam_api.dll.bak`,
-    deploys `hook_dll`, and links `Data/` via a Windows directory junction (`mklink /J`).
-    """
-    exe_path = Path(exe_path).resolve()
-    if not exe_path.is_file():
-        raise FileNotFoundError(f'DarkBlood.exe not found: {exe_path}')
-    if verify_hash:
-        digest = hashlib.sha256(exe_path.read_bytes()).hexdigest()
-        if digest != gamectl.CLIENT_SHA256:
-            raise ValueError(
-                f'Unsupported DarkBlood.exe SHA-256 ({digest[:12]}...). '
-                f'Expected {gamectl.CLIENT_SHA256[:12]}... (Steam build 1.6.5#0).'
-            )
-    src_dir = exe_path.parent
-    target_dir = Path(target_dir).resolve()
-    if src_dir == target_dir:
-        raise ValueError('Source folder is already the staged client folder.')
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    for item in src_dir.iterdir():
-        if item.is_file():
-            dst = target_dir / item.name
-            if item.name.lower() == 'steam_api.dll':
-                bak = target_dir / 'steam_api.dll.bak'
-                if not bak.exists():
-                    shutil.copy2(item, bak)
-            else:
-                shutil.copy2(item, dst)
-
-    src_data = src_dir / 'Data'
-    dst_data = target_dir / 'Data'
-    if src_data.is_dir() and not dst_data.exists():
-        flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-        proc = subprocess.run(
-            ['cmd.exe', '/c', 'mklink', '/J', str(dst_data), str(src_data)],
-            capture_output=True, text=True, creationflags=flags,
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(f'Failed to link Data junction: {proc.stderr or proc.stdout}')
-
-    if Path(hook_dll).is_file():
-        shutil.copy2(hook_dll, target_dir / 'steam_api.dll')
-    return target_dir
-
-
-def ensure_hook_deployed(client_dir: Path = CLIENT_DIR, hook_dll: Path = HOOK_BUILT_DLL) -> bool:
-    """Ensure the bundled `client_hook/steam_api.dll` is installed in `client_dir`.
-
-    Backs up any original `steam_api.dll` to `steam_api.dll.bak` on first deploy.
-    Returns True if a fresh copy was written, False if already up to date or unavailable.
-    """
-    src = Path(hook_dll)
-    dst_dir = Path(client_dir)
-    dst = dst_dir / 'steam_api.dll'
-    if not src.is_file() or not dst_dir.is_dir():
-        return False
-    src_bytes = src.read_bytes()
-    if dst.is_file():
-        try:
-            if dst.read_bytes() == src_bytes:
-                return False
-        except OSError:
-            pass
-        bak = dst_dir / 'steam_api.dll.bak'
-        if not bak.exists():
-            try:
-                shutil.copy2(dst, bak)
-            except OSError:
-                pass
-    try:
-        shutil.copy2(src, dst)
-        return True
-    except PermissionError:
-        # Another game instance already has steam_api.dll mapped; keep going if present.
-        if dst.is_file():
-            return False
-        raise
-
-
-def parse_gm_commands_doc(doc_path: Path = None) -> list:
-    """Parse `docs/GM_COMMANDS.md` tables into structured command dicts."""
-    path = doc_path or (ROOT / 'docs' / 'GM_COMMANDS.md')
-    if not path.is_file():
-        return []
-    commands = []
-    category = 'General'
-    link_re = re.compile(r'\[([^\]]+)\]\([^)]+\)')
-    for raw in path.read_text(encoding='utf-8', errors='replace').splitlines():
-        line = raw.strip()
-        if line.startswith('### '):
-            category = line[4:].strip()
-            continue
-        if not line.startswith('| `'):
-            continue
-        cols = [c.strip() for c in line.strip('|').split('|')]
-        if len(cols) < 4:
-            continue
-        name = cols[0].strip('`').strip()
-        if not name:
-            continue
-        desc = cols[1]
-        params = cols[2].replace('`', '').replace('\\|', '|')
-        example = link_re.sub(r'\1', cols[3]).replace('`', '')
-        commands.append({
-            'name': name,
-            'category': category,
-            'description': desc,
-            'params': params,
-            'example': example,
-            'live': name.lower() in SERVER_LIVE_COMMANDS,
-        })
-    if not any(c['name'] == 'dualskill' for c in commands):
-        commands.append({
-            'name': 'dualskill',
-            'category': 'Skills & Buffs',
-            'description': 'Activate or extend Dual Skill duration directly',
-            'params': '[days=30]',
-            'example': '%dualskill 30',
-            'live': True,
-        })
-    return commands
-
-
-def query_gm_bridge(payload: dict, host: str = GM_BRIDGE_HOST, port: int = GM_BRIDGE_PORT,
-                    timeout: float = 2.5) -> dict:
-    """Send a single JSON-line request to the localhost GM bridge and return its response dict."""
-    try:
-        with socket.create_connection((host, int(port)), timeout=timeout) as sock:
-            sock.settimeout(timeout)
-            sock.sendall((json.dumps(payload) + '\n').encode('utf-8'))
-            buf = bytearray()
-            while b'\n' not in buf:
-                chunk = sock.recv(4096)
-                if not chunk:
-                    break
-                buf.extend(chunk)
-            if not buf:
-                return {'ok': False, 'message': 'Empty response from server.'}
-            return json.loads(buf.decode('utf-8', errors='replace').splitlines()[0])
-    except OSError as exc:
-        return {'ok': False, 'offline': True, 'message': f'Server GM bridge offline ({exc}).'}
-    except Exception as exc:
-        return {'ok': False, 'message': str(exc)}
-
-
-def launch_clients(account, count=1):
-    """Launch 1..4 DarkBlood.exe instances directly against the configured server."""
-    if not CLIENT_EXE.exists():
-        raise RuntimeError(f'Client executable not found: {CLIENT_EXE}')
-    ensure_hook_deployed(CLIENT_DIR, HOOK_BUILT_DLL)
-    if not CLIENT_DLL.exists():
-        raise RuntimeError(f'Hook DLL not found: {CLIENT_DLL}')
-
-    import multibox
-    for pid in multibox._running_clients():
-        try:
-            multibox.release_instance_mutexes(pid)
-        except Exception:
-            pass
-
-    count = max(1, min(4, int(count)))
-    base_acc = (account or 'OfflinePlayer').strip() or 'OfflinePlayer'
-    accounts = [base_acc] + [f'{base_acc}_{i}' for i in range(2, count + 1)]
-    if base_acc == 'OfflinePlayer' and count > 1:
-        accounts = multibox.default_accounts(count)
-
-    launched = []
-    rects = multibox.compute_tile_rects(multibox._work_area(), count) if count > 1 else None
-    for idx, acc in enumerate(accounts):
-        env = os.environ.copy()
-        env['__COMPAT_LAYER'] = 'RunAsInvoker'
-        env['DARKBLOOD_ACCOUNT'] = acc
-        if rects is not None:
-            env['DARKBLOOD_WINDOW_RECT'] = '%d,%d,%d,%d' % rects[idx]
-        proc = subprocess.Popen([str(CLIENT_EXE)], cwd=str(CLIENT_DIR), env=env)
-        launched.append((proc.pid, acc))
-        if idx + 1 < count:
-            time.sleep(2.5)
-            try:
-                multibox.release_instance_mutexes(proc.pid)
-            except Exception:
-                pass
-    return launched
-
-
-class ScrollFrame(tk.Frame):
-    """Dark-themed vertical scrollable container with flicker-free atomic swaps."""
-    def __init__(self, parent, bg=BG_CARD, **kwargs):
-        super().__init__(parent, bg=bg, **kwargs)
-        self._bg = bg
-        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
-        self.scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.canvas.yview,
-                                       style='Dark.Vertical.TScrollbar')
-        self.inner = tk.Frame(self.canvas, bg=bg)
-        self._bind_inner(self.inner)
-        self._win = self.canvas.create_window((0, 0), window=self.inner, anchor='nw')
-        self.canvas.bind('<Configure>', lambda e: self.canvas.itemconfigure(self._win, width=e.width))
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-
-        self.canvas.pack(side='left', fill='both', expand=True)
-        self.scrollbar.pack(side='right', fill='y')
-
-        # Bind wheel only while pointer is over this scroll area
-        self.canvas.bind('<Enter>', self._bind_wheel)
-        self.canvas.bind('<Leave>', self._unbind_wheel)
-
-    def _bind_inner(self, frame):
-        frame.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox('all')))
-        frame.bind('<Enter>', self._bind_wheel)
-        frame.bind('<Leave>', self._unbind_wheel)
-
-    def new_offscreen_inner(self):
-        return tk.Frame(self.canvas, bg=self._bg)
-
-    def swap_inner(self, new_inner):
-        """Atomically replace inner frame to avoid Win32 white/light-theme redraw flash."""
-        old = self.inner
-        self._bind_inner(new_inner)
-        new_inner.update_idletasks()
-        self.inner = new_inner
-        self.canvas.itemconfigure(self._win, window=new_inner, width=max(1, self.canvas.winfo_width()))
-        self.canvas.configure(scrollregion=self.canvas.bbox('all'))
-        self.canvas.yview_moveto(0.0)
-        if old is not None and old is not new_inner:
-            old.destroy()
-
-    def _bind_wheel(self, _event=None):
-        self.canvas.bind_all('<MouseWheel>', self._on_wheel)
-
-    def _unbind_wheel(self, _event=None):
-        self.canvas.unbind_all('<MouseWheel>')
-
-    def _on_wheel(self, event):
-        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
+from launcher_app.changelog import (  # noqa: E402
+    VISIBLE_COMMIT_TYPES,
+    _current_release_tags,
+    _is_user_facing_commit,
+    _parse_github_commit_items,
+    _resolve_github_release_range,
+    _resolve_github_username,
+    fetch_recent_commits,
+    parse_commit_prefix,
+)
+from launcher_app.client_ops import (  # noqa: E402
+    ensure_hook_deployed,
+    extract_client_icon_bytes,
+    launch_clients,
+    parse_gm_commands_doc,
+    probe_tcp,
+    query_gm_bridge,
+    stage_client_folder,
+)
+from launcher_app.theme import (  # noqa: E402
+    ACCENT,
+    ACCENT_DARK,
+    ACCENT_HOVER,
+    BG_CARD,
+    BG_CARD_ALT,
+    BG_DARK,
+    BG_HEADER,
+    BG_INPUT,
+    BORDER,
+    CLIENT_DIR,
+    CLIENT_DLL,
+    CLIENT_EXE,
+    COMMIT_BADGES,
+    ERR_RED,
+    GITHUB_COMMITS_API,
+    GOLD,
+    HOOK_BUILD_BAT,
+    HOOK_BUILT_DLL,
+    LINK_BLUE,
+    OK_GREEN,
+    REPO_URL,
+    TEXT_DIM,
+    TEXT_MAIN,
+    TEXT_MUTED,
+    WARN_AMBER,
+)
+from launcher_app.widgets import ScrollFrame  # noqa: E402
 
 
 class DarkBloodLauncher(tk.Tk):
@@ -1723,6 +1207,10 @@ def _self_check() -> int:
     import darkblood.frontend.server  # noqa: F401
     import darkblood.games.session  # noqa: F401
     import gamectl  # noqa: F401
+    import launcher_app.changelog  # noqa: F401
+    import launcher_app.client_ops  # noqa: F401
+    import launcher_app.theme  # noqa: F401
+    import launcher_app.widgets  # noqa: F401
     import multibox  # noqa: F401
     import updater  # noqa: F401
     return 0

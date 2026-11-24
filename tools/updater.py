@@ -442,7 +442,7 @@ def apply_zip_archive(root: Path, zip_source, new_version: str = '',
             rel_posix = rel_path.as_posix()
             if rel_posix.startswith('client_hook/'):
                 hook_changed = True
-            if rel_posix in ('tools/launcher.py', 'tools/updater.py', LAUNCHER_EXE_NAME):
+            if rel_posix in ('tools/launcher.py', 'tools/updater.py', LAUNCHER_EXE_NAME) or rel_posix.startswith('tools/launcher_app/'):
                 launcher_changed = True
 
         # Phase 3: remove orphaned files that belonged to the previous release manifest
