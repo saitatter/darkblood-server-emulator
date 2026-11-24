@@ -292,3 +292,50 @@ def dungeon_rewards():
         dungeons.setdefault(did.group(1), []).append([pcode.group(1), probs])
     return prizes, dungeons
 
+
+@lru_cache(maxsize=None)
+def _waypoint_asset():
+    """Load town waypoint coordinates, localization keys, and portal cost tables."""
+    json_path = ASSETS_DIR / 'waypoints.json'
+    if not json_path.is_file():
+        return {}, {}, {}
+    data = json.loads(json_path.read_text(encoding='utf-8'))
+    by_layer = {}
+    for entry in data.get('waypoints', []):
+        key = ((jhash(entry['square']) & 0xFFFFFFFF) << 32) | (int(entry['layer']) & 0xFFFFFFFF)
+        by_layer[key] = {
+            'square': entry['square'],
+            'layer': int(entry['layer']),
+            'id': entry['id'],
+            'id_hash': jhash(entry['id']) & 0xFFFFFFFF,
+            'name': entry['name'],
+            'x': int(entry['x']),
+            'y': int(entry['y']),
+        }
+    costs = data.get('costs', {})
+    ratios = {int(k): float(v) for k, v in data.get('level_ratios', {}).items()}
+    return by_layer, costs, ratios
+
+
+def waypoint_info(layer_net_id: int):
+    """Return waypoint metadata dict for a packed layer_net_id, or None."""
+    by_layer, _, _ = _waypoint_asset()
+    return by_layer.get(int(layer_net_id))
+
+
+def portal_cost(start_wp_id: str, dest_wp_id: str, level: int = 1) -> int:
+    """Compute waypoint teleport AR cost matching DictSquarePortal::GetCost (0x00A688E0).
+
+    0x00A68A72: int(int(base_cost) * float32(level_ratio) + 0.5).
+    """
+    if not start_wp_id or not dest_wp_id or start_wp_id == dest_wp_id:
+        return 0
+    _, costs, ratios = _waypoint_asset()
+    base = costs.get(start_wp_id, {}).get(dest_wp_id)
+    if base is None:
+        return 0
+    lv = max(1, min(int(level), max(ratios) if ratios else 1))
+    ratio = ratios.get(lv, 1.0)
+    return max(0, int(int(base) * ratio + 0.5))
+
+

@@ -1,5 +1,7 @@
 """Pet, Mount and Taming domain handlers."""
+from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
+from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network.messages.pets import (
     PetCreateAck,
     PetCreateReq,
@@ -9,6 +11,7 @@ from darkblood.games.network.messages.pets import (
     PetEatNormalReq,
     PetEvolutionAck,
     PetEvolutionReq,
+    PetInfo,
     PetLoadAck,
     PetLoadReq,
     PetNickChangeAck,
@@ -114,28 +117,65 @@ class PetHandlers(BaseDomainService):
 
     @packet_handler(PetCreateReq)
     async def handle_pet_create(self, correlation, body):
-        # eEGS_PET_CREATE_REQ (0x0079E0B0) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620)
+        # eEGS_PET_CREATE_REQ (0x0079E090) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620)
         req = PetCreateReq.decode(body)
         char = self.current_char()
         if not char:
             await self.transport.send_event(event(2465, PetCreateAck(result=1).encode(), correlation),
                                             note='pet create fail (no char)')
             return
+        items = char.get('items', [])
+        egg = next((i for i in items if i.get('uid') == req.pet_uid), None)
+        wire_items = []
+        egg_code = 'Pegg1Cash96'
+        if egg is not None:
+            egg_code = egg.get('code', egg_code)
+            rem = egg.get('count', 1) - 1
+            if rem <= 0:
+                items.remove(egg)
+                wire_items.append(Item(
+                    owner=UPDATE_OWNER,
+                    uid=0,
+                    code='',
+                    container=egg.get('container', 3),
+                    slot=egg.get('slot', 0),
+                    count=0,
+                ))
+            else:
+                egg['count'] = rem
+                wire_items.append(Item(owner=UPDATE_OWNER, **egg))
+
         pets = char.setdefault('pets', [])
         new_uid = req.pet_uid if req.pet_uid else (len(pets) + 1)
+        pet_code = 'PetCall001'
         new_pet = {
             'uid': new_uid,
-            'code': 'PetCall001',
+            'code': pet_code,
             'name': 'Pet',
             'level': 1,
+            'exp': 0,
             'satiety': 100,
-            'slot': len(pets),
+            'slot': -1,
         }
         pets.append(new_pet)
         self.save_char()
-        ack = PetCreateAck(result=0, slot=new_pet['slot']).encode()
+        ack = PetCreateAck(
+            result=0,
+            items=wire_items,
+            item_id=jhash(egg_code),
+            pet=PetInfo(
+                pet_uid=new_uid,
+                pet_id=jhash(pet_code),
+                level=new_pet['level'],
+                exp=new_pet['exp'],
+                satiety=new_pet['satiety'],
+                name=new_pet['name'],
+                is_cash_food=False,
+                slot=new_pet['slot'],
+            ),
+        ).encode()
         await self.transport.send_event(event(2465, ack, correlation),
-                                        note=f'pet create ack (uid={new_uid})')
+                                        note=f'pet create ack (uid={new_uid} egg={egg_code} pet={pet_code})')
 
     @packet_handler(PetDeleteReq)
     async def handle_pet_delete(self, correlation, body):

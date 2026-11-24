@@ -44,10 +44,11 @@ class DungeonFlowTest(ServerTestCase):
 
             char = session.GameSession.store().get('OfflinePlayer', char_id)
 
-            # 1. Map transition / Gate (2344 -> 2345)
+            # 1. Map transition / Waypoint insert (2344 -> 2345)
             client.send_event(2344, bytes.fromhex('ffffff7f00000000aeaf985f'))
             _, ack2345 = await client.expect_event(2345)
-            self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, hashing.jhash('Act1') << 32, 1))
+            act1_layer = hashing.jhash('Act1') << 32
+            self.assertEqual(struct.unpack_from('<IQQ', ack2345), (0, act1_layer, act1_layer))
 
             # 2. Gate selection (2369 -> 2370)
             client.send_event(2369)

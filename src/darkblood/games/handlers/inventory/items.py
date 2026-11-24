@@ -1,6 +1,14 @@
 """Core item movement, equip, consumption, dyeing, splitting and sealing handlers."""
 import random
 import struct
+import time
+
+# Dual Skill Activation Order items (Type=54 in item_cash.lua / item_disposable.lua): ItemID -> AdjValue (days).
+DUAL_SKILL_ITEM_DAYS = {
+    'IDSk1Cash269': 30,
+    'IDSk20S159': 10,
+    'IDSk20R434': 30,
+}
 
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
@@ -8,6 +16,7 @@ from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
+    AssignQuickslotAck,
     BuyLifeWaterAck,
     BuyLifeWaterReq,
     CharVerifyStatAck,
@@ -195,6 +204,25 @@ class ItemHandlersMixin:
                 InsertApNot(current_ap=char['sp'], total_ap=char['total_ap']),
                 note='book of ap used (+%d AP -> sp=%d total=%d)' % (max(1, req.use_count), char['sp'], char['total_ap']),
             )
+        elif item_str_code in DUAL_SKILL_ITEM_DAYS:
+            from darkblood.games.network.messages.skills import DualSkillActiveNot
+            add_days = DUAL_SKILL_ITEM_DAYS[item_str_code] * max(1, int(req.use_count))
+            now = int(time.time())
+            base_expire = max(now, int(char.get('dual_skill_expire', 0)))
+            new_expire = base_expire + add_days * 86400
+            char['dual_skill_expire'] = new_expire
+            remain_sec = new_expire - now
+            cur_idx = int(char.get('dual_skill_index', 0))
+            self.save_char()
+            await self.send_msg(
+                DualSkillActiveNot(
+                    extend_time=remain_sec,
+                    add_day=add_days,
+                    cur_dual_skill_index=cur_idx,
+                    item_id=item_code,
+                ),
+                note=f'dual skill active not (+{add_days}d, remain={remain_sec}s, idx={cur_idx})',
+            )
         await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
         if contents:
             stored = add_reward_items(char, contents)
@@ -209,7 +237,7 @@ class ItemHandlersMixin:
                 if reward_hash >= 0x80000000:
                     reward_hash -= 0x100000000
                 await self.send_msg(
-                    RandomboxResultItemNot(item_code=reward_hash, count=reward_count),
+                    RandomboxResultItemNot(item_code=reward_hash, count=reward_count, is_jackpot=True),
                     note='random box result (%s x%d)' % (reward_code, reward_count),
                 )
 
@@ -344,13 +372,31 @@ class ItemHandlersMixin:
             return
         current_count = target.get('count', 1)
         del_amount = min(req.amount if req.amount > 0 else 1, current_count)
-        if current_count <= del_amount:
+        removed = current_count <= del_amount
+        cleared_slots = []
+        if removed:
             items.remove(target)
+            # Clear item quickslots bound directly to this item's UID (non-stackable items).
+            # Stackable items are bound by ref_id with ref_uid=-1 and stay on the bar at 0.
+            qs = char.get('quickslots')
+            if isinstance(qs, dict):
+                for key, entry in list(qs.items()):
+                    if entry.get('type') == 0 and entry.get('ref_uid') == req.item_uid:
+                        cleared_slots.append((entry.get('type', 0), entry.get('slot', 0)))
+                        qs.pop(key, None)
         else:
             target['count'] = current_count - del_amount
         self.save_char()
         await self.reply(DeleteItemAck(result=0, item_uid=req.item_uid, del_amount=del_amount),
                          correlation, note=f'delete item ack (uid={req.item_uid} amount={del_amount})')
+        for slot_type, slot_num in cleared_slots:
+            await self.send_msg(
+                AssignQuickslotAck(result=0, slot_type=slot_type, slot_num=slot_num, ref_id=-1, ref_uid=-1),
+                note=f'clear deleted item quickslot (type={slot_type} slot={slot_num})',
+            )
+        # Client 0x00557420 (2041 DeleteItemAck) only refreshes UI 0 (Inventory) and omits
+        # UI 7 (Quickslot); an empty 2037 DragItemAck triggers 0x0077F570 to refresh [0, 7, 2, 0xc, 0xe].
+        await self.send_msg(DragItemAck(result=0, items=[]), note='refresh quickslot ui after delete')
 
     @packet_handler(BuyLifeWaterReq)
     async def handle_buy_life_water(self, correlation, body):

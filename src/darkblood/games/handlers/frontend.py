@@ -132,7 +132,18 @@ def build_select_char_ack(char, account_chars=None):
             (q['type'], q['slot'], q['ref_id'], q['ref_uid'])
             for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()
             if 'slot' in q)],
+        waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
     ).encode()
+
+
+def _build_waypoints_map(char: dict) -> dict:
+    """Build {layer_net_id: WaypointData} for 2007 SelectCharacterAck (0x00A3EA00)."""
+    from darkblood.games.handlers.square import waypoint_data
+    out = {}
+    for raw_lid in char.get('waypoints', []):
+        lid = int(raw_lid)
+        out[lid] = waypoint_data(lid)
+    return out
 
 
 from darkblood.games.dispatcher import packet_handler

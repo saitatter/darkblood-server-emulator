@@ -102,7 +102,10 @@ def _fetch_remote_sha_api(timeout: int = 8) -> str:
 
 
 def _fetch_latest_release_api(timeout: int = 8):
-    """Return (tag_name, zip_download_url) from GitHub Releases API, or (None, None) if no release exists."""
+    """Return (tag_name, zip_download_url) from GitHub Releases API, or (None, None) if no release exists.
+
+    Only returns published (non-draft, non-prerelease) releases that include a release `.zip` asset.
+    """
     req = urllib.request.Request(
         GITHUB_RELEASE_API,
         headers={'User-Agent': 'DarkBlood-Launcher-Updater', 'Accept': 'application/vnd.github+json'},
@@ -114,6 +117,8 @@ def _fetch_latest_release_api(timeout: int = 8):
         if exc.code == 404:
             return None, None
         raise
+    if data.get('draft'):
+        return None, None
     tag = (data.get('tag_name') or '').strip()
     zip_url = ''
     for asset in data.get('assets') or []:
@@ -122,8 +127,28 @@ def _fetch_latest_release_api(timeout: int = 8):
             zip_url = asset.get('browser_download_url') or ''
             break
     if not zip_url:
-        zip_url = data.get('zipball_url') or ''
-    return (tag or None), (zip_url or None)
+        return None, None
+    return (tag or None), zip_url
+
+
+def _current_installed_release(root: Path) -> str:
+    """Return the currently installed release tag (from `.version` or git tag), or ''."""
+    ver_file = root / VERSION_FILE
+    if ver_file.is_file():
+        v = ver_file.read_text(encoding='utf-8').strip()
+        if v:
+            return v
+    if _has_git_repo(root):
+        try:
+            exact = _run_git(root, 'describe', '--tags', '--exact-match', 'HEAD')
+            if exact.returncode == 0 and exact.stdout.strip():
+                return exact.stdout.strip()
+            tags = _run_git(root, 'tag', '--sort=-creatordate', '--list', 'v*')
+            if tags.returncode == 0 and tags.stdout.strip():
+                return tags.stdout.splitlines()[0].strip()
+        except Exception:
+            pass
+    return ''
 
 
 def _deploy_prebuilt_dll(root: Path) -> bool:
@@ -139,9 +164,37 @@ def _deploy_prebuilt_dll(root: Path) -> bool:
     return False
 
 
-def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = GITHUB_BRANCH) -> UpdateStatus:
-    """Check whether `root` is behind GitHub's latest `main` commit."""
+def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = GITHUB_BRANCH,
+                      releases_only: bool = True) -> UpdateStatus:
+    """Check whether a newer published GitHub Release is available for `root`.
+
+    When `releases_only=True` (default), updates are strictly restricted to published
+    GitHub Releases — arbitrary unreleased commits on `main` are never offered.
+    """
     root = Path(root)
+    if releases_only:
+        current_ver = _current_installed_release(root)
+        try:
+            tag, zip_url = _fetch_latest_release_api()
+        except Exception as exc:
+            return UpdateStatus(mode='release', current_sha=current_ver, up_to_date=True, error=str(exc))
+        if not tag or not zip_url:
+            return UpdateStatus(
+                mode='release',
+                current_sha=current_ver,
+                up_to_date=True,
+                error='No published release found on GitHub.',
+            )
+        up_to_date = bool(current_ver and current_ver == tag)
+        return UpdateStatus(
+            mode='release',
+            current_sha=current_ver,
+            remote_sha=tag,
+            behind=0 if up_to_date else 1,
+            up_to_date=up_to_date,
+            download_url=zip_url,
+        )
+
     if _has_git_repo(root):
         try:
             cur = _run_git(root, 'rev-parse', 'HEAD')
@@ -176,24 +229,8 @@ def check_for_updates(root: Path = ROOT, remote: str = 'origin', branch: str = G
         except Exception as exc:
             return UpdateStatus(mode='git', error=str(exc))
 
-    # Portable install (no .git): prefer GitHub Releases (/releases/latest), fall back to main ZIP.
     ver_file = root / VERSION_FILE
     current_sha = ver_file.read_text(encoding='utf-8').strip() if ver_file.is_file() else ''
-    try:
-        tag, zip_url = _fetch_latest_release_api()
-        if tag and zip_url:
-            up_to_date = bool(current_sha and current_sha == tag)
-            return UpdateStatus(
-                mode='release',
-                current_sha=current_sha,
-                remote_sha=tag,
-                behind=0 if up_to_date else 1,
-                up_to_date=up_to_date,
-                download_url=zip_url,
-            )
-    except Exception:
-        pass
-
     try:
         remote_sha = _fetch_remote_sha_api()
     except Exception as exc:
@@ -297,9 +334,46 @@ def apply_zip_archive(root: Path, zip_bytes: bytes, new_sha: str = '') -> Update
     )
 
 
-def apply_update(root: Path = ROOT, remote: str = 'origin', branch: str = GITHUB_BRANCH) -> UpdateResult:
-    """Pull or download the latest version from GitHub onto `root`."""
+def apply_update(root: Path = ROOT, remote: str = 'origin', branch: str = GITHUB_BRANCH,
+                 releases_only: bool = True) -> UpdateResult:
+    """Download and apply the latest published GitHub Release onto `root`.
+
+    When `releases_only=True` (default), never updates to unreleased commits.
+    """
     root = Path(root)
+    if releases_only:
+        try:
+            tag, zip_url = _fetch_latest_release_api()
+            if not tag or not zip_url:
+                return UpdateResult(ok=False, mode='release',
+                                    message='No published release found on GitHub.')
+            current_ver = _current_installed_release(root)
+            if current_ver and current_ver == tag:
+                return UpdateResult(ok=True, mode='release', old_sha=current_ver, new_sha=tag,
+                                    message=f'Already up to date ({tag}).')
+            if _has_git_repo(root):
+                fetch = _run_git(root, 'fetch', remote, '--tags', '--quiet', timeout=20)
+                if fetch.returncode != 0:
+                    err = (fetch.stderr or fetch.stdout or 'git fetch --tags failed').strip().splitlines()[-1]
+                    return UpdateResult(ok=False, mode='release', old_sha=current_ver, message=err)
+                merge = _run_git(root, 'merge', '--ff-only', tag, timeout=20)
+                if merge.returncode != 0:
+                    return UpdateResult(
+                        ok=False, mode='release', old_sha=current_ver,
+                        message=f'Cannot fast-forward local git branch to release {tag}. '
+                                'Use git manually in a development checkout.',
+                    )
+                return UpdateResult(
+                    ok=True, mode='release', old_sha=current_ver, new_sha=tag,
+                    message=f'Updated to release {tag}.',
+                )
+            req = urllib.request.Request(zip_url, headers={'User-Agent': 'DarkBlood-Launcher-Updater'})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                zip_bytes = resp.read()
+            return apply_zip_archive(root, zip_bytes, new_sha=tag)
+        except Exception as exc:
+            return UpdateResult(ok=False, mode='release', message=f'Release update failed: {exc}')
+
     if _has_git_repo(root):
         try:
             old_sha = _run_git(root, 'rev-parse', 'HEAD').stdout.strip()

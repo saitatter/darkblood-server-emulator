@@ -416,11 +416,11 @@ message 2322 ItemDeleteNot
 end
 
 message 2196 RandomboxResultItemNot ok_only
-  ## Handler 0x0075A2E0.
+  ## Handler 0x0075A2E0 (assert 0x00CF0A30: nItemID >> sAmount >> bSelect) -> 0x00614030.
   i32 result
   i32 item_code
   i16 count = 1
-  bool is_jackpot
+  bool is_jackpot            # bSelect: True populates Page_RandomBox popup; False prints chat only
 end
 
 message 2461 DepotSlotExtendReq header?

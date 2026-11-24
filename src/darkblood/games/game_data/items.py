@@ -227,25 +227,32 @@ def cash_items():
                     out[parts[0]] = {'type': int(parts[1]), 'adj': parts[2]}
             return out
 
-    path = override or (data_root() / 'item_cash.lua')
-    if not path.exists():
-        return {}
-    text = path.read_text(encoding='utf-8', errors='replace')
+    paths = [override] if override else [
+        data_root() / name for name in ('item_cash.lua', 'item_randombox.lua', 'item_disposable.lua')
+    ]
     out = {}
-    pos = 0
-    while True:
-        section = _section(text[pos:], 'DictItem:LoadItem')
-        if not section:
-            break
-        for entry in _top_entries(section):
-            iid = re.search(r'ItemID = "([^"]+)"', entry)
-            if not iid:
-                continue
-            adj = re.search(r'AdjValue = "([^"]*)"', entry)
-            typ = re.search(r'\bType = (\d+)', entry)
-            out[iid.group(1)] = {'type': int(typ.group(1)) if typ else -1,
-                                 'adj': adj.group(1) if adj else ''}
-        pos = text.find(section, pos) + len(section)
+    for path in paths:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding='utf-8', errors='replace')
+        pos = 0
+        while True:
+            section = _section(text[pos:], 'DictItem:LoadItem')
+            if not section:
+                break
+            for entry in _top_entries(section):
+                iid = re.search(r'ItemID = "([^"]+)"', entry)
+                if not iid:
+                    continue
+                adj = re.search(r'AdjValue = "([^"]*)"', entry)
+                typ = re.search(r'\bType = (\d+)', entry)
+                # Keep all items from item_cash.lua (e.g. dyes without AdjValue), and
+                # any item with an AdjValue from item_randombox.lua / item_disposable.lua.
+                if path.name != 'item_cash.lua' and not (adj and adj.group(1)):
+                    continue
+                out[iid.group(1)] = {'type': int(typ.group(1)) if typ else -1,
+                                     'adj': adj.group(1) if adj else ''}
+            pos = text.find(section, pos) + len(section)
     return out
 
 
@@ -263,15 +270,24 @@ def cash_packages():
                     out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
             return out
 
-    path = override or (data_root() / 'item_cash.lua')
-    if not path.exists():
-        return {}
-    section = _section(path.read_text(encoding='utf-8', errors='replace'), 'DictItem:LoadPackage')
+    paths = [override] if override else [
+        data_root() / name for name in ('item_cash.lua', 'item_disposable.lua')
+    ]
     out = {}
-    for entry in _top_entries(section):
-        gid = re.search(r'GroupID = "([^"]+)"', entry)
-        if gid:
-            out[gid.group(1)] = [(i, int(n)) for i, n, _ in ENTRY_ITEM_RE.findall(entry)]
+    for path in paths:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding='utf-8', errors='replace')
+        pos = 0
+        while True:
+            section = _section(text[pos:], 'DictItem:LoadPackage')
+            if not section:
+                break
+            for entry in _top_entries(section):
+                gid = re.search(r'GroupID = "([^"]+)"', entry)
+                if gid:
+                    out[gid.group(1)] = [(i, int(n)) for i, n, _ in ENTRY_ITEM_RE.findall(entry)]
+            pos = text.find(section, pos) + len(section)
     return out
 
 
@@ -295,28 +311,43 @@ def random_boxes():
                 groups[gid] = [(item, int(cnt)) for item, cnt in items]
             return states, groups
 
-    path = override or (data_root() / 'item_cash.lua')
-    if not path.exists():
-        return {}, {}
-    text = path.read_text(encoding='utf-8', errors='replace')
+    paths = [override] if override else [
+        data_root() / name for name in ('item_cash.lua', 'item_randombox.lua')
+    ]
     groups = {}
-    for entry in _top_entries(_section(text, 'DictRandomBox:LoadRandomBoxGroup')):
-        gid = re.search(r'GroupID = "([^"]+)"', entry)
-        if gid:
-            groups[gid.group(1)] = [(i, int(n)) for i, n, _ in ENTRY_ITEM_RE.findall(entry)]
     states = {}
-    for entry in _top_entries(_section(text, 'DictRandomBox:LoadRandomBoxState')):
-        rid = re.search(r'RandomID = "([^"]+)"', entry)
-        if not rid:
+    for path in paths:
+        if not path.exists():
             continue
-        grades = []
-        for grade in 'NSRUM':
-            prob = re.search(r'\b%s_Item_Prob = ([0-9.eE+-]+)' % grade, entry)
-            glist = re.findall(r'\b%s_ItemGroup = \{([^}]*)\}' % grade, entry)
-            names = re.findall(r'"([^"]+)"', ' '.join(glist))
-            if prob and float(prob.group(1)) > 0 and names:
-                grades.append((float(prob.group(1)), names))
-        states[rid.group(1)] = grades
+        text = path.read_text(encoding='utf-8', errors='replace')
+        pos = 0
+        while True:
+            section = _section(text[pos:], 'DictRandomBox:LoadRandomBoxGroup')
+            if not section:
+                break
+            for entry in _top_entries(section):
+                gid = re.search(r'GroupID = "([^"]+)"', entry)
+                if gid:
+                    groups[gid.group(1)] = [(i, int(n)) for i, n, _ in ENTRY_ITEM_RE.findall(entry)]
+            pos = text.find(section, pos) + len(section)
+        pos = 0
+        while True:
+            section = _section(text[pos:], 'DictRandomBox:LoadRandomBoxState')
+            if not section:
+                break
+            for entry in _top_entries(section):
+                rid = re.search(r'RandomID = "([^"]+)"', entry)
+                if not rid:
+                    continue
+                grades = []
+                for grade in 'NSRUM':
+                    prob = re.search(r'\b%s_Item_Prob = ([0-9.eE+-]+)' % grade, entry)
+                    glist = re.findall(r'\b%s_ItemGroup = \{([^}]*)\}' % grade, entry)
+                    names = re.findall(r'"([^"]+)"', ' '.join(glist))
+                    if prob and float(prob.group(1)) > 0 and names:
+                        grades.append((float(prob.group(1)), names))
+                states[rid.group(1)] = grades
+            pos = text.find(section, pos) + len(section)
     return states, groups
 
 

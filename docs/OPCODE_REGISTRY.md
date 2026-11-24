@@ -412,7 +412,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2461 | `eEGS_DEPOT_SLOT_EXTEND_REQ` | — | `inventory/depot.py` (`handle_depot_slot_extend`) | `DepotSlotExtendReq` | Opcode 2461 (eEGS_DEPOT_SLOT_EXTEND_REQ) -> 2462 (eEGS_DEPOT_SLOT_EXTEND_ACK): expand depot storage slots. |
 | 2462 | `eEGS_DEPOT_SLOT_EXTEND_ACK` | — | — | `DepotSlotExtendAck` |  |
 | 2463 | `eEGS_DEPOT_SLOT_EXTEND_EXPIRE_NOT` | — | — | `DepotSlotExtendExpireNot` |  |
-| 2464 | `eEGS_PET_CREATE_REQ` | — | `pets.py` (`handle_pet_create`) | `PetCreateReq` | eEGS_PET_CREATE_REQ (0x0079E0B0) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620) |
+| 2464 | `eEGS_PET_CREATE_REQ` | — | `pets.py` (`handle_pet_create`) | `PetCreateReq` | eEGS_PET_CREATE_REQ (0x0079E090) -> 2465 eEGS_PET_CREATE_ACK (0x0079E620) |
 | 2465 | `eEGS_PET_CREATE_ACK` | 0x0079E620 | — | `PetCreateAck` |  |
 | 2466 | `eEGS_PET_DELETE_REQ` | — | `pets.py` (`handle_pet_delete`) | `PetDeleteReq` | eEGS_PET_DELETE_REQ (0x0079E260) -> 2467 eEGS_PET_DELETE_ACK (0x0079EA50) |
 | 2467 | `eEGS_PET_DELETE_ACK` | 0x0079EA50 | — | `PetDeleteAck` |  |

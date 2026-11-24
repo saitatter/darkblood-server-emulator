@@ -9,7 +9,6 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.inventory import AddedItemNotice, ItemDropEntry
-from darkblood.games.network.messages.lobby import ChannelSquare
 from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
@@ -41,6 +40,7 @@ __all__ = [
     'GetQuestTagAck',
     'ActKairoReq',
     'ActKairoAck',
+    'WaypointData',
     'WaypointInsertReq',
     'WaypointInsertAck',
     'GuideBeginnerUpdateReq',
@@ -408,6 +408,19 @@ class ActKairoAck(WireMessage):
 
 
 @dataclass
+class WaypointData(WireMessage):
+    """Waypoint record 0x00A49700 (used by 2345 WaypointInsertAck and 2007).
+    JAppPageSquarePortal::UpdateList (0x0064FC60) extracts high_dword(layer_net_id)
+    as the SquareID hash and displays `name`; OnTeleportOK (0x00654D80) uses (x, y).
+    """
+    layer_net_id: u64 = 0  # +0x00 (high dword = jhash(SquareID), low dword = layer idx)
+    name: wstr = ''  # +0x08 (localization key or display name)
+    waypoint_id: h32 = 0  # +0x24 (e.g. jhash("act1_01") for DictSquarePortal::GetCost)
+    x: i32 = 0  # +0x28 (destination X)
+    y: i32 = 0  # +0x2C (destination Y)
+
+
+@dataclass
 class WaypointInsertReq(WireMessage):
     """Opcode 2344: eEGS_WAYPOINT_INSERT_REQ (request).
 
@@ -423,12 +436,14 @@ class WaypointInsertReq(WireMessage):
 class WaypointInsertAck(WireMessage):
     """Opcode 2345: eEGS_WAYPOINT_INSERT_ACK (reply).
 
-    Handler 0x0064AE00.
+    Handler 0x0064AE00 (JAppPageSquarePortal::OneEGS_WAYPOINT_INSERT_ACK).
+    Assert 0x00CCEBB8: nLayerNetID >> jData (0x00A49700).
     """
     OPCODE: ClassVar[int] = 2345
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     layer_net_id: u64 = 0
-    square: Extern[ChannelSquare, 'encode', False] = field(default_factory=ChannelSquare)
+    waypoint: WaypointData = field(default_factory=WaypointData)
 
 
 @dataclass

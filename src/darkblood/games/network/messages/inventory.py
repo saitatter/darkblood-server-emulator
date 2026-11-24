@@ -875,14 +875,14 @@ class ItemDeleteNot(WireMessage):
 class RandomboxResultItemNot(WireMessage):
     """Opcode 2196: eEGS_RANDOMBOX_RESULT_ITEM_NOT (reply).
 
-    Handler 0x0075A2E0.
+    Handler 0x0075A2E0 (assert 0x00CF0A30: nItemID >> sAmount >> bSelect) -> 0x00614030.
     """
     OPCODE: ClassVar[int] = 2196
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     item_code: i32 = 0
     count: i16 = 1
-    is_jackpot: bool = False
+    is_jackpot: bool = False  # bSelect: True populates Page_RandomBox popup; False prints chat only
 
 
 @dataclass

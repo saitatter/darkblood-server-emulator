@@ -18,6 +18,7 @@ __all__ = [
     'RidingGetListAck',
     'RidingRideObjectReq',
     'RidingRideObjectAck',
+    'PetInfo',
     'PetCreateReq',
     'PetCreateAck',
     'PetDeleteReq',
@@ -192,10 +193,36 @@ class RidingRideObjectAck(WireMessage):
 
 
 @dataclass
+class PetInfo(WireMessage):
+    """Pet record 0x00A52CF0 (ctor 0x005014D0, used by 2465 PetCreateAck)."""
+    dye_colors: Array[Raw[10]] = field(default_factory=list)  # +0x42 (0x00A4B250, up to 2 x 10-byte dye blocks)
+    pet_uid: i64 = -1  # +0x00
+    pet_id: h32 = 0xFFFFFFFF  # +0x08 (jhash("PetCall001"))
+    level: u8 = 1  # +0x0C
+    exp: i32 = 0  # +0x0D
+    satiety: i16 = 100  # +0x11
+    name: wstr = ''  # +0x15
+    is_cash_food: bool = False  # +0x41
+    slot: i16 = -1  # +0x13 (pet depot slot; -1 = active nurture slot)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'dye_colors',
+        'pet_uid',
+        'pet_id',
+        'level',
+        'exp',
+        'satiety',
+        'name',
+        Const(EmptyVector),
+        'is_cash_food',
+        'slot',
+    )
+
+
+@dataclass
 class PetCreateReq(WireMessage):
     """Opcode 2464: eEGS_PET_CREATE_REQ (request).
 
-    Sender 0x0079E090.
+    Sender 0x0079E090: item UID of the Pet Egg being hatched.
     """
     OPCODE: ClassVar[int] = 2464
     _WIRE_HEADER: ClassVar[str] = 'header?'
@@ -207,20 +234,16 @@ class PetCreateReq(WireMessage):
 class PetCreateAck(WireMessage):
     """Opcode 2465: eEGS_PET_CREATE_ACK (reply).
 
-    Handler 0x0079E620. The earlier encoder put a 0x1E byte before the item;
-    0x00B35010 consumes none for that tag, so it is not sent.
+    Handler 0x0079E620 (assert 0x00CFD628: vecItem >> nItemID >> jNewPetInfo).
+    Updates inventory (vecItem), registers jNewPetInfo (0x00A52CF0), refreshes
+    UI [0, 7, 0x15], and opens page 0x7C (Pet window).
     """
     OPCODE: ClassVar[int] = 2465
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    slot: i32 = 0
-    pet_item: Raw[52] = bytes(52)  # item record, not recovered
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-        'slot',
-        'pet_item',
-    )
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem (consumed Pet Egg tombstone)
+    item_id: h32 = 0  # nItemID (jhash of consumed Pet Egg code)
+    pet: PetInfo = field(default_factory=PetInfo)  # jNewPetInfo (0x00A52CF0)
 
 
 @dataclass

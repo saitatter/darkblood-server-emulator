@@ -50,11 +50,16 @@ class SkillHandlers(BaseDomainService):
         (skill index, level) from its stored level. False, and nothing
         charged, when the character cannot pay."""
         from darkblood.games.game_data.client_dict import skill_learn_cost
-        skills = char.get('skills', {})
+        running = {str(k): int(v) for k, v in char.get('skills', {}).items()}
         sp = ar = 0
-        for sidx, lvl in wanted:  # (index, level) pairs
-            s, a = skill_learn_cost(int(sidx), int(skills.get(str(sidx), 0)), int(lvl))
-            sp, ar = sp + s, ar + a
+        for sidx, lvl in wanted:  # (index, level) pairs; 2697 sends one entry per level step
+            key = str(int(sidx))
+            cur = running.get(key, 0)
+            target = int(lvl)
+            if target > cur:
+                s, a = skill_learn_cost(int(sidx), cur, target)
+                sp, ar = sp + s, ar + a
+                running[key] = target
         if sp > char.get('sp', 0) or ar > char.get('gold', 0):
             return False
         char['sp'] = char.get('sp', 0) - sp
@@ -97,8 +102,9 @@ class SkillHandlers(BaseDomainService):
                 return
             skills = char.setdefault('skills', {})
             for s in req.skills:
-                skills[str(s.skill_index)] = s.level
-                learned_skills[s.skill_index] = s.level
+                new_lv = max(int(skills.get(str(s.skill_index), 0)), int(s.level))
+                skills[str(s.skill_index)] = new_lv
+                learned_skills[s.skill_index] = new_lv
             self.save_char()
             remain_gold = char.get('gold', 0)
             remain_sp = char.get('sp', 0)

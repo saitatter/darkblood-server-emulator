@@ -4,7 +4,6 @@
 domain quests Dark Blood protocol wire messages - Quests domain.
 
 extern Item from darkblood.games.entities.items
-extern ChannelSquare from darkblood.games.network.messages.lobby
 extern AddedItemNotice from darkblood.games.network.messages.inventory
 extern ItemDropEntry from darkblood.games.network.messages.inventory
 extern LearnedSkill from darkblood.games.network.messages.skills
@@ -204,16 +203,28 @@ message 2178 ActKairoAck ok_only
   i64 remain_gold
 end
 
+struct WaypointData
+  ## Waypoint record 0x00A49700 (used by 2345 WaypointInsertAck and 2007).
+  ## JAppPageSquarePortal::UpdateList (0x0064FC60) extracts high_dword(layer_net_id)
+  ## as the SquareID hash and displays `name`; OnTeleportOK (0x00654D80) uses (x, y).
+  u64 layer_net_id           # +0x00 (high dword = jhash(SquareID), low dword = layer idx)
+  wstr name                  # +0x08 (localization key or display name)
+  h32 waypoint_id            # +0x24 (e.g. jhash("act1_01") for DictSquarePortal::GetCost)
+  i32 x                      # +0x28 (destination X)
+  i32 y                      # +0x2C (destination Y)
+end
+
 message 2344 WaypointInsertReq header?
   ## Live: ffffff7f + u64 layer_net_id.
   u64 layer_net_id
 end
 
-message 2345 WaypointInsertAck
-  ## Handler 0x0064AE00.
+message 2345 WaypointInsertAck ok_only
+  ## Handler 0x0064AE00 (JAppPageSquarePortal::OneEGS_WAYPOINT_INSERT_ACK).
+  ## Assert 0x00CCEBB8: nLayerNetID >> jData (0x00A49700).
   u32 result
   u64 layer_net_id
-  ChannelSquare square = ChannelSquare()
+  WaypointData waypoint = WaypointData()
 end
 
 message 2358 GuideBeginnerUpdateReq header

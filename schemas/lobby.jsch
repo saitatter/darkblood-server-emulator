@@ -8,6 +8,7 @@ extern Item from darkblood.games.entities.items
 extern ActiveQuest from darkblood.games.missions.quests encode=encode_entry
 extern LearnedSkill from darkblood.games.network.messages.skills
 extern QuickSlot from darkblood.games.network.messages.skills
+extern WaypointData from darkblood.games.network.messages.quests
 import layer_net_id from darkblood.games.entities.character
 
 struct GameServer
@@ -100,7 +101,7 @@ message 2007 SelectCharacterAck
   map<?> _                   # 0x0074C1D0: two maps and a bool
   map<?> _
   bool _
-  map<?> _                   # 0x00A3EA00
+  map<u64,WaypointData> waypoints  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
   u64 _
   u64 _
   u32 _

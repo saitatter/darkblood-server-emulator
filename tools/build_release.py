@@ -85,6 +85,7 @@ def build_launcher_exe(output_dir: Path = None, root: Path = ROOT) -> Path:
     out_dir = Path(output_dir or (root / 'dist'))
     work_dir = out_dir / 'pyinstaller_build'
     out_dir.mkdir(parents=True, exist_ok=True)
+    ico_path = root / 'assets' / 'darkblood.ico'
     cmd = [
         sys.executable, '-m', 'PyInstaller',
         '--onefile',
@@ -101,8 +102,10 @@ def build_launcher_exe(output_dir: Path = None, root: Path = ROOT) -> Path:
         '--hidden-import', 'gamectl',
         '--hidden-import', 'multibox',
         '--hidden-import', 'updater',
-        str(root / 'tools' / 'launcher.py'),
     ]
+    if ico_path.is_file():
+        cmd += ['--icon', str(ico_path)]
+    cmd.append(str(root / 'tools' / 'launcher.py'))
     proc = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(f'PyInstaller build failed:\n{proc.stdout}\n{proc.stderr}')
