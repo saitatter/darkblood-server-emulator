@@ -1,15 +1,17 @@
-# Session handoff — 2026-11-23
+# Session handoff — 2026-11-24
 
 > Older per-session logs (2026-11-16 through 2026-11-21) were pruned to keep this handoff concise; they remain in Git history and their results are reflected in `README.md`, `docs/STATUS.md`, `docs/OPCODE_REGISTRY.md`, and `ROADMAP.md`.
 
-## Recent verified changes (2026-11-22 – 2026-11-23)
+## Recent verified changes (2026-11-22 – 2026-11-24)
 
+- **Waypoints (`2344 -> 2345`, `5030 -> 5031`, `2007`, PR #24 — live-verified)**:
+  - Recovered `WaypointData` (`0x00A49700`: `u64 layer_net_id`, `wstr name`, `h32 waypoint_id`, `i32 x`, `i32 y`) from `0x0064AE00`, `0x0064FC60` (`UpdateList`), and `0x00654D80` (`OnTeleportOK`), and `DictSquarePortal::GetCost` (`0x00A688E0`: `int(int(base_cost) * level_ratio + 0.5)`).
+  - Extracted all 11 town waypoints (layer IDs, `@LayerName_*` localization keys, `act*_0*` IDs, and `(x, y)` coordinates) from `act1.map`, `act2.map`, `act4.map` and portal cost/level-ratio tables from `waypoint.lua` into `assets/waypoints.json`, loaded via `waypoint_info()` / `portal_cost()` in `src/darkblood/games/game_data/world.py`.
+  - `handle_waypoint_insert` (`2344 -> 2345`) now sends real `@LayerName_*` names, `jhash(waypoint_id)`, and destination `(x, y)`; `handle_join_layer` (`5030 -> 5031`) deducts `portal_cost` from `char['gold']` when `use_waypoint=True` and returns the updated `cur_ar`.
+  - Mapped `map<u64, WaypointData> waypoints` (`0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0`) in `2007 SelectCharacterAck` (`schemas/lobby.jsch`, `src/darkblood/games/handlers/frontend.py`) so unlocked waypoints persist across relogging.
 - **Batch skill learning freeze/crash (`2697 -> 2698`, PR #24 / Issue #15 item 1 — live-verified)**:
   - Live wire capture showed that large `2697 LearnSkillListReq` batches (zlib-compressed by the client) decode **without** the `0x7FFFFFFF` 4-byte prefix (`10 8a 0f ff 00 04 ...`), while `schemas/skills.jsch` declared `header` (unconditional 4-byte strip), causing `bad-request 2697` and leaving the client frozen waiting for `2698`.
   - Changed `2697` to `header?` and fixed `_charge_skills` (`src/darkblood/games/handlers/skills.py`) to advance a running per-skill level map instead of double/triple-charging SP/AR when `2697` includes multiple sequential level steps for the same skill.
-- **Waypoints (`2344 -> 2345 WaypointInsertAck`, `5030 -> 5031`, PR #24 — headless verified, live check pending)**:
-  - Recovered `WaypointData` (`0x00A49700`: `u64 layer_net_id`, `wstr name`, `h32 waypoint_id`, `i32 x`, `i32 y`) from `0x0064AE00`, `0x0064FC60` (`UpdateList`), and `0x00654D80` (`OnTeleportOK`).
-  - Previously `2345` sent `ChannelSquare` (`u64 1`), so `UpdateList` called `DictMap::FindSquare(high_dword(1))` = `NULL` and discarded every waypoint. `handle_waypoint_insert` now sends `WaypointData(layer_net_id=layer, ...)` and persists `char['waypoints']`, and `handle_join_layer` (`5030 -> 5031`) echoes `use_waypoint`.
 - **Pet Egg hatching (`2464 -> 2465 PetCreateAck`, PR #24 / Issue #15 item 4 — live-verified)**:
   - Recovered `PetInfo` (`0x00A52CF0`, ctor `0x005014D0`) and `2465 PetCreateAck` (`0x0079E620`, assert `0x00CFD628`: `vecItem >> nItemID >> jNewPetInfo`).
   - Previously `PetCreateAck` sent 52 zero bytes (`raw[52]`), causing `0x00A52CF0` to fail deserialization and abort without consuming the egg or creating the pet.
@@ -34,7 +36,7 @@
 
 ## Verification status
 
-- **Headless suite**: **226/226** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **227/227** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
