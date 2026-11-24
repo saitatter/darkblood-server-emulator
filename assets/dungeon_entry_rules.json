@@ -1,0 +1,130 @@
+{
+  "Act2_G2_E13": {
+    "clear_limit": 0,
+    "dungeon_id": "Act2_G2_E1",
+    "enter_item_amount": 1,
+    "enter_item_id": "IticR5040",
+    "enter_limit": 0,
+    "is_citadel": false
+  },
+  "Act2_G2_R13": {
+    "clear_limit": 3,
+    "dungeon_id": "Act2_G2_R1",
+    "enter_item_amount": 3,
+    "enter_item_id": "IticR4050",
+    "enter_limit": 6,
+    "is_citadel": false
+  },
+  "Act3_G2_R13": {
+    "clear_limit": 3,
+    "dungeon_id": "Act3_G2_R1",
+    "enter_item_amount": 2,
+    "enter_item_id": "IticR4047",
+    "enter_limit": 6,
+    "is_citadel": false
+  },
+  "Act3_G2_R23": {
+    "clear_limit": 2,
+    "dungeon_id": "Act3_G2_R2",
+    "enter_item_amount": 3,
+    "enter_item_id": "IticR4047",
+    "enter_limit": 6,
+    "is_citadel": false
+  },
+  "Act4_G2_R13": {
+    "clear_limit": 3,
+    "dungeon_id": "Act4_G2_R1",
+    "enter_item_amount": 2,
+    "enter_item_id": "IticR5040",
+    "enter_limit": 6,
+    "is_citadel": false
+  },
+  "Act4_G2_R23": {
+    "clear_limit": 2,
+    "dungeon_id": "Act4_G2_R2",
+    "enter_item_amount": 3,
+    "enter_item_id": "IticR5040",
+    "enter_limit": 6,
+    "is_citadel": false
+  },
+  "Citadel_A13": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A1",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A14": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A1",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A23": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A2",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A24": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A2",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A33": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A3",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A34": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A3",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A43": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A4",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A44": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A4",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A53": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A5",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  },
+  "Citadel_A54": {
+    "clear_limit": 0,
+    "dungeon_id": "Citadel_A5",
+    "enter_item_amount": 0,
+    "enter_item_id": "",
+    "enter_limit": 0,
+    "is_citadel": true
+  }
+}

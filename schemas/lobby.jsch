@@ -95,8 +95,8 @@ message 2007 SelectCharacterAck
   f32 _
   u64 _
   u64 _
-  map<?> _                   # 0x00485220
-  map<?> _                   # 0x00485220
+  map<wstr,i16> daily_dun_enter_counts  # 0x00485220 (+0x3D1 -> 0x009646F0)
+  map<wstr,i16> daily_dun_clear_counts  # 0x00485220 (+0x3DD -> 0x00964A00)
   wstr _                     # 0x00B35AB0
   map<?> _                   # 0x0074C1D0: two maps and a bool
   map<?> _
@@ -126,7 +126,7 @@ message 2007 SelectCharacterAck
   u16 _
   vector<?> _                # 0x004DA660
   map<?> _                   # 0x005F9150
-  u16 _
+  i16 citadel_play_count     # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
   map<?> _                   # 0x00485220
   vector<?> _                # 0x004B9210
 end

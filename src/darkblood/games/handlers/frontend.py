@@ -132,7 +132,14 @@ def build_select_char_ack(char, account_chars=None):
             (q['type'], q['slot'], q['ref_id'], q['ref_uid'])
             for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()
             if 'slot' in q)],
+        daily_dun_enter_counts={
+            str(k): int(v) for k, v in (char.get('daily_dun_enter_counts', {}) if isinstance(char, dict) else {}).items()
+        },
+        daily_dun_clear_counts={
+            str(k): int(v) for k, v in (char.get('daily_dun_clear_counts', {}) if isinstance(char, dict) else {}).items()
+        },
         waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
+        citadel_play_count=int(char.get('citadel_play_count', 3)) if isinstance(char, dict) else 3,
     ).encode()
 
 

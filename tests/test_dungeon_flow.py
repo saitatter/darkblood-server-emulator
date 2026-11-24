@@ -608,6 +608,91 @@ class DungeonFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_fortress_challenge_limit_and_special_entry_item_enforcement(self):
+        """Issue #22: Citadel challenge opportunities and required entry items are tracked & enforced."""
+        from darkblood.games.network import messages
+        from darkblood.games.progression import refresh_dungeon_entry_limits
+        from darkblood.games.world import GameWorldManager
+        import datetime
+
+        # Unit check for weekly Monday reset & daily +1 charge
+        c = {}
+        mon = datetime.datetime(2026, 11, 23, 12, 0).timestamp()  # Monday
+        tue = datetime.datetime(2026, 11, 24, 12, 0).timestamp()  # Tuesday
+        next_mon = datetime.datetime(2026, 11, 30, 12, 0).timestamp()  # Next Monday
+        self.assertTrue(refresh_dungeon_entry_limits(c, now=mon))
+        self.assertEqual(c['citadel_play_count'], 3)
+        c['citadel_play_count'] = 1
+        self.assertTrue(refresh_dungeon_entry_limits(c, now=tue))
+        self.assertEqual(c['citadel_play_count'], 2)  # +1 daily charge
+        c['citadel_play_count'] = 0
+        self.assertTrue(refresh_dungeon_entry_limits(c, now=next_mon))
+        self.assertEqual(c['citadel_play_count'], 3)  # Monday weekly reset
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('FortressHero'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iq', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+            client.send_event(5124)
+            await client.expect_event(5125)
+
+            char = GameWorldManager.get().get_player(char_id).char_data
+            self.assertEqual(char['citadel_play_count'], 3)
+
+            # 1. Fortress (Citadel_A13): 3 entries succeed (2631 decrements 2 -> 1 -> 0), 4th blocked with 5222
+            for expected_remain in (2, 1, 0):
+                client.send_event(5013, messages.StartGameReq(map_code='Citadel_A13').encode())
+                _, not2631 = await client.expect_event(2631)
+                self.assertEqual(struct.unpack_from('<h', not2631, 0)[0], expected_remain)
+                _, ack5014 = await client.expect_event(5014)
+                self.assertEqual(struct.unpack_from('<i', ack5014, 0)[0], 0)
+                await client.expect_event(2023)
+
+            client.send_event(5013, messages.StartGameReq(map_code='Citadel_A13').encode())
+            _, fail5222 = await client.expect_event(5222)
+            self.assertEqual(struct.unpack_from('<q', fail5222, 0)[0], char_id)
+            _, ack5014_fail = await client.expect_event(5014)
+            self.assertEqual(struct.unpack_from('<i', ack5014_fail, 0)[0], 139)
+
+            # 2. Special dungeon requiring entry item (Act4_G2_R13 needs IticR5040 x2, EnterLimit=6)
+            client.send_event(5013, messages.StartGameReq(map_code='Act4_G2_R13').encode())
+            _, fail5136 = await client.expect_event(5136)
+            self.assertEqual(struct.unpack_from('<q', fail5136, 0)[0], char_id)
+            _, ack5014_noitem = await client.expect_event(5014)
+            self.assertEqual(struct.unpack_from('<i', ack5014_noitem, 0)[0], 138)
+
+            # Grant 2x IticR5040 -> entry succeeds, consumes item (2037) & increments daily count (2318)
+            next_uid = max((i.get('uid', 0) for i in char.get('items', [])), default=0) + 1
+            char.setdefault('items', []).append({
+                'uid': next_uid, 'code': 'IticR5040', 'container': 3, 'slot': 18, 'count': 2,
+            })
+            client.send_event(5013, messages.StartGameReq(map_code='Act4_G2_R13').encode())
+            _, not2318 = await client.expect_event(2318)
+            self.assertIn('Act4_G2_R13'.encode('utf-16-le'), not2318)
+            await client.expect_event(2037)  # consumed ticket tombstone
+            _, ack5014_ok = await client.expect_event(5014)
+            self.assertEqual(struct.unpack_from('<i', ack5014_ok, 0)[0], 0)
+            await client.expect_event(2023)
+            self.assertFalse(any(i.get('code') == 'IticR5040' for i in char.get('items', [])))
+            self.assertEqual(char['daily_dun_enter_counts']['Act4_G2_R13'], 1)
+
+            # Reaching daily EnterLimit=6 blocks entry with 5222 + 5014(139) even if tickets exist
+            char['daily_dun_enter_counts']['Act4_G2_R13'] = 6
+            char['items'].append({
+                'uid': next_uid + 1, 'code': 'IticR5040', 'container': 3, 'slot': 18, 'count': 2,
+            })
+            client.send_event(5013, messages.StartGameReq(map_code='Act4_G2_R13').encode())
+            _, fail5222_daily = await client.expect_event(5222)
+            self.assertEqual(struct.unpack_from('<q', fail5222_daily, 0)[0], char_id)
+            _, ack5014_lim = await client.expect_event(5014)
+            self.assertEqual(struct.unpack_from('<i', ack5014_lim, 0)[0], 139)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

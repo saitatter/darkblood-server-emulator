@@ -339,3 +339,20 @@ def portal_cost(start_wp_id: str, dest_wp_id: str, level: int = 1) -> int:
     return max(0, int(int(base) * ratio + 0.5))
 
 
+@lru_cache(maxsize=None)
+def dungeon_entry_rules() -> dict:
+    """MapID -> {dungeon_id, enter_item_id, enter_item_amount, enter_limit, clear_limit, is_citadel}."""
+    json_path = ASSETS_DIR / 'dungeon_entry_rules.json'
+    if not json_path.is_file():
+        return {}
+    return json.loads(json_path.read_text(encoding='utf-8'))
+
+
+def dungeon_entry_rule(map_id: str):
+    """Return entry rule dict for a dungeon MapID, or None if unrestricted."""
+    if not map_id:
+        return None
+    return dungeon_entry_rules().get(map_id)
+
+
+

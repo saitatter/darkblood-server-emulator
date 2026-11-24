@@ -114,7 +114,10 @@ class SelectCharacterAck(WireMessage):
     quickslots: Vector[Extern[QuickSlot, 'encode', False]] = field(default_factory=list)  # 0x004B2C30 (+0x2B3)
     skills: Map[u16, Extern[LearnedSkill, 'encode', False]] = field(default_factory=dict)  # 0x004B1240, element reader 0x004ACB80 (as 2698)
     active_quests: Pairs[Extern[ActiveQuest, 'encode_entry', False]] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
+    daily_dun_enter_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3D1 -> 0x009646F0)
+    daily_dun_clear_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3DD -> 0x00964A00)
     waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
+    citadel_play_count: i16 = 0  # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         Const(EmptyArray),
@@ -155,8 +158,8 @@ class SelectCharacterAck(WireMessage):
         Const(f32, 0.0),
         Const(u64, 0),
         Const(u64, 0),
-        Const(EmptyMap),
-        Const(EmptyMap),
+        'daily_dun_enter_counts',
+        'daily_dun_clear_counts',
         Const(wstr, ''),
         Const(EmptyMap),
         Const(EmptyMap),
@@ -186,7 +189,7 @@ class SelectCharacterAck(WireMessage):
         Const(u16, 0),
         Const(EmptyVector),
         Const(EmptyMap),
-        Const(u16, 0),
+        'citadel_play_count',
         Const(EmptyMap),
         Const(EmptyVector),
     )

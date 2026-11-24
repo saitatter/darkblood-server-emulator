@@ -301,8 +301,46 @@ def refresh_depot_timers(char, now=None) -> bool:
     return changed
 
 
+CITADEL_WEEKLY_INIT = 3
+CITADEL_MAX_PLAY_COUNT = 7
+
+
+def refresh_dungeon_entry_limits(char, now=None) -> bool:
+    """Refresh daily dungeon enter/clear counts and Fortress (Citadel) challenge count.
+
+    UI_3408: "Charged a challenge opportunity daily. Challenge opportunity is initialized
+    at every Monday. Consumes each time to enter Dungeons in the Fortress."
+    """
+    import datetime
+    now = time.time() if now is None else float(now)
+    dt = datetime.datetime.fromtimestamp(now)
+    today_str = dt.strftime('%Y-%m-%d')
+    iso = dt.isocalendar()
+    week_str = f'{iso[0]}-W{iso[1]:02d}'
+    changed = False
+
+    if char.get('dun_enter_day') != today_str:
+        char['dun_enter_day'] = today_str
+        char['daily_dun_enter_counts'] = {}
+        char['daily_dun_clear_counts'] = {}
+        changed = True
+
+    if char.get('citadel_week') != week_str or 'citadel_play_count' not in char:
+        char['citadel_week'] = week_str
+        char['citadel_last_day'] = today_str
+        char['citadel_play_count'] = CITADEL_WEEKLY_INIT
+        changed = True
+    elif char.get('citadel_last_day') != today_str:
+        char['citadel_last_day'] = today_str
+        cur = int(char.get('citadel_play_count', 0))
+        char['citadel_play_count'] = min(CITADEL_MAX_PLAY_COUNT, cur + 1)
+        changed = True
+
+    return changed
+
+
 def refresh_character_timers(char, now=None) -> bool:
-    """Refresh all persisted wall-clock timers on a character (stress, penalties, depot)."""
+    """Refresh all persisted wall-clock timers on a character (stress, penalties, depot, dungeon limits)."""
     now = time.time() if now is None else float(now)
     changed = False
     if refresh_stress(char, now=now):
@@ -312,5 +350,7 @@ def refresh_character_timers(char, now=None) -> bool:
         if p_changed:
             changed = True
     if refresh_depot_timers(char, now=now):
+        changed = True
+    if refresh_dungeon_entry_limits(char, now=now):
         changed = True
     return changed
