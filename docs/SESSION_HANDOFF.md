@@ -4,6 +4,14 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-24)
 
+- **Dual Skill Activation Order (`2038 -> 2039 + 2578 DualSkillActiveNot`, `2007`, PR #24 / Issue #15 item 6)**:
+  - Mapped all 3 `Type = 54` Dual Skill items (`IDSk1Cash269` 30d, `IDSk20S159` 10d, `IDSk20R434` 30d) in `src/darkblood/games/handlers/inventory/items.py`: using an item persists `dual_skill_expire` and sends `2578 DualSkillActiveNot` (`extend_time` in remaining seconds, multiplied by 1000 in `0x00945C60`).
+  - Mapped `+0x18A` (`dual_skill_index`) and `+0x194` (`dual_skill_remain_sec`) in `Character.encode_world_details` (`0x00A52630`, `2007 SelectCharacterAck`) so active Dual Skill persists across relogging.
+- **Launcher & GM Bridge (`tools/launcher.py`, `tools/updater.py`, `tools/build_release.py`, `src/darkblood/games/gm_bridge.py`)**:
+  - Restricted launcher updates strictly to published GitHub Releases (`releases_only=True`, no fallback to unreleased `main` commits) and fixed release changelog scoping via GitHub `/compare/{prev_tag}...{cur_tag}`.
+  - Eliminated Windows light-theme flash on tab/page switches via `tkraise()` and off-screen atomic `ScrollFrame.swap_inner()`.
+  - Hid `Build & Deploy Hook` in frozen release builds, added `--icon assets/darkblood.ico` to `DarkBloodLauncher.exe`, defaulted `skip_logos` and `skip_tutorial_always` to `True`, and added `ensure_hook_deployed()` on Play.
+  - Added searchable `GM COMMANDS` tab (shown only when `gm_mode` is enabled) backed by localhost-only GM bridge (`127.0.0.1:9402`) for live execution of server-backed GM commands.
 - **Waypoints (`2344 -> 2345`, `5030 -> 5031`, `2007`, PR #24 — live-verified)**:
   - Recovered `WaypointData` (`0x00A49700`: `u64 layer_net_id`, `wstr name`, `h32 waypoint_id`, `i32 x`, `i32 y`) from `0x0064AE00`, `0x0064FC60` (`UpdateList`), and `0x00654D80` (`OnTeleportOK`), and `DictSquarePortal::GetCost` (`0x00A688E0`: `int(int(base_cost) * level_ratio + 0.5)`).
   - Extracted all 11 town waypoints (layer IDs, `@LayerName_*` localization keys, `act*_0*` IDs, and `(x, y)` coordinates) from `act1.map`, `act2.map`, `act4.map` and portal cost/level-ratio tables from `waypoint.lua` into `assets/waypoints.json`, loaded via `waypoint_info()` / `portal_cost()` in `src/darkblood/games/game_data/world.py`.
@@ -36,12 +44,12 @@
 
 ## Verification status
 
-- **Headless suite**: **227/227** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **229/229** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
 - **Issue #15 remaining items**:
   5. Life Skills screen not updating visually after learning.
-  6. Dual Skill item not reflected in Skill screen.
+  6. Dual Skill item live verification (code & headless test complete; verify in-game).
 - **Subclass promotion skills**: Confirm exact subclass and expected auto-learned skills before changing `2283 PromotionNot`'s empty learned-skill map.
 - **Roadmap priorities (`ROADMAP.md`)**: Shared co-op dungeon instances, town movement desync, remaining unmapped fields (`docs/UNMAPPED_FIELDS.md`).

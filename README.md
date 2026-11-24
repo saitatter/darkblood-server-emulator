@@ -245,6 +245,7 @@ src/darkblood/
 │   ├── achievements.py       # Counter achievements (DictAchieve Type 0) driven by 2446 division report…
 │   ├── config.py             # Local offline world configuration: server list, channels, slots
 │   ├── dispatcher.py         # Route client JEvents to asynchronous domain handlers
+│   ├── gm_bridge.py          # Localhost-only GM command bridge (127.0.0.1:9402) for the Dark Blood Lau…
 │   ├── loot.py               # Monster drops from itemlooting.lua (DictItemDrop), rolled on 5063
 │   ├── progression.py        # Character level, ability point, and stress (fatigue) accounting
 │   ├── session.py            # Game connection session (JEvent dispatcher)
