@@ -269,7 +269,7 @@ class QuestHandlers(BaseDomainService):
                     note=f'mark item active not (base={new_base})',
                 )
         # The client displays the gained XP from jGainExp +0x08.
-        exp_ack = ChangeExpNot(exp_total=char_exp, gain_2=exp).encode()
+        exp_ack = ChangeExpNot(exp_total=char_exp, total_gain_exp=exp).encode()
         await self.transport.send_event(event(5086, exp_ack), note=f'change exp not (+{exp}, total={char_exp})')
 
     @packet_handler(2076)

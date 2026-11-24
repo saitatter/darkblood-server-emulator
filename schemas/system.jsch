@@ -48,24 +48,25 @@ message 5087 LevelUpNot
 end
 
 message 5086 ChangeExpNot
-  ## On_eERC_CHANGE_EXP_NOT 0x0078D170. jGainExp (0x00A49E20): 8 x i32 and a
-  ## J-wstring. Sending the last field as a float made the message fail to parse.
+  ## On_eERC_CHANGE_EXP_NOT 0x0078D170 (assert 0x00CF97C0: nExpTotal >> jGainExp).
+  ## jGainExp (0x00A49E20, ctor 0x0074A9A0, formatter 0x007505A0): 8 x i32 + wstr.
+  ## total_gain_exp == -1 triggers GAME_238 (ascension required to gain EXP).
   i32 exp_total              # nExpTotal, written to player +0x78
-  i32 gain_0                 # jGainExp fields; meanings not recovered
-  i32 gain_1
-  i32 gain_2                 # the server puts the gained EXP here
-  i32 gain_3
-  i32 gain_4
-  i32 gain_5
-  i32 gain_6
-  i32 gain_7
-  wstr text
+  i32 _                      # jGainExp +0x00 (unreferenced by 0x0078D170 / 0x007505A0)
+  i32 basic_exp              # +0x04 GAME_809 ("Basic %d"); nonzero enables breakdown
+  i32 total_gain_exp         # +0x08 GAME_038 ("You've Gained %d EXP")
+  i32 bonus_exp              # +0x0C GAME_813 ("Bonus %d")
+  i32 party_exp              # +0x10 GAME_811 ("Party %d")
+  i32 difficulty_exp         # +0x14 GAME_810 ("Difficulty %d")
+  i32 guild_skill_exp        # +0x18 UI_PUB_064 ("Guild Skill Reward: %d")
+  i32 pcb_exp                # +0x1C UI_JP_QA_004 ("PC Bang %d")
+  wstr exp_log               # +0x20 debug log text (ctor default "NULL")
 end
 
 message 2310 CharNickChangeReq header?
-  ## Sender 0x007989B0: 0x00B353D0 then a J-wstring (the earlier decoder read the
-  ## name first).
-  i64 item_uid               # meaning of the i64 not confirmed
+  ## Sender 0x007989B0 (caller 0x004CD7AB): i64 rename item UID (dialog+0xB8),
+  ## then J-wstring new nickname (item consumed in 2311 vecItemOut).
+  i64 item_uid
   wstr new_name
 end
 
@@ -112,19 +113,21 @@ struct AchieveEntry
 end
 
 struct AchieveCompletion
-  ## 13-byte block (0x00A1E7E0): 0x0079D240 looks up the first u32 and announces
-  ## the achievement by name. The other 9 bytes are not recovered.
+  ## Title entry (vecTitleList in 2328/2330 asserts 0x00CFD250/0x00CFD170).
+  ## 13-byte raw block (0x00A1E7E0): 0x0079D240 looks up the first u32 (title_id)
+  ## via 0x00AABAB0 and announces UI_2660. Remaining 9 bytes not confirmed.
   h32 achieve_hash
   raw[9] _
 end
 
 message 2328 AchieveGetListAck ok_only
-  ## Handler 0x0079D650: result, struct 0x00A3E760 (tag 0x1E writes no byte),
-  ## then the completion vector 0x0076B0C0.
+  ## Handler 0x0079D650 (assert 0x00CFD250: jAchieveTotalInfo >> vecTitleList).
+  ## Reader 0x00A3E760 reads divisions, completed, and a trailing bool (+0x18,
+  ## ignored by consumer 0x00481760), then vecTitleList (0x0076B0C0).
   i32 result
   map<u32,i64> divisions     # 0x005EC140: division -> counter
   map<h32,AchieveEntry> completed  # 0x00A3DC50
-  bool _                     # not recovered
+  bool _                     # 0x00A3E760 +0x18 (read on wire, unused by 0x00481760)
   vector<AchieveCompletion> completions
 end
 
@@ -141,10 +144,12 @@ message 2446 AchieveDivUpdateReq
 end
 
 message 2329 AchieveChangeNot
-  ## Handler 0x0076C720.
-  map<?> _
-  map<?> _
-  map<?> _
+  ## Handler 0x0076C720 (assert 0x00CF2710: mapAchieveChangeProg >>
+  ## mapAchieveDailyChangeProg >> mapAchieveDivChangeFailed).
+  ## All 3 maps use 0x005EAAC0 -> 0x005DFBD0 -> 0x005DDBB0 (u32, i64).
+  map<u32,i64> change_prog        # overwrites division counter (0x0048CE80)
+  map<u32,i64> daily_change_prog  # read and freed on client
+  map<u32,i64> div_change_failed  # adds delta to division counter (0x0048CE80)
 end
 
 message 2330 AchieveCompleteNot
@@ -215,10 +220,11 @@ message 5261 SecondPassAuthAck
 end
 
 struct TargetState
-  ## Struct 0x00A49B50 (also the 5046 vecTargetState element). Meanings not recovered.
-  i32 value
-  bool flag_a
-  bool flag_b
+  ## Struct 0x00A49B50 (5125 GTargetListAck & 5046 vecTargetState element).
+  ## Applied by JGTarget::Update (0x007F8CD0, log 0x00D08310).
+  i32 target_uid             # +0x00 GTarget UID (matched against JGTarget+0x1C)
+  bool is_active             # +0x04 JGTarget+0x370 (gathering/fishing target active)
+  bool is_jackpot            # +0x05 JGTarget+0x371 (", Jackpot" bonus target)
 end
 
 message 5125 GTargetListAck

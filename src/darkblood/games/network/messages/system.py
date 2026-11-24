@@ -129,33 +129,45 @@ class LevelUpNot(WireMessage):
 class ChangeExpNot(WireMessage):
     """Opcode 5086: eERC_CHANGE_EXP_NOT (reply).
 
-    On_eERC_CHANGE_EXP_NOT 0x0078D170. jGainExp (0x00A49E20): 8 x i32 and a
-    J-wstring. Sending the last field as a float made the message fail to parse.
+    On_eERC_CHANGE_EXP_NOT 0x0078D170 (assert 0x00CF97C0: nExpTotal >> jGainExp).
+    jGainExp (0x00A49E20, ctor 0x0074A9A0, formatter 0x007505A0): 8 x i32 + wstr.
+    total_gain_exp == -1 triggers GAME_238 (ascension required to gain EXP).
     """
     OPCODE: ClassVar[int] = 5086
     exp_total: i32 = 0  # nExpTotal, written to player +0x78
-    gain_0: i32 = 0  # jGainExp fields; meanings not recovered
-    gain_1: i32 = 0
-    gain_2: i32 = 0  # the server puts the gained EXP here
-    gain_3: i32 = 0
-    gain_4: i32 = 0
-    gain_5: i32 = 0
-    gain_6: i32 = 0
-    gain_7: i32 = 0
-    text: wstr = ''
+    basic_exp: i32 = 0  # +0x04 GAME_809 ("Basic %d"); nonzero enables breakdown
+    total_gain_exp: i32 = 0  # +0x08 GAME_038 ("You've Gained %d EXP")
+    bonus_exp: i32 = 0  # +0x0C GAME_813 ("Bonus %d")
+    party_exp: i32 = 0  # +0x10 GAME_811 ("Party %d")
+    difficulty_exp: i32 = 0  # +0x14 GAME_810 ("Difficulty %d")
+    guild_skill_exp: i32 = 0  # +0x18 UI_PUB_064 ("Guild Skill Reward: %d")
+    pcb_exp: i32 = 0  # +0x1C UI_JP_QA_004 ("PC Bang %d")
+    exp_log: wstr = ''  # +0x20 debug log text (ctor default "NULL")
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'exp_total',
+        Const(i32, 0),
+        'basic_exp',
+        'total_gain_exp',
+        'bonus_exp',
+        'party_exp',
+        'difficulty_exp',
+        'guild_skill_exp',
+        'pcb_exp',
+        'exp_log',
+    )
 
 
 @dataclass
 class CharNickChangeReq(WireMessage):
     """Opcode 2310: eEGS_CHAR_NICK_CHANGE_REQ (request).
 
-    Sender 0x007989B0: 0x00B353D0 then a J-wstring (the earlier decoder read the
-    name first).
+    Sender 0x007989B0 (caller 0x004CD7AB): i64 rename item UID (dialog+0xB8),
+    then J-wstring new nickname (item consumed in 2311 vecItemOut).
     """
     OPCODE: ClassVar[int] = 2310
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    item_uid: i64 = 0  # meaning of the i64 not confirmed
+    item_uid: i64 = 0
     new_name: wstr = ''
 
 
@@ -245,8 +257,9 @@ class AchieveEntry(WireMessage):
 
 @dataclass
 class AchieveCompletion(WireMessage):
-    """13-byte block (0x00A1E7E0): 0x0079D240 looks up the first u32 and announces
-    the achievement by name. The other 9 bytes are not recovered.
+    """Title entry (vecTitleList in 2328/2330 asserts 0x00CFD250/0x00CFD170).
+    13-byte raw block (0x00A1E7E0): 0x0079D240 looks up the first u32 (title_id)
+    via 0x00AABAB0 and announces UI_2660. Remaining 9 bytes not confirmed.
     """
     achieve_hash: h32 = 0
     _WIRE_LAYOUT: ClassVar[tuple] = (
@@ -259,8 +272,9 @@ class AchieveCompletion(WireMessage):
 class AchieveGetListAck(WireMessage):
     """Opcode 2328: eEGS_ACHIEVE_GET_LIST_ACK (reply).
 
-    Handler 0x0079D650: result, struct 0x00A3E760 (tag 0x1E writes no byte),
-    then the completion vector 0x0076B0C0.
+    Handler 0x0079D650 (assert 0x00CFD250: jAchieveTotalInfo >> vecTitleList).
+    Reader 0x00A3E760 reads divisions, completed, and a trailing bool (+0x18,
+    ignored by consumer 0x00481760), then vecTitleList (0x0076B0C0).
     """
     OPCODE: ClassVar[int] = 2328
     _WIRE_OK_INDEX: ClassVar[int] = 1
@@ -305,14 +319,14 @@ class AchieveDivUpdateReq(WireMessage):
 class AchieveChangeNot(WireMessage):
     """Opcode 2329: eEGS_ACHIEVE_CHANGE_NOT (reply).
 
-    Handler 0x0076C720.
+    Handler 0x0076C720 (assert 0x00CF2710: mapAchieveChangeProg >>
+    mapAchieveDailyChangeProg >> mapAchieveDivChangeFailed).
+    All 3 maps use 0x005EAAC0 -> 0x005DFBD0 -> 0x005DDBB0 (u32, i64).
     """
     OPCODE: ClassVar[int] = 2329
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyMap),
-        Const(EmptyMap),
-        Const(EmptyMap),
-    )
+    change_prog: Map[u32, i64] = field(default_factory=dict)  # overwrites division counter (0x0048CE80)
+    daily_change_prog: Map[u32, i64] = field(default_factory=dict)  # read and freed on client
+    div_change_failed: Map[u32, i64] = field(default_factory=dict)  # adds delta to division counter (0x0048CE80)
 
 
 @dataclass
@@ -448,10 +462,12 @@ class SecondPassAuthAck(WireMessage):
 
 @dataclass
 class TargetState(WireMessage):
-    """Struct 0x00A49B50 (also the 5046 vecTargetState element). Meanings not recovered."""
-    value: i32 = 0
-    flag_a: bool = False
-    flag_b: bool = False
+    """Struct 0x00A49B50 (5125 GTargetListAck & 5046 vecTargetState element).
+    Applied by JGTarget::Update (0x007F8CD0, log 0x00D08310).
+    """
+    target_uid: i32 = 0  # +0x00 GTarget UID (matched against JGTarget+0x1C)
+    is_active: bool = False  # +0x04 JGTarget+0x370 (gathering/fishing target active)
+    is_jackpot: bool = False  # +0x05 JGTarget+0x371 (", Jackpot" bonus target)
 
 
 @dataclass

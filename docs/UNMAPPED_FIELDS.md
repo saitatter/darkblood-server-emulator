@@ -286,15 +286,13 @@
 | `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:78 |  |
 | `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:79 |  |
 
-## system (7 of 82 fields)
+## system (5 of 82 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `AchieveEntry` | `bool` | system.jsch:109 |  |
-| `AchieveEntry` | `i32` | system.jsch:110 |  |
-| `AchieveCompletion` | `raw[9]` | system.jsch:118 |  |
-| `2328 AchieveGetListAck` | `bool` | system.jsch:127 | not recovered |
-| `2329 AchieveChangeNot` | `map<?>` | system.jsch:145 |  |
-| `2329 AchieveChangeNot` | `map<?>` | system.jsch:146 |  |
-| `2329 AchieveChangeNot` | `map<?>` | system.jsch:147 |  |
+| `5086 ChangeExpNot` | `i32` | system.jsch:55 | jGainExp +0x00 (unreferenced by 0x0078D170 / 0x007505A0) |
+| `AchieveEntry` | `bool` | system.jsch:110 |  |
+| `AchieveEntry` | `i32` | system.jsch:111 |  |
+| `AchieveCompletion` | `raw[9]` | system.jsch:120 |  |
+| `2328 AchieveGetListAck` | `bool` | system.jsch:130 | 0x00A3E760 +0x18 (read on wire, unused by 0x00481760) |
 

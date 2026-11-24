@@ -47,7 +47,7 @@ def _gtargets_for_layer(layer_id: int) -> list:
             data = json.loads(path.read_text(encoding='utf-8'))
             for square_name, uids in data.items():
                 _GTARGETS_CACHE[jhash(square_name) & 0xFFFFFFFF] = [
-                    TargetState(value=int(uid), flag_a=True, flag_b=False)
+                    TargetState(target_uid=int(uid), is_active=True, is_jackpot=False)
                     for uid in uids
                 ]
     sq_hash = (int(layer_id) >> 32) & 0xFFFFFFFF

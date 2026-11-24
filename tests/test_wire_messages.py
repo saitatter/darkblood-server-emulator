@@ -94,12 +94,15 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(enc_lvl[0:1], bytes.fromhex('82'))
         self.assertEqual(struct.unpack_from('<IIqBII?', enc_lvl, 1), (10, 10, 777, 10, 25, 27, True))
 
-        exp = messages.ChangeExpNot(exp_total=25000, gain_0=50, gain_1=100)
+        exp = messages.ChangeExpNot(
+            exp_total=25000, basic_exp=100, total_gain_exp=250, bonus_exp=50,
+            party_exp=25, difficulty_exp=40, guild_skill_exp=20, pcb_exp=15,
+        )
         enc_exp = exp.encode()
         self.assertEqual(struct.unpack_from('<i', enc_exp, 0)[0], 25000)
         # 8 x i32 then an empty J-wstring (0x00A49E20 ends with 0x00B35AB0).
         self.assertEqual(len(enc_exp), 4 + 32 + 1)
-        self.assertEqual(struct.unpack_from('<8i', enc_exp, 4)[:2], (50, 100))
+        self.assertEqual(struct.unpack_from('<8i', enc_exp, 4), (0, 100, 250, 50, 25, 40, 20, 15))
         self.assertEqual(enc_exp[-1:], b'\x80')
 
     def test_dungeon_messages(self):
@@ -628,6 +631,11 @@ class WireMessagesTest(unittest.TestCase):
 
         not_change = messages.AchieveChangeNot().encode()
         self.assertEqual(not_change, b'\x17\x80\x17\x80\x17\x80')
+        not_change_pop = messages.AchieveChangeNot(
+            change_prog={24: 100}, daily_change_prog={}, div_change_failed={7: 5}
+        ).encode()
+        self.assertIn(struct.pack('<Iq', 24, 100), not_change_pop)
+        self.assertIn(struct.pack('<Iq', 7, 5), not_change_pop)
 
         not_complete = messages.AchieveCompleteNot().encode()
         self.assertEqual(not_complete, b'\x10\x80\x10\x80')
