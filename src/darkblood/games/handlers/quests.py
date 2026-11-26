@@ -326,6 +326,19 @@ class QuestHandlers(BaseDomainService):
                                items=[Item(owner=owner, **i) for i in reward_items])
         await self.reply(ack, correlation, note='quest complete ack (%08x)' % quest_id)
         if char and not already:
+            from darkblood.games.handlers.commerce.stores import (
+                add_roulette_points,
+                contribute_roulette_jackpot,
+            )
+            from darkblood.games.network.messages.commerce import RoulettePointInsertNot
+            new_pts = add_roulette_points(char, 2)
+            if gold > 0:
+                contribute_roulette_jackpot(gold)
+            self.save_char()
+            await self.send_msg(
+                RoulettePointInsertNot(roulette_points=new_pts),
+                note=f'roulette point not (quest, pts={new_pts:.1f})',
+            )
             from darkblood.games.game_data.client_dict import quest_promotion_class
             promo_class = quest_promotion_class(quest_id)
             cur_class = int(char.get('char_class', 0))

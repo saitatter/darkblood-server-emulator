@@ -6,7 +6,8 @@
 
 - **Goblin Roulette (`2390/2391`, `2386/2387`, `2388/2389`) & Ascension temp-skills relog persistence (`2007`) (2026-11-26)**:
   - Disassembly of `JAppPageRoulette::OneEGS_ROULETTE_MANAGER_INFO_ACK` (`0x0062CBC0` -> `0x00A1E7E0`), `OneEGS_ROULETTE_ROLL_DICE_ACK` (`0x0062C850` -> `0x00A3EC60`), and `OneEGS_ROULETTE_POINT_INSERT_NOT` (`0x0063C390` -> `0x00A48B60`) revealed all three schemas had broken wire layouts: `2391` has no `result` u32 and reads `0x1E` + `0x0D` bytes (`i32 manager_id, bool active, i64 jackpot_ar`); `2389` reads `0x1E` + `f32 roulette_points` (`player+0x328`); `2387` reads `u32 result` + `0x1E` + `h32 reward_id` (`jhash` of `roulette.lua` ID) + `reward_type/rate/jackpot_ar/count/reward_ar/vector<wstr> reward_items/notify/cur_ar`.
-  - Wired all 12 `roulette.lua` rewards (`moneyreward1..6` AR jackpot shares and `itemreward7..12` item grants with `2037 DragItemAck` + `2389` float gauge sync) in `src/darkblood/games/handlers/commerce/stores.py`.
+  - Wired all 12 `roulette.lua` rewards (`moneyreward1..6` AR jackpot shares and `itemreward7..12` item grants with `2037 DragItemAck` + `2389` float gauge sync) and connected `DictRoulette:LoadRoulettePoint` (`+0.7` kill, `+10.0` dungeon clear, `+6.0` quest completion, capped at `100.0`) + `LoadSavingAr` (`20%` AR jackpot contribution on NPC purchases & quest gold) across `stores.py`, `dungeon/combat.py`, `dungeon/rewards.py`, and `quests.py`.
+  - Fixed Training Zone Leave Room (`5238 -> 5239`): `0x0074B830` only reads `result` and returns `1`, so `handle_training_leave_room` (`src/darkblood/games/handlers/dungeon/rooms.py`) now follows `5239` with `5046 BackToSquareAck` to transition back to town.
   - Disassembly of `0x00641E00` and `0x007AA8E3` confirmed the 18-byte field after `u32_set_a` in `2007 SelectCharacterAck` is `QuestSpecialInfo` (`0x1E` + 18 bytes), passed into `JQuestMgr::Init`. Mapped `quest_special_info` in `schemas/lobby.jsch` and populated it from active `char['temp_skills']` in `src/darkblood/games/handlers/frontend.py` so promotion-trial temporary skills persist across relogs.
 - **Fix `2007 SelectCharacterAck` deserialization failure on `pet_depot_slots` (2026-11-26)**:
   - Disassembly of `0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 -> 0x00B35760` showed `pet_depot_slots` reads `0x1B` (27) raw bytes per element after the `0x1E` struct tag, whereas `DepotSlotInfo` (`0x00A1EBF0`) serializes 4 fields totaling `0x13` (19) bytes. Sending 4×19-byte entries desynced the rest of `2007` by 32 bytes and prevented entering the loading screen on character select.
@@ -64,7 +65,7 @@
 
 ## Verification status
 
-- **Headless suite**: **242/242** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **243/243** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 

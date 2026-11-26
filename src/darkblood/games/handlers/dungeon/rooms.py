@@ -484,6 +484,16 @@ class DungeonRoomHandlers:
     @packet_handler(5238)
     async def handle_training_leave_room(self, correlation, body):
         # eERC_TRAINING_LEAVE_ROOM_REQ (0x007990D0) -> 5239 eERC_TRAINING_LEAVE_ROOM_ACK (0x0074B830).
+        # 0x0074B830 only reads result and returns 1 without transitioning back to town;
+        # follow with 5046 BackToSquareAck (like 5005 dungeon exit) to return to town.
+        from darkblood.games.handlers.square import _wire_square_uid
+        from darkblood.games.network.messages import BackToSquareAck
         from darkblood.games.network.messages.dungeon import TrainingLeaveRoomAck
         await self.reply(TrainingLeaveRoomAck(result=0), correlation, note='training leave room ack')
+        back_ack = BackToSquareAck(
+            square_uid=_wire_square_uid(self.session.square_id),
+            layer_net_id=self.session.square._town_layer(),
+            cur_ar=self.session.square._current_gold(),
+        )
+        await self.send_msg(back_ack, note='back to square ack (training exit)')
 

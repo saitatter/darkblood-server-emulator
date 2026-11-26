@@ -176,6 +176,14 @@ class DungeonRewardsHandlers:
             bonus_exp = round(gained * _RANK_EXP_BONUS.get(user_rank, 0.0)) if (req.is_clear and gained > 0) else 0
             if bonus_exp > 0:
                 await member.quests.grant_exp(char, bonus_exp)
+            if req.is_clear:
+                from darkblood.games.handlers.commerce.stores import add_roulette_points
+                from darkblood.games.network.messages.commerce import RoulettePointInsertNot
+                new_pts = add_roulette_points(char, 1)
+                await member.transport.send_event(
+                    event(2389, RoulettePointInsertNot(roulette_points=new_pts).encode()),
+                    note=f'roulette point not (clear, pts={new_pts:.1f})',
+                )
             rewards[uid] = SingleReward(
                 total=gained,
                 exp=gained,

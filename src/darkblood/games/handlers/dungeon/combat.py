@@ -114,7 +114,9 @@ class DungeonCombatHandlers:
         exp = round(info['exp']) if info else 0
         mon_target = info['id'] if info else msg.monster_id
         members = self._run_members()
-        # Every member of the run gets the kill's EXP, score and quest progress.
+        # Every member of the run gets the kill's EXP, score, roulette points and quest progress.
+        from darkblood.games.handlers.commerce.stores import add_roulette_points
+        from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         for member, char in members:
             run = member.dungeon
             run.dungeon_kill_count = getattr(run, 'dungeon_kill_count', 0) + 1
@@ -123,6 +125,11 @@ class DungeonCombatHandlers:
             if exp > 0:
                 run.dungeon_exp = getattr(run, 'dungeon_exp', 0) + exp
                 await member.quests.grant_exp(char, exp)
+            new_pts = add_roulette_points(char, 0)
+            await member.transport.send_event(
+                event(2389, RoulettePointInsertNot(roulette_points=new_pts).encode()),
+                note=f'roulette point not (kill, pts={new_pts:.1f})',
+            )
             await run._update_quest_monsters(mon_target, char)
         if members:
             self.store().save_chars([(member.account, member.char_id) for member, _ in members])

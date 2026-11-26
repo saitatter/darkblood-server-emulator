@@ -591,6 +591,22 @@ class PetsFlowTest(ServerTestCase):
         self.assertEqual(len(DepotSlotInfo().encode()), 0x13)
         self.assertEqual(len(PetDepotSlotInfo().encode()), 0x1B)
 
+    def test_roulette_points_and_jackpot_accumulation(self):
+        """Roulette points follow roulette.lua SavingPointType (0.7 kill, 10 clear, 6 quest) capped at 100."""
+        from darkblood.games.handlers.commerce.stores import (
+            add_roulette_points,
+            contribute_roulette_jackpot,
+        )
+        char = {'roulette_points': 0.0}
+        self.assertAlmostEqual(add_roulette_points(char, 0), 0.7)
+        self.assertAlmostEqual(add_roulette_points(char, 1), 10.7)
+        self.assertAlmostEqual(add_roulette_points(char, 2), 16.7)
+        char['roulette_points'] = 98.0
+        self.assertAlmostEqual(add_roulette_points(char, 1), 100.0)
+        before = contribute_roulette_jackpot(0)
+        after = contribute_roulette_jackpot(1000)
+        self.assertEqual(after, before + 200)
+
 
 if __name__ == '__main__':
     unittest.main()

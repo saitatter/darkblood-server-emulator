@@ -49,6 +49,33 @@ ROULETTE_REWARDS = (
 _ROULETTE_JACKPOT_FLOOR = 100_000
 _ROULETTE_JACKPOT_AR = 1_000_000
 _ROULETTE_SPIN_COST = 100.0
+# DictRoulette:LoadRoulettePoint (roulette.lua)
+ROULETTE_POINT_VALUES = {
+    0: 0.7,   # Monster kill
+    1: 10.0,  # Dungeon clear
+    2: 6.0,   # Quest completion
+    3: 1.0,   # Misc / PvP / crafting
+}
+# DictRoulette:LoadSavingAr (SavingArType = 0)
+ROULETTE_SAVING_AR_RATE = 0.2
+ROULETTE_POINTS_CAP = 100.0
+
+
+def add_roulette_points(char: dict, point_type: int) -> float:
+    """Increment char['roulette_points'] by roulette.lua SavingPointType value (capped at 100.0)."""
+    gain = ROULETTE_POINT_VALUES.get(point_type, 0.0)
+    cur = float(char.get('roulette_points', 0.0))
+    new_pts = min(ROULETTE_POINTS_CAP, round(cur + gain, 2))
+    char['roulette_points'] = new_pts
+    return new_pts
+
+
+def contribute_roulette_jackpot(ar_amount: int) -> int:
+    """Add 20% of AR (DictRoulette:LoadSavingAr) to the server jackpot pool."""
+    global _ROULETTE_JACKPOT_AR
+    if ar_amount > 0:
+        _ROULETTE_JACKPOT_AR += max(1, int(ar_amount * ROULETTE_SAVING_AR_RATE))
+    return _ROULETTE_JACKPOT_AR
 
 
 def store_record(item: str, stock: int = -1, price: int = None) -> StoreRecord:
@@ -131,6 +158,8 @@ class StoreHandlers:
             char_gold -= cost
             char['gold'] = char_gold
             char['u66'] = char_gold
+            if cost > 0:
+                contribute_roulette_jackpot(cost)
             new_items = add_reward_items(char, [(item_code, count)])
             self.save_char()
             wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]

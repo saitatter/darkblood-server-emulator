@@ -391,6 +391,8 @@ class DungeonFlowTest(ServerTestCase):
             client.send_event(5238, TrainingLeaveRoomReq().encode())
             _, r = await client.expect_event(5239)
             self.assertEqual(TrainingLeaveRoomAck.decode(r).result, 0)
+            _, r5046 = await client.expect_event(5046)
+            self.assertEqual(struct.unpack_from('<I', r5046)[0], 0)
 
             client.send_event(5342, TreasureFindReq(treasure_id=7).encode())
             _, r = await client.expect_event(5343)
