@@ -269,44 +269,68 @@ class BrokerMyListAck(WireMessage):
 
 @dataclass
 class BrokerRegistItemReq(WireMessage):
-    """Opcode 2266: eEGS_BROKER_REGIST_ITEM_REQ (request)."""
+    """Opcode 2266: eEGS_BROKER_REGIST_ITEM_REQ (request).
+
+    Live capture (2026-11-26): 16 bytes (i64 item_uid, i64 price), no header.
+    """
     OPCODE: ClassVar[int] = 2266
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
     item_uid: i64 = 0
-    count: i32 = 1
     price: i64 = 0
-    period_hours: i32 = 24
 
 
 @dataclass
 class BrokerRegistItemAck(WireMessage):
-    """Opcode 2267: eEGS_BROKER_REGIST_ITEM_ACK (reply)."""
+    """Opcode 2267: eEGS_BROKER_REGIST_ITEM_ACK (reply).
+
+    Handler 0x005B06A0 -> reader 0x00A40460: i64 cur_ar, vector<Item>, vector<BrokerProduct>.
+    """
     OPCODE: ClassVar[int] = 2267
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
+    cur_ar: i64 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+    my_products: Vector[BrokerProduct] = field(default_factory=list)
 
 
 @dataclass
 class BrokerBuyItemReq(WireMessage):
-    """Opcode 2268: eEGS_BROKER_BUY_ITEM_REQ (request)."""
+    """Opcode 2268: eEGS_BROKER_BUY_ITEM_REQ (request).
+
+    Sender 0x005A8656: single i64 item_uid (8 bytes).
+    """
     OPCODE: ClassVar[int] = 2268
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
     listing_id: i64 = 0
-    count: i32 = 1
 
 
 @dataclass
 class BrokerBuyItemAck(WireMessage):
-    """Opcode 2269: eEGS_BROKER_BUY_ITEM_ACK (reply)."""
+    """Opcode 2269: eEGS_BROKER_BUY_ITEM_ACK (reply).
+
+    Handler 0x005B0980 -> reader 0x00A1E7A0 (0x28 raw bytes): +0x00 i64 cur_ar (player+0x70), +0x08 i64 item_uid.
+    """
     OPCODE: ClassVar[int] = 2269
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     gold: i64 = 0
+    item_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'result',
+        'gold',
+        'item_uid',
+        Const(Raw[24], bytes(24)),
+    )
 
 
 @dataclass
 class BrokerCancelReq(WireMessage):
-    """Opcode 2270: eEGS_BROKER_CANCEL_REQ (request)."""
+    """Opcode 2270: eEGS_BROKER_CANCEL_REQ (request).
+
+    Sender 0x005A8236: single i64 item_uid (8 bytes).
+    """
     OPCODE: ClassVar[int] = 2270
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
@@ -317,10 +341,12 @@ class BrokerCancelReq(WireMessage):
 class BrokerCancelAck(WireMessage):
     """Opcode 2271: eEGS_BROKER_CANCEL_ACK (reply).
 
-    Handler 0x00789882.
+    Handler 0x005AC9D0 (assert: iItemUID).
     """
     OPCODE: ClassVar[int] = 2271
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
+    item_uid: i64 = 0
 
 
 @dataclass

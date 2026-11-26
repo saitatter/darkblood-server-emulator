@@ -276,7 +276,7 @@ class BrokerManager:
                 cls._instance = cls()
             return cls._instance
 
-    def register_item(self, char: dict, item_uid: int, count: int,
+    def register_item(self, char: dict, item_uid: int, count: Optional[int],
                       price: int, period_hours: int, store: any) -> Tuple[bool, str, Optional[BrokerListing]]:
         """Register an item from player inventory into the Broker marketplace."""
         with self.lock:
@@ -286,10 +286,11 @@ class BrokerManager:
                 return False, "Item not found in inventory", None
 
             curr_cnt = target.get('count', 1)
-            reg_cnt = min(count, curr_cnt)
+            reg_cnt = curr_cnt if count is None else min(count, curr_cnt)
             if reg_cnt <= 0:
                 return False, "Invalid count", None
 
+            raw_copy = dict(target)
             # Remove/decrement from inventory
             if curr_cnt <= reg_cnt:
                 items.remove(target)
@@ -309,7 +310,7 @@ class BrokerManager:
                 price=price,
                 period_hours=period_hours or 24,
                 registered_at=time.time(),
-                raw_dict=dict(target)
+                raw_dict=raw_copy,
             )
             self.listings[lid] = listing
 
@@ -319,40 +320,46 @@ class BrokerManager:
             _persist_chars(store, [char.get('id')])
             return True, "Item registered", listing
 
-    def cancel_listing(self, char: dict, listing_id: int, store: any) -> Tuple[bool, str]:
+    def _find_listing(self, key: int) -> Optional[BrokerListing]:
+        listing = self.listings.get(key)
+        if listing is not None:
+            return listing
+        return next((entry for entry in self.listings.values() if entry.item_uid == key), None)
+
+    def cancel_listing(self, char: dict, listing_id: int, store: any) -> Tuple[bool, str, list]:
         """Cancel a listing and return item to owner inventory."""
         with self.lock:
-            listing = self.listings.get(listing_id)
+            listing = self._find_listing(listing_id)
             if not listing:
-                return False, "Listing not found"
+                return False, "Listing not found", []
 
             char_uid = char.get('id', 1)
             if listing.seller_uid != char_uid:
-                return False, "Not the seller"
+                return False, "Not the seller", []
 
             # Return item to character inventory
-            add_reward_items(char, [(listing.code, listing.count)])
-            del self.listings[listing_id]
+            returned = add_reward_items(char, [(listing.code, listing.count)])
+            del self.listings[listing.listing_id]
             _persist_chars(store, [char_uid])
-            return True, "Listing cancelled"
+            return True, "Listing cancelled", returned
 
     def buy_listing(self, buyer_char: dict, listing_id: int,
-                    count: int, store: any) -> Tuple[bool, str, int, list]:
+                    count: Optional[int], store: any) -> Tuple[bool, str, int, list, int]:
         """Purchase an item from the Broker marketplace."""
         with self.lock:
-            listing = self.listings.get(listing_id)
+            listing = self._find_listing(listing_id)
             if not listing:
-                return False, "Listing not found", 0, []
+                return False, "Listing not found", 0, [], 0
 
             buyer_uid = buyer_char.get('id', 1)
             if listing.seller_uid == buyer_uid:
-                return False, "Cannot buy own listing", 0, []
+                return False, "Cannot buy own listing", 0, [], 0
 
-            buy_cnt = min(count, listing.count)
+            buy_cnt = listing.count if count is None else min(count, listing.count)
             total_price = listing.price * buy_cnt // max(1, listing.count)
             buyer_gold = buyer_char.get('gold', 0)
             if buyer_gold < total_price:
-                return False, "Insufficient gold", 0, []
+                return False, "Insufficient gold", 0, [], 0
 
             # Credit seller
             seller_char = _find_char_by_id(store, listing.seller_uid)
@@ -367,16 +374,17 @@ class BrokerManager:
 
             # Grant item to buyer
             new_items = add_reward_items(buyer_char, [(listing.code, buy_cnt)])
+            bought_uid = listing.item_uid
 
             # Update/remove listing
             if listing.count <= buy_cnt:
-                del self.listings[listing_id]
+                del self.listings[listing.listing_id]
             else:
                 listing.count -= buy_cnt
                 listing.price -= total_price
 
             _persist_chars(store, [buyer_uid, listing.seller_uid])
-            return True, "Purchase successful", total_price, new_items
+            return True, "Purchase successful", total_price, new_items, bought_uid
 
     def get_listings(self, page: int = 0, page_size: int = 20,
                      category: int = 0, filter_name: str = '') -> Tuple[list, int]:

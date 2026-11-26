@@ -141,33 +141,41 @@ message 2265 BrokerMyListAck ok_only
 end
 
 message 2266 BrokerRegistItemReq header?
+  ## Live capture (2026-11-26): 16 bytes (i64 item_uid, i64 price), no header.
   i64 item_uid
-  i32 count = 1
   i64 price
-  i32 period_hours = 24
 end
 
-message 2267 BrokerRegistItemAck
+message 2267 BrokerRegistItemAck ok_only
+  ## Handler 0x005B06A0 -> reader 0x00A40460: i64 cur_ar, vector<Item>, vector<BrokerProduct>.
   i32 result
+  i64 cur_ar
+  vector<Item> items
+  vector<BrokerProduct> my_products
 end
 
 message 2268 BrokerBuyItemReq header?
+  ## Sender 0x005A8656: single i64 item_uid (8 bytes).
   i64 listing_id
-  i32 count = 1
 end
 
-message 2269 BrokerBuyItemAck
+message 2269 BrokerBuyItemAck ok_only
+  ## Handler 0x005B0980 -> reader 0x00A1E7A0 (0x28 raw bytes): +0x00 i64 cur_ar (player+0x70), +0x08 i64 item_uid.
   i32 result
   i64 gold
+  i64 item_uid
+  raw[24] _
 end
 
 message 2270 BrokerCancelReq header?
+  ## Sender 0x005A8236: single i64 item_uid (8 bytes).
   i64 listing_id
 end
 
-message 2271 BrokerCancelAck
-  ## Handler 0x00789882.
+message 2271 BrokerCancelAck ok_only
+  ## Handler 0x005AC9D0 (assert: iItemUID).
   i32 result
+  i64 item_uid
 end
 
 message 2272 BrokerPriceReq header?

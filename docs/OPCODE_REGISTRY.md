@@ -272,11 +272,11 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2263 | `eEGS_BROKER_LIST_ACK` | — | — | `BrokerListAck` |  |
 | 2264 | `eEGS_BROKER_MYLIST_REQ` | — | `commerce/stalls.py` (`handle_broker_my_list`) | `BrokerMyListReq` | eEGS_BROKER_MYLIST_REQ -> 2265 eEGS_BROKER_MYLIST_ACK (0x005ADFF0) |
 | 2265 | `eEGS_BROKER_MYLIST_ACK` | — | — | `BrokerMyListAck` |  |
-| 2266 | `eEGS_BROKER_REGIST_ITEM_REQ` | — | `commerce/stalls.py` (`handle_broker_regist_item`) | `BrokerRegistItemReq` | eEGS_BROKER_REGIST_ITEM_REQ -> 2267 eEGS_BROKER_REGIST_ITEM_ACK (0x005AFBAC) |
+| 2266 | `eEGS_BROKER_REGIST_ITEM_REQ` | — | `commerce/stalls.py` (`handle_broker_regist_item`) | `BrokerRegistItemReq` | eEGS_BROKER_REGIST_ITEM_REQ -> 2267 eEGS_BROKER_REGIST_ITEM_ACK (0x005B06A0 -> 0x00A40460) |
 | 2267 | `eEGS_BROKER_REGIST_ITEM_ACK` | — | — | `BrokerRegistItemAck` |  |
-| 2268 | `eEGS_BROKER_BUY_ITEM_REQ` | — | `commerce/stalls.py` (`handle_broker_buy_item`) | `BrokerBuyItemReq` | eEGS_BROKER_BUY_ITEM_REQ -> 2269 eEGS_BROKER_BUY_ITEM_ACK (0x005B005C) |
+| 2268 | `eEGS_BROKER_BUY_ITEM_REQ` | — | `commerce/stalls.py` (`handle_broker_buy_item`) | `BrokerBuyItemReq` | eEGS_BROKER_BUY_ITEM_REQ -> 2269 eEGS_BROKER_BUY_ITEM_ACK (0x005B0980 -> 0x00A1E7A0) |
 | 2269 | `eEGS_BROKER_BUY_ITEM_ACK` | — | — | `BrokerBuyItemAck` |  |
-| 2270 | `eEGS_BROKER_CANCEL_REQ` | — | `commerce/stalls.py` (`handle_broker_cancel`) | `BrokerCancelReq` | eEGS_BROKER_CANCEL_REQ -> 2271 eEGS_BROKER_CANCEL_ACK (0x00789882) |
+| 2270 | `eEGS_BROKER_CANCEL_REQ` | — | `commerce/stalls.py` (`handle_broker_cancel`) | `BrokerCancelReq` | eEGS_BROKER_CANCEL_REQ -> 2271 eEGS_BROKER_CANCEL_ACK (0x005AC9D0) |
 | 2271 | `eEGS_BROKER_CANCEL_ACK` | — | — | `BrokerCancelAck` |  |
 | 2272 | `eEGS_BROKER_PRICE_REQ` | — | `commerce/stalls.py` (`handle_broker_price`) | `BrokerPriceReq` | eEGS_BROKER_PRICE_REQ -> 2273 eEGS_BROKER_PRICE_ACK |
 | 2273 | `eEGS_BROKER_PRICE_ACK` | — | — | `BrokerPriceAck` |  |

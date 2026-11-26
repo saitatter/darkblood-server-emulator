@@ -611,7 +611,8 @@ class SingleReward(WireMessage):
 class FinishGameAck(WireMessage):
     """Opcode 5018: eERC_FINISH_GAME_ACK (reply).
 
-    Handler 0x007ADB60.
+    Handler 0x007ADB60: reads rewards/rank block when (is_clear || is_citadel)
+    (0x007ADDE0..0x007ADE10); normal dungeon fail ignores trailing bytes.
     """
     OPCODE: ClassVar[int] = 5018
     result: u32 = 0
@@ -629,12 +630,12 @@ class FinishGameAck(WireMessage):
         'map_code',
         'flag',
         Const(EmptyMap),
-        ('rewards', 'is_clear'),
-        ('rank_first', 'is_clear'),
-        ('rank_final', 'is_clear'),
-        ('box_grade', 'is_clear'),
-        ('extra_box_cost', 'is_clear'),
-        Const(EmptyVector, cond='is_clear'),
+        'rewards',
+        'rank_first',
+        'rank_final',
+        'box_grade',
+        'extra_box_cost',
+        Const(EmptyVector),
     )
 
 

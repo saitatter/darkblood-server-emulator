@@ -256,11 +256,12 @@ class StallFlowTest(ServerTestCase):
             _, ack2263 = await client.expect_event(2263)
             self.assertEqual(struct.unpack_from('<i', ack2263, 0)[0], 0)
 
-            # 2. Register item to Broker (Opcode 2266 -> 2267)
-            reg_req = BrokerRegistItemReq(item_uid=item_uid, count=1, price=12000, period_hours=24).encode()
+            # 2. Register item to Broker (Opcode 2266 -> 2267, exact 16-byte live format without header)
+            reg_req = struct.pack('<qq', item_uid, 12000)
             client.send_event(2266, reg_req)
             _, ack2267 = await client.expect_event(2267)
             self.assertEqual(struct.unpack_from('<i', ack2267, 0)[0], 0)
+            self.assertIn('BrokerUser'.encode('utf-16le'), ack2267)
 
             # Verify item removed from inventory and listed in BrokerManager
             self.assertEqual(len(BrokerManager.get().listings), 1)

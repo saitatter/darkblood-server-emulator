@@ -291,20 +291,19 @@ struct SingleReward
 end
 
 message 5018 FinishGameAck
-  ## Handler 0x007ADB60.
+  ## Handler 0x007ADB60: reads rewards/rank block when (is_clear || is_citadel)
+  ## (0x007ADDE0..0x007ADE10); normal dungeon fail ignores trailing bytes.
   u32 result
   bool is_clear = true       # dungeon clear / victory
   wstr map_code
   bool flag                  # bSamePerson
   map<?> _                   # mapGuildPersonCnt
-  if is_clear
   map<i64,SingleReward> rewards  # mapSingleReward: char uid -> block
   i32 rank_first = 1         # nPartyRankFirst
   i32 rank_final = 1         # nPartyRankFinal
   i32 box_grade = 1          # nBoxGrade
   i32 extra_box_cost         # nExtraBoxCost
   vector<?> _                # vecBonusMonster
-  endif
 end
 
 message 5060 RoomMemInfoReq header?

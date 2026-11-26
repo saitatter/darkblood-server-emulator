@@ -169,7 +169,7 @@ class StallHandlers:
 
     @packet_handler(BrokerRegistItemReq)
     async def handle_broker_regist_item(self, correlation, body):
-        # eEGS_BROKER_REGIST_ITEM_REQ -> 2267 eEGS_BROKER_REGIST_ITEM_ACK (0x005AFBAC)
+        # eEGS_BROKER_REGIST_ITEM_REQ -> 2267 eEGS_BROKER_REGIST_ITEM_ACK (0x005B06A0 -> 0x00A40460)
         req = BrokerRegistItemReq.decode(body)
         char = self.current_char()
         if not char:
@@ -179,34 +179,52 @@ class StallHandlers:
 
         mgr = BrokerManager.get()
         success, msg, listing = mgr.register_item(
-            char, req.item_uid, req.count, req.price, req.period_hours, self.store()
+            char, req.item_uid, None, req.price, 24, self.store()
         )
-        ack = BrokerRegistItemAck(result=0 if success else 1)
+        wire_items = []
+        if success and listing is not None:
+            raw = listing.raw_dict
+            wire_items.append(Item(
+                owner=UPDATE_OWNER, uid=0, code='',
+                container=raw.get('container', 3), slot=raw.get('slot', 0), count=0,
+            ))
+        char_uid = char.get('id', self.char_id)
+        ack = BrokerRegistItemAck(
+            result=0 if success else 1,
+            cur_ar=int(char.get('gold', 0)),
+            items=wire_items,
+            my_products=mgr.get_my_listings(char_uid) if success else [],
+        )
         await self.reply(ack, correlation, note=f'broker regist item ack (success={success} msg={msg})')
 
 
     @packet_handler(BrokerBuyItemReq)
     async def handle_broker_buy_item(self, correlation, body):
-        # eEGS_BROKER_BUY_ITEM_REQ -> 2269 eEGS_BROKER_BUY_ITEM_ACK (0x005B005C)
+        # eEGS_BROKER_BUY_ITEM_REQ -> 2269 eEGS_BROKER_BUY_ITEM_ACK (0x005B0980 -> 0x00A1E7A0)
+        from darkblood.games.network.messages.inventory import DragItemAck
         req = BrokerBuyItemReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerBuyItemAck(result=1, gold=0)
+            ack = BrokerBuyItemAck(result=1)
             await self.reply(ack, correlation, note='broker buy item fail (no char)')
             return
 
         mgr = BrokerManager.get()
-        success, msg, total_cost, new_items = mgr.buy_listing(
-            char, req.listing_id, req.count, self.store()
+        success, msg, total_cost, new_items, bought_uid = mgr.buy_listing(
+            char, req.listing_id, None, self.store()
         )
-        gold = char.get('gold', 0)
-        ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold)
+        gold = int(char.get('gold', 0))
+        ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold, item_uid=bought_uid)
         await self.reply(ack, correlation, note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
+        if success and new_items:
+            wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
+            await self.send_msg(DragItemAck(result=0, items=wire_items), note='broker buy item grant')
 
 
     @packet_handler(BrokerCancelReq)
     async def handle_broker_cancel(self, correlation, body):
-        # eEGS_BROKER_CANCEL_REQ -> 2271 eEGS_BROKER_CANCEL_ACK (0x00789882)
+        # eEGS_BROKER_CANCEL_REQ -> 2271 eEGS_BROKER_CANCEL_ACK (0x005AC9D0)
+        from darkblood.games.network.messages.inventory import DragItemAck
         req = BrokerCancelReq.decode(body)
         char = self.current_char()
         if not char:
@@ -215,9 +233,12 @@ class StallHandlers:
             return
 
         mgr = BrokerManager.get()
-        success, msg = mgr.cancel_listing(char, req.listing_id, self.store())
-        ack = BrokerCancelAck(result=0 if success else 1)
+        success, msg, returned = mgr.cancel_listing(char, req.listing_id, self.store())
+        ack = BrokerCancelAck(result=0 if success else 1, item_uid=req.listing_id)
         await self.reply(ack, correlation, note=f'broker cancel ack (success={success} msg={msg})')
+        if success and returned:
+            wire_items = [Item(owner=UPDATE_OWNER, **i) for i in returned]
+            await self.send_msg(DragItemAck(result=0, items=wire_items), note='broker cancel item return')
 
 
     @packet_handler(BrokerPriceReq)

@@ -201,11 +201,14 @@ class DungeonRewardsHandlers:
         else:
             party_rank = round(sum(member_ranks) / len(member_ranks)) if member_ranks else fallback_rank
 
+        from darkblood.games.game_data.world import dungeon_entry_rule
+        rule = dungeon_entry_rule(map_code)
+        include_rewards = bool(req.is_clear or (rule and rule.get('is_citadel')))
         ack = FinishGameAck(
             result=0,
             is_clear=req.is_clear,
             map_code=map_code,
-            rewards={uid: reward for uid, reward in rewards.items() if uid},
+            rewards={uid: reward for uid, reward in rewards.items() if uid} if include_rewards else {},
             rank_first=party_rank,
             rank_final=party_rank,
             box_grade=_RANK_BOX_GRADE.get(party_rank, 0),
