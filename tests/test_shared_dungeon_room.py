@@ -109,6 +109,9 @@ class SharedDungeonRoomTest(ServerTestCase):
                 name = wide('RoomHost')
                 self.assertEqual(member[20:20 + len(name)], name)
                 self.assertEqual(len(member), 20 + len(name) + 1 + 2 + 1 + 16 + 74 + 1)
+                # +0x31 is the stress shown in the row's gauge (0x00756F40).
+                host_stress = GameSession.store().get('OfflinePlayer', host_id).get('stress', 0)
+                self.assertEqual(struct.unpack_from('<h', member, 20 + len(name) + 1)[0], host_stress)
                 self.assertEqual(info[-2:], bytes.fromhex('1080'))
                 # 5047 (Join in View party info) -> 5048 to the host with the requester.
                 guest.send_event(5047, struct.pack('<iq', 0x7fffffff, gate_room_id), correlation=36)
@@ -205,6 +208,11 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, member_started = await guest.expect_event(5014)
                 self.assertEqual(member_started, started)
                 self.assertIn(wide('Act1_G1_A10'), started)
+                # u32 result, u16 player_count (2 -> Loading_Party.mp3), u32 shared seed,
+                # then peer_skills keyed by each member's UID.
+                self.assertEqual(struct.unpack_from('<IH', started), (0, 2))
+                for uid in (host_id, guest_id):
+                    self.assertIn(b'\x0f' + struct.pack('<q', uid) + b'\x17', started)
                 # Only the host's client reports kills and the finish: both members
                 # get the kill's EXP and the result screen with an entry for each.
                 kill = struct.pack('<iII', 0x7fffffff, jhash('1npi01n0') & 0xFFFFFFFF, 0x03000fa2)

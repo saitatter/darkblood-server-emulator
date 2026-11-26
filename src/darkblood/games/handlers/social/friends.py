@@ -99,7 +99,8 @@ class FriendsHandlers:
             if req.layer_net_id != -1 and player.layer_id != req.layer_net_id:
                 continue
             users.append(RoomMemberInfo(square_uid=square_uid(player.square_id), char_uid=player.char_id,
-                                        name=record.get('name', ''), char_class=char_class, level=min(level, 0xFF)))
+                                        name=record.get('name', ''), char_class=char_class,
+                                        stress=int(record.get('stress', 0)), level=min(level, 0xFF)))
         # Page size not recovered: everything is sent as page 0.
         ack = GetInviteListAck(users=users)
         await self.reply(ack, correlation, note='invite list ack (%d users, lv %d-%d, job %d)'

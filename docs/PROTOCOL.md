@@ -345,6 +345,24 @@ dialog remains to be verified.
   (`0x009666A5`..`0x009666C9`). Their meanings, and those of `+0x1EB`, `+0x1F3`
   and `+0x20F`, remain open.
 
+### 5014 scalars and RoomMemberInfo stress (2026-11-26, static analysis + headless)
+
+- The 5014 u16 and u32 are read at `0x0078822A`/`0x00788231` into `[esp+0x54]` and
+  `[esp+0x58]`. The u16 is the player count: `0x00788588` compares it with 1 and
+  plays `Loading_Single.mp3` or `Loading_Party.mp3`. The u32 goes to
+  `AppPage(9)+0xB8`; `JAppStateGamePlay::vf04` copies it to `+0x174`, and the 5050
+  pickup handler (`0x0078B794`) adds it to a value passed to the CRT seed/random
+  imports, so it is a run random seed. `0x008ECAC2` writes a time value there otherwise.
+- In state 8 the first map's nested records go to `0x0095A6A0` for every peer
+  except the local UID; the assertion `pr2.first == pr2.second` ties each nested key
+  to the record's skill index. The second map's value reader chain ends in
+  `0x00A52CF0`, the `PetInfo` record.
+- `RoomMemberInfo` (`0x00A49600`): the party row filler calls `0x00756F40` with the
+  stress gauge and the member. Max stress is property `0x67`, plus `0x68` when
+  `0x009B0B90` holds, plus `0x69` when `+0x10 & 2`, plus a bonus when the `+0x8E`
+  bool is set. `+0x31` (i16) is the current stress (gauge `stress/max`); at or above
+  the max the row text turns grey and `UI_2356` is shown.
+
 ### Dungeon start collection readers (Cristian, 2026-11-18, static analysis)
 
 The three outer maps and the trailing vector use these reader chains:

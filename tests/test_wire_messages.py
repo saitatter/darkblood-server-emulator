@@ -1007,3 +1007,13 @@ class VipServiceInfoTest(unittest.TestCase):
         info = messages.VipServiceInfo(start_time=messages.DateTime6(2026, 11, 26, 12, 30, 5), vip_grade=2)
         decoded = messages.VipServiceInfoNot.decode(messages.VipServiceInfoNot(info=info).encode()).info
         self.assertEqual((decoded.start_time.year, decoded.start_time.second, decoded.vip_grade), (2026, 5, 2))
+
+
+class RoomMemberInfoTest(unittest.TestCase):
+    def test_stress_follows_class(self):
+        # 0x00A49600: i64, i64, u32 flags, wstr, u8 class, i16 stress (+0x31), u8 level.
+        wire = messages.RoomMemberInfo(char_uid=5, flags=2, name='A', char_class=3, stress=37, level=9).encode()
+        name_end = 20 + 1 + 2
+        self.assertEqual(struct.unpack_from('<I', wire, 16)[0], 2)
+        self.assertEqual(struct.unpack_from('<BhB', wire, name_end), (3, 37, 9))
+        self.assertEqual(messages.RoomMemberInfo.decode(wire).stress, 37)

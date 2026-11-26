@@ -1,8 +1,11 @@
 """Dungeon entry validation, Citadel/daily limit enforcement, stress cost, and start-game fan-out."""
+import random
+
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.game_data.world import dungeon_entry_rule
+from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.games.network.messages.dungeon import (
     DailyDunEnterCountUpdateNot,
     FailDungeonEnterItemNot,
@@ -46,7 +49,7 @@ class DungeonEntryHandlers:
                 ack = StartGameAck(result=138 if fail_opcode == 5136 else 139)
             else:
                 await self._consume_dungeon_entry(request.map_code, participants)
-                ack = StartGameAck(map_code=request.map_code)
+                ack = self._start_game_ack(request.map_code, participants)
                 self.map_code = request.map_code
                 self._reset_dungeon_stats()
                 if self.room is not None and self.room.host is self.session:
@@ -79,6 +82,24 @@ class DungeonEntryHandlers:
                     await self._consume_session_stress(member)
                 except (ConnectionError, OSError):
                     pass
+
+    @staticmethod
+    def _start_game_ack(map_code, participants):
+        """One 5014 for every participant: each client skips its own UID in peer_skills.
+
+        A solo run keeps the live-verified reply (zero count and seed, empty maps).
+        """
+        if len(participants) < 2:
+            return StartGameAck(map_code=map_code)
+        peer_skills = {}
+        for member in participants:
+            char = member.dungeon.current_char()
+            if isinstance(char, dict) and 'id' in char:
+                peer_skills[int(char['id'])] = learned_skill_map(
+                    char.get('skills', {}), char.get('skill_speeches', {}),
+                    char.get('locked_skills', []), char.get('skill_show_cooltime', []))
+        return StartGameAck(map_code=map_code, player_count=len(participants),
+                            rand_seed=random.getrandbits(31), peer_skills=peer_skills)
 
     async def _validate_dungeon_entry(self, map_code: str, participants):
         """Enforce Fortress/Special dungeon entry limits and required entry items (#22).

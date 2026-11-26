@@ -6,6 +6,8 @@ domain dungeon Dark Blood protocol wire messages - Dungeon domain.
 extern Character from darkblood.games.entities.character encode=encode_world_details
 extern Item from darkblood.games.entities.items
 extern VipServiceInfo from darkblood.games.network.messages.commerce readable
+extern LearnedSkill from darkblood.games.network.messages.skills readable
+extern PetInfo from darkblood.games.network.messages.pets readable
 
 struct RoomInfo
   ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002, 5004 and 2011.
@@ -155,14 +157,15 @@ message 5013 StartGameReq header
 end
 
 message 5014 StartGameAck ok_only
-  ## Reader 0x007880A0. Errors contain only the result. The scalar defaults and
-  ## empty maps preserve the verified single-player reply.
+  ## Reader 0x007880A0. Errors contain only the result. In gameplay state 8 the
+  ## handler applies peer_skills and proficiencies to every listed peer other than
+  ## the local character (0x00966470 lookup, own UID skipped).
   u32 result
-  u16 _
-  u32 _
+  u16 player_count          # [esp+0x54]: <= 1 plays Loading_Single.mp3, else Loading_Party.mp3 (0x00788588)
+  u32 rand_seed              # -> AppPage(9)+0xB8 -> JAppStateGamePlay +0x174; 0x0078B794 adds it before srand/rand
   wstr map_code
-  map<?> _                   # 0x004B8B80
-  map<?> _                   # 0x0064E7D0
+  map<i64,map<u16,LearnedSkill>> peer_skills  # 0x004B8B80 -> 0x004B1240; char UID -> learned skills, applied by 0x0095A6A0
+  map<i64,PetInfo> pets      # 0x0064E7D0 -> 0x00643940 -> 0x00A52CF0; key meaning and consumer not recovered (sent empty)
   map<i64,vector<f32>> proficiencies  # 0x004B7550 (char_uid -> proficiency exp vector)
   vector<Item> item_updates  # 0x004B94C0
 end
@@ -322,17 +325,20 @@ struct RoomMemberInfo
   ## 5061 member entry: 0x0049EA40 checks tag 0x1E without a byte, then reader
   ## 0x00A49600. Names from the Find party member row (near 0x0062E339):
   ## SquareUID +0, CharUID +8, CharNick +0x14, Class +0x30, CharLevel +0x33.
+  ## Stress gauge 0x00756F40 (row filler 0x0062E2F4): max = property 0x67, plus
+  ## 0x68 when 0x009B0B90 holds, plus 0x69 when flags & 2, plus a further bonus
+  ## when stress_bonus is set; stress >= max greys the row and shows UI_2356.
   i64 square_uid
   i64 char_uid
-  i32 _                      # +0x10, meaning not recovered
+  u32 flags                  # +0x10; bit 0x2 adds property 0x69 to the max stress
   wstr name
   u8 char_class
-  i16 _                      # +0x31, meaning not recovered
+  i16 stress                 # +0x31, current stress shown as stress/max
   u8 level
   i64 _                      # +0x34, meaning not recovered
   i64 _                      # +0x3C, meaning not recovered
   raw[74] _                  # +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered
-  bool _                     # +0x8E, meaning not recovered
+  bool stress_bonus          # +0x8E, adds (0x00459A30)+4 minus the base to the max stress
 end
 
 message 5061 RoomMemInfoAck ok_only

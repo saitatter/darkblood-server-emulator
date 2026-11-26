@@ -108,6 +108,7 @@ class DungeonRoomHandlers:
             char_uid=int(record.get('id', 0)),
             name=record.get('name', ''),
             char_class=int(record.get('char_class', 0)) & 0xFF,
+            stress=int(record.get('stress', 0)),
             level=min(int(record.get('level', 1)), 0xFF))
 
 

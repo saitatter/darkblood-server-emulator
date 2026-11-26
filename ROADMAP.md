@@ -78,7 +78,7 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] **Shared dungeon instances**:
   - Party members enter the same instance; complete the 5004 member fields and shared room/relay routing.
   - Live-check the manual host handover (5021 -> 5022, headless-verified 2026-11-26) in the party room UI.
-  - Verify how clients populate 5014's peer maps (readers are documented in `docs/PROTOCOL.md`).
+  - Live-check party 5014 (`player_count`, shared `rand_seed`, `peer_skills`, headless-verified 2026-11-26); the pet map's key and consumer remain open.
   - Synchronize monster health, damage numbers and boss cinematics.
   - Shared party rank and card reward selection at dungeon finish.
 

@@ -10,6 +10,8 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.commerce import VipServiceInfo
+from darkblood.games.network.messages.pets import PetInfo
+from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
     'RoomInfo',
@@ -371,25 +373,20 @@ class StartGameReq(WireMessage):
 class StartGameAck(WireMessage):
     """Opcode 5014: eERC_START_GAME_ACK (reply).
 
-    Reader 0x007880A0. Errors contain only the result. The scalar defaults and
-    empty maps preserve the verified single-player reply.
+    Reader 0x007880A0. Errors contain only the result. In gameplay state 8 the
+    handler applies peer_skills and proficiencies to every listed peer other than
+    the local character (0x00966470 lookup, own UID skipped).
     """
     OPCODE: ClassVar[int] = 5014
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
+    player_count: u16 = 0  # [esp+0x54]: <= 1 plays Loading_Single.mp3, else Loading_Party.mp3 (0x00788588)
+    rand_seed: u32 = 0  # -> AppPage(9)+0xB8 -> JAppStateGamePlay +0x174; 0x0078B794 adds it before srand/rand
     map_code: wstr = ''
+    peer_skills: Map[i64, Map[u16, LearnedSkill]] = field(default_factory=dict)  # 0x004B8B80 -> 0x004B1240; char UID -> learned skills, applied by 0x0095A6A0
+    pets: Map[i64, PetInfo] = field(default_factory=dict)  # 0x0064E7D0 -> 0x00643940 -> 0x00A52CF0; key meaning and consumer not recovered (sent empty)
     proficiencies: Map[i64, Vector[f32]] = field(default_factory=dict)  # 0x004B7550 (char_uid -> proficiency exp vector)
     item_updates: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # 0x004B94C0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(u16, 0),
-        Const(u32, 0),
-        'map_code',
-        Const(EmptyMap),
-        Const(EmptyMap),
-        'proficiencies',
-        'item_updates',
-    )
 
 
 @dataclass
@@ -680,24 +677,30 @@ class RoomMemberInfo(WireMessage):
     """5061 member entry: 0x0049EA40 checks tag 0x1E without a byte, then reader
     0x00A49600. Names from the Find party member row (near 0x0062E339):
     SquareUID +0, CharUID +8, CharNick +0x14, Class +0x30, CharLevel +0x33.
+    Stress gauge 0x00756F40 (row filler 0x0062E2F4): max = property 0x67, plus
+    0x68 when 0x009B0B90 holds, plus 0x69 when flags & 2, plus a further bonus
+    when stress_bonus is set; stress >= max greys the row and shows UI_2356.
     """
     square_uid: i64 = 0
     char_uid: i64 = 0
+    flags: u32 = 0  # +0x10; bit 0x2 adds property 0x69 to the max stress
     name: wstr = ''
     char_class: u8 = 0
+    stress: i16 = 0  # +0x31, current stress shown as stress/max
     level: u8 = 0
+    stress_bonus: bool = False  # +0x8E, adds (0x00459A30)+4 minus the base to the max stress
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'square_uid',
         'char_uid',
-        Const(i32, 0),
+        'flags',
         'name',
         'char_class',
-        Const(i16, 0),
+        'stress',
         'level',
         Const(i64, 0),
         Const(i64, 0),
         Const(Raw[74], bytes(74)),
-        Const(bool, False),
+        'stress_bonus',
     )
 
 
