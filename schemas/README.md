@@ -68,6 +68,7 @@ end
 | `h32` | 4 bytes; accepts signed or unsigned (JHashString) | int |
 | `wstr` | J-varuint byte length + UTF-16LE (odd lengths are rejected) | str |
 | `wstrz` | UTF-16LE + `0000` terminator, no length (earlier server forms) | str |
+| `astr` | J-varuint byte length + narrow bytes (`std::string`, reader `0x00B359B0`) | str |
 | `wrest` | remaining bytes as UTF-16LE (earlier raw forms; last field) | str |
 | `ipv4` | 4 bytes, network order | dotted str |
 | `raw[N]` | N bytes, padded or cut | bytes |

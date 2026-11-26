@@ -106,14 +106,9 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 Headless suite: `python -m unittest discover -s tests -v` (drives the server with `tools/automation/headless_client.py`; real
 handshake and encryption, no window). CI runs it on every push (`.github/workflows/ci.yml`).
 
-Live checklist (use `tools/automation/gamectl.py enter-lobby`; launch the client only to confirm it parses a changed response):
-- [ ] Store: buying decrements gold and adds the bag icon; selling removes it.
-- [ ] Equipment window shows worn gear; dragging a weapon to a slot updates the mesh.
-- [ ] Skill window: spending SP raises the skill and enables it on the hotbar.
-- [ ] Dungeon entry loads the map and spawns monsters with health bars.
-- [ ] Combat: hit sound, floating damage numbers, death animation.
-- [ ] Level-up fanfare when the EXP bar fills.
-- [ ] Card reward UI after a clear; return to town by portal. One card claim per character per clear is verified headlessly.
+Live checks: every behaviour that is headless-verified but not yet confirmed in the client is listed in
+[`docs/LIVE_CHECKS.md`](docs/LIVE_CHECKS.md) with steps and expected results (use `tools/automation/gamectl.py enter-lobby`;
+launch the client only to confirm it parses a changed response).
 
 Still to write:
 - [x] Fuzz JSerBuffer varuints and scalar widths; out-of-order packets (gameplay before auth); truncated-frame floods (`tests/test_fuzz_and_load.py`).

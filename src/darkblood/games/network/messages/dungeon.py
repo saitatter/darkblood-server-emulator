@@ -10,6 +10,7 @@ from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.commerce import VipServiceInfo
+from darkblood.games.network.messages.inventory import AddedItemNotice
 from darkblood.games.network.messages.pets import PetInfo
 from darkblood.games.network.messages.skills import LearnedSkill
 
@@ -62,12 +63,15 @@ __all__ = [
     'ServerBuffDeleteNot',
     'MonsterDeadNot',
     'DailyDunClearCountUpdateNot',
+    'KeepBuffChange',
+    'KeepCooltimeInfo',
     'KeepBuffInsertNot',
     'KeepBuffDeleteNot',
     'KeepBuffClearNot',
     'KeepCooltimeDeleteNot',
     'KeepCooltimeClearNot',
     'TreasureCountChangeNot',
+    'ServerBuffFishingInfo',
     'ServerBuffAdditionFishingNot',
     'ClearUsageLimitNot',
     'AgainSelectDungeonReq',
@@ -245,15 +249,7 @@ class JoinRoomAck(WireMessage):
     members: Vector[RoomMember] = field(default_factory=list)
     relay: Raw[6] = bytes(6)
     free_item_obtain: bool = True  # bFreeItemObtain: looting mode (5088 mode 1 = free for all, 0 = random)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'room',
-        'host_uid',
-        'members',
-        'relay',
-        'free_item_obtain',
-        Const(bool, False),
-    )
+    all_char_same_rate: bool = False  # bIsAllCharSameRate (name from the read-failure text 0x00CB93C0)
 
 
 @dataclass
@@ -264,10 +260,7 @@ class RoomMemberJoinedNot(WireMessage):
     """
     OPCODE: ClassVar[int] = 5035
     member: RoomMember = field(default_factory=RoomMember)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'member',
-        Const(bool, False),
-    )
+    all_char_same_rate: bool = False  # bIsAllCharSameRate
 
 
 @dataclass
@@ -301,14 +294,12 @@ class ChangeRoomHostAck(WireMessage):
 class RoomMemberLeftNot(WireMessage):
     """Opcode 5036: eERC_LEAVE_ROOM_NOT (reply).
 
-    Handler 0x005991B0: result and departing character UID.
+    Handler 0x005991B0: result and departing character UID. A nonzero result
+    shows its text (0x00AB29C0) instead of removing the member.
     """
     OPCODE: ClassVar[int] = 5036
+    result: u32 = 0
     char_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(u32, 0),
-        'char_uid',
-    )
 
 
 @dataclass
@@ -525,15 +516,17 @@ class ChoiceRewardPartyRankReq(WireMessage):
 class ChoiceRewardPartyRankAck(WireMessage):
     """Opcode 5091: eERC_CHOICE_REWARD_PARTYRANK_ACK (reply).
 
-    On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0) is shown by the
-    chest display 0x00713AB0: +0 looked up as an item (0x009E53D0), +6 shown as
-    "xN" when >= 2. Refusals sent by the server exit at 0x0078D6F9.
+    On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0, ctor 0x00AC8250) is
+    the AddedItemNotice struct of 2092. The handler passes only +0 and +6 on to
+    0x00560A20; the chest display 0x00713AB0 looks +0 up as an item (0x009E53D0)
+    and shows +6 as "xN" when >= 2. Refusals sent by the server exit at 0x0078D6F9.
     """
     OPCODE: ClassVar[int] = 5091
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     char_uid: i64 = 0  # nChoiceCharUID
     item_id: h32 = 0  # +0 item code
+    quality: u16 = 0  # +4 (2092 passes it to 0x009E5560); unused by 5091
     count: u16 = 1  # +6
     box_type: i32 = 0  # nBoxType
     box_cost: i32 = 0  # nBoxCost
@@ -543,7 +536,7 @@ class ChoiceRewardPartyRankAck(WireMessage):
         'result',
         'char_uid',
         'item_id',
-        Const(u16, 0),
+        'quality',
         'count',
         Const(u32, 0),
         'box_type',
@@ -639,24 +632,13 @@ class FinishGameAck(WireMessage):
     is_clear: bool = True  # dungeon clear / victory
     map_code: wstr = ''
     flag: bool = False  # bSamePerson
+    guild_person_counts: Map[u32, i64] = field(default_factory=dict)  # mapGuildPersonCnt: 0x005EAAC0 -> 0x005DFBD0 -> 0x005DDBB0 (u32, i64), sent empty
     rewards: Map[i64, SingleReward] = field(default_factory=dict)  # mapSingleReward: char uid -> block
     rank_first: i32 = 1  # nPartyRankFirst
     rank_final: i32 = 1  # nPartyRankFinal
     box_grade: i32 = 1  # nBoxGrade
     extra_box_cost: i32 = 0  # nExtraBoxCost
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'is_clear',
-        'map_code',
-        'flag',
-        Const(EmptyMap),
-        'rewards',
-        'rank_first',
-        'rank_final',
-        'box_grade',
-        'extra_box_cost',
-        Const(EmptyVector),
-    )
+    bonus_monsters: Vector[u32] = field(default_factory=list)  # vecBonusMonster: 0x004D9610 -> 0x004D6E60 (u32 elements), sent empty
 
 
 @dataclass
@@ -908,16 +890,45 @@ class DailyDunClearCountUpdateNot(WireMessage):
 
 
 @dataclass
+class KeepBuffChange(WireMessage):
+    """32-byte element of 2517 vecKeepBuffChange: 0x0076EB20 -> 0x0074D070 ->
+    0x00A4A030 (i64, i64, i64, 8 bytes; ctor 0x0074DED0: uid -1, rest 0).
+    """
+    uid: i64 = -1  # +0x00 map key (0x00764500); 2518 removes by this UID
+    remain_ms: i64 = 0  # +0x08 the handler sets +0x10 = now_ms + this
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'uid',
+        'remain_ms',
+        Const(i64, 0),
+        Const(u64, 0),
+    )
+
+
+@dataclass
+class KeepCooltimeInfo(WireMessage):
+    """jKeepCooltimeInfo, reader 0x00A4A070 (applied by 0x0082E690, map 0x0082D470
+    keyed by +0). The earlier raw[24] layout was too short.
+    """
+    cooltime_id: u32 = 0  # +0x00 map key in 0x0082D470
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'cooltime_id',
+        Const(astr, ''),
+        Const(i64, 0),
+        Const(f32, 0.0),
+        Const(f32, 0.0),
+        Const(u64, 0),
+    )
+
+
+@dataclass
 class KeepBuffInsertNot(WireMessage):
     """Opcode 2517: eEGS_KEEP_BUFF_INSERT_NOT (reply).
 
     Handler 0x007A17F0 (assert: vecKeepBuffChange >> jKeepCooltimeInfo).
     """
     OPCODE: ClassVar[int] = 2517
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyVector),
-        Const(Raw[24], bytes(24)),
-    )
+    changes: Vector[KeepBuffChange] = field(default_factory=list)  # vecKeepBuffChange
+    cooltime: KeepCooltimeInfo = field(default_factory=KeepCooltimeInfo)  # jKeepCooltimeInfo
 
 
 @dataclass
@@ -969,15 +980,25 @@ class TreasureCountChangeNot(WireMessage):
 
 
 @dataclass
+class ServerBuffFishingInfo(WireMessage):
+    """8-byte element of vecFishingInfo: 0x0076EBD0 -> 0x0074D0F0 -> 0x00A4A1E0
+    (u32, 4 bytes; locals preset to -1 / 0). 0x00534F90 copies the list to
+    JAppPageFishing +0xE0; no reader of that vector was found in the page.
+    """
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(u32, 4294967295),
+        Const(f32, 0.0),
+    )
+
+
+@dataclass
 class ServerBuffAdditionFishingNot(WireMessage):
     """Opcode 2641: eEGS_SERVERBUFF_ADDITION_FISHING_NOT (reply).
 
     Handler 0x00779500 (assert: vecFishingInfo, 0x0076EBD0).
     """
     OPCODE: ClassVar[int] = 2641
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyVector),
-    )
+    fishing_infos: Vector[ServerBuffFishingInfo] = field(default_factory=list)  # vecFishingInfo
 
 
 @dataclass
@@ -1353,11 +1374,7 @@ class ExploreCancelAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     explore_char_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'explore_char_uid',
-        Const(EmptyMap),
-    )
+    rewards: Map[i64, AddedItemNotice] = field(default_factory=dict)  # mapReward: 0x00532F50 -> 0x0052B070 (i64 key, 12-byte item block 0x00AC82A0); key meaning not recovered
 
 
 @dataclass
@@ -1369,11 +1386,7 @@ class ExploreCompleteNot(WireMessage):
     OPCODE: ClassVar[int] = 2655
     complete_char_uid: i64 = 0
     explore: ExploreInfo = field(default_factory=ExploreInfo)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'complete_char_uid',
-        'explore',
-        Const(EmptyMap),
-    )
+    rewards: Map[i64, AddedItemNotice] = field(default_factory=dict)  # mapReward: 0x00532F50 -> 0x0052B070 (i64 key, 12-byte item block 0x00AC82A0); key meaning not recovered
 
 
 @dataclass
@@ -1423,11 +1436,7 @@ class ExploreCancelByUserUidAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     explore_char_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'explore_char_uid',
-        Const(EmptyMap),
-    )
+    rewards: Map[i64, AddedItemNotice] = field(default_factory=dict)  # mapReward: 0x00532F50 -> 0x0052B070 (i64 key, 12-byte item block 0x00AC82A0); key meaning not recovered
 
 
 @dataclass
@@ -1443,19 +1452,17 @@ class ExploreJoinReq(WireMessage):
 class ExploreJoinAck(WireMessage):
     """Opcode 5359: eERC_EXPLORE_JOIN_ACK (reply).
 
-    Handler 0x006C35B0 (assert: mapExplorePoint >> ...): opens page 0x9B and
-    transitions to eAS_Explore (Forest of Oblivion).
+    Handler 0x006C35B0 (assert 0x00CD9BB8: mapExplorePoint >> mapExploreRewardList
+    >> mapSendStressinfo >> sTotalMaxStress): opens page 0x9B and transitions to
+    eAS_Explore (Forest of Oblivion). Map keys are i64; their meaning is not recovered.
     """
     OPCODE: ClassVar[int] = 5359
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyMap),
-        Const(EmptyMap),
-        Const(EmptyMap),
-        Const(u16, 0),
-    )
+    explore_points: Map[i64, u32] = field(default_factory=dict)  # mapExplorePoint: 0x006B9060 -> 0x006AD6C0 (i64, u32)
+    explore_rewards: Map[i64, Map[i64, AddedItemNotice]] = field(default_factory=dict)  # mapExploreRewardList: 0x006C2190 -> 0x006BE250 -> 0x00532F50
+    send_stress: Map[i64, u16] = field(default_factory=dict)  # mapSendStressinfo: 0x006B9130 -> 0x006AD750 (i64, u16)
+    total_max_stress: u16 = 0  # sTotalMaxStress (0x00B351E0)
 
 
 @dataclass

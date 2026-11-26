@@ -269,7 +269,7 @@ class DungeonRoomHandlers:
             return
         self.room = None
         char = room.members.pop(self.session)
-        notice = event(5036, RoomMemberLeftNot(char['id']).encode())
+        notice = event(5036, RoomMemberLeftNot(char_uid=char['id']).encode())
         peers = list(room.members)
         if not peers:
             self.transport.server.dungeon_rooms.pop(room.info.room_id, None)

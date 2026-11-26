@@ -174,7 +174,7 @@ class Parser:
             return Type('raw', size=int(m.group(1)))
         if text in SCALARS:
             return Type('scalar', text)
-        if text in ('wstr', 'wstrz', 'wrest', 'rest', 'ipv4'):
+        if text in ('wstr', 'wstrz', 'astr', 'wrest', 'rest', 'ipv4'):
             return Type(text)
         if text in self.schema.externs:
             return Type('extern', text)
@@ -190,7 +190,7 @@ class Parser:
                     and not any(s.name == fn for s in self.schema.structs)):
                 self.fail('default factory %s is not imported' % fn)
             return text
-        if ftype.kind in ('wstr', 'wstrz', 'wrest', 'ipv4'):
+        if ftype.kind in ('wstr', 'wstrz', 'astr', 'wrest', 'ipv4'):
             if not re.match(r"'[^'\\]*'$", text):
                 self.fail('string defaults use single quotes')
             return text
@@ -365,7 +365,7 @@ class PythonBackend:
     def wire_type(self, t):
         if t.kind == 'scalar':
             return 'bool' if t.name == 'bool' else t.name
-        if t.kind in ('wstr', 'wstrz', 'wrest', 'ipv4', 'rest'):
+        if t.kind in ('wstr', 'wstrz', 'astr', 'wrest', 'ipv4', 'rest'):
             return t.kind
         if t.kind == 'raw':
             return 'Raw[%d]' % t.size
@@ -397,7 +397,7 @@ class PythonBackend:
             return f.default
         if t.kind == 'scalar':
             return {'bool': 'False', 'float': '0.0'}.get(SCALARS[t.name][1], '0')
-        if t.kind in ('wstr', 'wstrz', 'wrest'):
+        if t.kind in ('wstr', 'wstrz', 'astr', 'wrest'):
             return "''"
         if t.kind == 'ipv4':
             return "'0.0.0.0'"

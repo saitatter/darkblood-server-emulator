@@ -79,6 +79,12 @@ class JSerBufferWriter:
     def write_wstring(self, text: str) -> None:
         self._buf.extend(wide_string(text))
 
+    def write_astring(self, text: str) -> None:
+        """Narrow std::string (reader 0x00B359B0): J-varuint byte length + bytes."""
+        data = (text or '').encode('utf-8')
+        self.write_varuint(len(data))
+        self.write_bytes(data)
+
     def write_wstring_z(self, text: str) -> None:
         self._buf.extend(text.encode('utf-16le'))
         self._buf.extend(b'\x00\x00')
@@ -267,6 +273,8 @@ boolean = _ScalarCodec('bool', '?', JSerBufferWriter.write_bool, JSerBufferReade
 
 wstr = _SimpleCodec('wstr', JSerBufferWriter.write_wstring, JSerBufferReader.read_wstring)
 wstrz = _SimpleCodec('wstrz', JSerBufferWriter.write_wstring_z, JSerBufferReader.read_wstring_z)
+astr = _SimpleCodec('astr', JSerBufferWriter.write_astring,
+                    lambda r: r.read_bytes(r.read_varuint()).decode('utf-8', errors='replace'))
 wrest = _SimpleCodec(
     'wrest',
     JSerBufferWriter.write_wrest,
@@ -475,5 +483,5 @@ __all__ = [
     'Extern', 'JSerBufferWriter', 'Lit', 'Map', 'Pairs', 'Raw', 'Set',
     'Vector', 'WireCodec', 'WireMessage', 'boolean', 'f32', 'f64', 'h32',
     'i16', 'i32', 'i64', 'i8', 'ipv4', 'rest', 'u16', 'u32', 'u64', 'u8',
-    'wrest', 'wstr', 'wstrz',
+    'astr', 'wrest', 'wstr', 'wstrz',
 ]

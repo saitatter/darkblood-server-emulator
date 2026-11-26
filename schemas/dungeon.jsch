@@ -8,6 +8,7 @@ extern Item from darkblood.games.entities.items
 extern VipServiceInfo from darkblood.games.network.messages.commerce readable
 extern LearnedSkill from darkblood.games.network.messages.skills readable
 extern PetInfo from darkblood.games.network.messages.pets readable
+extern AddedItemNotice from darkblood.games.network.messages.inventory readable
 
 struct RoomInfo
   ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002, 5004 and 2011.
@@ -23,7 +24,7 @@ struct RoomInfo
   i16 cur_users = 1
   i32 state = 8              # 8 waiting (Join enabled, 0x0062E422); 1/2 shown as PLAY (live); else FULL
   i64 host_uid
-  i64 _
+  i64 _                      # +0x34: copied by 0x0049D850, not read by 5004 (0x00597C30) or the room row
   i32 gate_id = -1
   i32 map_id = -1
   i16 diff = -1
@@ -87,13 +88,13 @@ message 5004 JoinRoomAck ok_only
   vector<RoomMember> members
   raw[6] relay
   bool free_item_obtain = true   # bFreeItemObtain: looting mode (5088 mode 1 = free for all, 0 = random)
-  bool _                         # bIsAllCharSameRate
+  bool all_char_same_rate        # bIsAllCharSameRate (name from the read-failure text 0x00CB93C0)
 end
 
 message 5035 RoomMemberJoinedNot
   ## Handler 0x00598D90: jNetChar and bIsAllCharSameRate.
   RoomMember member = RoomMember()
-  bool _                     # bIsAllCharSameRate
+  bool all_char_same_rate    # bIsAllCharSameRate
 end
 
 message 5021 ChangeRoomHostReq header?
@@ -111,8 +112,9 @@ message 5022 ChangeRoomHostAck ok_only
 end
 
 message 5036 RoomMemberLeftNot
-  ## Handler 0x005991B0: result and departing character UID.
-  u32 _
+  ## Handler 0x005991B0: result and departing character UID. A nonzero result
+  ## shows its text (0x00AB29C0) instead of removing the member.
+  u32 result
   i64 char_uid
 end
 
@@ -288,14 +290,14 @@ struct SingleReward
   ## mapSingleReward value in 5018: raw 40-byte block (0x00A1E7A0 reads 0x28
   ## bytes). 0x0071F9F0 copies it to JResultDirect +0x74 (result page 0x1B, +0xD4).
   ## The stylish/demolition/damage gauges come from party member data.
-  i32 _                      # +0x00 unknown
+  i32 _                      # +0x00 -> JResultDirect +0x74: zeroed by ctor 0x0071C0D0, no result-page reader found
   i32 total                  # +0x04 "num_total" (0x00720164)
   i32 rate_a = 100           # +0x08 explist row 1, shown as value / 100.0 after "X"
   i32 rate_b = 100           # +0x0C explist row 2
   i32 exp                    # +0x10 explist row 0 text
   i32 bonus_exp              # +0x14 bonusexplist row 0 (0x00711A30, blue text when != 0)
   i32 final_total_exp        # +0x18 final num_total after bonus step (0x00711910)
-  i32 _                      # +0x1C unknown
+  i32 _                      # +0x1C -> JResultDirect +0x90: zeroed by ctor 0x0071C0D0, no result-page reader found
   i32 extra_box_count        # +0x20: 0x0071FF0F adds this many "extra_box" entries; keep small
   i32 rank                   # +0x24 individual rank 0=D..6=SSS (Lua_OnChecked_5 @ 0x0071F9F0 / 0x00720000:530)
 end
@@ -336,9 +338,9 @@ struct RoomMemberInfo
   u8 char_class
   i16 stress                 # +0x31, current stress shown as stress/max
   u8 level
-  i64 _                      # +0x34, meaning not recovered
-  i64 _                      # +0x3C, meaning not recovered
-  raw[74] _                  # +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered
+  i64 _                      # +0x34, not read by the row filler 0x0062DF90 or 0x00756F40
+  i64 _                      # +0x3C, not read by the row filler 0x0062DF90 or 0x00756F40
+  raw[74] _                  # +0x44, 0x00A48B40 reads 0x4A raw bytes; not read by the row filler
   bool stress_bonus          # +0x8E, adds (0x00459A30)+4 minus the base to the max stress
 end
 
@@ -348,7 +350,7 @@ message 5061 RoomMemInfoAck ok_only
   u32 result
   i64 room_uid
   vector<RoomMemberInfo> members  # +0xC, 0x004B40F0 -> 0x004B1AD0 (0xA6-byte elements)
-  vector<?> _                # +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered
+  vector<?> _                # +0x1C, 0x004B0BB0 -> 0x004AFD30: vector<i64>; the 5061 handler passes only the members to 0x0062DF90
 end
 
 message 5047 RequestJoinRoomReq header?
@@ -456,10 +458,30 @@ message 2443 DailyDunClearCountUpdateNot
   map<wstr,i16> clear_counts
 end
 
+struct KeepBuffChange
+  ## 32-byte element of 2517 vecKeepBuffChange: 0x0076EB20 -> 0x0074D070 ->
+  ## 0x00A4A030 (i64, i64, i64, 8 bytes; ctor 0x0074DED0: uid -1, rest 0).
+  i64 uid = -1               # +0x00 map key (0x00764500); 2518 removes by this UID
+  i64 remain_ms              # +0x08 the handler sets +0x10 = now_ms + this
+  i64 _                      # +0x10 overwritten by the client (end time in ms)
+  u64 _                      # +0x18 (0x00B356F0), not recovered
+end
+
+struct KeepCooltimeInfo
+  ## jKeepCooltimeInfo, reader 0x00A4A070 (applied by 0x0082E690, map 0x0082D470
+  ## keyed by +0). The earlier raw[24] layout was too short.
+  u32 cooltime_id            # +0x00 map key in 0x0082D470
+  astr _                     # +0x04 narrow string (0x00B359B0), not recovered
+  i64 _                      # +0x20
+  f32 _                      # +0x28 (0x00B35560, 4 bytes)
+  f32 _                      # +0x2C copied to the cooltime entry +0x20
+  u64 _                      # +0x30 (0x00B356F0)
+end
+
 message 2517 KeepBuffInsertNot
   ## Handler 0x007A17F0 (assert: vecKeepBuffChange >> jKeepCooltimeInfo).
-  vector<?> _                # vecKeepBuffChange (0x0076EB20)
-  raw[24] _                  # jKeepCooltimeInfo (0x00A4A070)
+  vector<KeepBuffChange> changes  # vecKeepBuffChange
+  KeepCooltimeInfo cooltime = KeepCooltimeInfo()  # jKeepCooltimeInfo
 end
 
 message 2518 KeepBuffDeleteNot
@@ -485,9 +507,17 @@ message 2585 TreasureCountChangeNot
   i32 available_count
 end
 
+struct ServerBuffFishingInfo
+  ## 8-byte element of vecFishingInfo: 0x0076EBD0 -> 0x0074D0F0 -> 0x00A4A1E0
+  ## (u32, 4 bytes; locals preset to -1 / 0). 0x00534F90 copies the list to
+  ## JAppPageFishing +0xE0; no reader of that vector was found in the page.
+  u32 _ = 4294967295
+  f32 _                      # 0x00B35560 (4 bytes)
+end
+
 message 2641 ServerBuffAdditionFishingNot
   ## Handler 0x00779500 (assert: vecFishingInfo, 0x0076EBD0).
-  vector<?> _                # vecFishingInfo
+  vector<ServerBuffFishingInfo> fishing_infos  # vecFishingInfo
 end
 
 message 2704 ClearUsageLimitNot bare
@@ -581,7 +611,10 @@ end
 message 2291 CronosCalendarNot
   ## Handler 0x004D9ED0 (assert: m_jToday >> m_mapDailyInfo >> m_jDataLimit >> m_iCountFrom >> nGMTMinute).
   raw[12] today              # 0x00AC82A0
-  map<?> _                   # m_mapDailyInfo (0x004D4710)
+  map<?> _                   # m_mapDailyInfo (0x004D4710 -> 0x004CA490 -> 0x004C7FC0): key 12-byte date
+                             # (0x00AC82A0; ctor 0x00A4A400: u16 year/month/day, +8 u32 yyyymmdd via 0x00A48C90),
+                             # value the 28-byte info block (0x00A48CD0, ctor 0x00A4A6C0); struct keys are not
+                             # supported by the generator
   raw[12] data_limit         # 0x00AC82A0
   i32 count_from
   i32 gmt_minute
@@ -629,7 +662,7 @@ end
 message 2300 CronosStampAck ok_only
   ## Handler 0x004E3BA0 (assert: mapInfo >> vecItem >> nItemID).
   u32 result
-  map<?> _                   # mapInfo (0x004D4710)
+  map<?> _                   # mapInfo (0x004D4710): same date -> 28-byte info map as 2291 m_mapDailyInfo
   vector<Item> items
   i32 item_id
 end
@@ -668,14 +701,14 @@ message 2654 ExploreCancelAck ok_only
   ## Handler 0x00540F90 (assert: nExploreCharUID >> mapReward).
   u32 result
   i64 explore_char_uid
-  map<?> _                   # mapReward (0x00532F50)
+  map<i64,AddedItemNotice> rewards  # mapReward: 0x00532F50 -> 0x0052B070 (i64 key, 12-byte item block 0x00AC82A0); key meaning not recovered
 end
 
 message 2655 ExploreCompleteNot
   ## Handler 0x0053C470 (assert: nCompleteCharUID >> jExplore >> mapReward).
   i64 complete_char_uid
   ExploreInfo explore = ExploreInfo()
-  map<?> _                   # mapReward (0x00532F50)
+  map<i64,AddedItemNotice> rewards  # mapReward: 0x00532F50 -> 0x0052B070 (i64 key, 12-byte item block 0x00AC82A0); key meaning not recovered
 end
 
 message 2656 ExploreGetRewardReq header?
@@ -699,7 +732,7 @@ message 2663 ExploreCancelByUserUidAck ok_only
   ## Handler 0x00541960 (assert: nExploreCharUID >> mapReward).
   u32 result
   i64 explore_char_uid
-  map<?> _                   # mapReward (0x00532F50)
+  map<i64,AddedItemNotice> rewards  # mapReward: 0x00532F50 -> 0x0052B070 (i64 key, 12-byte item block 0x00AC82A0); key meaning not recovered
 end
 
 message 5358 ExploreJoinReq bare
@@ -707,13 +740,14 @@ message 5358 ExploreJoinReq bare
 end
 
 message 5359 ExploreJoinAck ok_only
-  ## Handler 0x006C35B0 (assert: mapExplorePoint >> ...): opens page 0x9B and
-  ## transitions to eAS_Explore (Forest of Oblivion).
+  ## Handler 0x006C35B0 (assert 0x00CD9BB8: mapExplorePoint >> mapExploreRewardList
+  ## >> mapSendStressinfo >> sTotalMaxStress): opens page 0x9B and transitions to
+  ## eAS_Explore (Forest of Oblivion). Map keys are i64; their meaning is not recovered.
   u32 result
-  map<?> _                   # mapExplorePoint (0x006B9060)
-  map<?> _                   # 0x006C2190
-  map<?> _                   # 0x006B9130
-  u16 _                      # 0x00B351E0
+  map<i64,u32> explore_points  # mapExplorePoint: 0x006B9060 -> 0x006AD6C0 (i64, u32)
+  map<i64,map<i64,AddedItemNotice>> explore_rewards  # mapExploreRewardList: 0x006C2190 -> 0x006BE250 -> 0x00532F50
+  map<i64,u16> send_stress   # mapSendStressinfo: 0x006B9130 -> 0x006AD750 (i64, u16)
+  u16 total_max_stress       # sTotalMaxStress (0x00B351E0)
 end
 
 message 5360 ExploreLeaveReq bare
@@ -736,8 +770,9 @@ struct DungeonClearRankInfo
   i32 party_count
   wstr comment
   i32 param
-  map<?> _                   # 0x00A51060
-  vector<?> _                # 0x00A3EA40
+  map<?> _                   # 0x00A51060 -> 0x00A50530 -> 0x00A4B9E0: i64 key, value 0x00A49E90 =
+                             # i64, u8, u8, u32, bool, wstr, wstr (ctor 0x00A487E0); member list, names not recovered
+  vector<?> _                # 0x00A3EA40 -> 0x00A3E600: vector<wstr>, meaning not recovered
   raw[12] clear_date
 end
 

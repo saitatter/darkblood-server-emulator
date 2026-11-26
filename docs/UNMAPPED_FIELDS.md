@@ -48,42 +48,35 @@
 | `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:240 | 0x005F6540 |
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
 
-## dungeon (32 of 273 fields)
+## dungeon (25 of 284 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `RoomInfo` | `i64` | dungeon.jsch:26 |  |
-| `RoomMember` | `i64` | dungeon.jsch:74 | +0x1EB |
-| `RoomMember` | `i64` | dungeon.jsch:76 | +0x207, copied to JNetUser +0x100 by SetUser_In* (0x009666B7) |
-| `RoomMember` | `i64` | dungeon.jsch:77 | +0x20F (0x00B354D0, 8 raw bytes) |
-| `RoomMember` | `u32` | dungeon.jsch:78 | +0x233, stored in JNetUser +0x90 as a protected value (0x0045B840) |
-| `5004 JoinRoomAck` | `bool` | dungeon.jsch:90 | bIsAllCharSameRate |
-| `5035 RoomMemberJoinedNot` | `bool` | dungeon.jsch:96 | bIsAllCharSameRate |
-| `5036 RoomMemberLeftNot` | `u32` | dungeon.jsch:115 |  |
-| `5091 ChoiceRewardPartyRankAck` | `u16` | dungeon.jsch:251 | +4 not recovered |
-| `5091 ChoiceRewardPartyRankAck` | `u32` | dungeon.jsch:253 | +8 not recovered |
-| `SingleReward` | `i32` | dungeon.jsch:290 | +0x00 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:297 | +0x1C unknown |
-| `5018 FinishGameAck` | `map<?>` | dungeon.jsch:309 | mapGuildPersonCnt |
-| `5018 FinishGameAck` | `vector<?>` | dungeon.jsch:315 | vecBonusMonster |
-| `RoomMemberInfo` | `i64` | dungeon.jsch:338 | +0x34, meaning not recovered |
-| `RoomMemberInfo` | `i64` | dungeon.jsch:339 | +0x3C, meaning not recovered |
-| `RoomMemberInfo` | `raw[74]` | dungeon.jsch:340 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
-| `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:350 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
-| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:460 | vecKeepBuffChange (0x0076EB20) |
-| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:461 | jKeepCooltimeInfo (0x00A4A070) |
-| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:489 | vecFishingInfo |
-| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:583 | m_mapDailyInfo (0x004D4710) |
-| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:631 | mapInfo (0x004D4710) |
-| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:670 | mapReward (0x00532F50) |
-| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:677 | mapReward (0x00532F50) |
-| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:701 | mapReward (0x00532F50) |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:712 | mapExplorePoint (0x006B9060) |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:713 | 0x006C2190 |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:714 | 0x006B9130 |
-| `5359 ExploreJoinAck` | `u16` | dungeon.jsch:715 | 0x00B351E0 |
-| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:738 | 0x00A51060 |
-| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:739 | 0x00A3EA40 |
+| `RoomInfo` | `i64` | dungeon.jsch:27 | +0x34: copied by 0x0049D850, not read by 5004 (0x00597C30) or the room row |
+| `RoomMember` | `i64` | dungeon.jsch:75 | +0x1EB |
+| `RoomMember` | `i64` | dungeon.jsch:77 | +0x207, copied to JNetUser +0x100 by SetUser_In* (0x009666B7) |
+| `RoomMember` | `i64` | dungeon.jsch:78 | +0x20F (0x00B354D0, 8 raw bytes) |
+| `RoomMember` | `u32` | dungeon.jsch:79 | +0x233, stored in JNetUser +0x90 as a protected value (0x0045B840) |
+| `5091 ChoiceRewardPartyRankAck` | `u32` | dungeon.jsch:256 | +8 u16 zero + struct padding (ctor 0x00AC8250), unused by 5091 |
+| `SingleReward` | `i32` | dungeon.jsch:293 | +0x00 -> JResultDirect +0x74: zeroed by ctor 0x0071C0D0, no result-page reader found |
+| `SingleReward` | `i32` | dungeon.jsch:300 | +0x1C -> JResultDirect +0x90: zeroed by ctor 0x0071C0D0, no result-page reader found |
+| `RoomMemberInfo` | `i64` | dungeon.jsch:341 | +0x34, not read by the row filler 0x0062DF90 or 0x00756F40 |
+| `RoomMemberInfo` | `i64` | dungeon.jsch:342 | +0x3C, not read by the row filler 0x0062DF90 or 0x00756F40 |
+| `RoomMemberInfo` | `raw[74]` | dungeon.jsch:343 | +0x44, 0x00A48B40 reads 0x4A raw bytes; not read by the row filler |
+| `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:353 | +0x1C, 0x004B0BB0 -> 0x004AFD30: vector<i64>; the 5061 handler passes only the members to 0x0062DF90 |
+| `KeepBuffChange` | `i64` | dungeon.jsch:466 | +0x10 overwritten by the client (end time in ms) |
+| `KeepBuffChange` | `u64` | dungeon.jsch:467 | +0x18 (0x00B356F0), not recovered |
+| `KeepCooltimeInfo` | `astr` | dungeon.jsch:474 | +0x04 narrow string (0x00B359B0), not recovered |
+| `KeepCooltimeInfo` | `i64` | dungeon.jsch:475 | +0x20 |
+| `KeepCooltimeInfo` | `f32` | dungeon.jsch:476 | +0x28 (0x00B35560, 4 bytes) |
+| `KeepCooltimeInfo` | `f32` | dungeon.jsch:477 | +0x2C copied to the cooltime entry +0x20 |
+| `KeepCooltimeInfo` | `u64` | dungeon.jsch:478 | +0x30 (0x00B356F0) |
+| `ServerBuffFishingInfo` | `u32` | dungeon.jsch:514 |  |
+| `ServerBuffFishingInfo` | `f32` | dungeon.jsch:515 | 0x00B35560 (4 bytes) |
+| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:614 | m_mapDailyInfo (0x004D4710 -> 0x004CA490 -> 0x004C7FC0): key 12-byte date |
+| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:665 | mapInfo (0x004D4710): same date -> 28-byte info map as 2291 m_mapDailyInfo |
+| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:773 | 0x00A51060 -> 0x00A50530 -> 0x00A4B9E0: i64 key, value 0x00A49E90 = |
+| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:775 | 0x00A3EA40 -> 0x00A3E600: vector<wstr>, meaning not recovered |
 
 ## events (8 of 36 fields)
 
