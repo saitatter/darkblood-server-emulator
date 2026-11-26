@@ -100,7 +100,7 @@ def level_up_ap():
 
 @lru_cache(maxsize=None)
 def skill_costs():
-    """{(skill index, level): (DemandPoint SP, DemandAr)} from skill table."""
+    """{(skill index, level): (DemandPoint SP, DemandAr)} from skill and making tables."""
     override = _env_override('skill.lua')
     if not override:
         tsv = ASSETS_DIR / 'skills.tsv'
@@ -112,21 +112,25 @@ def skill_costs():
                     out[(int(parts[0]), int(parts[1]))] = (int(parts[2]), int(parts[3]))
             return out
 
-    path = override or (data_root() / 'skill.lua')
-    if not path.exists():
-        return {}
-    text = path.read_text(encoding='utf-8', errors='replace')
-    end = text.find('assert(DictSkill:LoadSummonSkill')
+    root = override.parent if override else data_root()
     out = {}
-    for entry in re.split(r'\n  \{\n', text[:end if end != -1 else len(text)])[1:]:
-        idx = re.search(r'\n    NameIndex = "?(\d+)"?,', entry)
-        lv = re.search(r'\n    Lv = (\d+)', entry)
-        if not (idx and lv):
+    for filename in ('skill.lua', 'making.lua', 'gathering.lua', 'fishing.lua'):
+        path = override if (filename == 'skill.lua' and override) else (root / filename)
+        if not path.exists():
             continue
-        sp = re.search(r'\n    DemandPoint = (\d+)', entry)
-        ar = re.search(r'\n    DemandAr = (\d+)', entry)
-        out[(int(idx.group(1)), int(lv.group(1)))] = (int(sp.group(1)) if sp else 0,
-                                                       int(ar.group(1)) if ar else 0)
+        text = path.read_text(encoding='utf-8', errors='replace')
+        for blk in re.findall(r'assert\(DictSkill:LoadSkill\(\{(.*?)\n\}\), "DictSkill:LoadSkill"\)', text, re.S):
+            for entry in re.split(r'\n  \{\n', '\n' + blk)[1:]:
+                idx = re.search(r'(?:^|\n)    NameIndex = "?(\d+)"?,?', entry)
+                lv = re.search(r'(?:^|\n)    Lv = (\d+)', entry)
+                if not (idx and lv):
+                    continue
+                sp = re.search(r'(?:^|\n)    DemandPoint = (\d+)', entry)
+                ar = re.search(r'(?:^|\n)    DemandAr = (\d+)', entry)
+                out[(int(idx.group(1)), int(lv.group(1)))] = (
+                    int(sp.group(1)) if sp else 0,
+                    int(ar.group(1)) if ar else 0,
+                )
     return out
 
 

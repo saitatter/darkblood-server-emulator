@@ -849,4 +849,24 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2051_ok, 0)[0], 0)
             self.assertEqual(char['learned_proficiencies'], [1, 2])
 
+            # Recipe learning respects DemandAr from making.lua (e.g. 10032 Wmake33 = 64,300 AR)
+            char['gold'] = 1000
+            char['u66'] = 1000
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            client.send_event(2050, LearnSkillReq(skill_index=10032, level=1).encode())
+            _, ack2051_poor = await client.expect_event(2051)
+            self.assertNotEqual(struct.unpack_from('<i', ack2051_poor, 0)[0], 0)
+            self.assertNotIn('10032', char['skills'])
+            self.assertEqual(char['gold'], 1000)
+
+            char['gold'] = 100000
+            char['u66'] = 100000
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            client.send_event(2050, LearnSkillReq(skill_index=10032, level=1).encode())
+            _, ack2051_recipe = await client.expect_event(2051)
+            res, sidx, lv, rem_sp, rem_gold = struct.unpack_from('<iHBiq', ack2051_recipe, 0)
+            self.assertEqual((res, sidx, lv, rem_gold), (0, 10032, 1, 100000 - 64300))
+            self.assertEqual(char['gold'], 100000 - 64300)
+            self.assertEqual(char['skills'].get('10032'), 1)
+
         self.run_async(self.with_server(scenario))
