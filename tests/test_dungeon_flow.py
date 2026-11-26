@@ -602,9 +602,30 @@ class DungeonFlowTest(ServerTestCase):
             self.assertNotEqual(hash_m, 0)
             self.assertEqual(char['items'], full_inventory)
             self.assertEqual(char['gold'], parsed.extra_box_cost)
-            inbox = session.GameSession.store().get_mail_inbox(char_id)
+            store = session.GameSession.store()
+            inbox = store.get_mail_inbox(char_id)
             self.assertEqual(len(inbox), 1)
             await client.expect_event(2227)  # PostNewArrivalNot
+
+            mail_uid = inbox[0]['uid']
+            claim_mail = messages.PostGetAppendItemReq(mail_uid=mail_uid).encode()
+            client.send_event(2225, claim_mail)
+            _, blocked_claim = await client.expect_event(2226)
+            self.assertEqual(blocked_claim, struct.pack('<i', results.INVEN_FULL))
+            self.assertEqual(store.get_mail_inbox(char_id), inbox)
+            self.assertEqual(char['items'], full_inventory)
+
+            freed_cell = fillers.pop()
+            char['items'].remove(freed_cell)
+            client.send_event(2225, claim_mail)
+            _, claimed_mail = await client.expect_event(2226)
+            self.assertEqual(struct.unpack_from('<iqq', claimed_mail), (0, mail_uid, 0))
+            self.assertEqual(len(char['items']), len(full_inventory))
+            item = char['items'][-1]
+            self.assertEqual((item['container'], item['slot']), (freed_cell['container'], freed_cell['slot']))
+            self.assertEqual(hashing.jhash(item['code']) & 0xFFFFFFFF, hash_m)
+            self.assertEqual(store.get_mail_inbox(char_id)[0]['has_item'], 0)
+
             for filler in fillers:
                 char['items'].remove(filler)
 

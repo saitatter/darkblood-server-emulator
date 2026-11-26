@@ -6,6 +6,7 @@ import time
 import weakref
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Optional
 
 from darkblood import DATA
 from darkblood.player_management.characters import ensure_inventory
@@ -436,19 +437,24 @@ class SqliteCharacterStore(ICharacterStore):
             conn.commit()
             return cur.rowcount > 0
 
-    def claim_mail_append(self, mail_uid: int) -> tuple:
+    def claim_mail_append(self, mail_uid: int, *, recipient_char_id: int,
+                          available_slots: int) -> Optional[tuple]:
+        """Claim the contents together, or return None if the items do not fit."""
         with self.lock:
             conn = self._get_connection()
             row = conn.execute(
-                'SELECT gold, items_json FROM mailbox WHERE uid = ? AND is_deleted = 0', (mail_uid,)
+                'SELECT gold, items_json FROM mailbox '
+                'WHERE uid = ? AND recipient_char_id = ? AND is_deleted = 0',
+                (mail_uid, recipient_char_id),
             ).fetchone()
             if not row:
                 return 0, []
-            gold = int(row['gold'])
             items = json.loads(row['items_json'])
+            if len(items) > available_slots:
+                return None
             conn.execute('UPDATE mailbox SET gold = 0, items_json = "[]", has_item = 0 WHERE uid = ?', (mail_uid,))
             conn.commit()
-            return gold, items
+            return int(row['gold']), items
 
     def claim_mail_gold(self, mail_uid: int) -> int:
         with self.lock:

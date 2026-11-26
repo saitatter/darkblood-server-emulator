@@ -31,7 +31,7 @@ When it fails, note what the client did and keep it here.
 | # | Check | Steps | Expected | Since |
 |---|---|---|---|---|
 | R1 | Daily clear count `2443` | Clear `Act4_G2_R13` (entry item `IticR5040` x2). | No error; the gate/dungeon UI shows the clear count if the client displays it. Count resets the next day. | 2026-11-26 |
-| R2 | Full-inventory chest mail (`5091` result 294) | Fill the inventory, clear a dungeon, open a chest. | Chest opens, `UI_3329` "Send via mail…" appears, the item arrives by mail (`2227`). | 2026-11-26 |
+| R2 | Full-inventory chest mail (`5091` result 294) | Fill the inventory, clear a dungeon and open a chest. Try claiming the attachment, then free a slot and retry. | The chest opens, `UI_3329` appears, and mail arrives (`2227`). The attachment stays in the inbox while the bag is full and moves into the freed slot on retry. | 2026-11-26 |
 | R3 | Pet EXP on kills (`5324`/`5323`) | Summon a pet and kill monsters. | Pet EXP bar rises; pet level-up notice at the threshold. | 2026-11-26 |
 | R4 | 11-20/21 work | Gate history and quest variants, EXP bar, town AR, chest names, counter achievements, revive layer, floor gold, stress, `6012` View Info, `2134` memo. | Each behaves as described in `docs/STATUS.md` (2026-11-20/21 sections). | 2026-11-21 |
 | R5 | Explore join (`5359`) | Enter the Forest of Oblivion. | Page opens; check whether `total_max_stress = 0` is acceptable or the stress UI needs a value. | 2026-11-26 |
