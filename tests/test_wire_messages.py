@@ -724,10 +724,13 @@ class WireMessagesTest(unittest.TestCase):
         self.assertTrue(full_ack.endswith(expected_prof))
 
     def test_remote_inspection_item_info(self):
-        req = messages.RequestItemInfoReq.decode(struct.pack('<iqq', 0, 456, 0))
-        self.assertEqual(req.item_uid, 456)
-        ack = messages.RequestItemInfoAck(result=0, item_uid=456).encode()
-        self.assertEqual(struct.unpack_from('<iq', ack[:12]), (0, 456))
+        # 0x007A4F20: nItemInfoID << nTargetCharUID << own char UID.
+        req = messages.RequestItemInfoReq.decode(struct.pack('<Iqq', 7, 456, 9))
+        self.assertEqual((req.item_info_id, req.target_char_uid, req.requester_uid), (7, 456, 9))
+        # 0x00766C20: result, nCharUID, then a full item record.
+        item = Item(code='Wdag1N', uid=7, owner=456)
+        ack = messages.RequestItemInfoAck(result=0, char_uid=456, item=item).encode()
+        self.assertEqual(ack, struct.pack('<iq', 0, 456) + item.encode())
 
     def test_guild_money_deposit_and_withdrawal(self):
         req_in = messages.GuildMoneyInReq.decode(struct.pack('<q', 5000))

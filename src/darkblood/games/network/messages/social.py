@@ -282,12 +282,8 @@ class UseSpeakerItemAck(WireMessage):
     OPCODE: ClassVar[int] = 2129
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    speaker_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'speaker_uid',
-        Const(EmptyVector),
-    )
+    speaker_uid: i64 = 0  # nItemUID
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem (assert 0x0077F320: nItemUID >> vecItem; 0x004B0C00 -> 0x004B9210)
 
 
 @dataclass
@@ -386,36 +382,29 @@ class RequestCharInfoAck(WireMessage):
 class RequestItemInfoReq(WireMessage):
     """Opcode 6028: eERT_REQUEST_ITEM_INFO_REQ (request).
 
-    Sender 0x007A4F20: 0x00B352B0 (4 bytes), 0x00B353D0, 0x00B353D0. Which i64 is
-    the item uid is not confirmed.
+    JUserClient::RequestItemInfoREQ 0x007A4F20 (assert: nItemInfoID << nTargetCharUID
+    << GetMyCharUID()).
     """
     OPCODE: ClassVar[int] = 6028
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    item_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'header',
-        Const(i32, 0),
-        'item_uid',
-        Const(i64, 0),
-    )
+    item_info_id: u32 = 0  # nItemInfoID
+    target_char_uid: i64 = 0  # nTargetCharUID
+    requester_uid: i64 = 0  # the sender's own char UID
 
 
 @dataclass
 class RequestItemInfoAck(WireMessage):
     """Opcode 6029: eERT_REQUEST_ITEM_INFO_ACK (reply).
 
-    Handler 0x00766C20. Item record not recovered (16 zero bytes).
+    Handler 0x00766C20 (assert: nCharUID >> jIteminfo): result, char UID, then a
+    full item record (0x00A53F50). The earlier 16 zero bytes were too short.
     """
     OPCODE: ClassVar[int] = 6029
-    _WIRE_OK_INDEX: ClassVar[int] = 2
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    item_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'item_uid',
-        Const(Raw[16], bytes(16)),
-    )
+    char_uid: i64 = 0  # nCharUID
+    item: Extern[Item, 'encode', False] = field(default_factory=lambda: Item('', 0))  # jIteminfo
 
 
 @dataclass

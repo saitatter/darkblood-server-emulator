@@ -64,20 +64,16 @@ class RequestTeachingReq(WireMessage):
 class RequestTeachingAck(WireMessage):
     """Opcode 5352: eERC_REQUEST_TEACHING_ACK (reply).
 
-    Handler 0x0075C200.
+    Handler 0x0075C200 (assert: nRequestCharUID >> strRequestCharNick >> ucLevel >>
+    ucJob >> bNovice).
     """
     OPCODE: ClassVar[int] = 5352
     result: i32 = 0
-    target_uid: i64 = 0
-    target_name: wstr = ''
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'target_uid',
-        'target_name',
-        Const(u8, 0),
-        Const(u8, 0),
-        Const(u8, 1),
-    )
+    target_uid: i64 = 0  # nRequestCharUID
+    target_name: wstr = ''  # strRequestCharNick
+    level: u8 = 0  # ucLevel
+    job: u8 = 0  # ucJob
+    novice: bool = True  # bNovice
 
 
 @dataclass
@@ -134,7 +130,7 @@ class TreasureEndNot(WireMessage):
 class CitadelRewardNot(WireMessage):
     """Opcode 5346: eERC_CITADEL_REWARD_NOT (reply).
 
-    Handler 0x007833F0.
+    Handler 0x007833F0 (assert: mapCitadelRewardItemUnit >> vecItem).
     """
     OPCODE: ClassVar[int] = 5346
     result: i32 = 0
@@ -150,14 +146,11 @@ class CitadelRewardNot(WireMessage):
 class GoldGoblinAppearNot(WireMessage):
     """Opcode 5362: eERC_GOLDGOBLIEN_APPEAR_NOT (reply).
 
-    Handler 0x007A6D10.
+    Handler 0x007A6D10 (assert: nWarflagSlotID >> vecMonID).
     """
     OPCODE: ClassVar[int] = 5362
-    goblin_id: i32 = 1
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'goblin_id',
-        Const(EmptyVector),
-    )
+    goblin_id: i32 = 1  # nWarflagSlotID
+    monster_ids: Vector[u32] = field(default_factory=list)  # vecMonID (0x004D6E60, u32 elements)
 
 
 @dataclass
@@ -189,20 +182,16 @@ class GoldGoblinDeadReq(WireMessage):
 class GoldGoblinDeadAck(WireMessage):
     """Opcode 5366: eERC_GOLDGOBLIEN_DEAD_ACK (reply).
 
-    Handler 0x00784CA0.
+    Handler 0x00784CA0 (assert: nDeadMobID >> iLayerID >> fX >> fY >> vecDropItem).
+    The earlier layout sent two i16 where the client reads two 4-byte floats.
     """
     OPCODE: ClassVar[int] = 5366
     result: i32 = 0
-    goblin_id: i32 = 1
-    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'goblin_id',
-        Const(i32, 0),
-        Const(i16, 0),
-        Const(i16, 0),
-        'items',
-    )
+    goblin_id: i32 = 1  # nDeadMobID
+    layer_id: i32 = 0  # iLayerID
+    x: f32 = 0.0  # fX
+    y: f32 = 0.0  # fY
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecDropItem (0x004D5C70; element layout not re-checked)
 
 
 @dataclass

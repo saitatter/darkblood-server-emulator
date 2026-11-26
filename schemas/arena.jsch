@@ -323,7 +323,7 @@ end
 
 message 5135 ArenaSquareChangeRelayAddressNot
   ## Handler 0x0075AC00 (assert: *m_spArenaSquareP2PAddr, struct 0x00A48910).
-  raw[24] _                  # P2P address struct
+  raw[6] p2p_address         # *m_spArenaSquareP2PAddr: IPv4 + u16 port (0x00A48910 reads 6 bytes; was raw[24])
 end
 
 message 2472 ArenaRandomMatchingUserCntNot

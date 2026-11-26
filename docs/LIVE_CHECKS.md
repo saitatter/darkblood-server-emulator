@@ -58,6 +58,10 @@ When it fails, note what the client did and keep it here.
 | W3 | Tame monster insert/delete (`2349`/`2351`) | The tamed list window shows the stored list. The two-i32 entry split is a guess: check the monster names/slots. |
 | W4 | Personal shop open/buy (`2341`/`5243`) | Shop title shows correctly; the shop lists items and expiry (layout corrected: address, `vector<u32>`, trailing 4 bytes). |
 | W5 | Pet feeding (`2481`) | Satiety updates; no inventory refresh issue (the vector is now `vector<Item>`, sent empty). |
+| W6 | Item link / remote item info (`6028 -> 6029`) | Clicking another player's item shows its tooltip (full Item record); an unknown item shows `JERI_INVEN_01`. Confirms that `nItemInfoID` is the item UID's low 32 bits (assumption). |
+| W7 | Gold goblin kill (`5366`) | Drop position uses the float `fX`/`fY` (earlier i16 layout was 4 bytes short). |
+| W8 | Trade / teaching requests (`5070`/`5352`) | The dialog shows the real target name, level and class. |
+| W9 | Arena relay change (`5135`) | 6-byte address (was 24 bytes); no read error. |
 
 ## Basic client checklist (from ROADMAP)
 

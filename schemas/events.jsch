@@ -25,13 +25,14 @@ message 5351 RequestTeachingReq
 end
 
 message 5352 RequestTeachingAck
-  ## Handler 0x0075C200.
+  ## Handler 0x0075C200 (assert: nRequestCharUID >> strRequestCharNick >> ucLevel >>
+  ## ucJob >> bNovice).
   i32 result
-  i64 target_uid
-  wstr target_name
-  u8 _                       # meaning unknown
-  u8 _                       # meaning unknown
-  u8 _ = 1                   # meaning unknown
+  i64 target_uid             # nRequestCharUID
+  wstr target_name           # strRequestCharNick
+  u8 level                   # ucLevel
+  u8 job                     # ucJob
+  bool novice = true         # bNovice
 end
 
 message 5353 AcceptRequestTeachingReq
@@ -62,16 +63,16 @@ message 5345 TreasureEndNot
 end
 
 message 5346 CitadelRewardNot
-  ## Handler 0x007833F0.
+  ## Handler 0x007833F0 (assert: mapCitadelRewardItemUnit >> vecItem).
   i32 result
-  map<?> _
+  map<?> _                   # mapCitadelRewardItemUnit (0x0077BFB0 -> 0x0076F040), layout not recovered
   vector<Item> items
 end
 
 message 5362 GoldGoblinAppearNot
-  ## Handler 0x007A6D10.
-  i32 goblin_id = 1
-  vector<?> _
+  ## Handler 0x007A6D10 (assert: nWarflagSlotID >> vecMonID).
+  i32 goblin_id = 1          # nWarflagSlotID
+  vector<u32> monster_ids    # vecMonID (0x004D6E60, u32 elements)
 end
 
 message 5363 GoldGoblinAttackReq
@@ -89,13 +90,14 @@ message 5365 GoldGoblinDeadReq
 end
 
 message 5366 GoldGoblinDeadAck
-  ## Handler 0x00784CA0.
+  ## Handler 0x00784CA0 (assert: nDeadMobID >> iLayerID >> fX >> fY >> vecDropItem).
+  ## The earlier layout sent two i16 where the client reads two 4-byte floats.
   i32 result
-  i32 goblin_id = 1
-  i32 _                      # meaning unknown
-  i16 _                      # meaning unknown
-  i16 _                      # meaning unknown
-  vector<Item> items
+  i32 goblin_id = 1          # nDeadMobID
+  i32 layer_id               # iLayerID
+  f32 x                      # fX
+  f32 y                      # fY
+  vector<Item> items         # vecDropItem (0x004D5C70; element layout not re-checked)
 end
 
 message 5367 GoldGoblinDisappearNot

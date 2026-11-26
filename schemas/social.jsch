@@ -128,8 +128,8 @@ end
 message 2129 UseSpeakerItemAck ok_only
   ## On_eEGS_USE_SPEAKER_ITEM_ACK 0x0077F320.
   i32 result
-  i64 speaker_uid
-  vector<?> _                # updated item
+  i64 speaker_uid            # nItemUID
+  vector<Item> items         # vecItem (assert 0x0077F320: nItemUID >> vecItem; 0x004B0C00 -> 0x004B9210)
 end
 
 message 2121 ContractUpdateReq header?
@@ -184,19 +184,19 @@ message 6012 RequestCharInfoAck ok_only
 end
 
 message 6028 RequestItemInfoReq header?
-  ## Sender 0x007A4F20: 0x00B352B0 (4 bytes), 0x00B353D0, 0x00B353D0. Which i64 is
-  ## the item uid is not confirmed.
-  i32 _
-  i64 item_uid
-  i64 _
+  ## JUserClient::RequestItemInfoREQ 0x007A4F20 (assert: nItemInfoID << nTargetCharUID
+  ## << GetMyCharUID()).
+  u32 item_info_id           # nItemInfoID
+  i64 target_char_uid        # nTargetCharUID
+  i64 requester_uid          # the sender's own char UID
 end
 
-message 6029 RequestItemInfoAck
-  ## Handler 0x00766C20. Item record not recovered (16 zero bytes).
+message 6029 RequestItemInfoAck ok_only
+  ## Handler 0x00766C20 (assert: nCharUID >> jIteminfo): result, char UID, then a
+  ## full item record (0x00A53F50). The earlier 16 zero bytes were too short.
   i32 result
-  i64 item_uid
-  ok_only
-  raw[16] _
+  i64 char_uid               # nCharUID
+  Item item = Item('', 0)    # jIteminfo
 end
 
 message 2024 GetInviteListReq header?

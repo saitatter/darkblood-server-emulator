@@ -24,7 +24,7 @@ message 2066 StoreInfoAck
   u32 result
   h32 npc_id                 # stored at store window +0xCC (NPC id echoed, assumption)
   vector<StoreRecord> records
-  vector<?> _                # item structs (0x0077CEB0 -> 0x00A53F50)
+  vector<?> _                # vecRePur (assert: nNPCID >> vecGoods >> vecRePur; 0x005910D0, as 2591 vecReItem)
 end
 
 message 2370 CurrentCashAck
@@ -105,12 +105,12 @@ message 5069 RequestTradeReq header?
 end
 
 message 5070 RequestTradeAck
-  ## Handler 0x00770E50.
+  ## Handler 0x00770E50 (assert: nRequestCharUID >> strRequestCharNick >> ucLevel >> ucJob).
   i32 result
-  i64 target_uid
-  wstr target_name
-  u8 _
-  u8 _
+  i64 target_uid             # nRequestCharUID
+  wstr target_name           # strRequestCharNick
+  u8 level                   # ucLevel
+  u8 job                     # ucJob
 end
 
 message 5071 AcceptRequestTradeReq header?

@@ -165,6 +165,7 @@ class SelectCharacterAck(WireMessage):
     u32_vec_c: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_b: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9150 -> 0x005F6640
     citadel_play_count: i16 = 0  # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
+    insert_items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecInsertItem (assert 0x007AA4B0: jAck >> vecInsertItem; 0x004B9210)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         Const(EmptyArray),
@@ -238,7 +239,7 @@ class SelectCharacterAck(WireMessage):
         'buff_map_b',
         'citadel_play_count',
         Const(EmptyMap),
-        Const(EmptyVector),
+        'insert_items',
     )
 
 

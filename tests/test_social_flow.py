@@ -224,9 +224,10 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack6012[:4])[0], 0)
 
             # 42. Request item info (6028 -> 6029)
-            client.send_event(6028, RequestItemInfoReq(item_uid=9999).encode())
+            # An unknown item answers 63 (JERI_INVEN_01) with the result only.
+            client.send_event(6028, RequestItemInfoReq(item_info_id=9999, target_char_uid=9999).encode())
             _, ack6029 = await client.expect_event(6029)
-            self.assertEqual(struct.unpack_from('<iq', ack6029[:12]), (0, 9999))
+            self.assertEqual(ack6029, struct.pack('<i', 63))
 
             # 43. Guild money in (2179 -> 2180)
             client.send_event(2179, struct.pack('<q', 15000))

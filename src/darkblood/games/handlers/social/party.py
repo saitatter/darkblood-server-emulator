@@ -10,7 +10,9 @@ class PartyHandlers:
         from darkblood.games.network.messages import RequestTeachingAck, RequestTeachingReq
         req = RequestTeachingReq.decode(body)
         self.transport.record('request-teaching-req', body, target_uid=req.target_uid)
-        ack = RequestTeachingAck(result=0, target_uid=req.target_uid, target_name='Student')
+        target = self.find_char(req.target_uid) or {}
+        ack = RequestTeachingAck(result=0, target_uid=req.target_uid, target_name=target.get('name', ''),
+                                 level=min(int(target.get('level', 1)), 0xFF), job=int(target.get('char_class', 0)) & 0xFF)
         await self.reply(ack, correlation, note=f'request teaching ack (target={req.target_uid})')
 
 
@@ -62,21 +64,11 @@ class PartyHandlers:
         await self._invite_to_party(5050, correlation, 0, req.name)
 
 
-    @staticmethod
-    def _char_id(uid):
-        """Character id inside a client UID.
-
-        Peers are announced with the server key (31) in bits 54-58, so the
-        client sends e.g. 0x07C0000000000001 for character 1. Live 2026-11-21:
-        the unmasked lookup found no player, so no 5051 reached the invitee.
-        """
-        from darkblood.games.world import SQUARE_UID_MASK
-        return int(uid) & SQUARE_UID_MASK if uid and uid > 0 else int(uid or 0)
 
 
     async def _invite_to_party(self, ack_opcode, correlation, target_id, target_name):
         """Shared invite path for 2100, 5049 and 5092 (target by id or name)."""
-        target_id = self._char_id(target_id)
+        target_id = self.char_id_from_uid(target_id)
         from darkblood.games.network.messages.party import PartyInviteAck
         from darkblood.games.world import PartyManager
         char = self.current_char()
@@ -152,7 +144,7 @@ class PartyHandlers:
         level = char.get('level', 1) if char else 1
 
         pm = PartyManager.get()
-        host_id = self._char_id(req.host_uid)
+        host_id = self.char_id_from_uid(req.host_uid)
         party = pm.get_party(req.party_id) if req.party_id else pm.get_player_party(host_id)
         if host_id and party and party.leader_id != host_id:
             party = None
@@ -179,7 +171,7 @@ class PartyHandlers:
         char_class = char.get('char_class', 0) if char else 0
         level = char.get('level', 1) if char else 1
 
-        host_id = self._char_id(req.host_uid)
+        host_id = self.char_id_from_uid(req.host_uid)
         from darkblood.games.world import GameWorldManager
         host = GameWorldManager.get().get_player(host_id)
         host_room = getattr(getattr(getattr(host, 'session', None), 'dungeon', None), 'room', None)
@@ -328,7 +320,7 @@ class PartyHandlers:
         # eERT_TEACHING_DELETE_REQ (0x007A5CB0) -> 6031 eERT_TEACHING_DELETE_ACK (0x007A5D60).
         from darkblood.games.network.messages.party import TeachingDeleteAck, TeachingDeleteReq
         req = TeachingDeleteReq.decode(body)
-        target_id = self._char_id(req.target_uid)
+        target_id = self.char_id_from_uid(req.target_uid)
         _, target = self.store().get_by_id(target_id)
         nick = target.get('name', '') if target else ''
         await self.reply(TeachingDeleteAck(result=0, nick=nick, is_request=False), correlation,

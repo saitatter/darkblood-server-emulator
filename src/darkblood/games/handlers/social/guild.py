@@ -255,7 +255,7 @@ class GuildHandlers:
         self.transport.record('guild-person-expulsion-req', body, member_uids=req.member_uids)
         world = GameWorldManager.get()
         for uid in req.member_uids:
-            target = world.get_player(self._char_id(uid))
+            target = world.get_player(self.char_id_from_uid(uid))
             if target and target.session and getattr(target.session, 'transport', None):
                 target.char_data.pop('guild_uid', None)
                 target.char_data.pop('guild_name', None)

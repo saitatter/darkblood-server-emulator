@@ -23,7 +23,9 @@ class TradeHandlers:
         # eERC_REQUEST_TRADE_REQ -> 5070 eERC_REQUEST_TRADE_ACK (0x00770E50).
         req = RequestTradeReq.decode(body)
         self.transport.record('trade-request-req', body, target=req.target_uid)
-        ack = RequestTradeAck(result=0, target_uid=req.target_uid, target_name='Partner')
+        target = self.find_char(req.target_uid) or {}
+        ack = RequestTradeAck(result=0, target_uid=req.target_uid, target_name=target.get('name', ''),
+                              level=min(int(target.get('level', 1)), 0xFF), job=int(target.get('char_class', 0)) & 0xFF)
         await self.reply(ack, correlation, note=f'trade request ack (target={req.target_uid})')
 
 

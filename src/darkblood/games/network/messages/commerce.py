@@ -256,19 +256,14 @@ class RequestTradeReq(WireMessage):
 class RequestTradeAck(WireMessage):
     """Opcode 5070: eERC_REQUEST_TRADE_ACK (reply).
 
-    Handler 0x00770E50.
+    Handler 0x00770E50 (assert: nRequestCharUID >> strRequestCharNick >> ucLevel >> ucJob).
     """
     OPCODE: ClassVar[int] = 5070
     result: i32 = 0
-    target_uid: i64 = 0
-    target_name: wstr = ''
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'target_uid',
-        'target_name',
-        Const(u8, 0),
-        Const(u8, 0),
-    )
+    target_uid: i64 = 0  # nRequestCharUID
+    target_name: wstr = ''  # strRequestCharNick
+    level: u8 = 0  # ucLevel
+    job: u8 = 0  # ucJob
 
 
 @dataclass

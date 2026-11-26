@@ -709,9 +709,7 @@ class ArenaSquareChangeRelayAddressNot(WireMessage):
     Handler 0x0075AC00 (assert: *m_spArenaSquareP2PAddr, struct 0x00A48910).
     """
     OPCODE: ClassVar[int] = 5135
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(Raw[24], bytes(24)),
-    )
+    p2p_address: Raw[6] = bytes(6)  # *m_spArenaSquareP2PAddr: IPv4 + u16 port (0x00A48910 reads 6 bytes; was raw[24])
 
 
 @dataclass

@@ -4,7 +4,7 @@
 > as zero or a default because its meaning is not recovered. Fix it by recovering the client
 > reader/writer, naming the field in `schemas/<domain>.jsch`, and regenerating.
 
-## arena (23 of 206 fields)
+## arena (22 of 206 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -23,7 +23,6 @@
 | `2551 LeagueSeasonArenaGetRankAck` | `raw[12]` | arena.jsch:270 | footer |
 | `2537 LeagueSeasonCharAwardNot` | `map<?>` | arena.jsch:286 | awards (0x007682A0) |
 | `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:291 | guild awards (0x007682A0) |
-| `5135 ArenaSquareChangeRelayAddressNot` | `raw[24]` | arena.jsch:326 | P2P address struct |
 | `2472 ArenaRandomMatchingUserCntNot` | `vector<?>` | arena.jsch:331 | m_vecSeasonRankTop (0x00487F40) |
 | `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:423 | mapLearnSkill (0x004B8B80) |
 | `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:424 | mapSubCharInfo (0x004BA530) |
@@ -32,7 +31,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:474 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:486 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (11 of 153 fields)
+## commerce (9 of 153 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -41,9 +40,7 @@
 | `StoreRecord` | `raw[8]` | commerce.jsch:16 | +0x10 unknown |
 | `StoreRecord` | `i16` | commerce.jsch:18 | +0x1A: -1 = max buy count is the item's stack size (dict +0x19E) |
 | `StoreRecord` | `raw[4]` | commerce.jsch:19 | +0x1C unknown |
-| `2066 StoreInfoAck` | `vector<?>` | commerce.jsch:27 | item structs (0x0077CEB0 -> 0x00A53F50) |
-| `5070 RequestTradeAck` | `u8` | commerce.jsch:112 |  |
-| `5070 RequestTradeAck` | `u8` | commerce.jsch:113 |  |
+| `2066 StoreInfoAck` | `vector<?>` | commerce.jsch:27 | vecRePur (assert: nNPCID >> vecGoods >> vecRePur; 0x005910D0, as 2591 vecReItem) |
 | `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:153 | meaning unknown |
 | `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:240 | 0x005F6540 |
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
@@ -78,18 +75,11 @@
 | `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:773 | 0x00A51060 -> 0x00A50530 -> 0x00A4B9E0: i64 key, value 0x00A49E90 = |
 | `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:775 | 0x00A3EA40 -> 0x00A3E600: vector<wstr>, meaning not recovered |
 
-## events (8 of 36 fields)
+## events (1 of 36 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `5352 RequestTeachingAck` | `u8` | events.jsch:32 | meaning unknown |
-| `5352 RequestTeachingAck` | `u8` | events.jsch:33 | meaning unknown |
-| `5352 RequestTeachingAck` | `u8` | events.jsch:34 | meaning unknown |
-| `5346 CitadelRewardNot` | `map<?>` | events.jsch:67 |  |
-| `5362 GoldGoblinAppearNot` | `vector<?>` | events.jsch:74 |  |
-| `5366 GoldGoblinDeadAck` | `i32` | events.jsch:95 | meaning unknown |
-| `5366 GoldGoblinDeadAck` | `i16` | events.jsch:96 | meaning unknown |
-| `5366 GoldGoblinDeadAck` | `i16` | events.jsch:97 | meaning unknown |
+| `5346 CitadelRewardNot` | `map<?>` | events.jsch:68 | mapCitadelRewardItemUnit (0x0077BFB0 -> 0x0076F040), layout not recovered |
 
 ## gm (4 of 94 fields)
 
@@ -116,7 +106,7 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (45 of 151 fields)
+## lobby (44 of 151 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -161,7 +151,6 @@
 | `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:142 |  |
 | `2007 SelectCharacterAck` | `u16` | lobby.jsch:143 | +0x4AB -> AppPage(0x93).0x005DE1B0 |
 | `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:147 | +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640 |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:148 | 0x004B9210 |
 | `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:172 | vecTargetState (0x00773870), element layout unknown |
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:180 | RMI id |
 | `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:201 | vecDuel |
@@ -198,7 +187,7 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (12 of 129 fields)
+## social (8 of 129 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -209,11 +198,7 @@
 | `5041 ChatAck` | `i64` | social.jsch:116 |  |
 | `5041 ChatAck` | `i64` | social.jsch:117 |  |
 | `5041 ChatAck` | `i32` | social.jsch:118 |  |
-| `2129 UseSpeakerItemAck` | `vector<?>` | social.jsch:132 | updated item |
 | `LeagueArenaCharInfo` | `raw[16]` | social.jsch:169 | +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810) |
-| `6028 RequestItemInfoReq` | `i32` | social.jsch:189 |  |
-| `6028 RequestItemInfoReq` | `i64` | social.jsch:191 |  |
-| `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:199 |  |
 
 ## stalls (11 of 92 fields)
 

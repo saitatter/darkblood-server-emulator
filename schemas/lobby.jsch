@@ -145,7 +145,7 @@ message 2007 SelectCharacterAck
   map<u32,set<u32>> buff_map_b  # 0x005F9150 -> 0x005F6640
   i16 citadel_play_count     # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
   map<?> _                   # +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640
-  vector<?> _                # 0x004B9210
+  vector<Item> insert_items  # vecInsertItem (assert 0x007AA4B0: jAck >> vecInsertItem; 0x004B9210)
 end
 
 message 5029 JoinSquareAck

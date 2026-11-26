@@ -349,7 +349,7 @@ class FriendsHandlers:
         from darkblood.games.network.messages import RequestCharInfoReq
         req = RequestCharInfoReq.decode(body)
         self.transport.record('request-char-info-req', body, char_uid=req.char_uid)
-        target_id = self._char_id(req.char_uid)
+        target_id = self.char_id_from_uid(req.char_uid)
         _, target = self.store().get_by_id(target_id)
         ack = self._build_char_info_ack(target, is_other=req.is_other).encode()
         await self.transport.send_event(event(6012, ack, correlation), note=f'request char info ack (char={req.char_uid})')
@@ -359,10 +359,21 @@ class FriendsHandlers:
     async def handle_request_item_info(self, correlation, body):
         # eERT_REQUEST_ITEM_INFO_REQ -> 6029 eERT_REQUEST_ITEM_INFO_ACK (0x00766C20).
         from darkblood.games.network.messages import RequestItemInfoAck, RequestItemInfoReq
+        from darkblood.games.entities.items import Item
+        from darkblood.games.network import results
         req = RequestItemInfoReq.decode(body)
-        self.transport.record('request-item-info-req', body, item_uid=req.item_uid)
-        ack = RequestItemInfoAck(result=0, item_uid=req.item_uid)
-        await self.reply(ack, correlation, note=f'request item info ack (item={req.item_uid})')
+        target_id = self.char_id_from_uid(req.target_char_uid)
+        target = self.find_char(req.target_char_uid)
+        # nItemInfoID is matched against the target's item UIDs (assumption: low 32 bits).
+        record = next((i for i in (target or {}).get('items', [])
+                       if int(i.get('uid', 0)) & 0xFFFFFFFF == req.item_info_id), None)
+        if record is None:
+            ack = RequestItemInfoAck(result=results.INVEN_ITEM_NOT_FOUND)
+        else:
+            ack = RequestItemInfoAck(result=0, char_uid=req.target_char_uid,
+                                     item=Item(owner=target.get('id', -1), **record))
+        await self.reply(ack, correlation,
+                         note=f'request item info ack (char={target_id}, item={req.item_info_id}, result={ack.result})')
 
 
     @packet_handler(2565)
@@ -436,7 +447,7 @@ class FriendsHandlers:
         # eERC_BANISH_USER_REQ (0x005975D0) -> 5008 eERC_BANISH_USER_ACK (0x005999A0).
         from darkblood.games.network.messages.social import BanishUserAck, BanishUserReq
         req = BanishUserReq.decode(body)
-        target_id = self._char_id(req.target_uid)
+        target_id = self.char_id_from_uid(req.target_uid)
         self.transport.record('banish-user-req', body, target_uid=target_id)
         room = getattr(getattr(self.session, 'dungeon', None), 'room', None)
         if room is None or room.host is not self.session:
