@@ -47,6 +47,9 @@ class LauncherChangelogTest(unittest.TestCase):
                 'commit': {'message': 'chore: automated update', 'author': {'name': 'github-actions[bot]', 'date': '2026-11-24T10:06:00Z'}},
                 'author': {},
             },
+            {'sha': '88888880000000', 'commit': {'message': ''}},
+            {'sha': '99999990000000', 'commit': {'message': '  \n\t'}},
+            {'sha': 'aaaaaaa0000000', 'commit': {'message': 'fix: keep later entries\n\nDetails'}},
         ]
 
         parsed = changelog._parse_github_commit_items(items)
@@ -57,6 +60,7 @@ class LauncherChangelogTest(unittest.TestCase):
             'refactor(dungeon): split module',
             'docs: update handoff',
             'test(pets): add coverage',
+            'fix: keep later entries',
         ])
 
     def test_fetch_recent_commits_git_includes_all_types(self):

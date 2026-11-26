@@ -13,5 +13,8 @@ when moving them.
 | `reverse/` | Binary analysis: `decomp.ps1` + `ghidra/` scripts, `gen_symbols.py`, `opcode_xrefs.py`, `dump_stubs.py` / `resolve_stubs.py`, `image_to_pe.py`, `debug_client.c` (`build_debugger.bat`). |
 | `model_viewer/` | Blender-like 3D viewer (`py -3.13 tools/model_viewer`; `pip install -r tools/model_viewer/requirements.txt`). Modules: `app` (entry), `window`, `panels`, `viewport`, `style`, `renderer` + `shaders` + `camera` (moderngl), `scene` (pose, skinning), `textures` (TGA/DDS variants Pillow cannot read). |
 
+When reading the release changelog from GitHub, the launcher skips commits
+with empty messages and continues to the remaining entries.
+
 Cross-folder imports add the needed folder to `sys.path` explicitly (for example
 `launcher.py` imports `automation/gamectl.py`); `tests/common.py` adds every folder.
