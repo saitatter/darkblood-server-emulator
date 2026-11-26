@@ -230,6 +230,11 @@ class PetsFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(char['pets'][0]['name'], 'Kittie')
 
+            # 8b. Relog (2006 -> 2007 SelectCharacterAck) persists pets map (0x00A1E8C0 -> 0x00A52CF0)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007_pet = await client.expect_event(2007)
+            self.assertIn('Kittie'.encode('utf-16le'), ack2007_pet)
+
             # 9. Pet Lifecycle: Evolution (2484 -> 2485)
             client.send_event(2484, PetEvolutionReq().encode())
             _, ack2485 = await client.expect_event(2485)

@@ -146,6 +146,9 @@ def build_select_char_ack(char, account_chars=None):
         custom_keys=str(char.get('custom_keys', '')) if isinstance(char, dict) else '',
         waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
         ridings=_build_ridings_map(char) if isinstance(char, dict) else {},
+        pets=_build_pets_map(char) if isinstance(char, dict) else {},
+        summoned_pet_uid=int(char.get('summoned_pet') or 0) if isinstance(char, dict) else 0,
+        pet_summoned=bool(char.get('summoned_pet')) if isinstance(char, dict) else False,
         pet_depot_slots=_build_pet_depot_slots(char) if isinstance(char, dict) else _build_pet_depot_slots({}),
         citadel_play_count=int(char.get('citadel_play_count', 3)) if isinstance(char, dict) else 3,
     ).encode()
@@ -193,6 +196,29 @@ def _build_pet_depot_slots(char: dict) -> list:
         )
         for idx, rem in enumerate(pet_extend)
     ]
+
+
+def _build_pets_map(char: dict) -> dict:
+    """Build {pet_uid: PetInfo} for 2007 SelectCharacterAck (0x00A1E8C0 -> 0x00A52CF0)."""
+    from darkblood.core.hashing import jhash
+    from darkblood.games.network.messages.pets import PetInfo
+    out = {}
+    for p in char.get('pets') or []:
+        if not isinstance(p, dict) or 'uid' not in p:
+            continue
+        uid = int(p['uid'])
+        code = str(p.get('code') or 'PetCall001')
+        out[uid] = PetInfo(
+            pet_uid=uid,
+            pet_id=jhash(code),
+            level=int(p.get('level', 1)),
+            exp=int(p.get('exp', 0)),
+            satiety=int(p.get('satiety', 100)),
+            name=str(p.get('name') or 'Pet'),
+            is_cash_food=bool(p.get('is_cash_food', False)),
+            slot=int(p.get('slot', -1)),
+        )
+    return out
 
 
 def _build_ridings_map(char: dict) -> dict:

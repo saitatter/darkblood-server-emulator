@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Persist pets across relog (`2007 SelectCharacterAck`) & fix `5053 AgainSelectDungeonAck` active quests (2026-11-26)**:
+  - Disassembly of `0x00A1E8C0 -> 0x00A54E70 -> 0x0064EA00 -> 0x00643940 -> 0x00A52CF0` mapped `map<i64, PetInfo> pets`, `i64 summoned_pet_uid`, and `bool pet_summoned` in `schemas/lobby.jsch` and populated them from `char['pets']` / `char['summoned_pet']` in `src/darkblood/games/handlers/frontend.py`.
+  - Fixed `handle_again_select_dungeon` (`5053` in `src/darkblood/games/handlers/dungeon/rooms.py`) to read `char.get('quests_active', {})` instead of the nonexistent `char.get('quests', [])`.
 - **Goblin Trade Broker (`2266..2271`) & Citadel death hang (`5018 FinishGameAck`) (2026-11-26)**:
   - Fixed `2266 BrokerRegistItemReq` (live capture: 16 bytes `i64 item_uid + i64 price`, no count/period), `2267 BrokerRegistItemAck` (`0x005B06A0 -> 0x00A40460`: `cur_ar`, `vector<Item>`, `vector<BrokerProduct>`), `2268 BrokerBuyItemReq` (`0x005A8656`: single `i64 item_uid`), `2269 BrokerBuyItemAck` (`0x005B0980 -> 0x00A1E7A0`: 40-byte struct with `gold` + `item_uid`), and `2271 BrokerCancelAck` (`0x005AC9D0`: `result + item_uid`), plus lookup by `item_uid` in `BrokerManager` and unsolicited `2037 DragItemAck` inventory updates.
   - Disassembly of `5018 FinishGameAck` (`0x007ADDE0..0x007ADE10`) showed Citadel maps (`MapType == 2`) always read the rewards/rank tail even when `is_clear == False`. Removed `if is_clear` gating in `schemas/dungeon.jsch` so dying in Citadel (`Citadel_A13`) cleanly finishes instead of hanging.

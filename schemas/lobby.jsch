@@ -11,6 +11,7 @@ extern QuickSlot from darkblood.games.network.messages.skills
 extern WaypointData from darkblood.games.network.messages.quests
 extern QuestSpecialInfo from darkblood.games.network.messages.quests
 extern RidingInfo from darkblood.games.network.messages.pets
+extern PetInfo from darkblood.games.network.messages.pets
 import layer_net_id from darkblood.games.entities.character
 
 struct GameServer
@@ -125,10 +126,10 @@ message 2007 SelectCharacterAck
   u64 _
   map<u32,set<u32>> buff_map_a  # 0x005F9190 -> 0x005F6640
   map<h32,RidingInfo> ridings   # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
-  map<?> _                   # 0x00A1E8C0: map, u64, bool, u64
-  u64 _
-  bool _
-  u64 _
+  map<i64,PetInfo> pets      # 0x00A1E8C0 -> 0x00A54E70 -> 0x0064EA00 -> 0x00643940 -> 0x00A52CF0
+  i64 summoned_pet_uid       # +0x0C active summoned pet UID (0 if none)
+  bool pet_summoned          # +0x14 whether a pet is currently summoned
+  u64 _                      # +0x15 unknown
   vector<PetDepotSlotInfo> pet_depot_slots  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C, 0x1B bytes each)
   u32 _                      # 0x00A1EEA0: u32, 3 x u64
   u64 _

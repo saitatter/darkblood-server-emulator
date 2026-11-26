@@ -466,7 +466,13 @@ class DungeonRoomHandlers:
                     max_diff=int(info.get('max_diff', 0)) & 0xFF,
                     cleared=int(info.get('cleared', 1)) & 0xFF,
                 )
-        active_quests = sorted({int(q['id']) for q in char.get('quests', []) if 'id' in q})
+        active_quests = []
+        for qid in char.get('quests_active', {}):
+            try:
+                active_quests.append(int(qid) & 0xFFFFFFFF)
+            except ValueError:
+                continue
+        active_quests = sorted(set(active_quests))
         await self.reply(
             AgainSelectDungeonAck(result=0, history=history, min_citadel_history=[],
                                   gate_id=gate_id, active_quests=active_quests),
