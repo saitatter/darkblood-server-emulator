@@ -27,21 +27,22 @@ message 2340 PersonalShopOpenReq header?
 end
 
 message 2341 PersonalShopOpenAck ok_only
-  ## Reader 0x00601AA0 -> 0x00A55D70: result, jPersonalShop, title.
+  ## Reader 0x00601AA0 -> 0x00A55D70: result, jPersonalShop, title. jPersonalShop:
+  ## i64 owner, 6-byte address (0x00A48910, the 5002/5004 relay reader), item vector
+  ## (0x00A554A0 -> 0x00A54550: Item + i64 price), vector<u32> (0x004D9610), then
+  ## +0x2E 8 bytes, +0x36 u16, +0x38 u32, +0x3C bool, +0x3D 4 bytes (0x00B35560).
+  ## The earlier layout sent a date in place of the address and a bool in place of
+  ## the last 4 bytes, so the client read 3 bytes of the title as shop data.
   i32 result
-  i64 owner_uid              # jPersonalShop
-  u16 _ = 2026               # fixed date header (earlier guess)
-  u8 _ = 11
-  u8 _ = 17
-  u8 _ = 12
-  u8 _
-  vector<StallItem> items
-  vector<?> _                # sold items
-  i64 _
-  i16 _
-  i32 expire_time = 86400    # remaining seconds
-  bool _ = true              # active
-  bool _ = true              # open
+  i64 owner_uid              # jPersonalShop +0x00
+  raw[6] owner_address       # +0x08 IPv4 + u16 port (0x00A48910); zero = none
+  vector<StallItem> items    # +0x0E
+  vector<?> _                # +0x1E vector<u32> (0x004D9610), not recovered
+  u64 _                      # +0x2E (0x00B356F0)
+  u16 _                      # +0x36
+  i32 expire_time = 86400    # +0x38 remaining seconds (earlier guess)
+  bool _ = true              # +0x3C
+  u32 _                      # +0x3D 4 bytes (0x00B35560)
   wstr title
 end
 
@@ -64,19 +65,15 @@ message 5243 PersonalShopBuyAck ok_only
   ## "vecItemOut >> jPersonalShop >> nCurrentAr".
   i32 result
   vector<Item> items         # vecItemOut: granted or updated for the buyer
-  i64 seller_uid             # jPersonalShop
-  u16 _ = 2026
-  u8 _ = 11
-  u8 _ = 17
-  u8 _ = 12
-  u8 _
+  i64 seller_uid             # jPersonalShop (same layout as 2341)
+  raw[6] seller_address      # +0x08 IPv4 + u16 port (0x00A48910)
   vector<StallItem> stall_items
-  vector<?> _
-  i64 _
-  i16 _
+  vector<?> _                # vector<u32> (0x004D9610)
+  u64 _
+  u16 _
   i32 expire_time = 86400
   bool _ = true
-  bool _ = true
+  u32 _                      # 4 bytes (0x00B35560)
   i64 gold                   # nCurrentAr
 end
 

@@ -59,7 +59,7 @@ class PetsWireMessagesTest(unittest.TestCase):
         self.assertEqual(decoded_del.slot, 2)
 
         # 2351: Delete ack
-        ack_del = TamingMonsterDeleteAck(result=0, deleted_slot=2).encode()
+        ack_del = TamingMonsterDeleteAck(result=0, monster_id=2).encode()
         self.assertEqual(struct.unpack_from('<I', ack_del, 0)[0], 0)
         self.assertEqual(struct.unpack_from('<i', ack_del, -4)[0], 2)
 
@@ -124,12 +124,12 @@ class PetsWireMessagesTest(unittest.TestCase):
         # 2480 / 2481: Eat
         req_eat = PetEatNormalReq(item_uid=123)
         self.assertEqual(PetEatNormalReq.decode(req_eat.encode()).item_uid, 123)
-        ack_eat = PetEatNormalAck(result=0, satiety=80, status=1).encode()
+        ack_eat = PetEatNormalAck(result=0, satiety=80, cash_food=True).encode()
         self.assertEqual(struct.unpack_from('<I', ack_eat, 0)[0], 0)
         self.assertEqual(ack_eat[4], 0x10)
 
         # 2484 / 2485: Evolution
-        ack_evo = PetEvolutionAck(result=0, old_pet_uid=1, new_pet_id=8001, new_pet_uid=1).encode()
+        ack_evo = PetEvolutionAck(result=0, old_pet_uid=1, new_pet_id=8001, cur_ar=1).encode()
         self.assertEqual(struct.unpack_from('<IqI', ack_evo, 0), (0, 1, 8001))
 
         # 2510 / 2511: Nick change

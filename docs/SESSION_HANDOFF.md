@@ -4,6 +4,11 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Field recovery across domains, batch 1 (2026-11-26, static + headless)**:
+  - `2007`: consumers traced in the handler assembly (esp tracking corrected against known anchors). Named `pcbang_coin_remain` (+0x217, same setter as `2449`), `personal_store_expire_sec` (+0x40C, `JAppPagePersonalStore::SetExpire` `0x00603130`), `life_skill_init_remain_sec` (+0x43A, `JAppPageInitLifeSkill` `0x005A3FE0`), and the `jAchieveTotalInfo` block (+0x3EB, same reader as `2328`), which login now fills via `achievements.total_info`. Other consumers are noted per field. `build_select_char_ack` was refactored to normalise the character once.
+  - Pets (asserts): `2481` is `vecItem >> satiety >> bCashFood`; `2485` ends with `nCurAr` (the server sent a pet UID there; now the player's AR); `2511` starts with `vecItemOut`; `2351` ends with `nMonsterID`; tame lists are 8-byte entries and are now sent; pet skills are `vector<u16>`.
+  - Stalls: `jPersonalShop` (`0x00A55D70`) had a date where the client reads a 6-byte address and a bool where it reads 4 bytes, so the `2341` title was misread; fixed. `5051` names the inviter flags and stress bonus (RoomMemberInfo layout).
+  - New live checks W1-W5 in `docs/LIVE_CHECKS.md`.
 - **Remaining dungeon fields and live-check list (2026-11-26, static + headless)**:
   - New [`docs/LIVE_CHECKS.md`](LIVE_CHECKS.md): the single list of headless-verified behaviour still to confirm in the client (dungeon rooms/party runs, rewards, other domains, basic checklist). Update it after each live session.
   - `5018`: `mapGuildPersonCnt` is `map<u32,i64>` (`0x005EAAC0` chain, as `2329`), `vecBonusMonster` is `vector<u32>` (`0x004D6E60`). `5091` block is the `AddedItemNotice` struct (`+4` quality). `5004`/`5035` `bIsAllCharSameRate` and `5036` result named. `5359` named from assert `0x00CD9BB8`: `explore_points` `map<i64,u32>`, `explore_rewards` `map<i64,map<i64,AddedItemNotice>>`, `send_stress` `map<i64,u16>`, `total_max_stress`. Explore `mapReward` (2654/2655/2663) is `map<i64,AddedItemNotice>`.

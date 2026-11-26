@@ -14,6 +14,7 @@ from darkblood.games.handlers.skills import (
     learned_skill_map,
     proficiency_values_for_char,
 )
+from darkblood.games import achievements
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
     CheatSystemDeleteCharacterAck,
@@ -113,51 +114,49 @@ def _build_depot_info(char_dict: dict) -> DepotInfo:
 
 
 def build_select_char_ack(char, account_chars=None):
-    """Serialize eEGS_SELECT_CHAR_ACK (2007) using SelectCharacterAck model."""
+    """Serialize eEGS_SELECT_CHAR_ACK (2007) using SelectCharacterAck model.
+
+    `char` is a stored character dict or a Character; a Character carries no
+    inventory, quest or progress data, so those parts are sent empty.
+    """
     c = char if isinstance(char, Character) else Character.from_dict(char)
-    active = []
-    if isinstance(char, dict):
-        active = [ActiveQuest.from_store(q, r) for q, r in char.get('quests_active', {}).items()]
-    bags, items, depots = [], [], {}
-    if isinstance(char, dict):
-        bags = [Bag(**b) for b in char.get('bags', [])]
-        items = [Item(owner=char.get('id', -1), **i) for i in char.get('items', [])
+    data = char if isinstance(char, dict) else {}
+    items, depots = [], {}
+    if data:
+        items = [Item(owner=data.get('id', -1), **i) for i in data.get('items', [])
                  if i.get('container') != DEPOT_CONTAINER]
-        depot_sources = account_chars if account_chars is not None else [char]
-        for entry in depot_sources:
+        for entry in (account_chars if account_chars is not None else [data]):
             if isinstance(entry, dict) and 'id' in entry:
                 depots[int(entry['id'])] = _build_depot_info(entry)
+    divisions, completed = achievements.total_info(data)
     return SelectCharacterAck(
         result=0,
         proficiencies=proficiency_values_for_char(char),
         character=c,
         depots=depots,
-        active_quests=sorted(active, key=lambda q: q.uid),
-        quest_special_info=_build_quest_special_info(char),
-        bags=bags,
+        active_quests=sorted((ActiveQuest.from_store(q, r) for q, r in data.get('quests_active', {}).items()),
+                             key=lambda q: q.uid),
+        quest_special_info=_build_quest_special_info(data),
+        bags=[Bag(**b) for b in data.get('bags', [])],
         items=items,
-        skills=learned_skill_map(char.get('skills', {}), char.get('skill_speeches', {}),
-                                 char.get('locked_skills', []),
-                                 char.get('skill_show_cooltime', [])) if isinstance(char, dict) else {},
+        skills=learned_skill_map(data.get('skills', {}), data.get('skill_speeches', {}),
+                                 data.get('locked_skills', []), data.get('skill_show_cooltime', [])),
         quickslots=[QuickSlot(*q) for q in sorted(
             (q['type'], q['slot'], q['ref_id'], q['ref_uid'])
-            for q in (char.get('quickslots', {}) if isinstance(char, dict) else {}).values()
-            if 'slot' in q)],
-        daily_dun_enter_counts={
-            str(k): int(v) for k, v in (char.get('daily_dun_enter_counts', {}) if isinstance(char, dict) else {}).items()
-        },
-        daily_dun_clear_counts={
-            str(k): int(v) for k, v in (char.get('daily_dun_clear_counts', {}) if isinstance(char, dict) else {}).items()
-        },
-        custom_keys=str(char.get('custom_keys', '')) if isinstance(char, dict) else '',
-        waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
+            for q in data.get('quickslots', {}).values() if 'slot' in q)],
+        daily_dun_enter_counts={str(k): int(v) for k, v in data.get('daily_dun_enter_counts', {}).items()},
+        daily_dun_clear_counts={str(k): int(v) for k, v in data.get('daily_dun_clear_counts', {}).items()},
+        custom_keys=str(data.get('custom_keys', '')),
+        achieve_divisions=divisions,
+        achieve_completed=completed,
+        waypoints=_build_waypoints_map(data),
         learned_proficiencies=learned_proficiencies_for_char(char),
-        ridings=_build_ridings_map(char) if isinstance(char, dict) else {},
-        pets=_build_pets_map(char) if isinstance(char, dict) else {},
-        summoned_pet_uid=int(char.get('summoned_pet') or 0) if isinstance(char, dict) else 0,
-        pet_summoned=bool(char.get('summoned_pet')) if isinstance(char, dict) else False,
-        pet_depot_slots=_build_pet_depot_slots(char) if isinstance(char, dict) else _build_pet_depot_slots({}),
-        citadel_play_count=int(char.get('citadel_play_count', 3)) if isinstance(char, dict) else 3,
+        ridings=_build_ridings_map(data),
+        pets=_build_pets_map(data),
+        summoned_pet_uid=int(data.get('summoned_pet') or 0),
+        pet_summoned=bool(data.get('summoned_pet')),
+        pet_depot_slots=_build_pet_depot_slots(data),
+        citadel_play_count=int(data.get('citadel_play_count', 3)),
     ).encode()
 
 

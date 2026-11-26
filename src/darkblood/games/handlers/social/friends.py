@@ -197,13 +197,12 @@ class FriendsHandlers:
     async def handle_achieve_get_list(self, correlation, body):
         # eEGS_ACHIEVE_GET_LIST_REQ -> 2328 eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveCompletion, AchieveEntry, AchieveGetListAck
+        from darkblood.games.network.messages import AchieveCompletion, AchieveGetListAck
         char = self.current_char() or {}
-        entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char)]
-        ack = AchieveGetListAck(divisions=achievements.division_totals(char),
-                                completed={e.achieve_hash: e for e in entries},
-                                completions=[AchieveCompletion(e.achieve_hash) for e in entries])
-        await self.reply(ack, correlation, note=f'achieve get list ack ({len(entries)} completed)')
+        divisions, completed = achievements.total_info(char)
+        ack = AchieveGetListAck(divisions=divisions, completed=completed,
+                                completions=[AchieveCompletion(h) for h in completed])
+        await self.reply(ack, correlation, note=f'achieve get list ack ({len(completed)} completed)')
 
 
     @packet_handler(2444)

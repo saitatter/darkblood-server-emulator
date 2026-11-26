@@ -107,10 +107,12 @@ class PartyInviteNot(WireMessage):
     OPCODE: ClassVar[int] = 5051
     inviter_square_uid: i64 = 1  # host summary (0x00A49600, RoomMemberInfo layout)
     inviter_uid: i64 = 0
+    inviter_flags: u32 = 0  # +0x10 RoomMemberInfo flags: bit 0x2 adds property 0x69 to the max stress
     inviter_name: wstr = ''
     inviter_class: u8 = 0
     inviter_stress: i16 = 0  # +0x31: inviter's current stress (0x00756F40 gauge; -1 showed "-1/330")
     inviter_level: u8 = 0
+    inviter_stress_bonus: u8 = 0  # +0x8E RoomMemberInfo bool: adds a further max-stress bonus (0x00756F40)
     room_uid: i64 = 0  # +0x90 nInviteRoomUID
     room_name: wstr = ''  # +0x98
     gate_id: i32 = -1  # +0xB4
@@ -120,7 +122,7 @@ class PartyInviteNot(WireMessage):
         Const(bool, False),
         'inviter_square_uid',
         'inviter_uid',
-        Const(u32, 0),
+        'inviter_flags',
         'inviter_name',
         'inviter_class',
         'inviter_stress',
@@ -128,7 +130,7 @@ class PartyInviteNot(WireMessage):
         Const(i64, -1),
         Const(i64, -1),
         Const(Raw[74], bytes(74)),
-        Const(u8, 0),
+        'inviter_stress_bonus',
         'room_uid',
         'room_name',
         'gate_id',

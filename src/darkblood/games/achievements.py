@@ -57,3 +57,10 @@ def completed_entries(char, ids=None):
     """(hash, completed_at) for the character's completed achievements."""
     done = char.get('achievements', {})
     return [(jhash(achieve_id), done[achieve_id]) for achieve_id in (ids if ids is not None else done)]
+
+
+def total_info(char):
+    """(divisions, completed) of jAchieveTotalInfo, shared by 2007 and 2328 (reader 0x00A3E760)."""
+    from darkblood.games.network.messages import AchieveEntry
+    entries = [AchieveEntry(h, t) for h, t in completed_entries(char)]
+    return division_totals(char), {e.achieve_hash: e for e in entries}

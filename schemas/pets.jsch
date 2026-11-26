@@ -15,10 +15,18 @@ message 2348 TameingMonsterInsertReq header?
   i32 slot
 end
 
+struct TamedMonster
+  ## 8-byte element of vecTameingList (0x0076AF20 -> 0x0083FDB0 -> 0x00A48AD0 raw 8),
+  ## the same struct the 2348 sender writes with 0x00A48AB0. The split into two i32
+  ## follows the request's earlier guess and is not confirmed.
+  i32 monster_id
+  i32 slot
+end
+
 message 2349 TamingMonsterInsertAck
-  ## Handler 0x00771A00.
+  ## Handler 0x00771A00 (assert: vecTameingList).
   u32 result
-  vector<?> _                # tamed monsters, element layout unknown
+  vector<TamedMonster> tamed  # vecTameingList: the character's full list
 end
 
 message 2350 TameingMonsterDeleteReq header?
@@ -28,10 +36,10 @@ message 2350 TameingMonsterDeleteReq header?
 end
 
 message 2351 TamingMonsterDeleteAck
-  ## Handler 0x00771BB0.
+  ## Handler 0x00771BB0 (assert: vecTameingList >> nMonsterID).
   u32 result
-  vector<?> _                # tamed monsters, element layout unknown
-  i32 deleted_slot
+  vector<TamedMonster> tamed  # vecTameingList: the list after the deletion
+  u32 monster_id             # nMonsterID
 end
 
 struct RidingInfo
@@ -72,7 +80,7 @@ struct PetInfo
   i32 exp                    # +0x0D
   i16 satiety = 100          # +0x11
   wstr name                  # +0x15
-  vector<?> _                # +0x31 pet skills (0x0076E600; empty = 10 80)
+  vector<u16> skills         # +0x31 pet skill indices (0x0076E600 -> 0x0076D610, u16 elements)
   bool is_cash_food          # +0x41
   i16 slot = -1              # +0x13 (pet depot slot; -1 = active nurture slot)
 end
@@ -163,11 +171,11 @@ message 2480 PetEatNormalReq header?
 end
 
 message 2481 PetEatNormalAck ok_only
-  ## Handler 0x00781260.
+  ## Handler 0x00781260 (assert 0x00CF6938: vecItem >> sNurturePetSatiety >> bCashFood).
   u32 result
-  vector<?> _                # pets, element layout unknown
-  u16 satiety = 100
-  u8 status = 1
+  vector<Item> items         # vecItem (0x004B9210): updated food item stacks
+  u16 satiety = 100          # sNurturePetSatiety
+  bool cash_food             # bCashFood
 end
 
 message 2484 PetEvolutionReq bare
@@ -175,12 +183,12 @@ message 2484 PetEvolutionReq bare
 end
 
 message 2485 PetEvolutionAck ok_only
-  ## Handler 0x0079FEF0.
+  ## Handler 0x0079FEF0 (assert 0x00CFDCA8: nPetUID >> nNewPetID >> vecSkill >> nCurAr).
   u32 result
-  i64 old_pet_uid
-  u32 new_pet_id
-  vector<?> _
-  i64 new_pet_uid
+  i64 old_pet_uid            # nPetUID
+  u32 new_pet_id             # nNewPetID
+  vector<u16> skills         # vecSkill (0x0076D610, u16 skill indices)
+  i64 cur_ar                 # nCurAr: the player's AR after the evolution cost (was sent as a pet UID)
 end
 
 message 2510 PetNickChangeReq header?
@@ -190,9 +198,10 @@ message 2510 PetNickChangeReq header?
 end
 
 message 2511 PetNickChangeAck ok_only
-  ## Handler 0x00781CD0 (client name eEGS_PET_NICK_CHANGE_AKC).
+  ## Handler 0x00781CD0 (client name eEGS_PET_NICK_CHANGE_AKC; assert 0x00CF6B70:
+  ## vecItemOut >> nPetUID >> strNewNick).
   u32 result
-  vector<?> _
+  vector<Item> items_out     # vecItemOut (0x004B9210): consumed rename item updates
   i64 pet_uid
   wstr new_name
 end
@@ -282,7 +291,7 @@ message 2516 PetDyeingNot
   i32 exp
   i16 satiety = 100
   wstr name
-  vector<?> _                # 0x0076E600 pet skills
+  vector<u16> skills         # 0x0076E600 -> 0x0076D610: pet skill indices (u16)
   bool is_summoned
   i16 status
 end

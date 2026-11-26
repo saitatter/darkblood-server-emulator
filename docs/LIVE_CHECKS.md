@@ -49,6 +49,16 @@ When it fails, note what the client did and keep it here.
 | O7 | Town revive / layer / floor gold / relay leave notices | As listed in `docs/STATUS.md` (multiplayer section). | — |
 | O8 | Commerce and post (P7) | Trade, mail, stalls, broker, depot flows work end to end. | — |
 
+## Wire fixes and newly filled fields (2026-11-26)
+
+| # | Check | Expected |
+|---|---|---|
+| W1 | Login (`2007`) with completed achievements | The achievement window shows them right after login, before any `2328` request. |
+| W2 | Pet evolution (`2485`) | AR display shows the player's real AR afterwards (the field was sent as a pet UID before). |
+| W3 | Tame monster insert/delete (`2349`/`2351`) | The tamed list window shows the stored list. The two-i32 entry split is a guess: check the monster names/slots. |
+| W4 | Personal shop open/buy (`2341`/`5243`) | Shop title shows correctly; the shop lists items and expiry (layout corrected: address, `vector<u32>`, trailing 4 bytes). |
+| W5 | Pet feeding (`2481`) | Satiety updates; no inventory refresh issue (the vector is now `vector<Item>`, sent empty). |
+
 ## Basic client checklist (from ROADMAP)
 
 - [ ] Store: buying decrements gold and adds the bag icon; selling removes it.

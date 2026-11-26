@@ -76,30 +76,32 @@ class PersonalShopOpenReq(WireMessage):
 class PersonalShopOpenAck(WireMessage):
     """Opcode 2341: eEGS_PERSONALSHOP_START_ACK (reply).
 
-    Reader 0x00601AA0 -> 0x00A55D70: result, jPersonalShop, title.
+    Reader 0x00601AA0 -> 0x00A55D70: result, jPersonalShop, title. jPersonalShop:
+    i64 owner, 6-byte address (0x00A48910, the 5002/5004 relay reader), item vector
+    (0x00A554A0 -> 0x00A54550: Item + i64 price), vector<u32> (0x004D9610), then
+    +0x2E 8 bytes, +0x36 u16, +0x38 u32, +0x3C bool, +0x3D 4 bytes (0x00B35560).
+    The earlier layout sent a date in place of the address and a bool in place of
+    the last 4 bytes, so the client read 3 bytes of the title as shop data.
     """
     OPCODE: ClassVar[int] = 2341
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    owner_uid: i64 = 0  # jPersonalShop
-    items: Vector[StallItem] = field(default_factory=list)
-    expire_time: i32 = 86400  # remaining seconds
+    owner_uid: i64 = 0  # jPersonalShop +0x00
+    owner_address: Raw[6] = bytes(6)  # +0x08 IPv4 + u16 port (0x00A48910); zero = none
+    items: Vector[StallItem] = field(default_factory=list)  # +0x0E
+    expire_time: i32 = 86400  # +0x38 remaining seconds (earlier guess)
     title: wstr = ''
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'owner_uid',
-        Const(u16, 2026),
-        Const(u8, 11),
-        Const(u8, 17),
-        Const(u8, 12),
-        Const(u8, 0),
+        'owner_address',
         'items',
         Const(EmptyVector),
-        Const(i64, 0),
-        Const(i16, 0),
+        Const(u64, 0),
+        Const(u16, 0),
         'expire_time',
         Const(bool, True),
-        Const(bool, True),
+        Const(u32, 0),
         'title',
     )
 
@@ -142,7 +144,8 @@ class PersonalShopBuyAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItemOut: granted or updated for the buyer
-    seller_uid: i64 = 0  # jPersonalShop
+    seller_uid: i64 = 0  # jPersonalShop (same layout as 2341)
+    seller_address: Raw[6] = bytes(6)  # +0x08 IPv4 + u16 port (0x00A48910)
     stall_items: Vector[StallItem] = field(default_factory=list)
     expire_time: i32 = 86400
     gold: i64 = 0  # nCurrentAr
@@ -150,18 +153,14 @@ class PersonalShopBuyAck(WireMessage):
         'result',
         'items',
         'seller_uid',
-        Const(u16, 2026),
-        Const(u8, 11),
-        Const(u8, 17),
-        Const(u8, 12),
-        Const(u8, 0),
+        'seller_address',
         'stall_items',
         Const(EmptyVector),
-        Const(i64, 0),
-        Const(i16, 0),
+        Const(u64, 0),
+        Const(u16, 0),
         'expire_time',
         Const(bool, True),
-        Const(bool, True),
+        Const(u32, 0),
         'gold',
     )
 

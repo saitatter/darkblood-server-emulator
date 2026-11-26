@@ -116,87 +116,73 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (50 of 151 fields)
+## lobby (45 of 151 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `PetDepotSlotInfo` | `u64` | lobby.jsch:54 |  |
-| `DepotInfo` | `i64` | lobby.jsch:65 | +0x54 unknown |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:74 | 0x00A3ED30, max 3 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:77 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:78 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:79 |  |
+| `PetDepotSlotInfo` | `u64` | lobby.jsch:55 |  |
+| `DepotInfo` | `i64` | lobby.jsch:66 | +0x54 unknown |
+| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:77 | 0x00A3ED30, max 3 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:80 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:81 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:82 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:87 | 0x00A3EEC0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:89 | 0x0076E560 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:91 | 0x00A3E410 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:92 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:93 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:94 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:99 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:100 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:101 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:102 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:81 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:82 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:83 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:84 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:85 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:90 | 0x00A3EEC0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:92 | 0x0076E560 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:94 | 0x00A3E410 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:95 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:96 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:97 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:102 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:103 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:104 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:105 | 0x004B1A60 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:106 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:107 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:108 |  |
-| `2007 SelectCharacterAck` | `f32` | lobby.jsch:109 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:110 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:111 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:115 | 0x0074C1D0: two maps and a bool |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:116 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:117 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:119 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:120 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:121 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:124 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:125 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:126 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:132 | +0x15 unknown |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:134 | 0x00A1EEA0: u32, 3 x u64 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:135 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:136 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:137 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:138 | 0x00A1E900: map + vector |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:139 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:140 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:144 | 0x00485220 |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:145 | 0x004B9210 |
-| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:169 | vecTargetState (0x00773870), element layout unknown |
-| `RelayJoinGroupAck` | `u16` | lobby.jsch:177 | RMI id |
-| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:198 | vecDuel |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:107 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:108 | 0x004B1A60 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:109 | +0x255 -> singleton 0x0049F7F0 +0xC4 |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:110 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:111 |  |
+| `2007 SelectCharacterAck` | `f32` | lobby.jsch:112 | +0x3BD -> player +0xB0 |
+| `2007 SelectCharacterAck` | `i64` | lobby.jsch:113 | +0x3C1 -> player 0x009465D0: seconds, end = now_ms + s*1000 at player +0xC0 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:114 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:120 | +0x403, read but unused by 0x00481760 (as in 2328) |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:122 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:124 | +0x414 first SetExpire argument, only logged |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:127 | +0x438 -> JAppPageInitLifeSkill (AppPage 0x46) +0x120 via 0x005A3FE0 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:129 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:135 | +0x15 unknown |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:137 | +0x48F 0x00A1EEA0: u32, 3 x u64 -> AppPage(0x8A).0x00529110 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:138 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:139 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:140 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:141 | +0x303 0x00A1E900: map + vector -> AppPage(0x2A).0x0058DFB0 |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:142 |  |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:143 | +0x4AB -> AppPage(0x93).0x005DE1B0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:147 | +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640 |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:148 | 0x004B9210 |
+| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:172 | vecTargetState (0x00773870), element layout unknown |
+| `RelayJoinGroupAck` | `u16` | lobby.jsch:180 | RMI id |
+| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:201 | vecDuel |
 
-## party (8 of 93 fields)
+## party (6 of 93 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `5049 PartyInviteReq` | `bool` | party.jsch:24 | meaning unknown |
 | `5051 PartyInviteNot` | `bool` | party.jsch:41 |  |
-| `5051 PartyInviteNot` | `u32` | party.jsch:44 |  |
 | `5051 PartyInviteNot` | `i64` | party.jsch:49 |  |
 | `5051 PartyInviteNot` | `i64` | party.jsch:50 |  |
 | `5051 PartyInviteNot` | `raw[74]` | party.jsch:51 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:52 |  |
 | `PartyMemberInfo` | `i32` | party.jsch:123 |  |
 
-## pets (9 of 176 fields)
+## pets (2 of 178 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2349 TamingMonsterInsertAck` | `vector<?>` | pets.jsch:21 | tamed monsters, element layout unknown |
-| `2351 TamingMonsterDeleteAck` | `vector<?>` | pets.jsch:33 | tamed monsters, element layout unknown |
-| `PetInfo` | `vector<?>` | pets.jsch:75 | +0x31 pet skills (0x0076E600; empty = 10 80) |
-| `2481 PetEatNormalAck` | `vector<?>` | pets.jsch:168 | pets, element layout unknown |
-| `2485 PetEvolutionAck` | `vector<?>` | pets.jsch:182 |  |
-| `2511 PetNickChangeAck` | `vector<?>` | pets.jsch:195 |  |
-| `2516 PetDyeingNot` | `vector<?>` | pets.jsch:285 | 0x0076E600 pet skills |
-| `MonsterCardInfo` | `vector<?>` | pets.jsch:330 | 0x004B0BB0 card options |
-| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:470 | m_mapWinCnt (0x005F6730) |
+| `MonsterCardInfo` | `vector<?>` | pets.jsch:339 | 0x004B0BB0 card options |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:479 | m_mapWinCnt (0x005F6730) |
 
 ## quests (1 of 109 fields)
 
@@ -229,31 +215,21 @@
 | `6028 RequestItemInfoReq` | `i64` | social.jsch:191 |  |
 | `6029 RequestItemInfoAck` | `raw[16]` | social.jsch:199 |  |
 
-## stalls (21 of 100 fields)
+## stalls (11 of 92 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2341 PersonalShopOpenAck` | `u16` | stalls.jsch:33 | fixed date header (earlier guess) |
-| `2341 PersonalShopOpenAck` | `u8` | stalls.jsch:34 |  |
-| `2341 PersonalShopOpenAck` | `u8` | stalls.jsch:35 |  |
-| `2341 PersonalShopOpenAck` | `u8` | stalls.jsch:36 |  |
-| `2341 PersonalShopOpenAck` | `u8` | stalls.jsch:37 |  |
-| `2341 PersonalShopOpenAck` | `vector<?>` | stalls.jsch:39 | sold items |
-| `2341 PersonalShopOpenAck` | `i64` | stalls.jsch:40 |  |
-| `2341 PersonalShopOpenAck` | `i16` | stalls.jsch:41 |  |
-| `2341 PersonalShopOpenAck` | `bool` | stalls.jsch:43 | active |
-| `2341 PersonalShopOpenAck` | `bool` | stalls.jsch:44 | open |
-| `5243 PersonalShopBuyAck` | `u16` | stalls.jsch:68 |  |
-| `5243 PersonalShopBuyAck` | `u8` | stalls.jsch:69 |  |
-| `5243 PersonalShopBuyAck` | `u8` | stalls.jsch:70 |  |
-| `5243 PersonalShopBuyAck` | `u8` | stalls.jsch:71 |  |
-| `5243 PersonalShopBuyAck` | `u8` | stalls.jsch:72 |  |
-| `5243 PersonalShopBuyAck` | `vector<?>` | stalls.jsch:74 |  |
-| `5243 PersonalShopBuyAck` | `i64` | stalls.jsch:75 |  |
-| `5243 PersonalShopBuyAck` | `i16` | stalls.jsch:76 |  |
-| `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:78 |  |
-| `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:79 |  |
-| `2269 BrokerBuyItemAck` | `raw[24]` | stalls.jsch:167 |  |
+| `2341 PersonalShopOpenAck` | `vector<?>` | stalls.jsch:40 | +0x1E vector<u32> (0x004D9610), not recovered |
+| `2341 PersonalShopOpenAck` | `u64` | stalls.jsch:41 | +0x2E (0x00B356F0) |
+| `2341 PersonalShopOpenAck` | `u16` | stalls.jsch:42 | +0x36 |
+| `2341 PersonalShopOpenAck` | `bool` | stalls.jsch:44 | +0x3C |
+| `2341 PersonalShopOpenAck` | `u32` | stalls.jsch:45 | +0x3D 4 bytes (0x00B35560) |
+| `5243 PersonalShopBuyAck` | `vector<?>` | stalls.jsch:71 | vector<u32> (0x004D9610) |
+| `5243 PersonalShopBuyAck` | `u64` | stalls.jsch:72 |  |
+| `5243 PersonalShopBuyAck` | `u16` | stalls.jsch:73 |  |
+| `5243 PersonalShopBuyAck` | `bool` | stalls.jsch:75 |  |
+| `5243 PersonalShopBuyAck` | `u32` | stalls.jsch:76 | 4 bytes (0x00B35560) |
+| `2269 BrokerBuyItemAck` | `raw[24]` | stalls.jsch:164 |  |
 
 ## system (5 of 82 fields)
 

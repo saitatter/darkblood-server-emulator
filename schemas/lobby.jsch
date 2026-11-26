@@ -12,6 +12,7 @@ extern WaypointData from darkblood.games.network.messages.quests
 extern QuestSpecialInfo from darkblood.games.network.messages.quests
 extern RidingInfo from darkblood.games.network.messages.pets
 extern PetInfo from darkblood.games.network.messages.pets
+extern AchieveEntry from darkblood.games.network.messages.system readable
 import layer_net_id from darkblood.games.entities.character
 
 struct GameServer
@@ -69,7 +70,9 @@ message 2007 SelectCharacterAck
   ## Handler 0x007AA4B0: untagged struct 0x00A40760 starting with the result (the
   ## handler peeks it with 0x00A1EA20(1) and the reader rereads the same word),
   ## nested character details (0x00A52630), then the fields below. Field
-  ## meanings are unknown unless commented; they are sent as zero or empty.
+  ## meanings are unknown unless commented; they are sent as zero or empty. +0xNNN are
+  ## offsets in the reader's struct; consumers were traced in the handler's assembly
+  ## (esp-tracked, checked against the bag/item/depot/count/waypoint/pet anchors).
   u32 result
   array<?> _                 # 0x00A3ED30, max 3
   array<f32> proficiencies   # 0x00A1E840 (+0x395 -> JProficiencyMgr::Init 0x00AC9BD0, 10 floats)
@@ -99,30 +102,30 @@ message 2007 SelectCharacterAck
   u64 _
   u64 _
   u64 _
-  u32 _
+  u32 pcbang_coin_remain     # +0x217 -> AppPage(0x12).0x0054A1E0, the same setter as 2449
   u64 _
   u64 _
   vector<?> _                # 0x004B1A60
-  u64 _
+  u64 _                      # +0x255 -> singleton 0x0049F7F0 +0xC4
   bool _
   bool _
-  f32 _
-  u64 _
+  f32 _                      # +0x3BD -> player +0xB0
+  i64 _                      # +0x3C1 -> player 0x009465D0: seconds, end = now_ms + s*1000 at player +0xC0
   u64 _
   map<wstr,i16> daily_dun_enter_counts  # 0x00485220 (+0x3D1 -> 0x009646F0)
   map<wstr,i16> daily_dun_clear_counts  # 0x00485220 (+0x3DD -> 0x00964A00)
   wstr custom_keys           # 0x00B35AB0 (+0x25D -> 0x0045FCF0 custom keyboard bindings)
-  map<?> _                   # 0x0074C1D0: two maps and a bool
-  map<?> _
-  bool _
+  map<u32,i64> achieve_divisions  # +0x3EB jAchieveTotalInfo (0x0074C1D0 -> 0x00A3E760, as 2328) -> AppPage(0x6B).0x00481760
+  map<h32,AchieveEntry> achieve_completed  # +0x3F7 (0x00A3DC50)
+  bool _                     # +0x403, read but unused by 0x00481760 (as in 2328)
   map<u64,WaypointData> waypoints  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
   u64 _
-  u64 _
-  u32 _
+  i64 personal_store_expire_sec  # +0x40C JAppPagePersonalStore::SetExpire (0x00603130): expiry = _time64 + this
+  u32 _                      # +0x414 first SetExpire argument, only logged
   vector<u32> learned_proficiencies  # 0x004DA660 (+0x418 -> JProficiencyMgr::Init 0x00AC9BD0, max 2 chosen prof types 0..6)
   vector<u32> u32_vec_b      # 0x004DA660
-  u16 _
-  u64 _
+  u16 _                      # +0x438 -> JAppPageInitLifeSkill (AppPage 0x46) +0x120 via 0x005A3FE0
+  i64 life_skill_init_remain_sec  # +0x43A -> 0x005A3FE0: +0x118 = _time64 + this (read back by 0x005A4020)
   u64 _
   map<u32,set<u32>> buff_map_a  # 0x005F9190 -> 0x005F6640
   map<h32,RidingInfo> ridings   # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
@@ -131,17 +134,17 @@ message 2007 SelectCharacterAck
   bool pet_summoned          # +0x14 whether a pet is currently summoned
   u64 _                      # +0x15 unknown
   vector<PetDepotSlotInfo> pet_depot_slots  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C, 0x1B bytes each)
-  u32 _                      # 0x00A1EEA0: u32, 3 x u64
+  u32 _                      # +0x48F 0x00A1EEA0: u32, 3 x u64 -> AppPage(0x8A).0x00529110
   u64 _
   u64 _
   u64 _
-  map<?> _                   # 0x00A1E900: map + vector
+  map<?> _                   # +0x303 0x00A1E900: map + vector -> AppPage(0x2A).0x0058DFB0
   vector<?> _
-  u16 _
+  u16 _                      # +0x4AB -> AppPage(0x93).0x005DE1B0
   vector<u32> u32_vec_c      # 0x004DA660
   map<u32,set<u32>> buff_map_b  # 0x005F9150 -> 0x005F6640
   i16 citadel_play_count     # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
-  map<?> _                   # 0x00485220
+  map<?> _                   # +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640
   vector<?> _                # 0x004B9210
 end
 

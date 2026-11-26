@@ -656,7 +656,7 @@ class WireMessagesTest(unittest.TestCase):
         req_del = messages.TameingMonsterDeleteReq.decode(struct.pack('<ii', 5, 1))
         self.assertEqual(req_del.monster_id, 5)
         self.assertEqual(req_del.slot, 1)
-        ack_del = messages.TamingMonsterDeleteAck(result=0, deleted_slot=1).encode()
+        ack_del = messages.TamingMonsterDeleteAck(result=0, monster_id=1).encode()
         self.assertEqual(struct.unpack_from('<i', ack_del[:4])[0], 0)
 
     def test_class_promotion_and_skill_reset(self):

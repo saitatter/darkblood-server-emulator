@@ -13,6 +13,7 @@ from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.network.messages.pets import PetInfo, RidingInfo
 from darkblood.games.network.messages.quests import QuestSpecialInfo, WaypointData
 from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
+from darkblood.games.network.messages.system import AchieveEntry
 
 __all__ = [
     'GameServer',
@@ -126,7 +127,9 @@ class SelectCharacterAck(WireMessage):
     Handler 0x007AA4B0: untagged struct 0x00A40760 starting with the result (the
     handler peeks it with 0x00A1EA20(1) and the reader rereads the same word),
     nested character details (0x00A52630), then the fields below. Field
-    meanings are unknown unless commented; they are sent as zero or empty.
+    meanings are unknown unless commented; they are sent as zero or empty. +0xNNN are
+    offsets in the reader's struct; consumers were traced in the handler's assembly
+    (esp-tracked, checked against the bag/item/depot/count/waypoint/pet anchors).
     """
     OPCODE: ClassVar[int] = 2007
     result: u32 = 0
@@ -142,12 +145,17 @@ class SelectCharacterAck(WireMessage):
     u32_set_a: Set[u32] = field(default_factory=list)  # 0x005EE0F0
     quest_special_info: Extern[QuestSpecialInfo, 'encode', False] = field(default_factory=QuestSpecialInfo)  # 0x00641E00 -> JQuestMgr::Init (restores TempSkillSet on relog)
     u32_set_b: Set[u32] = field(default_factory=list)  # 0x005EE0F0
+    pcbang_coin_remain: u32 = 0  # +0x217 -> AppPage(0x12).0x0054A1E0, the same setter as 2449
     daily_dun_enter_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3D1 -> 0x009646F0)
     daily_dun_clear_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3DD -> 0x00964A00)
     custom_keys: wstr = ''  # 0x00B35AB0 (+0x25D -> 0x0045FCF0 custom keyboard bindings)
+    achieve_divisions: Map[u32, i64] = field(default_factory=dict)  # +0x3EB jAchieveTotalInfo (0x0074C1D0 -> 0x00A3E760, as 2328) -> AppPage(0x6B).0x00481760
+    achieve_completed: Map[h32, AchieveEntry] = field(default_factory=dict)  # +0x3F7 (0x00A3DC50)
     waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
+    personal_store_expire_sec: i64 = 0  # +0x40C JAppPagePersonalStore::SetExpire (0x00603130): expiry = _time64 + this
     learned_proficiencies: Vector[u32] = field(default_factory=list)  # 0x004DA660 (+0x418 -> JProficiencyMgr::Init 0x00AC9BD0, max 2 chosen prof types 0..6)
     u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
+    life_skill_init_remain_sec: i64 = 0  # +0x43A -> 0x005A3FE0: +0x118 = _time64 + this (read back by 0x005A4020)
     buff_map_a: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9190 -> 0x005F6640
     ridings: Map[h32, Extern[RidingInfo, 'encode', False]] = field(default_factory=dict)  # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
     pets: Map[i64, Extern[PetInfo, 'encode', False]] = field(default_factory=dict)  # 0x00A1E8C0 -> 0x00A54E70 -> 0x0064EA00 -> 0x00643940 -> 0x00A52CF0
@@ -187,7 +195,7 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         Const(u64, 0),
         Const(u64, 0),
-        Const(u32, 0),
+        'pcbang_coin_remain',
         Const(u64, 0),
         Const(u64, 0),
         Const(EmptyVector),
@@ -195,22 +203,22 @@ class SelectCharacterAck(WireMessage):
         Const(bool, False),
         Const(bool, False),
         Const(f32, 0.0),
-        Const(u64, 0),
+        Const(i64, 0),
         Const(u64, 0),
         'daily_dun_enter_counts',
         'daily_dun_clear_counts',
         'custom_keys',
-        Const(EmptyMap),
-        Const(EmptyMap),
+        'achieve_divisions',
+        'achieve_completed',
         Const(bool, False),
         'waypoints',
         Const(u64, 0),
-        Const(u64, 0),
+        'personal_store_expire_sec',
         Const(u32, 0),
         'learned_proficiencies',
         'u32_vec_b',
         Const(u16, 0),
-        Const(u64, 0),
+        'life_skill_init_remain_sec',
         Const(u64, 0),
         'buff_map_a',
         'ridings',

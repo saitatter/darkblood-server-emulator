@@ -41,7 +41,7 @@ message 5051 PartyInviteNot
   bool _
   i64 inviter_square_uid = 1 # host summary (0x00A49600, RoomMemberInfo layout)
   i64 inviter_uid
-  u32 _
+  u32 inviter_flags          # +0x10 RoomMemberInfo flags: bit 0x2 adds property 0x69 to the max stress
   wstr inviter_name
   u8 inviter_class
   i16 inviter_stress = 0     # +0x31: inviter's current stress (0x00756F40 gauge; -1 showed "-1/330")
@@ -49,7 +49,7 @@ message 5051 PartyInviteNot
   i64 _ = -1
   i64 _ = -1
   raw[74] _
-  u8 _
+  u8 inviter_stress_bonus    # +0x8E RoomMemberInfo bool: adds a further max-stress bonus (0x00756F40)
   i64 room_uid               # +0x90 nInviteRoomUID
   wstr room_name             # +0x98
   i32 gate_id = -1           # +0xB4

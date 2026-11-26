@@ -11,6 +11,7 @@ from darkblood.games.entities.items import Item
 
 __all__ = [
     'TameingMonsterInsertReq',
+    'TamedMonster',
     'TamingMonsterInsertAck',
     'TameingMonsterDeleteReq',
     'TamingMonsterDeleteAck',
@@ -101,17 +102,24 @@ class TameingMonsterInsertReq(WireMessage):
 
 
 @dataclass
+class TamedMonster(WireMessage):
+    """8-byte element of vecTameingList (0x0076AF20 -> 0x0083FDB0 -> 0x00A48AD0 raw 8),
+    the same struct the 2348 sender writes with 0x00A48AB0. The split into two i32
+    follows the request's earlier guess and is not confirmed.
+    """
+    monster_id: i32 = 0
+    slot: i32 = 0
+
+
+@dataclass
 class TamingMonsterInsertAck(WireMessage):
     """Opcode 2349: eEGS_TAMEING_MONSTER_INSERT_ACK (reply).
 
-    Handler 0x00771A00.
+    Handler 0x00771A00 (assert: vecTameingList).
     """
     OPCODE: ClassVar[int] = 2349
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-    )
+    tamed: Vector[TamedMonster] = field(default_factory=list)  # vecTameingList: the character's full list
 
 
 @dataclass
@@ -131,16 +139,12 @@ class TameingMonsterDeleteReq(WireMessage):
 class TamingMonsterDeleteAck(WireMessage):
     """Opcode 2351: eEGS_TAMEING_MONSTER_DELETE_ACK (reply).
 
-    Handler 0x00771BB0.
+    Handler 0x00771BB0 (assert: vecTameingList >> nMonsterID).
     """
     OPCODE: ClassVar[int] = 2351
     result: u32 = 0
-    deleted_slot: i32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-        'deleted_slot',
-    )
+    tamed: Vector[TamedMonster] = field(default_factory=list)  # vecTameingList: the list after the deletion
+    monster_id: u32 = 0  # nMonsterID
 
 
 @dataclass
@@ -209,20 +213,9 @@ class PetInfo(WireMessage):
     exp: i32 = 0  # +0x0D
     satiety: i16 = 100  # +0x11
     name: wstr = ''  # +0x15
+    skills: Vector[u16] = field(default_factory=list)  # +0x31 pet skill indices (0x0076E600 -> 0x0076D610, u16 elements)
     is_cash_food: bool = False  # +0x41
     slot: i16 = -1  # +0x13 (pet depot slot; -1 = active nurture slot)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'dye_colors',
-        'pet_uid',
-        'pet_id',
-        'level',
-        'exp',
-        'satiety',
-        'name',
-        Const(EmptyVector),
-        'is_cash_food',
-        'slot',
-    )
 
 
 @dataclass
@@ -407,19 +400,14 @@ class PetEatNormalReq(WireMessage):
 class PetEatNormalAck(WireMessage):
     """Opcode 2481: eEGS_PET_EAT_NORMAL_ACK (reply).
 
-    Handler 0x00781260.
+    Handler 0x00781260 (assert 0x00CF6938: vecItem >> sNurturePetSatiety >> bCashFood).
     """
     OPCODE: ClassVar[int] = 2481
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    satiety: u16 = 100
-    status: u8 = 1
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-        'satiety',
-        'status',
-    )
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItem (0x004B9210): updated food item stacks
+    satiety: u16 = 100  # sNurturePetSatiety
+    cash_food: bool = False  # bCashFood
 
 
 @dataclass
@@ -435,21 +423,15 @@ class PetEvolutionReq(WireMessage):
 class PetEvolutionAck(WireMessage):
     """Opcode 2485: eEGS_PET_EVOLUTION_ACK (reply).
 
-    Handler 0x0079FEF0.
+    Handler 0x0079FEF0 (assert 0x00CFDCA8: nPetUID >> nNewPetID >> vecSkill >> nCurAr).
     """
     OPCODE: ClassVar[int] = 2485
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    old_pet_uid: i64 = 0
-    new_pet_id: u32 = 0
-    new_pet_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'old_pet_uid',
-        'new_pet_id',
-        Const(EmptyVector),
-        'new_pet_uid',
-    )
+    old_pet_uid: i64 = 0  # nPetUID
+    new_pet_id: u32 = 0  # nNewPetID
+    skills: Vector[u16] = field(default_factory=list)  # vecSkill (0x0076D610, u16 skill indices)
+    cur_ar: i64 = 0  # nCurAr: the player's AR after the evolution cost (was sent as a pet UID)
 
 
 @dataclass
@@ -469,19 +451,15 @@ class PetNickChangeReq(WireMessage):
 class PetNickChangeAck(WireMessage):
     """Opcode 2511: eEGS_PET_NICK_CHANGE_AKC (reply).
 
-    Handler 0x00781CD0 (client name eEGS_PET_NICK_CHANGE_AKC).
+    Handler 0x00781CD0 (client name eEGS_PET_NICK_CHANGE_AKC; assert 0x00CF6B70:
+    vecItemOut >> nPetUID >> strNewNick).
     """
     OPCODE: ClassVar[int] = 2511
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
+    items_out: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItemOut (0x004B9210): consumed rename item updates
     pet_uid: i64 = 0
     new_name: wstr = ''
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-        'pet_uid',
-        'new_name',
-    )
 
 
 @dataclass
@@ -653,20 +631,9 @@ class PetDyeingNot(WireMessage):
     exp: i32 = 0
     satiety: i16 = 100
     name: wstr = ''
+    skills: Vector[u16] = field(default_factory=list)  # 0x0076E600 -> 0x0076D610: pet skill indices (u16)
     is_summoned: bool = False
     status: i16 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'dye_colors',
-        'pet_uid',
-        'pet_id',
-        'level',
-        'exp',
-        'satiety',
-        'name',
-        Const(EmptyVector),
-        'is_summoned',
-        'status',
-    )
 
 
 @dataclass

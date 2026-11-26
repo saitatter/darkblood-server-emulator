@@ -118,7 +118,7 @@ class PetCoreHandlersMixin:
         slot = req.slot if req.slot else len(tamed)
         tamed.append({'monster_id': req.monster_id, 'slot': slot})
         self.save_char()
-        await self.reply(TamingMonsterInsertAck(result=0), correlation,
+        await self.reply(TamingMonsterInsertAck(result=0, tamed=_tamed_list(tamed)), correlation,
                          note=f'tame monster insert ack (monster={req.monster_id}, slot={slot})')
 
     @packet_handler(TameingMonsterDeleteReq)
@@ -135,7 +135,8 @@ class PetCoreHandlersMixin:
                 tamed.remove(m)
                 break
         self.save_char()
-        await self.reply(TamingMonsterDeleteAck(result=0, deleted_slot=req.slot), correlation,
+        await self.reply(TamingMonsterDeleteAck(result=0, tamed=_tamed_list(tamed), monster_id=req.monster_id & 0xFFFFFFFF),
+                         correlation,
                          note=f'tame monster delete ack (slot={req.slot})')
 
     # --- Pets Lifecycle (2464..2511) ---
@@ -290,7 +291,7 @@ class PetCoreHandlersMixin:
                 active['satiety'] = min(100, active.get('satiety', 50) + 30)
                 satiety = active['satiety']
                 self.save_char()
-        await self.reply(PetEatNormalAck(result=0, satiety=satiety, status=1), correlation,
+        await self.reply(PetEatNormalAck(result=0, satiety=satiety), correlation,
                          note=f'pet eat normal ack (satiety={satiety})')
 
     @packet_handler(PetEvolutionReq)
@@ -311,7 +312,8 @@ class PetCoreHandlersMixin:
                 new_pet_id = 8001
                 self.save_char()
         await self.reply(
-            PetEvolutionAck(result=0, old_pet_uid=old_uid, new_pet_id=new_pet_id, new_pet_uid=new_uid),
+            PetEvolutionAck(result=0, old_pet_uid=old_uid, new_pet_id=new_pet_id,
+                            cur_ar=int(char.get('gold', 0)) if char else 0),
             correlation,
             note=f'pet evolution ack (uid={new_uid})',
         )
@@ -449,3 +451,9 @@ class PetCoreHandlersMixin:
                 RidingChangeListNot(ridings=ridings_map),
                 note=f'riding change list not ({ride_code}, +{valid_hours}h, count={len(ridings_map)})',
             )
+
+
+def _tamed_list(tamed):
+    """vecTameingList for 2349/2351 from the stored tamed monsters."""
+    from darkblood.games.network.messages import TamedMonster
+    return [TamedMonster(int(m.get('monster_id', 0)), int(m.get('slot', 0))) for m in tamed]
