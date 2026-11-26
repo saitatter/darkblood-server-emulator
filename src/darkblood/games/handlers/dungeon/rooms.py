@@ -11,6 +11,8 @@ from darkblood.games.network.messages import (
     ChangeItemObtainAck,
     ChangeItemObtainReq,
     ChangeMapCodeAck,
+    ChangeRoomHostAck,
+    ChangeRoomHostReq,
     ChangeRoomInfoAck,
     ChangeRoomInfoReq,
     ChangeTeamAck,
@@ -279,10 +281,41 @@ class DungeonRoomHandlers:
             room.info.host_uid = promoted_host_uid
         await self._notify_room(room, peers, notice, 'room member left')
         if promoted_host_uid is not None:
-            # 5022 eERC_CHANGE_ROOMHOST_ACK (0x00599630): i32 result + i64 nChangeNewHostUID.
-            # Promotes the remaining member so they can edit party settings / start runs.
-            host_notice = event(5022, struct.pack('<Iq', 0, promoted_host_uid))
+            # 5022 promotes the remaining member so they can edit party settings / start runs.
+            host_notice = event(5022, ChangeRoomHostAck(new_host_uid=promoted_host_uid).encode())
             await self._notify_room(room, peers, host_notice, f'change room host ({promoted_host_uid})')
+
+
+    @packet_handler(ChangeRoomHostReq)
+    async def handle_change_room_host(self, correlation, body):
+        # eERC_CHANGE_ROOMHOST_REQ (JAppPageGameRoom::ChangeHostREQ 0x0058D4C0) -> 5022
+        # to every member. Only the host of a room that has not started may hand over.
+        try:
+            new_host_uid = ChangeRoomHostReq.decode(body).new_host_uid
+        except (WireError, struct.error):
+            await self.reply(ChangeRoomHostAck(result=results.INVALID_STATE), correlation,
+                             note='change room host refused (bad request)')
+            return
+        room = self.room
+        if room is None:
+            result = results.ROOM_NOT_EXISTS
+        elif room.host is not self.session or room.started:
+            result = results.INVALID_STATE
+        else:
+            target = next((member for member, record in room.members.items()
+                           if int(record['id']) == new_host_uid), None)
+            result = results.NO_EXIST_CHAR if target is None else results.OK
+        if result:
+            await self.reply(ChangeRoomHostAck(result=result), correlation,
+                             note='change room host refused (%d)' % result)
+            return
+        room.host = target
+        room.info.host_uid = new_host_uid
+        ack = ChangeRoomHostAck(new_host_uid=new_host_uid).encode()
+        await self.transport.send_event(event(5022, ack, correlation),
+                                        note='change room host ack (%d)' % new_host_uid)
+        await self._notify_room(room, [m for m in room.members if m is not self.session],
+                                event(5022, ack), 'change room host (%d)' % new_host_uid)
 
 
     @packet_handler(5043)

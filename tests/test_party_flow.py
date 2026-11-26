@@ -8,7 +8,7 @@ from darkblood.games.network.messages.party import (
     PartyAcceptInviteAck, PartyAcceptInviteNot, PartyAcceptInviteReq,
     LegacyPartyInviteReq, PartyInviteAck, PartyInviteNot, PartyInviteReq,
     PartyJoinAck, PartyJoinReq, PartyKickAck, PartyKickReq,
-    PartyLeaveAck, PartyLeaveReq, UserJoinSquareNot, UserLeaveSquareNot
+    PartyLeaveAck, PartyLeaveReq,
 )
 from darkblood.games.world import GameWorldManager, PartyManager
 from headless_client import HeadlessClient
@@ -16,28 +16,6 @@ from headless_client import HeadlessClient
 
 class PartyWireMessagesTest(unittest.TestCase):
     """Unit tests for spatial movement and party wire message serialization."""
-
-    def test_user_join_and_leave_square_messages(self):
-        # Join message
-        join = UserJoinSquareNot(char_id=2002, square_id=1, x=50.0, y=60.0, z=70.0,
-                                 angle=3.14, char_class=2, level=25, char_name='Paladin')
-        enc_join = join.encode()
-        dec_join = UserJoinSquareNot.decode(enc_join)
-        self.assertEqual(dec_join.char_id, 2002)
-        self.assertEqual(dec_join.square_id, 1)
-        self.assertAlmostEqual(dec_join.x, 50.0, places=2)
-        self.assertAlmostEqual(dec_join.y, 60.0, places=2)
-        self.assertAlmostEqual(dec_join.z, 70.0, places=2)
-        self.assertEqual(dec_join.char_class, 2)
-        self.assertEqual(dec_join.level, 25)
-        self.assertEqual(dec_join.char_name, 'Paladin')
-
-        # Leave message
-        leave = UserLeaveSquareNot(char_id=2002, reason=0)
-        enc_leave = leave.encode()
-        dec_leave = UserLeaveSquareNot.decode(enc_leave)
-        self.assertEqual(dec_leave.char_id, 2002)
-        self.assertEqual(dec_leave.reason, 0)
 
     def test_party_management_messages(self):
         # Party invite req / ack / not
@@ -210,7 +188,6 @@ class MultiplayerAndPartyFlowTest(ServerTestCase):
                 self.assertNotEqual(PartyAcceptInviteAck.decode(rejection).result, 0)
                 self.assertIsNone(pm.get_player_party(char_id1))
 
-                # Drain 5021 join notifications from clients
                 # 1. Leader (Client 1) invites Client 2 via Opcode 2100 (eEGS_PARTY_INVITE_REQ)
                 # The client addresses peers by UID with the server key (31) in bits 54-58.
                 client1.send_event(2100, LegacyPartyInviteReq(target_uid=(0x1F << 54) | char_id2).encode())

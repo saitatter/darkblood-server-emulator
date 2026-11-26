@@ -254,6 +254,25 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(struct.unpack_from('<Iq', still), (0, room_id))
                 self.assertEqual(still[12:14], bytes.fromhex('1082'))  # two members
 
+                # 5021 hands the room host over (5022 to every member); only the
+                # host may ask, and the target must be in the room.
+                guest.send_event(5021, struct.pack('<iq', 0x7fffffff, guest_id), correlation=61)
+                correlation, refused = await guest.expect_event(5022)
+                self.assertEqual((correlation, refused), (61, struct.pack('<I', results.INVALID_STATE)))
+                host.send_event(5021, struct.pack('<iq', 0x7fffffff, 424242), correlation=62)
+                _, refused = await host.expect_event(5022)
+                self.assertEqual(refused, struct.pack('<I', results.NO_EXIST_CHAR))
+                host.send_event(5021, struct.pack('<iq', 0x7fffffff, guest_id), correlation=63)
+                correlation, handed = await host.expect_event(5022)
+                self.assertEqual((correlation, handed), (63, struct.pack('<Iq', 0, guest_id)))
+                _, seen = await guest.expect_event(5022)
+                self.assertEqual(seen, handed)
+                guest.send_event(5021, struct.pack('<q', host_id))  # header word is optional
+                _, back = await guest.expect_event(5022)
+                self.assertEqual(back, struct.pack('<Iq', 0, host_id))
+                _, seen = await host.expect_event(5022)
+                self.assertEqual(seen, back)
+
                 host.send_event(5005)
                 await host.expect_event(5006)
                 _, departure = await guest.expect_event(5036)

@@ -4,6 +4,10 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Dungeon room host handover (`5021`/`5022`) and `RoomMember` tail (2026-11-26, static + headless)**:
+  - `5021 eERC_CHANGE_ROOMHOST_REQ` (sender `0x0058D4C0`, one i64) is handled in `dungeon/rooms.py`: only the host of a room that has not started may hand over; the server answers every member with `5022 eERC_CHANGE_ROOMHOST_ACK` (`u32 result + i64 nChangeNewHostUID`, handler `0x00599630`). Refusals: `12` (not host / started), `1` (target not in room), `7` (no room). Automatic promotion in `leave_room` now uses the same message.
+  - Removed the invented, never-called `UserJoinSquareNot`/`UserLeaveSquareNot` (sent as 5021/5022): a client in the room page would have read that 5022 as a host-change error.
+  - `RoomMember` (jNetChar `0x00A533A0`) tail `+0x217` is `VipServiceInfo` (reader `0x00A4AC80`, the same struct as `2711`): two `DateTime6` (2010-01-01 defaults) + `vip_grade`. `+0x207` is copied to `JNetUser +0x100` and `+0x233` to the protected value at `JNetUser +0x90` by `SetUser_In{Party,Arena,Siege}` (`0x009666A5`); no other reader of `+0x1EB`, `+0x1F3` or `+0x20F` was found by a displacement scan. Dungeon unmapped fields: 52 -> 39. The 5021 flow is not yet live-checked in the client.
 - **Fix Launcher GM tab Refresh Players & cascading per-client Target menu (`gm_bridge.py`, `tools/launcher.py`, 2026-11-26)**:
   - Fixed action mismatch (`launcher.py` sent `action='list_players'` while `gm_bridge.py` only handled `action='status'`); `gm_bridge.py` now accepts both and returns `clients` grouped by account with each client's full character roster and `active` flag.
   - Replaced the flat `OptionMenu` in `tools/launcher.py` with a `Menubutton` + cascading per-client submenus listing all characters on each connected client with the current active character marked (`● ... [Current]`) and selectable.

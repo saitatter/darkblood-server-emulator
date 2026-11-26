@@ -5,6 +5,7 @@ domain dungeon Dark Blood protocol wire messages - Dungeon domain.
 
 extern Character from darkblood.games.entities.character encode=encode_world_details
 extern Item from darkblood.games.entities.items
+extern VipServiceInfo from darkblood.games.network.messages.commerce readable
 
 struct RoomInfo
   ## Untagged jRoomInfo, reader 0x00A49380, shared by 5002, 5004 and 2011.
@@ -63,26 +64,17 @@ message 5003 JoinRoomReq header?
 end
 
 struct RoomMember
-  ## jNetChar (0x00A533A0). Unmapped fields use constructor 0x00486190 defaults.
+  ## jNetChar (0x00A533A0, 0x237 bytes). Unmapped fields use constructor
+  ## 0x00486190 defaults. A displacement scan of the mapped image found only the
+  ## reader, the copy constructors (0x00486450, 0x00487130) and
+  ## JNetUserMgr::SetUser_In{Party,Arena,Siege} touching +0x1EB, +0x1F3 and +0x20F.
   Character character = Character()
-  i64 _ = -1
-  lit ffffffffffffffff000000000000000000000000
-  i64 _ = -1
-  i64 _ = -1
-  u32 _
-  u16 _ = 2010
-  u16 _ = 1
-  u16 _ = 1
-  u16 _
-  u16 _
-  u16 _
-  u16 _ = 2010
-  u16 _ = 1
-  u16 _ = 1
-  u16 _
-  u16 _
-  u16 _
-  u32 _
+  i64 _ = -1                 # +0x1EB
+  lit ffffffffffffffff000000000000000000000000  # +0x1F3, 20-byte blob (0x00A48950)
+  i64 _ = -1                 # +0x207, copied to JNetUser +0x100 by SetUser_In* (0x009666B7)
+  i64 _ = -1                 # +0x20F (0x00B354D0, 8 raw bytes)
+  u32 _                      # +0x233, stored in JNetUser +0x90 as a protected value (0x0045B840)
+  VipServiceInfo vip = VipServiceInfo()  # +0x217 (0x00A4AC80, same struct as 2711)
 end
 
 message 5004 JoinRoomAck ok_only
@@ -100,6 +92,20 @@ message 5035 RoomMemberJoinedNot
   ## Handler 0x00598D90: jNetChar and bIsAllCharSameRate.
   RoomMember member = RoomMember()
   bool _                     # bIsAllCharSameRate
+end
+
+message 5021 ChangeRoomHostReq header?
+  ## JAppPageGameRoom::ChangeHostREQ 0x0058D4C0: refused unless m_bExistRoom
+  ## (+0xAC); writes one i64 (0x00B353D0).
+  i64 new_host_uid
+end
+
+message 5022 ChangeRoomHostAck ok_only
+  ## Game-room dispatcher -> 0x00599630. A nonzero result shows its text
+  ## (0x00AB29C0) and stops; on success nChangeNewHostUID becomes the room host
+  ## (0x00944890) and the member's name is announced.
+  u32 result
+  i64 new_host_uid           # nChangeNewHostUID
 end
 
 message 5036 RoomMemberLeftNot

@@ -77,6 +77,7 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
   ownership for shared room work.
 - [ ] **Shared dungeon instances**:
   - Party members enter the same instance; complete the 5004 member fields and shared room/relay routing.
+  - Live-check the manual host handover (5021 -> 5022, headless-verified 2026-11-26) in the party room UI.
   - Verify how clients populate 5014's peer maps (readers are documented in `docs/PROTOCOL.md`).
   - Synchronize monster health, damage numbers and boss cinematics.
   - Shared party rank and card reward selection at dungeon finish.
@@ -86,8 +87,8 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Mount summoning (`ridecall`) and pet items (`PetCall`) live checks.
 
 ### Architecture (P9)
-- [ ] Decide what to do with the invented party/presence opcodes (2100-2107, 5021/5022), which the client names as
-  cheat and room-host messages and does not handle.
+- [ ] Decide what to do with the invented party opcodes (2100-2107), which the client names as cheat messages and does
+  not handle. (The invented 5021/5022 square notices were removed on 2026-11-26; those opcodes are the room-host pair.)
 - [ ] C# backend for `tools/gen_messages.py` that emits the same schemas as C# classes.
 - [ ] Reduce the unmapped fields shown in the README progress table (the number that matters most for fidelity).
 

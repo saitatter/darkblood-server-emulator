@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 831  
+**Tracked opcodes**: 833  
 **Client handlers mapped**: 298  
-**Server handlers**: 364  
+**Server handlers**: 365  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -659,6 +659,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5016 | `eERC_CHANGE_TEAM_ACK` | — | — | `ChangeTeamAck` |  |
 | 5017 | `eERC_FINISH_GAME_REQ` | — | `dungeon/rewards.py` (`handle_finish_game`) | `FinishGameReq` | eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60). |
 | 5018 | `eERC_FINISH_GAME_ACK` | 0x007ADB60 | — | `FinishGameAck` |  |
+| 5021 | `eERC_CHANGE_ROOMHOST_REQ` | — | `dungeon/rooms.py` (`handle_change_room_host`) | `ChangeRoomHostReq` | eERC_CHANGE_ROOMHOST_REQ (JAppPageGameRoom::ChangeHostREQ 0x0058D4C0) -> 5022 |
+| 5022 | `eERC_CHANGE_ROOMHOST_ACK` | — | — | `ChangeRoomHostAck` |  |
 | 5027 | `eERC_JOIN_LAYER_NOT` | 0x00787790 | — | `JoinLayerNot` |  |
 | 5028 | `eERC_JOIN_SQUARE_REQ` | — | `frontend.py` (`handle_join_square`) | — | Opcode 5028 (eERC_JOIN_SQUARE_REQ) -> 5029 (eERC_JOIN_SQUARE_ACK). |
 | 5029 | `eERC_JOIN_SQUARE_ACK` | 0x00757AD0 | — | `JoinSquareAck` |  |
@@ -715,7 +717,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5087 | `eERC_LEVEL_UP_NOT` | 0x0078CCF0 | — | `LevelUpNot` |  |
 | 5088 | `eERC_CHANGE_ITEM_OBTAIN_REQ` | — | `dungeon/rooms.py` (`handle_change_item_obtain`) | `ChangeItemObtainReq` | eERC_CHANGE_ITEM_OBTAIN_REQ (looting mode button) -> 5089 (i32 result, bool). |
 | 5089 | `eERC_CHANGE_ITEM_OBTAIN_ACK` | — | — | `ChangeItemObtainAck` |  |
-| 5090 | `eERC_CHOICE_REWARD_PARTYRANK_REQ` | — | `dungeon/rewards.py` (`handle_choice_reward_party_rank`) | `ChoiceRewardPartyRankReq` | eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660). |
+| 5090 | `eERC_CHOICE_REWARD_PARTYRANK_REQ` | — | `dungeon/rewards.py` (`handle_choice_reward_party_rank`) | `ChoiceRewardPartyRankReq` | eERC_CHOICE_REWARD_PARTYRANK_REQ (0x0078D5C0) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660). |
 | 5091 | `eERC_CHOICE_REWARD_PARTYRANK_ACK` | 0x0078D660 | — | `ChoiceRewardPartyRankAck` |  |
 | 5092 | `eERC_INVITE_USE_NICK_REQ` | — | `social/party.py` (`handle_party_invite_by_nick`) | `InviteUseNickReq` | Opcode 5092 (eERC_INVITE_USE_NICK_REQ): party invite by nickname. |
 | 5093 | `eERC_GAMEPLAY_DIE_CHAR_REQ` | — | `dungeon/combat.py` (`handle_gameplay_die_char`) | `GameplayDieCharReq` | eERC_GAMEPLAY_DIE_CHAR_REQ (writer 0x0078EDF0) -> 5094 (0x0078F090). |

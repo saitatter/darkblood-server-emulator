@@ -32,7 +32,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:474 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:486 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (11 of 146 fields)
+## commerce (11 of 153 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -48,62 +48,49 @@
 | `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:240 | 0x005F6540 |
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
 
-## dungeon (52 of 283 fields)
+## dungeon (39 of 274 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `RoomInfo` | `i64` | dungeon.jsch:23 |  |
-| `RoomMember` | `i64` | dungeon.jsch:68 |  |
-| `RoomMember` | `i64` | dungeon.jsch:70 |  |
-| `RoomMember` | `i64` | dungeon.jsch:71 |  |
-| `RoomMember` | `u32` | dungeon.jsch:72 |  |
-| `RoomMember` | `u16` | dungeon.jsch:73 |  |
-| `RoomMember` | `u16` | dungeon.jsch:74 |  |
-| `RoomMember` | `u16` | dungeon.jsch:75 |  |
-| `RoomMember` | `u16` | dungeon.jsch:76 |  |
-| `RoomMember` | `u16` | dungeon.jsch:77 |  |
-| `RoomMember` | `u16` | dungeon.jsch:78 |  |
-| `RoomMember` | `u16` | dungeon.jsch:79 |  |
-| `RoomMember` | `u16` | dungeon.jsch:80 |  |
-| `RoomMember` | `u16` | dungeon.jsch:81 |  |
-| `RoomMember` | `u16` | dungeon.jsch:82 |  |
-| `RoomMember` | `u16` | dungeon.jsch:83 |  |
-| `RoomMember` | `u16` | dungeon.jsch:84 |  |
-| `RoomMember` | `u32` | dungeon.jsch:85 |  |
-| `5004 JoinRoomAck` | `bool` | dungeon.jsch:96 | bIsAllCharSameRate |
-| `5035 RoomMemberJoinedNot` | `bool` | dungeon.jsch:102 | bIsAllCharSameRate |
-| `5036 RoomMemberLeftNot` | `u32` | dungeon.jsch:107 |  |
-| `5014 StartGameAck` | `u16` | dungeon.jsch:155 |  |
-| `5014 StartGameAck` | `u32` | dungeon.jsch:156 |  |
-| `5014 StartGameAck` | `map<?>` | dungeon.jsch:158 | 0x004B8B80 |
-| `5014 StartGameAck` | `map<?>` | dungeon.jsch:159 | 0x0064E7D0 |
-| `5091 ChoiceRewardPartyRankAck` | `u16` | dungeon.jsch:242 | +4 not recovered |
-| `5091 ChoiceRewardPartyRankAck` | `u32` | dungeon.jsch:244 | +8 not recovered |
-| `SingleReward` | `i32` | dungeon.jsch:281 | +0x00 unknown |
-| `SingleReward` | `i32` | dungeon.jsch:288 | +0x1C unknown |
-| `5018 FinishGameAck` | `map<?>` | dungeon.jsch:300 | mapGuildPersonCnt |
-| `5018 FinishGameAck` | `vector<?>` | dungeon.jsch:306 | vecBonusMonster |
-| `RoomMemberInfo` | `i32` | dungeon.jsch:321 | +0x10, meaning not recovered |
-| `RoomMemberInfo` | `i16` | dungeon.jsch:324 | +0x31, meaning not recovered |
-| `RoomMemberInfo` | `i64` | dungeon.jsch:326 | +0x34, meaning not recovered |
-| `RoomMemberInfo` | `i64` | dungeon.jsch:327 | +0x3C, meaning not recovered |
-| `RoomMemberInfo` | `raw[74]` | dungeon.jsch:328 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
-| `RoomMemberInfo` | `bool` | dungeon.jsch:329 | +0x8E, meaning not recovered |
-| `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:338 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
-| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:445 | vecKeepBuffChange (0x0076EB20) |
-| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:446 | jKeepCooltimeInfo (0x00A4A070) |
-| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:474 | vecFishingInfo |
-| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:568 | m_mapDailyInfo (0x004D4710) |
-| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:616 | mapInfo (0x004D4710) |
-| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:655 | mapReward (0x00532F50) |
-| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:662 | mapReward (0x00532F50) |
-| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:686 | mapReward (0x00532F50) |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:697 | mapExplorePoint (0x006B9060) |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:698 | 0x006C2190 |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:699 | 0x006B9130 |
-| `5359 ExploreJoinAck` | `u16` | dungeon.jsch:700 | 0x00B351E0 |
-| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:723 | 0x00A51060 |
-| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:724 | 0x00A3EA40 |
+| `RoomInfo` | `i64` | dungeon.jsch:24 |  |
+| `RoomMember` | `i64` | dungeon.jsch:72 | +0x1EB |
+| `RoomMember` | `i64` | dungeon.jsch:74 | +0x207, copied to JNetUser +0x100 by SetUser_In* (0x009666B7) |
+| `RoomMember` | `i64` | dungeon.jsch:75 | +0x20F (0x00B354D0, 8 raw bytes) |
+| `RoomMember` | `u32` | dungeon.jsch:76 | +0x233, stored in JNetUser +0x90 as a protected value (0x0045B840) |
+| `5004 JoinRoomAck` | `bool` | dungeon.jsch:88 | bIsAllCharSameRate |
+| `5035 RoomMemberJoinedNot` | `bool` | dungeon.jsch:94 | bIsAllCharSameRate |
+| `5036 RoomMemberLeftNot` | `u32` | dungeon.jsch:113 |  |
+| `5014 StartGameAck` | `u16` | dungeon.jsch:161 |  |
+| `5014 StartGameAck` | `u32` | dungeon.jsch:162 |  |
+| `5014 StartGameAck` | `map<?>` | dungeon.jsch:164 | 0x004B8B80 |
+| `5014 StartGameAck` | `map<?>` | dungeon.jsch:165 | 0x0064E7D0 |
+| `5091 ChoiceRewardPartyRankAck` | `u16` | dungeon.jsch:248 | +4 not recovered |
+| `5091 ChoiceRewardPartyRankAck` | `u32` | dungeon.jsch:250 | +8 not recovered |
+| `SingleReward` | `i32` | dungeon.jsch:287 | +0x00 unknown |
+| `SingleReward` | `i32` | dungeon.jsch:294 | +0x1C unknown |
+| `5018 FinishGameAck` | `map<?>` | dungeon.jsch:306 | mapGuildPersonCnt |
+| `5018 FinishGameAck` | `vector<?>` | dungeon.jsch:312 | vecBonusMonster |
+| `RoomMemberInfo` | `i32` | dungeon.jsch:327 | +0x10, meaning not recovered |
+| `RoomMemberInfo` | `i16` | dungeon.jsch:330 | +0x31, meaning not recovered |
+| `RoomMemberInfo` | `i64` | dungeon.jsch:332 | +0x34, meaning not recovered |
+| `RoomMemberInfo` | `i64` | dungeon.jsch:333 | +0x3C, meaning not recovered |
+| `RoomMemberInfo` | `raw[74]` | dungeon.jsch:334 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
+| `RoomMemberInfo` | `bool` | dungeon.jsch:335 | +0x8E, meaning not recovered |
+| `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:344 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
+| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:451 | vecKeepBuffChange (0x0076EB20) |
+| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:452 | jKeepCooltimeInfo (0x00A4A070) |
+| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:480 | vecFishingInfo |
+| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:574 | m_mapDailyInfo (0x004D4710) |
+| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:622 | mapInfo (0x004D4710) |
+| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:661 | mapReward (0x00532F50) |
+| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:668 | mapReward (0x00532F50) |
+| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:692 | mapReward (0x00532F50) |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:703 | mapExplorePoint (0x006B9060) |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:704 | 0x006C2190 |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:705 | 0x006B9130 |
+| `5359 ExploreJoinAck` | `u16` | dungeon.jsch:706 | 0x00B351E0 |
+| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:729 | 0x00A51060 |
+| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:730 | 0x00A3EA40 |
 
 ## events (8 of 36 fields)
 
@@ -198,18 +185,18 @@
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:177 | RMI id |
 | `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:198 | vecDuel |
 
-## party (8 of 104 fields)
+## party (8 of 93 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `5049 PartyInviteReq` | `bool` | party.jsch:45 | meaning unknown |
-| `5051 PartyInviteNot` | `bool` | party.jsch:62 |  |
-| `5051 PartyInviteNot` | `u32` | party.jsch:65 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:70 |  |
-| `5051 PartyInviteNot` | `i64` | party.jsch:71 |  |
-| `5051 PartyInviteNot` | `raw[74]` | party.jsch:72 |  |
-| `5051 PartyInviteNot` | `u8` | party.jsch:73 |  |
-| `PartyMemberInfo` | `i32` | party.jsch:144 |  |
+| `5049 PartyInviteReq` | `bool` | party.jsch:24 | meaning unknown |
+| `5051 PartyInviteNot` | `bool` | party.jsch:41 |  |
+| `5051 PartyInviteNot` | `u32` | party.jsch:44 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:49 |  |
+| `5051 PartyInviteNot` | `i64` | party.jsch:50 |  |
+| `5051 PartyInviteNot` | `raw[74]` | party.jsch:51 |  |
+| `5051 PartyInviteNot` | `u8` | party.jsch:52 |  |
+| `PartyMemberInfo` | `i32` | party.jsch:123 |  |
 
 ## pets (9 of 176 fields)
 

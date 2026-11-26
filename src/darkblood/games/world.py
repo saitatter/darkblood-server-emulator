@@ -1,8 +1,8 @@
 """Multi-client Game World Manager and Party Subsystem.
 
 Coordinates town square channels, player visibility
-broadcasts (Opcode 5096 UpdateCharInfoNot), square join/leave presence notifications
-(Opcode 5021/5022), and party management (Opcodes 2100-2107, 5049-5056).
+broadcasts (Opcode 5096 UpdateCharInfoNot), layer join/leave notices (5038/5039),
+and party management (Opcodes 2100-2107, 5049-5056).
 """
 import logging
 from dataclasses import dataclass, field
@@ -13,7 +13,6 @@ from darkblood.core.serialization.jser import event
 from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.network.messages.lobby import JoinLayerNot, LeaveLayerNot, PageCharTemp
 from darkblood.games.network.messages.system import UpdateCharInfoNot
-from darkblood.games.network.messages.party import UserJoinSquareNot, UserLeaveSquareNot
 from darkblood.games.party import Party, PartyManager, PartyMember
 
 logger = logging.getLogger(__name__)
@@ -247,37 +246,6 @@ class GameWorldManager:
                     )
                 except Exception as e:
                     logger.debug("Failed sending 5096 to newcomer: %s", e)
-
-    async def broadcast_user_join(self, player: WorldPlayer):
-        """Broadcast Opcode 5021 (eERC_USER_JOIN_SQUARE_NOT) to square occupants."""
-        c = _town_character(player) if player.char_data else None
-        join_not = UserJoinSquareNot(
-            char_id=player.char_id,
-            square_id=player.square_id,
-            x=player.x,
-            y=player.y,
-            z=player.z,
-            angle=player.angle,
-            char_class=c.char_class if c else 0,
-            level=c.level if c else 1,
-            char_name=c.name if c else ""
-        )
-        await self.broadcast_to_square(
-            player.square_id,
-            event(5021, join_not.encode()),
-            exclude_char_id=player.char_id,
-            note=f"user join square not ({player.char_id})"
-        )
-
-    async def broadcast_user_leave(self, char_id: int, square_id: int, reason: int = 0):
-        """Broadcast Opcode 5022 (eERC_USER_LEAVE_SQUARE_NOT) to square occupants."""
-        leave_not = UserLeaveSquareNot(char_id=char_id, reason=reason)
-        await self.broadcast_to_square(
-            square_id,
-            event(5022, leave_not.encode()),
-            exclude_char_id=char_id,
-            note=f"user leave square not ({char_id})"
-        )
 
     async def broadcast_layer_leave(self, player: WorldPlayer, layer_id: int):
         """5039 removes the departed character from the old layer on the client."""

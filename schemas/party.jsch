@@ -1,34 +1,13 @@
 # Square presence and party management. Format: schemas/README.md.
 #
-# The earlier server used opcodes 2100-2107 and 5021/5022 for party and square
-# presence messages. The client's own table names them differently
-# (2100-2107 are eEGS_CHEAT_* messages; 5021/5022 are eERC_CHANGE_ROOMHOST_REQ/ACK)
-# and research/client/handler_map.txt has no client handler for any of them.
-# Those layouts are kept as plain structs (no OPCODE) for the existing handlers
-# and headless tests; the client party flow uses 5049-5051, 5054-5056 and 5092.
+# The earlier server used opcodes 2100-2107 for party messages. The client's own
+# table names them eEGS_CHEAT_* and research/client/handler_map.txt has no client
+# handler for them. Those layouts are kept as plain structs (no OPCODE) for the
+# existing handlers and headless tests; the client party flow uses 5049-5051,
+# 5054-5056 and 5092. The earlier 5021/5022 square presence guesses were removed:
+# those opcodes are the room-host change pair (dungeon.jsch).
 
 domain party Dark Blood wire messages - Party and Spatial Movement domain.
-
-struct UserJoinSquareNot
-  ## Sent as 5021 by the server (client name eERC_CHANGE_ROOMHOST_REQ, no client
-  ## handler). Layout is the earlier server's guess.
-  i64 char_id
-  i32 square_id = 1
-  f32 x
-  f32 y
-  f32 z
-  f32 angle
-  u8 char_class
-  u8 level = 1
-  wstr char_name
-end
-
-struct UserLeaveSquareNot
-  ## Sent as 5022 by the server (client name eERC_CHANGE_ROOMHOST_ACK, no client
-  ## handler). Layout is the earlier server's guess.
-  i64 char_id
-  i32 reason
-end
 
 message 5092 InviteUseNickReq header
   ## Sender 0x007ABAA0; live: ffffff7f 8a 4d00610067006500 3100 -> "Mage1".

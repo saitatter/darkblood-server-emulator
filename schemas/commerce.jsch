@@ -304,11 +304,28 @@ message 2591 SellItemAllAck ok_only
   set<i64> deleted_item_uids # setDelItem (0x006B9200)
 end
 
+struct DateTime6
+  ## Reader 0x00A49110: six 16-bit fields. The jNetChar constructor 0x00486190
+  ## and the 2711 global reset default them to 2010-01-01 00:00:00.
+  u16 year = 2010
+  u16 month = 1
+  u16 day = 1
+  u16 hour
+  u16 minute
+  u16 second
+end
+
+struct VipServiceInfo
+  ## Reader 0x00A4AC80: start, end, grade (0x1C bytes). 2711 stores it in the
+  ## global 0x00F24C04; jNetChar (5004/5035 members) carries it at +0x217.
+  DateTime6 start_time = DateTime6()
+  DateTime6 end_time = DateTime6()
+  i32 vip_grade               # 0 = no VIP service
+end
+
 message 2711 VipServiceInfoNot
-  ## Handler 0x007A8040 (struct reader 0x00A4AC80: 2x DateTime6 + i32 grade).
-  raw[12] start_time
-  raw[12] end_time
-  i32 vip_grade
+  ## Handler 0x007A8040.
+  VipServiceInfo info = VipServiceInfo()
 end
 
 message 2721 SteamBuyPackageReq header?

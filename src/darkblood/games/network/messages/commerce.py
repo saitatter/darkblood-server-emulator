@@ -54,6 +54,8 @@ __all__ = [
     'BeautyShopCareAck',
     'SellItemAllReq',
     'SellItemAllAck',
+    'DateTime6',
+    'VipServiceInfo',
     'VipServiceInfoNot',
     'SteamBuyPackageReq',
     'SteamBuyPackageAck',
@@ -648,15 +650,36 @@ class SellItemAllAck(WireMessage):
 
 
 @dataclass
+class DateTime6(WireMessage):
+    """Reader 0x00A49110: six 16-bit fields. The jNetChar constructor 0x00486190
+    and the 2711 global reset default them to 2010-01-01 00:00:00.
+    """
+    year: u16 = 2010
+    month: u16 = 1
+    day: u16 = 1
+    hour: u16 = 0
+    minute: u16 = 0
+    second: u16 = 0
+
+
+@dataclass
+class VipServiceInfo(WireMessage):
+    """Reader 0x00A4AC80: start, end, grade (0x1C bytes). 2711 stores it in the
+    global 0x00F24C04; jNetChar (5004/5035 members) carries it at +0x217.
+    """
+    start_time: DateTime6 = field(default_factory=DateTime6)
+    end_time: DateTime6 = field(default_factory=DateTime6)
+    vip_grade: i32 = 0  # 0 = no VIP service
+
+
+@dataclass
 class VipServiceInfoNot(WireMessage):
     """Opcode 2711: eEGS_VIP_SERVICE_INFO_NOT (reply).
 
-    Handler 0x007A8040 (struct reader 0x00A4AC80: 2x DateTime6 + i32 grade).
+    Handler 0x007A8040.
     """
     OPCODE: ClassVar[int] = 2711
-    start_time: Raw[12] = bytes(12)
-    end_time: Raw[12] = bytes(12)
-    vip_grade: i32 = 0
+    info: VipServiceInfo = field(default_factory=VipServiceInfo)
 
 
 @dataclass

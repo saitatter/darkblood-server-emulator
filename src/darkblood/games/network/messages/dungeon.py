@@ -9,6 +9,7 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.commerce import VipServiceInfo
 
 __all__ = [
     'RoomInfo',
@@ -19,6 +20,8 @@ __all__ = [
     'RoomMember',
     'JoinRoomAck',
     'RoomMemberJoinedNot',
+    'ChangeRoomHostReq',
+    'ChangeRoomHostAck',
     'RoomMemberLeftNot',
     'DungeonHistory',
     'SelectDungeonAck',
@@ -208,8 +211,13 @@ class JoinRoomReq(WireMessage):
 
 @dataclass
 class RoomMember(WireMessage):
-    """jNetChar (0x00A533A0). Unmapped fields use constructor 0x00486190 defaults."""
+    """jNetChar (0x00A533A0, 0x237 bytes). Unmapped fields use constructor
+    0x00486190 defaults. A displacement scan of the mapped image found only the
+    reader, the copy constructors (0x00486450, 0x00487130) and
+    JNetUserMgr::SetUser_In{Party,Arena,Siege} touching +0x1EB, +0x1F3 and +0x20F.
+    """
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
+    vip: VipServiceInfo = field(default_factory=VipServiceInfo)  # +0x217 (0x00A4AC80, same struct as 2711)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'character',
         Const(i64, -1),
@@ -217,19 +225,7 @@ class RoomMember(WireMessage):
         Const(i64, -1),
         Const(i64, -1),
         Const(u32, 0),
-        Const(u16, 2010),
-        Const(u16, 1),
-        Const(u16, 1),
-        Const(u16, 0),
-        Const(u16, 0),
-        Const(u16, 0),
-        Const(u16, 2010),
-        Const(u16, 1),
-        Const(u16, 1),
-        Const(u16, 0),
-        Const(u16, 0),
-        Const(u16, 0),
-        Const(u32, 0),
+        'vip',
     )
 
 
@@ -270,6 +266,33 @@ class RoomMemberJoinedNot(WireMessage):
         'member',
         Const(bool, False),
     )
+
+
+@dataclass
+class ChangeRoomHostReq(WireMessage):
+    """Opcode 5021: eERC_CHANGE_ROOMHOST_REQ (request).
+
+    JAppPageGameRoom::ChangeHostREQ 0x0058D4C0: refused unless m_bExistRoom
+    (+0xAC); writes one i64 (0x00B353D0).
+    """
+    OPCODE: ClassVar[int] = 5021
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    new_host_uid: i64 = 0
+
+
+@dataclass
+class ChangeRoomHostAck(WireMessage):
+    """Opcode 5022: eERC_CHANGE_ROOMHOST_ACK (reply).
+
+    Game-room dispatcher -> 0x00599630. A nonzero result shows its text
+    (0x00AB29C0) and stops; on success nChangeNewHostUID becomes the room host
+    (0x00944890) and the member's name is announced.
+    """
+    OPCODE: ClassVar[int] = 5022
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    new_host_uid: i64 = 0  # nChangeNewHostUID
 
 
 @dataclass

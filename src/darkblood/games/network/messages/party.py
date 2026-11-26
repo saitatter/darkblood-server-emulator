@@ -9,8 +9,6 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 
 __all__ = [
-    'UserJoinSquareNot',
-    'UserLeaveSquareNot',
     'InviteUseNickReq',
     'PartyInviteReq',
     'PartyInviteAck',
@@ -47,31 +45,6 @@ __all__ = [
     'TeachingSummonRequestReq',
     'TeachingSummonRequestAck',
 ]
-
-
-@dataclass
-class UserJoinSquareNot(WireMessage):
-    """Sent as 5021 by the server (client name eERC_CHANGE_ROOMHOST_REQ, no client
-    handler). Layout is the earlier server's guess.
-    """
-    char_id: i64 = 0
-    square_id: i32 = 1
-    x: f32 = 0.0
-    y: f32 = 0.0
-    z: f32 = 0.0
-    angle: f32 = 0.0
-    char_class: u8 = 0
-    level: u8 = 1
-    char_name: wstr = ''
-
-
-@dataclass
-class UserLeaveSquareNot(WireMessage):
-    """Sent as 5022 by the server (client name eERC_CHANGE_ROOMHOST_ACK, no client
-    handler). Layout is the earlier server's guess.
-    """
-    char_id: i64 = 0
-    reason: i32 = 0
 
 
 @dataclass

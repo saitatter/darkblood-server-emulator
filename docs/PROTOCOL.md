@@ -329,6 +329,22 @@ dialog remains to be verified.
   Successful room entry still needs the meanings of the nested member fields, room
   membership, and relay routing.
 
+### Dungeon room host handover (2026-11-26, static analysis + headless)
+
+- `JAppPageGameRoom::ChangeHostREQ` (`0x0058D4C0`) sends `5021` only while
+  `m_bExistRoom` (+0xAC) is set; the body is one i64 new host UID (writer
+  `0x00B353D0`). The server accepts it with or without the request header word.
+- The game-room dispatcher routes `5022` to `0x00599630`: u32 result; a nonzero
+  result shows its text (`0x00AB29C0`) and stops. Otherwise it reads i64
+  `nChangeNewHostUID`, stores it as the room host (`0x00944890`) and announces the
+  member's name. The server sends it to every member, and also when the host leaves.
+- jNetChar tail (`RoomMember`): `+0x217` is the VIP block read by `0x00A4AC80`
+  (`DateTime6` start, `DateTime6` end, i32 grade), the same layout `2711`
+  stores at `0x00F24C04`. `SetUser_InParty/InArena/InSiege` copy `+0x207` (i64) to
+  `JNetUser +0x100` and `+0x233` (u32) to a protected value at `JNetUser +0x90`
+  (`0x009666A5`..`0x009666C9`). Their meanings, and those of `+0x1EB`, `+0x1F3`
+  and `+0x20F`, remain open.
+
 ### Dungeon start collection readers (Cristian, 2026-11-18, static analysis)
 
 The three outer maps and the trailing vector use these reader chains:

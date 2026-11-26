@@ -996,3 +996,14 @@ class ItemDurabilityTest(unittest.TestCase):
     def test_item_durability_override(self):
         wire = Item(code='Wdag1N', uid=6, durability=7.5).encode()
         self.assertEqual(struct.unpack_from('<f', wire, 8)[0], 7.5)
+
+
+class VipServiceInfoTest(unittest.TestCase):
+    def test_default_vip_block_matches_constructor(self):
+        # 0x00A4AC80: two DateTime6 (2010-01-01 00:00:00, ctor 0x00486190) + i32 grade.
+        default = bytes.fromhex('da0701000100000000000000') * 2 + b'\x00' * 4
+        self.assertEqual(messages.VipServiceInfoNot().encode(), default)
+        self.assertTrue(messages.RoomMember().encode().endswith(default))
+        info = messages.VipServiceInfo(start_time=messages.DateTime6(2026, 11, 26, 12, 30, 5), vip_grade=2)
+        decoded = messages.VipServiceInfoNot.decode(messages.VipServiceInfoNot(info=info).encode()).info
+        self.assertEqual((decoded.start_time.year, decoded.start_time.second, decoded.vip_grade), (2026, 5, 2))
