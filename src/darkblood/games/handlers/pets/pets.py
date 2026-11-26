@@ -66,8 +66,11 @@ async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
     from darkblood.games.game_data.client_dict import char_level_stat
     from darkblood.games.progression import MAX_LEVEL
 
-    gain = max(1, int(exp_amount))
     level = max(1, int(pet.get('level', 1)))
+    if level >= MAX_LEVEL:
+        return False
+
+    gain = max(1, int(exp_amount))
     cur_exp = max(0, int(pet.get('exp', 0))) + gain
     leveled_up = False
     while level < MAX_LEVEL:
