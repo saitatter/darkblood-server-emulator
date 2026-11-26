@@ -410,6 +410,19 @@ class PetCoreHandlersMixin:
     async def handle_pet_switch_storage(self, correlation, body):
         # eEGS_PET_SWITCH_STORAGE_REQ (0x007A0D00) -> 2501 eEGS_PET_SWITCH_STORAGE_ACK (0x007A0E30)
         req = PetSwitchStorageReq.decode(body)
+        char = self.current_char()
+        source_slot, target_slot = req.move_slot_index, req.target_slot_index
+        if char and min(source_slot, target_slot) >= 0 and source_slot != target_slot:
+            pets_by_slot = {pet.get('slot', -1): pet for pet in char.get('pets', [])}
+            source = pets_by_slot.get(source_slot)
+            target = pets_by_slot.get(target_slot)
+            if source is not None:
+                source['slot'] = target_slot
+            if target is not None:
+                target['slot'] = source_slot
+            if source is not None or target is not None:
+                self.save_char()
+
         await self.reply(
             PetSwitchStorageAck(result=0, move_slot_index=req.move_slot_index,
                                 target_slot_index=req.target_slot_index),
