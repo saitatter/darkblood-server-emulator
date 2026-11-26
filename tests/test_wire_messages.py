@@ -13,6 +13,17 @@ from darkblood.games.network import messages
 
 
 class WireMessagesTest(unittest.TestCase):
+    def test_saved_play_options_validate_hex_and_preserve_valid_values(self):
+        options = bytes(range(24))
+        self.assertEqual(Character.from_dict({'play_option': options.hex()}).play_option, options)
+
+        defaults = Character.from_dict({}).encode_world_details()
+        for invalid in ('z' * 48, 'ff ' * 16, '00', None):
+            with self.subTest(invalid=invalid):
+                char = Character.from_dict({'play_option': invalid})
+                self.assertIsNone(char.play_option)
+                self.assertEqual(char.encode_world_details(), defaults)
+
     def test_delete_character_messages(self):
         raw_req = bytes.fromhex('ffffff7f') + struct.pack('<q', 123456789)
         req = messages.DeleteCharacterReq.decode(raw_req)

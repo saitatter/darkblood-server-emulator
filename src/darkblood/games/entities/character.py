@@ -173,6 +173,16 @@ class Character:
         except ValueError:
             char_class = raw_class
 
+        play_option = None
+        saved_options = data.get('play_option')
+        if isinstance(saved_options, str) and len(saved_options) == 48:
+            try:
+                decoded_options = bytes.fromhex(saved_options)
+            except ValueError:
+                decoded_options = b''
+            if len(decoded_options) == 24:
+                play_option = decoded_options
+
         return cls(
             id=data.get('id', 1),
             name=data.get('name', 'Tester'),
@@ -217,11 +227,7 @@ class Character:
             mark_active=bool(data.get('mark_active', False)),
             mark_base_cnt=int(data.get('mark_base_cnt', 0)),
             mark_bonus_cnt=int(data.get('mark_bonus_cnt', 0)),
-            play_option=(
-                bytes.fromhex(data['play_option'])
-                if isinstance(data.get('play_option'), str) and len(data['play_option']) == 48
-                else None
-            ),
+            play_option=play_option,
         )
 
     def to_dict(self) -> dict:
