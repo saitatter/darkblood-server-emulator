@@ -30,7 +30,7 @@ class SocialFlowTest(ServerTestCase):
             _, ack2132 = await client.expect_event(2132)
             self.assertEqual(struct.unpack_from('<i', ack2132)[0], 0)
 
-            # 3. Attendance / Guild (2569 -> 2570)
+            # 3. Friend block list (2569 -> 2570)
             client.send_event(2569)
             _, ack2570 = await client.expect_event(2570)
             self.assertEqual(struct.unpack_from('<i', ack2570)[0], 0)
@@ -330,6 +330,14 @@ class SocialFlowTest(ServerTestCase):
             _, r = await client.expect_event(2572)
             ack = FriendBlockListUpdateAck.decode(r)
             self.assertEqual((ack.result, ack.char_uid, ack.memo), (0, char2_id, 'noisy'))
+
+            # 2570 lists the block list as FriendEntry records (mapFriendBlockList).
+            from darkblood.games.network.messages import FriendBlockListRequestAck
+            client.send_event(2569)
+            _, r = await client.expect_event(2570)
+            blocked = FriendBlockListRequestAck.decode(r).block_list
+            self.assertEqual(list(blocked), [char2_id])
+            self.assertEqual((blocked[char2_id].name, blocked[char2_id].memo), ('BlockTarget', 'noisy'))
 
             client.send_event(2567, FriendBlockListDeleteReq(char_uid=char2_id).encode())
             _, r = await client.expect_event(2568)

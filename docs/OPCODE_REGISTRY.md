@@ -496,8 +496,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2566 | `eEGS_FRIEND_BLOCK_LIST_ADD_ACK` | 0x0075B640 | — | `FriendBlockListAddAck` |  |
 | 2567 | `eEGS_FRIEND_BLOCK_LIST_DELETE_REQ` | — | `social/friends.py` (`handle_friend_block_list_delete`) | `FriendBlockListDeleteReq` | eEGS_FRIEND_BLOCK_LIST_DELETE_REQ (0x007A2C70) -> 2568 eEGS_FRIEND_BLOCK_LIST_DELETE_ACK (0x0075B9B0). |
 | 2568 | `eEGS_FRIEND_BLOCK_LIST_DELETE_ACK` | 0x0075B9B0 | — | `FriendBlockListDeleteAck` |  |
-| 2569 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_REQ` | — | `social/friends.py` (`handle_guild_or_attendance`) | — | Opcode 2569 -> 2570 ACK, handler 0x772160: |
-| 2570 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK` | 0x00772160 | — | `GuildOrAttendanceAck` |  |
+| 2569 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_REQ` | — | `social/friends.py` (`handle_friend_block_list_request`) | — | eEGS_FRIEND_BLOCK_LIST_REQUEST_REQ -> 2570 (0x00772160, mapFriendBlockList). |
+| 2570 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK` | 0x00772160 | — | `FriendBlockListRequestAck` |  |
 | 2571 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ` | — | `social/friends.py` (`handle_friend_block_list_update`) | `FriendBlockListUpdateReq` | eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ (0x007A2F20) -> 2572 eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK (0x00753C80). |
 | 2572 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK` | 0x00753C80 | — | `FriendBlockListUpdateAck` |  |
 | 2573 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ` | — | `inventory/items.py` (`handle_use_league_point_item`) | `UseItemLeaguePointAddReq` | Opcode 2573 (eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ) -> 2574: consume an item that awards league points. |

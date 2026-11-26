@@ -9,6 +9,7 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
     'CheatLevelUpReq',
@@ -153,10 +154,7 @@ class CheatLearnAllSkillAck(WireMessage):
     OPCODE: ClassVar[int] = 2062
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-    )
+    skills: Vector[LearnedSkill] = field(default_factory=list)  # vecCheatSkill (0x004DCC60 -> 0x004DAE90 -> 0x00A491C0, LearnedSkill layout)
 
 
 @dataclass
@@ -181,10 +179,7 @@ class CheatLearnSkillAck(WireMessage):
     OPCODE: ClassVar[int] = 2064
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-    )
+    skills: Vector[LearnedSkill] = field(default_factory=list)  # vecCheatSkill (0x004DCC60 -> 0x00A491C0, LearnedSkill layout)
 
 
 @dataclass
@@ -639,12 +634,7 @@ class CheatPetEvolutionAck(WireMessage):
     result: u32 = 0
     pet_uid: i64 = 0
     new_pet_id: i32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'pet_uid',
-        'new_pet_id',
-        Const(EmptyVector),
-    )
+    skills: Vector[u16] = field(default_factory=list)  # vecSkill (0x0076D610, u16 skill indices as 2485)
 
 
 @dataclass

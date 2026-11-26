@@ -7,12 +7,6 @@ domain guild Dark Blood protocol wire messages - Guild domain.
 extern Item from darkblood.games.entities.items
 extern AddedItemNotice from darkblood.games.network.messages.inventory readable
 
-message 2570 GuildOrAttendanceAck
-  ## Reply to 2569, reader 0x00772160.
-  u32 result
-  map<?> _                   # 0x0076AE20
-end
-
 message 2150 GuildCreateReq header?
   ## No sender recovered; kept as the earlier raw UTF-16 form.
   wrest guild_name

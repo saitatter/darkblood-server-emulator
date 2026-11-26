@@ -11,7 +11,6 @@ from darkblood.games.entities.items import Item
 from darkblood.games.network.messages.inventory import AddedItemNotice
 
 __all__ = [
-    'GuildOrAttendanceAck',
     'GuildCreateReq',
     'GuildCreateProposalReq',
     'GuildCreateAck',
@@ -97,20 +96,6 @@ __all__ = [
     'CitadelPlayCountUpdateNot',
     'UpdateCitadelHistoryNot',
 ]
-
-
-@dataclass
-class GuildOrAttendanceAck(WireMessage):
-    """Opcode 2570: eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK (reply).
-
-    Reply to 2569, reader 0x00772160.
-    """
-    OPCODE: ClassVar[int] = 2570
-    result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyMap),
-    )
 
 
 @dataclass

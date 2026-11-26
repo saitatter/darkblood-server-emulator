@@ -42,6 +42,7 @@ __all__ = [
     'AlarmUpdateAck',
     'ChatNotifyReq',
     'ChatNotifyAck',
+    'FriendBlockListRequestAck',
     'FriendBlockEntry',
     'FriendBlockListAddReq',
     'FriendBlockListAddAck',
@@ -475,6 +476,19 @@ class ChatNotifyAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 2355
     result: i32 = 0
+
+
+@dataclass
+class FriendBlockListRequestAck(WireMessage):
+    """Opcode 2570: eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK (reply).
+
+    eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK, handler 0x00772160 (assert: mapFriendBlockList).
+    Same map reader as 2132 (0x0076AE20 -> 0x0074D520 i64 key -> 0x00A49450 FriendEntry).
+    Earlier named GuildOrAttendanceAck in the guild schema.
+    """
+    OPCODE: ClassVar[int] = 2570
+    result: u32 = 0
+    block_list: Map[i64, FriendEntry] = field(default_factory=dict)  # mapFriendBlockList
 
 
 @dataclass

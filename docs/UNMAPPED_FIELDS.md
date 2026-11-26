@@ -74,22 +74,18 @@
 | :--- | :--- | ---: | :--- |
 | `5346 CitadelRewardNot` | `map<?>` | events.jsch:68 | mapCitadelRewardItemUnit (0x0077BFB0 -> 0x0076F040), layout not recovered |
 
-## gm (4 of 94 fields)
+## gm (1 of 94 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2060 CheatItemDropAck` | `vector<?>` | gm.jsch:28 | vecDropItem (0x004E3AD0) |
-| `2062 CheatLearnAllSkillAck` | `vector<?>` | gm.jsch:39 | vecCheatSkill (0x004DCC60) |
-| `2064 CheatLearnSkillAck` | `vector<?>` | gm.jsch:51 | vecCheatSkill (0x004DCC60) |
-| `2491 CheatPetEvolutionAck` | `vector<?>` | gm.jsch:267 | vecSkill (0x0076D610) |
+| `2060 CheatItemDropAck` | `vector<?>` | gm.jsch:29 | vecDropItem (0x004E3AD0 -> 0x00A509E0: u32, u32, u16, u16, set<i64>, u16), names not recovered |
 
-## guild (3 of 153 fields)
+## guild (2 of 151 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2570 GuildOrAttendanceAck` | `map<?>` | guild.jsch:13 | 0x0076AE20 |
-| `2157 GuildInfoNot` | `raw[64]` | guild.jsch:145 |  |
-| `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:150 | guild members |
+| `2157 GuildInfoNot` | `raw[64]` | guild.jsch:139 |  |
+| `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:144 | guild members |
 
 ## inventory (3 of 233 fields)
 
@@ -180,7 +176,7 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (8 of 129 fields)
+## social (8 of 131 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

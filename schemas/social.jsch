@@ -239,6 +239,14 @@ message 2355 ChatNotifyAck
   i32 result
 end
 
+message 2570 FriendBlockListRequestAck
+  ## eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK, handler 0x00772160 (assert: mapFriendBlockList).
+  ## Same map reader as 2132 (0x0076AE20 -> 0x0074D520 i64 key -> 0x00A49450 FriendEntry).
+  ## Earlier named GuildOrAttendanceAck in the guild schema.
+  u32 result
+  map<i64,FriendEntry> block_list  # mapFriendBlockList
+end
+
 struct FriendBlockEntry
   ## Block list entry, reader 0x00A4A1A0 (2566).
   i64 uid                    # +0x00 char uid

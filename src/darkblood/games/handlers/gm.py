@@ -144,7 +144,10 @@ class GmHandlers(BaseDomainService):
         if char is not None:
             apply_learn_skill(char, req.skill_id, req.skill_level)
             self.save_char()
-        await self.reply(CheatLearnSkillAck(result=0), correlation,
+        from darkblood.games.handlers.skills import learned_skill_map
+        skills = learned_skill_map(char.get('skills', {}) if char else {})
+        await self.reply(CheatLearnSkillAck(result=0, skills=[s for i, s in skills.items() if i == req.skill_id]),
+                         correlation,
                          note=f'cheat learn skill ack (id={req.skill_id} lv={req.skill_level})')
 
     @packet_handler(CheatPleaseReq)

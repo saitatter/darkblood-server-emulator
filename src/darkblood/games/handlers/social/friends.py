@@ -3,7 +3,7 @@ import struct
 
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.network.messages import FriendListAck, GuildOrAttendanceAck
+from darkblood.games.network.messages import FriendBlockListRequestAck, FriendEntry, FriendListAck
 
 
 class FriendsHandlers:
@@ -46,11 +46,19 @@ class FriendsHandlers:
 
 
     @packet_handler(2569)
-    async def handle_guild_or_attendance(self, correlation, body):
-        # Opcode 2569 -> 2570 ACK, handler 0x772160:
-        # u32 result (0), tag 0x17 map (0x76AE20). Empty map is b'\x17\x00'.
-        ack = GuildOrAttendanceAck()
-        await self.reply(ack, correlation, note='opcode 2570 ack')
+    async def handle_friend_block_list_request(self, correlation, body):
+        # eEGS_FRIEND_BLOCK_LIST_REQUEST_REQ -> 2570 (0x00772160, mapFriendBlockList).
+        char = self.current_char() or {}
+        block_list = {}
+        for uid_key, memo in char.get('blocked_friends', {}).items():
+            uid = int(uid_key)
+            other = self.find_char(uid) or {}
+            block_list[uid] = FriendEntry(uid=uid, name=other.get('name', ''),
+                                          char_class=int(other.get('char_class', 0)) & 0xFF,
+                                          level=min(int(other.get('level', 1)), 0xFF), memo=memo or '',
+                                          is_online=False)
+        await self.reply(FriendBlockListRequestAck(block_list=block_list), correlation,
+                         note=f'friend block list ack ({len(block_list)})')
 
 
     @packet_handler(2352)
