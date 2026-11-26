@@ -331,8 +331,16 @@ class StoreHandlers:
     @packet_handler(2390)
     async def handle_roulette_manager_info(self, correlation, body):
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x0062CBC0.
+        # Also sync current roulette_points via 2389 now that Page_RoulettePoint (0x0E) is loaded
+        # (sending 2389 during 2006/2007 character select crashes at 0x00B01946 with NULL widget).
+        from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         ack = RouletteManagerInfoAck(manager_id=1, active=True, jackpot_ar=_ROULETTE_JACKPOT_AR)
         await self.reply(ack, correlation, note=f'roulette manager info ack (jackpot={_ROULETTE_JACKPOT_AR})')
+        char = self.current_char()
+        if char is not None:
+            pts = float(char.get('roulette_points', _ROULETTE_SPIN_COST))
+            await self.send_msg(RoulettePointInsertNot(roulette_points=pts),
+                                note=f'roulette point not (pts={pts:.1f})')
 
 
     @packet_handler(DurabilityChangeReq)

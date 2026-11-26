@@ -23,7 +23,6 @@ from darkblood.games.network.messages import (
     QuestSpecialInfo,
     RelayAddressNot,
     QuickSlot,
-    RoulettePointInsertNot,
     SelectCharacterAck,
     UndeleteCharacterAck,
 )
@@ -338,9 +337,6 @@ class FrontendHandlers(BaseDomainService):
                                         note='select char ack (%d)' % char_id)
         done = [int(q) for q in char.get('quests_done', [])]
         await self.send_msg(QuestHistoryNot(quest_ids=done), note='quest history not (%d)' % len(done))
-        roulette_pts = float(char.get('roulette_points', 100.0))
-        await self.send_msg(RoulettePointInsertNot(roulette_points=roulette_pts),
-                            note=f'roulette point not (pts={roulette_pts:.1f})')
         for ptype in (0, 1):
             pen_not = active_penalty_notice(char, penalty_type=ptype)
             if pen_not is not None:
