@@ -98,16 +98,26 @@ class LauncherChangelogTest(unittest.TestCase):
             '### Checksum',
             '- ignored bullet (`5555555`, @saitatter)',
         ])
+        parent_git = [
+            subprocess.CompletedProcess(['git', 'tag'], 0, stdout='v0.2.0\nv0.1.0\n'),
+            subprocess.CompletedProcess(
+                ['git', 'log'], 0,
+                stdout='9999999aaaaaaa\x1f9999999\x1f2026-11-24\x1fDev\x1fdev@example.com\x1ffeat: unrelated commit',
+            ),
+        ]
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            (Path(tmp) / '.git').mkdir()
+            root = Path(tmp) / 'portable'
+            root.mkdir()
+            (root / '.version').write_text('v0.2.0\n', encoding='utf-8')
             (root / 'RELEASE_NOTES.md').write_text(notes, encoding='utf-8')
             with patch.object(changelog, 'ROOT', root), \
-                 patch.object(changelog, '_current_release_tags', return_value=('v0.2.0', 'v0.1.0')), \
-                 patch.object(changelog.subprocess, 'run', side_effect=OSError('no git')), \
+                 patch.object(changelog.subprocess, 'run', side_effect=parent_git) as git_run, \
                  patch.object(changelog.urllib.request, 'urlopen', side_effect=OSError('offline')):
                 commits, label = changelog.fetch_recent_commits()
 
         self.assertEqual(label, 'release v0.2.0 (offline)')
+        git_run.assert_not_called()
         self.assertEqual([c['subject'] for c in commits], [
             'feat(ui): add tab',
             'fix(world): fix crash',

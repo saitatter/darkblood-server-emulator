@@ -42,12 +42,10 @@ def _resolve_github_username(name: str, email: str = '', login: str = '') -> str
 
 def _current_release_tags(flags):
     """Return (current_tag, previous_tag) for the installed/latest release."""
-    cur = ''
-    ver_file = ROOT / updater.VERSION_FILE
-    if ver_file.is_file():
-        v = ver_file.read_text(encoding='utf-8', errors='replace').strip()
-        if v.startswith('v'):
-            cur = v
+    version = updater.current_installed_version(ROOT)
+    cur = version if version.startswith('v') else ''
+    if not updater.is_dev_checkout(ROOT):
+        return cur, ''
     try:
         proc = subprocess.run(
             ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
@@ -118,12 +116,8 @@ def _parse_github_commit_items(items, limit=None):
     return commits
 
 
-def fetch_recent_commits(limit=None):
-    """Return list of dicts {sha, short, date, author, subject} for all commits in the current release."""
-    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-    cur_tag, prev_tag = _current_release_tags(flags)
+def _fetch_local_commits(cur_tag, prev_tag, flags, limit):
     rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
-    label = f'release {cur_tag}' if cur_tag else 'local git'
     try:
         git_args = ['git', 'log', rev_spec, '--no-merges',
                     '--pretty=format:%H\x1f%h\x1f%ad\x1f%an\x1f%ae\x1f%s', '--date=short']
@@ -149,10 +143,21 @@ def fetch_recent_commits(limit=None):
                     })
                     if limit is not None and len(commits) >= limit:
                         break
-            if commits:
-                return commits, label
+            return commits
     except Exception:
         pass
+    return []
+
+
+def fetch_recent_commits(limit=None):
+    """Return commit details and the source label for the current release."""
+    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+    cur_tag, prev_tag = _current_release_tags(flags)
+    if updater.is_dev_checkout(ROOT):
+        commits = _fetch_local_commits(cur_tag, prev_tag, flags, limit)
+        if commits:
+            label = f'release {cur_tag}' if cur_tag else 'local git'
+            return commits, label
 
     # Fallback: GitHub REST API — use /compare/{prev_tag}...{cur_tag} so ONLY commits
     # belonging to the current release are shown (never commits from older releases).
