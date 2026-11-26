@@ -4,6 +4,11 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **3D model format, extractor and viewer (`tools/dbmesh.py`, `tools/model_viewer/`, `docs/MODEL_FORMAT.md`, 2026-11-26)**:
+  - Recovered the `.x`/`.prt`/`.ani` layout from the client loader (`0x00B1DDB0` top level, `0x00B1D6E0` frame/mesh container, `0x00B1D530` vertex/index/attribute buffers, `0x00B1D2E0` skin info, `0x00B1CD60` keyframed animation sets): a JSerBuffer serialization of D3DX skinned meshes (FVF `0x112`, `D3DXCreateMeshFVF` options `0x220`), not DirectX X. `dbmesh.py` consumes every byte of all 6,575 extracted entries; only 15 `xof 0303bzip0032` effect files are unsupported.
+  - Verified on data: stored quaternions are conjugated (match `.ani` frame matrices to 1e-7), ticks 4800/s at 30 fps, characters = class skeleton `unit/character/<class>/<class>.x` + `part/*/*.prt` equipment binding bones by name.
+  - `py -3.13 tools/model_viewer`: PySide6 + moderngl Blender-like viewer (asset browser, outliner, material/solid/wire/weight-paint shading, armature, CPU skinning, animation timeline, part attachment, OBJ export, screenshots). Checked by off-screen renders and window captures (goblin archer attack, assembled fighter applauding, wyvern wire/solid). Dependencies installed for Python 3.13 only (`tools/model_viewer/requirements.txt`); Python 3.8 lacks numpy/PySide6.
+
 - **Party `5014` fields and `RoomMemberInfo` stress (2026-11-26, static + headless)**:
   - `5014 StartGameAck` (`0x007880A0`): the u16 is `player_count` (`cmp word [esp+0x54], 1` at `0x00788588` picks `Loading_Single.mp3` / `Loading_Party.mp3`), the u32 is `rand_seed` (stored at `AppPage(9)+0xB8`, copied to `JAppStateGamePlay +0x174`, added before `srand`/`rand` in the 5050 pickup handler `0x0078B794`), the first map is `peer_skills` (char UID -> learned-skill map `0x004B1240`; state 8 applies each peer's records through `0x0095A6A0`, skipping the own UID), and the second map's value is `PetInfo` (`0x00A52CF0`; key meaning and consumer not recovered, sent empty). Party runs now send the member count, one shared random seed and every member's skills; solo runs keep the live-verified zero reply. Not yet live-checked.
   - `RoomMemberInfo` (`0x00A49600`, 5061/5048/2025 rows): `+0x31` is the member's current stress drawn by the party row gauge `0x00756F40` (stress >= max greys the row and shows `UI_2356`); `+0x10` is a flags word whose bit `0x2` adds property `0x69` to the max stress; `+0x8E` adds a further max-stress bonus. The server now sends the stored stress. Dungeon unmapped fields: 39 -> 32.
@@ -103,7 +108,7 @@
 
 ## Verification status
 
-- **Headless suite**: **248/248** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **254/254** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 

@@ -366,6 +366,17 @@ python tools\gamectl.py stop           # Stop processes
 
 *An MCP stdio server is available via `.mcp.json` (`tools/mcp_server.py`) exposing automated gameplay, screenshot, and inspection tools.*
 
+### 5. 3D Model Viewer & Extractor
+Browse, animate and export the client's meshes from the private extracted data workspace (`tools/build_client_data.py` output):
+
+```powershell
+py -3.13 -m pip install -r tools\model_viewer\requirements.txt
+py -3.13 tools\model_viewer                       # Blender-like viewer (asset browser, skinning, animations)
+python tools\dbmesh.py export <file-or-dir> --out out\   # OBJ/MTL + textures
+```
+
+Format notes: [docs/MODEL_FORMAT.md](docs/MODEL_FORMAT.md).
+
 ---
 
 ## Documentation
