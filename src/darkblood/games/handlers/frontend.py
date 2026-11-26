@@ -18,6 +18,7 @@ from darkblood.games.network.messages import (
     DepotInfo,
     DepotSlotInfo,
     JoinSquareAck,
+    PetDepotSlotInfo,
     QuestHistoryNot,
     RelayAddressNot,
     QuickSlot,
@@ -149,12 +150,12 @@ def build_select_char_ack(char, account_chars=None):
 
 
 def _build_pet_depot_slots(char: dict) -> list:
-    """Build 4 DepotSlotInfo entries for 2007 SelectCharacterAck (0x00A3EDD0 -> Page_Pet +0x23C)."""
+    """Build 4 PetDepotSlotInfo (0x1B-byte) entries for 2007 SelectCharacterAck (0x00A3EDD0 -> 0x00A1E820)."""
     pet_extend = list(char.get('pet_depot_extend', [0, 0, 0, 0]))
     while len(pet_extend) < 4:
         pet_extend.append(0)
     return [
-        DepotSlotInfo(
+        PetDepotSlotInfo(
             active=rem > 0,
             slot_index=idx if rem > 0 else 0xFFFF,
             expire_date=0,

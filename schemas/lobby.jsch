@@ -32,13 +32,24 @@ struct ChannelSquare
 end
 
 struct DepotSlotInfo
-  ## Extended storage tab info (reader 0x00A1EBF0, 0x1B bytes in memory).
+  ## Extended storage tab info (reader 0x00A1EBF0, 0x13 bytes on wire, 0x1B in memory).
   ## 0x00942EE0 converts remain_sec to expiry ms; 0x00936990 indexes slots[0..1]
   ## for storage groups 2 and 3 (group 1 = slots 0..19 is always unlocked).
   bool active
   u16 slot_index = 0xFFFF
   u64 expire_date
   i64 remain_sec
+end
+
+struct PetDepotSlotInfo
+  ## Extended pet-storage tab info in 2007 (reader 0x00A1E820 -> 0x00B35760(0x1B)).
+  ## Unlike 0x00A1EBF0 (field-by-field, 0x13 bytes), 0x00A1E820 reads the full
+  ## 0x1B-byte (27-byte) packed struct verbatim after the 0x1E struct tag.
+  bool active
+  u16 slot_index = 0xFFFF
+  u64 expire_date
+  i64 remain_sec
+  u64 _
 end
 
 struct DepotInfo
@@ -117,7 +128,7 @@ message 2007 SelectCharacterAck
   u64 _
   bool _
   u64 _
-  vector<DepotSlotInfo> pet_depot_slots  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C)
+  vector<PetDepotSlotInfo> pet_depot_slots  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C, 0x1B bytes each)
   u32 _                      # 0x00A1EEA0: u32, 3 x u64
   u64 _
   u64 _

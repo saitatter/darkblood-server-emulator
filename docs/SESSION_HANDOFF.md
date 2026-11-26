@@ -2,7 +2,11 @@
 
 > Older per-session logs (2026-11-16 through 2026-11-21) were pruned to keep this handoff concise; they remain in Git history and their results are reflected in `README.md`, `docs/STATUS.md`, `docs/OPCODE_REGISTRY.md`, and `ROADMAP.md`.
 
-## Recent verified changes (2026-11-22 – 2026-11-24)
+## Recent verified changes (2026-11-22 – 2026-11-26)
+
+- **Fix `2007 SelectCharacterAck` deserialization failure on `pet_depot_slots` (2026-11-26)**:
+  - Disassembly of `0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 -> 0x00B35760` showed `pet_depot_slots` reads `0x1B` (27) raw bytes per element after the `0x1E` struct tag, whereas `DepotSlotInfo` (`0x00A1EBF0`) serializes 4 fields totaling `0x13` (19) bytes. Sending 4×19-byte entries desynced the rest of `2007` by 32 bytes and prevented entering the loading screen on character select.
+  - Added `PetDepotSlotInfo` (`0x1B` bytes) in `schemas/lobby.jsch` / `src/darkblood/games/network/messages/lobby.py`, switched `_build_pet_depot_slots` in `src/darkblood/games/handlers/frontend.py` to use it, and added a wire-size regression test in `tests/test_pets_flow.py`.
 
 - **Codebase refactoring & modularization (2026-11-24)**:
   - Removed duplicate handler definitions (`DungeonRoom` across `dungeon/*`, `store_record` / `MONSTER_CARD_ACKS` across `commerce/*`) and cleaned up 300+ unused top-level imports across `src/darkblood/`.
@@ -56,7 +60,7 @@
 
 ## Verification status
 
-- **Headless suite**: **241/241** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **242/242** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 

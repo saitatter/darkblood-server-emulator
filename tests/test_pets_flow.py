@@ -568,6 +568,12 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_pet_depot_slot_wire_size_matches_client_reader(self):
+        """0x00A1E820 reads 0x1B (27) raw bytes per pet_depot_slots entry (unlike 0x00A1EBF0's 0x13 bytes)."""
+        from darkblood.games.network.messages import DepotSlotInfo, PetDepotSlotInfo
+        self.assertEqual(len(DepotSlotInfo().encode()), 0x13)
+        self.assertEqual(len(PetDepotSlotInfo().encode()), 0x1B)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -18,6 +18,7 @@ __all__ = [
     'GameServer',
     'ChannelSquare',
     'DepotSlotInfo',
+    'PetDepotSlotInfo',
     'DepotInfo',
     'SelectCharacterAck',
     'JoinSquareAck',
@@ -69,7 +70,7 @@ class ChannelSquare(WireMessage):
 
 @dataclass
 class DepotSlotInfo(WireMessage):
-    """Extended storage tab info (reader 0x00A1EBF0, 0x1B bytes in memory).
+    """Extended storage tab info (reader 0x00A1EBF0, 0x13 bytes on wire, 0x1B in memory).
     0x00942EE0 converts remain_sec to expiry ms; 0x00936990 indexes slots[0..1]
     for storage groups 2 and 3 (group 1 = slots 0..19 is always unlocked).
     """
@@ -77,6 +78,25 @@ class DepotSlotInfo(WireMessage):
     slot_index: u16 = 0xFFFF
     expire_date: u64 = 0
     remain_sec: i64 = 0
+
+
+@dataclass
+class PetDepotSlotInfo(WireMessage):
+    """Extended pet-storage tab info in 2007 (reader 0x00A1E820 -> 0x00B35760(0x1B)).
+    Unlike 0x00A1EBF0 (field-by-field, 0x13 bytes), 0x00A1E820 reads the full
+    0x1B-byte (27-byte) packed struct verbatim after the 0x1E struct tag.
+    """
+    active: bool = False
+    slot_index: u16 = 0xFFFF
+    expire_date: u64 = 0
+    remain_sec: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'active',
+        'slot_index',
+        'expire_date',
+        'remain_sec',
+        Const(u64, 0),
+    )
 
 
 @dataclass
@@ -128,7 +148,7 @@ class SelectCharacterAck(WireMessage):
     u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_a: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9190 -> 0x005F6640
     ridings: Map[h32, Extern[RidingInfo, 'encode', False]] = field(default_factory=dict)  # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
-    pet_depot_slots: Vector[DepotSlotInfo] = field(default_factory=list)  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C)
+    pet_depot_slots: Vector[PetDepotSlotInfo] = field(default_factory=list)  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C, 0x1B bytes each)
     u32_vec_c: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_b: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9150 -> 0x005F6640
     citadel_play_count: i16 = 0  # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
