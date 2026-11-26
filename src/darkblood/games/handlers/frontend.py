@@ -20,8 +20,10 @@ from darkblood.games.network.messages import (
     JoinSquareAck,
     PetDepotSlotInfo,
     QuestHistoryNot,
+    QuestSpecialInfo,
     RelayAddressNot,
     QuickSlot,
+    RoulettePointInsertNot,
     SelectCharacterAck,
     UndeleteCharacterAck,
 )
@@ -126,6 +128,7 @@ def build_select_char_ack(char, account_chars=None):
         character=c,
         depots=depots,
         active_quests=sorted(active, key=lambda q: q.uid),
+        quest_special_info=_build_quest_special_info(char),
         bags=bags,
         items=items,
         skills=learned_skill_map(char.get('skills', {}), char.get('skill_speeches', {}),
@@ -147,6 +150,34 @@ def build_select_char_ack(char, account_chars=None):
         pet_depot_slots=_build_pet_depot_slots(char) if isinstance(char, dict) else _build_pet_depot_slots({}),
         citadel_play_count=int(char.get('citadel_play_count', 3)) if isinstance(char, dict) else 3,
     ).encode()
+
+
+def _build_quest_special_info(char) -> QuestSpecialInfo:
+    """Build 18-byte QuestSpecialInfo for 2007 SelectCharacterAck (0x00641E00 -> JQuestMgr::Init).
+
+    Restores active promotion-trial temporary skills on relog so the HUD TempSkillSet activates.
+    """
+    if not isinstance(char, dict):
+        return QuestSpecialInfo()
+    ts = char.get('temp_skills')
+    if not isinstance(ts, dict):
+        return QuestSpecialInfo()
+    qid = ts.get('quest_id')
+    active_quests = char.get('quests_active') or {}
+    if qid is None or str(qid) not in active_quests:
+        return QuestSpecialInfo()
+    t_skills = ts.get('skills') or []
+    if not t_skills:
+        return QuestSpecialInfo()
+    qid_int = int(qid)
+    qid_i32 = qid_int - 0x100000000 if qid_int >= 0x80000000 else qid_int
+    return QuestSpecialInfo(
+        action_type=1,
+        skill_1_index=int(ts.get('target_class', 0xFFFF)) & 0xFFFF,
+        skill_1_value=int(t_skills[0]),
+        skill_2_index=int(t_skills[1]) if len(t_skills) > 1 else -1,
+        skill_2_value=qid_i32,
+    )
 
 
 def _build_pet_depot_slots(char: dict) -> list:
@@ -307,6 +338,9 @@ class FrontendHandlers(BaseDomainService):
                                         note='select char ack (%d)' % char_id)
         done = [int(q) for q in char.get('quests_done', [])]
         await self.send_msg(QuestHistoryNot(quest_ids=done), note='quest history not (%d)' % len(done))
+        roulette_pts = float(char.get('roulette_points', 100.0))
+        await self.send_msg(RoulettePointInsertNot(roulette_points=roulette_pts),
+                            note=f'roulette point not (pts={roulette_pts:.1f})')
         for ptype in (0, 1):
             pen_not = active_penalty_notice(char, penalty_type=ptype)
             if pen_not is not None:

@@ -29,6 +29,27 @@ from darkblood.player_management.characters import (
 
 MONSTER_CARD_ACKS = {2602: MonsterCardListAck, 2609: MonsterCardDeckAck, 2618: MonsterCardAlbumAck}
 
+# Exact reward table from roulette.lua (DictRoulette:LoadReward).
+# Tuple: (id, reward_type, value, rate, notify)
+# reward_type 0 = AR share of jackpot (float), 1 = item code (str).
+ROULETTE_REWARDS = (
+    ('moneyreward1', 0, 0.99, 2.564102564e-8, True),
+    ('moneyreward2', 0, 0.50, 1.282051282e-6, True),
+    ('moneyreward3', 0, 0.25, 6.41025641e-6, True),
+    ('moneyreward4', 0, 0.10, 1.282051282e-5, True),
+    ('moneyreward5', 0, 0.05, 3.205128205e-4, True),
+    ('moneyreward6', 0, 0.01, 0.005128205128, False),
+    ('itemreward7',  1, 'IRanAEtc150R435', 0.12, False),
+    ('itemreward8',  1, 'Igal1Cash6',      0.18, False),
+    ('itemreward9',  1, 'Isal1Cash1',      0.21, False),
+    ('itemreward10', 1, 'IRanAEtc150R436', 0.15, False),
+    ('itemreward11', 1, 'IhppmppFS173',    0.153, False),
+    ('itemreward12', 1, 'IhppmppFS172',    0.23153074, False),
+)
+_ROULETTE_JACKPOT_FLOOR = 100_000
+_ROULETTE_JACKPOT_AR = 1_000_000
+_ROULETTE_SPIN_COST = 100.0
+
 
 def store_record(item: str, stock: int = -1, price: int = None) -> StoreRecord:
     """Store record for an item id; price defaults to the item's BuyPrice.
@@ -280,9 +301,9 @@ class StoreHandlers:
 
     @packet_handler(2390)
     async def handle_roulette_manager_info(self, correlation, body):
-        # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0.
-        ack = RouletteManagerInfoAck()
-        await self.reply(ack, correlation, note='roulette manager info ack')
+        # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x0062CBC0.
+        ack = RouletteManagerInfoAck(manager_id=1, active=True, jackpot_ar=_ROULETTE_JACKPOT_AR)
+        await self.reply(ack, correlation, note=f'roulette manager info ack (jackpot={_ROULETTE_JACKPOT_AR})')
 
 
     @packet_handler(DurabilityChangeReq)
@@ -341,21 +362,64 @@ class StoreHandlers:
     @packet_handler(2386)
     async def handle_roulette_roll_dice(self, correlation, body):
         # eEGS_ROULETTE_ROLL_DICE_REQ -> 2387 eEGS_ROULETTE_ROLL_DICE_ACK (0x0062C850).
+        global _ROULETTE_JACKPOT_AR
         import random
-        import time
-        from darkblood.games.network.messages.commerce import RouletteRollDiceAck, RouletteRollDiceReq
-        req = RouletteRollDiceReq.decode(body)
-        dice = random.randint(1, 6)
+        from darkblood.games.network.messages.commerce import RoulettePointInsertNot, RouletteRollDiceAck
+        from darkblood.games.network.messages.inventory import DragItemAck
+
         char = self.current_char()
-        pos = (int((char or {}).get('roulette_pos', 0)) + dice) % 24
+        weights = [entry[3] for entry in ROULETTE_REWARDS]
+        entry_id, reward_type, value, _, notify = random.choices(ROULETTE_REWARDS, weights=weights, k=1)[0]
+        reward_hash = jhash(entry_id)
+
+        reward_rate = 0.0
+        reward_ar = 0
+        reward_items = []
+        reward_count = 0
+        wire_items = []
+
+        if reward_type == 0:
+            reward_rate = float(value)
+            reward_ar = max(1, int(_ROULETTE_JACKPOT_AR * reward_rate))
+            _ROULETTE_JACKPOT_AR = max(_ROULETTE_JACKPOT_FLOOR, _ROULETTE_JACKPOT_AR - reward_ar)
+            if char is not None:
+                char['gold'] = int(char.get('gold', 0)) + reward_ar
+                char['u66'] = char['gold']
+        else:
+            item_code = str(value)
+            reward_items = [item_code]
+            reward_count = 1
+            if char is not None:
+                new_items = add_reward_items(char, [(item_code, 1)])
+                wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
+
+        cur_ar = int((char or {}).get('gold', 0))
+        pts = float((char or {}).get('roulette_points', _ROULETTE_SPIN_COST))
+        if pts >= _ROULETTE_SPIN_COST:
+            pts = max(0.0, pts - _ROULETTE_SPIN_COST)
         if char is not None:
-            char['roulette_pos'] = pos
+            char['roulette_points'] = pts
             self.save_char()
+
         await self.reply(
-            RouletteRollDiceAck(result=0, dice_value=dice, position=pos, rate=1.0,
-                                reward_ar=0, roulette_points=0, timestamp=int(time.time())),
-            correlation, note=f'roulette roll dice ack (dice={dice} pos={pos})',
+            RouletteRollDiceAck(
+                result=0,
+                reward_id=reward_hash,
+                reward_type=reward_type,
+                reward_rate=reward_rate,
+                jackpot_ar=_ROULETTE_JACKPOT_AR,
+                reward_count=reward_count,
+                reward_ar=reward_ar,
+                reward_items=reward_items,
+                notify=notify,
+                cur_ar=cur_ar,
+            ),
+            correlation,
+            note=f'roulette roll dice ack ({entry_id}, ar={reward_ar}, items={reward_items})',
         )
+        if wire_items:
+            await self.send_msg(DragItemAck(result=0, items=wire_items), note=f'roulette item grant ({reward_items[0]})')
+        await self.send_msg(RoulettePointInsertNot(roulette_points=pts), note=f'roulette point not (pts={pts:.1f})')
 
 
     @packet_handler(2388)
@@ -363,8 +427,8 @@ class StoreHandlers:
         # eEGS_ROULETTE_NOTICE_REQ -> 2389 eEGS_ROULETTE_POINT_INSERT_NOT (0x0063C390).
         from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         char = self.current_char()
-        pts = int((char or {}).get('roulette_points', 0))
-        await self.send_msg(RoulettePointInsertNot(roulette_points=pts), note=f'roulette point not (pts={pts})')
+        pts = float((char or {}).get('roulette_points', _ROULETTE_SPIN_COST))
+        await self.send_msg(RoulettePointInsertNot(roulette_points=pts), note=f'roulette point not (pts={pts:.1f})')
 
 
     @packet_handler(2530)

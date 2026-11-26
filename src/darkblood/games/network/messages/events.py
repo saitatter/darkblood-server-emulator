@@ -32,11 +32,20 @@ __all__ = [
 class RouletteManagerInfoAck(WireMessage):
     """Opcode 2391: eEGS_ROULETTE_MANAGER_INFO_ACK (reply).
 
-    Reader 0x006CC6B0: u32 result + untagged 21 bytes (0x00A48B80).
+    JAppPageRoulette::OneEGS_ROULETTE_MANAGER_INFO_ACK (0x0062CBC0):
+    No result u32; tag 0x1E + 0x0D raw bytes (0x00A1E7E0 -> 0x00B35760(0x0D)).
+    +0x00 i32 manager_id, +0x04 bool active, +0x05 i64 jackpot_ar (stored at +0x1C0).
     """
     OPCODE: ClassVar[int] = 2391
-    result: u32 = 0
-    payload: Raw[21] = bytes(21)
+    manager_id: i32 = 1
+    active: bool = True
+    jackpot_ar: i64 = 1000000
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Lit(b'\x1e'),
+        'manager_id',
+        'active',
+        'jackpot_ar',
+    )
 
 
 @dataclass

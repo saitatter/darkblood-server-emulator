@@ -430,13 +430,30 @@ class PetsFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<Ii', r), (0, 100))
 
             # Roulette & StorageShare
+            from darkblood.core.hashing import jhash
+            from darkblood.games.handlers.commerce.stores import ROULETTE_REWARDS
+            from darkblood.games.network.messages.events import RouletteManagerInfoAck
+            client.send_event(2390, b'')
+            _, r2391 = await client.expect_event(2391)
+            self.assertEqual(len(r2391), 14)
+            self.assertEqual(r2391[0], 0x1E)
+            mgr2391 = RouletteManagerInfoAck.decode(r2391)
+            self.assertTrue(mgr2391.active)
+            self.assertGreater(mgr2391.jackpot_ar, 0)
+
             client.send_event(2386, RouletteRollDiceReq(count=1).encode())
             _, r = await client.expect_event(2387)
-            self.assertEqual(RouletteRollDiceAck.decode(r).result, 0)
+            self.assertEqual(r[4], 0x1E)
+            ack2387 = RouletteRollDiceAck.decode(r)
+            self.assertEqual(ack2387.result, 0)
+            valid_reward_hashes = {jhash(entry[0]) & 0xFFFFFFFF for entry in ROULETTE_REWARDS}
+            self.assertIn(ack2387.reward_id & 0xFFFFFFFF, valid_reward_hashes)
 
             client.send_event(2388, RouletteNoticeReq().encode())
             _, r = await client.expect_event(2389)
-            self.assertEqual(RoulettePointInsertNot.decode(r).roulette_points, 0)
+            self.assertEqual(len(r), 5)
+            self.assertEqual(r[0], 0x1E)
+            self.assertEqual(RoulettePointInsertNot.decode(r).roulette_points, 0.0)
 
             client.send_event(2530, StorageShareReq(item_uid=5).encode())
             _, r = await client.expect_event(2531)

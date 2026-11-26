@@ -519,6 +519,12 @@ class QuestFlowTest(ServerTestCase):
             self.assertEqual(char['skills'].get('224'), 1)
             self.assertEqual(char['skills'].get('295'), 1)
 
+            # Relog (2006 -> 2007 SelectCharacterAck) restores QuestSpecialInfo(action_type=1)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            expected_qsi = b'\x1e' + struct.pack('<iHiiI', 1, 0x11, 224, 295, q_hash)
+            self.assertIn(expected_qsi, ack2007)
+
             # Abandoning the trial quest removes temp skills and sends action_type=3
             client.send_event(2078, req_giveup, compressed=True)
             _, ack2079 = await client.expect_event(2079)
@@ -530,6 +536,11 @@ class QuestFlowTest(ServerTestCase):
             self.assertNotIn('224', char_after.get('skills', {}))
             self.assertNotIn('295', char_after.get('skills', {}))
             self.assertNotIn('temp_skills', char_after)
+
+            # Relog after giveup no longer sends active temp skills in 2007
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007_after = await client.expect_event(2007)
+            self.assertNotIn(expected_qsi, ack2007_after)
 
         self.run_async(self.with_server(scenario))
 

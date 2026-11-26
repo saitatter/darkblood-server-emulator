@@ -11,7 +11,7 @@ from darkblood.games.entities.character import Character, layer_net_id
 from darkblood.games.entities.items import Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.network.messages.pets import RidingInfo
-from darkblood.games.network.messages.quests import WaypointData
+from darkblood.games.network.messages.quests import QuestSpecialInfo, WaypointData
 from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
 
 __all__ = [
@@ -139,6 +139,7 @@ class SelectCharacterAck(WireMessage):
     cleared_maps: Set[wstr] = field(default_factory=list)  # 0x0076A8C0 -> 0x00765450 (set of map codes)
     active_quests: Pairs[Extern[ActiveQuest, 'encode_entry', False]] = field(default_factory=list)  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
     u32_set_a: Set[u32] = field(default_factory=list)  # 0x005EE0F0
+    quest_special_info: Extern[QuestSpecialInfo, 'encode', False] = field(default_factory=QuestSpecialInfo)  # 0x00641E00 -> JQuestMgr::Init (restores TempSkillSet on relog)
     u32_set_b: Set[u32] = field(default_factory=list)  # 0x005EE0F0
     daily_dun_enter_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3D1 -> 0x009646F0)
     daily_dun_clear_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3DD -> 0x00964A00)
@@ -177,7 +178,8 @@ class SelectCharacterAck(WireMessage):
         Const(u32, 0),
         'active_quests',
         'u32_set_a',
-        Const(Raw[18], bytes(18)),
+        Lit(b'\x1e'),
+        'quest_special_info',
         'u32_set_b',
         Const(u64, 0),
         Const(u64, 0),

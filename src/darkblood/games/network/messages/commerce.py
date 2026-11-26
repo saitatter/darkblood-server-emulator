@@ -720,30 +720,33 @@ class RouletteRollDiceReq(WireMessage):
 class RouletteRollDiceAck(WireMessage):
     """Opcode 2387: eEGS_ROULETTE_ROLL_DICE_ACK (reply).
 
-    Handler 0x0062C850 (struct reader 0x00A3EC60).
+    Handler 0x0062C850 (tag 0x1E + struct reader 0x00A3EC60).
+    reward_id = jhash(roulette.lua entry ID, e.g. "moneyreward6" / "itemreward12").
     """
     OPCODE: ClassVar[int] = 2387
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    dice_value: i32 = 0
-    position: i32 = 0
-    rate: f32 = 0.0
-    reward_ar: i64 = 0
-    roulette_points: i32 = 0
-    param64: i64 = 0
-    is_bonus: bool = False
-    timestamp: i64 = 0
+    reward_id: h32 = 0
+    reward_type: i32 = 0  # 0 = AR share of jackpot, 1 = item
+    reward_rate: f32 = 0.0  # AR share (0.01..0.99) when reward_type == 0
+    jackpot_ar: i64 = 0  # updated jackpot pool
+    reward_count: i32 = 0  # reward count / extra param
+    reward_ar: i64 = 0  # AR won when reward_type == 0
+    reward_items: Vector[wstr] = field(default_factory=list)  # 0x00A3EA40 -> 0x00A3E600: item IDs when reward_type == 1
+    notify: bool = False  # broadcast/jackpot notice flag
+    cur_ar: i64 = 0  # updated player AR / timestamp
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
-        'dice_value',
-        'position',
-        'rate',
+        Lit(b'\x1e'),
+        'reward_id',
+        'reward_type',
+        'reward_rate',
+        'jackpot_ar',
+        'reward_count',
         'reward_ar',
-        'roulette_points',
-        'param64',
-        Const(EmptyVector),
-        'is_bonus',
-        'timestamp',
+        'reward_items',
+        'notify',
+        'cur_ar',
     )
 
 
@@ -762,10 +765,14 @@ class RouletteNoticeReq(WireMessage):
 class RoulettePointInsertNot(WireMessage):
     """Opcode 2389: eEGS_ROULETTE_POINT_INSERT_NOT (reply).
 
-    Handler 0x0063C390 (assert: jRouletteCharInfo, reader 0x00A48B60: 4 raw bytes).
+    Handler 0x0063C390 (assert: jRouletteCharInfo, tag 0x1E + 0x00A48B60: 4 raw bytes f32 -> player+0x328).
     """
     OPCODE: ClassVar[int] = 2389
-    roulette_points: i32 = 0
+    roulette_points: f32 = 0.0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Lit(b'\x1e'),
+        'roulette_points',
+    )
 
 
 @dataclass

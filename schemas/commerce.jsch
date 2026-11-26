@@ -339,17 +339,19 @@ message 2386 RouletteRollDiceReq header?
 end
 
 message 2387 RouletteRollDiceAck ok_only
-  ## Handler 0x0062C850 (struct reader 0x00A3EC60).
+  ## Handler 0x0062C850 (tag 0x1E + struct reader 0x00A3EC60).
+  ## reward_id = jhash(roulette.lua entry ID, e.g. "moneyreward6" / "itemreward12").
   u32 result
-  i32 dice_value
-  i32 position
-  f32 rate
-  i64 reward_ar
-  i32 roulette_points
-  i64 param64
-  vector<?> _                # 0x00A3EA40
-  bool is_bonus
-  i64 timestamp
+  lit 1e
+  h32 reward_id
+  i32 reward_type            # 0 = AR share of jackpot, 1 = item
+  f32 reward_rate            # AR share (0.01..0.99) when reward_type == 0
+  i64 jackpot_ar             # updated jackpot pool
+  i32 reward_count           # reward count / extra param
+  i64 reward_ar              # AR won when reward_type == 0
+  vector<wstr> reward_items  # 0x00A3EA40 -> 0x00A3E600: item IDs when reward_type == 1
+  bool notify                # broadcast/jackpot notice flag
+  i64 cur_ar                 # updated player AR / timestamp
 end
 
 message 2388 RouletteNoticeReq header?
@@ -357,8 +359,9 @@ message 2388 RouletteNoticeReq header?
 end
 
 message 2389 RoulettePointInsertNot
-  ## Handler 0x0063C390 (assert: jRouletteCharInfo, reader 0x00A48B60: 4 raw bytes).
-  i32 roulette_points
+  ## Handler 0x0063C390 (assert: jRouletteCharInfo, tag 0x1E + 0x00A48B60: 4 raw bytes f32 -> player+0x328).
+  lit 1e
+  f32 roulette_points
 end
 
 message 2463 DepotSlotExtendExpireNot
