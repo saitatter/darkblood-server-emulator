@@ -19,7 +19,7 @@ _GITHUB_USERNAMES = {
 
 def parse_commit_prefix(subject):
     """Extract conventional-commit type (feat/fix/docs/...) and clean title."""
-    m = re.match(r'^([a-z]+)(?:\(([^)]+)\))?:\s*(.+)$', subject)
+    m = re.match(r'^([a-z]+)(?:\(([^)]+)\))?!?:\s*(.+)$', subject)
     if m:
         return m.group(1), m.group(2) or '', m.group(3)
     return 'chore', '', subject
