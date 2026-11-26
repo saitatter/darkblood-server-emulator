@@ -301,6 +301,36 @@ class GmFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_gm_bridge_list_players_and_clients_roster(self):
+        """GM bridge status/list_players returns per-client character rosters with the active char marked."""
+        from darkblood.games.gm_bridge import _list_clients, _list_players
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('MainHero', char_class=0))
+            _, c1 = await client.expect_event(2013)
+            cid1 = struct.unpack_from('<Q', c1, 10)[0]
+            client.send_event(2012, create_request('AltHero', char_class=1))
+            _, c2 = await client.expect_event(2013)
+            cid2 = struct.unpack_from('<Q', c2, 10)[0]
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, cid1))
+            await client.expect_event(2007)
+
+            players = _list_players()
+            self.assertEqual([p['char_id'] for p in players], [cid1])
+            clients = _list_clients()
+            self.assertEqual(len(clients), 1)
+            cl = clients[0]
+            self.assertEqual(cl['account'], 'OfflinePlayer')
+            self.assertEqual(cl['active_char_id'], cid1)
+            roster = {r['char_id']: r for r in cl['characters']}
+            self.assertTrue({cid1, cid2}.issubset(roster))
+            self.assertTrue(roster[cid1]['active'])
+            self.assertFalse(roster[cid2]['active'])
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

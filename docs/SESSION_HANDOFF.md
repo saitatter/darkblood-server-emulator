@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Fix Launcher GM tab Refresh Players & cascading per-client Target menu (`gm_bridge.py`, `tools/launcher.py`, 2026-11-26)**:
+  - Fixed action mismatch (`launcher.py` sent `action='list_players'` while `gm_bridge.py` only handled `action='status'`); `gm_bridge.py` now accepts both and returns `clients` grouped by account with each client's full character roster and `active` flag.
+  - Replaced the flat `OptionMenu` in `tools/launcher.py` with a `Menubutton` + cascading per-client submenus listing all characters on each connected client with the current active character marked (`● ... [Current]`) and selectable.
 - **Pet EXP/level-up on kills (`5324`/`5323`) & full-inventory dungeon chest mail delivery (`5091` result `294`, 2026-11-26)**:
   - Added `grant_pet_exp()` (`src/darkblood/games/handlers/pets/pets.py`) called from `handle_monster_dead` (`dungeon/combat.py`), sending `5324 PetChangeExpNot` (`gain_2 > 0`, verified in `0x0079EFA0 -> 0x009522A0`) and `5323 PetLevelUpNot` (`<qqBi`, verified in `0x007754E0 -> 0x00952300`) against the `UPExp` curve.
   - Updated `handle_choice_reward_party_rank` (`5090 -> 5091`, `dungeon/rewards.py`): when inventory is full, delivers the rolled reward to the character's mailbox (`send_mail` + `2227 PostNewArrivalNot`) and replies with `result=294` (`0x126` `JERI_DUN_REWARD_00`) + full chest payload so `0x0078D660` opens the chest and shows `UI_3329` ("Send via mail as there is not enough space in the inventory."); insufficient AR for extra chests returns `168` (`0xA8` `JERI_NOT_ENOUGH_AR` -> `UI_750`).
@@ -92,7 +95,7 @@
 
 ## Verification status
 
-- **Headless suite**: **247/247** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **248/248** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 

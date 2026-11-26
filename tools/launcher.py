@@ -466,6 +466,8 @@ class DarkBloodLauncher(tk.Tk):
         """Build the searchable GM Commands console & live execution tab (visible when gm_mode=1)."""
         self._gm_commands = parse_gm_commands_doc()
         self._gm_players = []
+        self._gm_clients = []
+        self._gm_target_char_id = None
         self._gm_selected_cmd = None
 
         card = tk.Frame(self.gm_page, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
@@ -502,14 +504,23 @@ class DarkBloodLauncher(tk.Tk):
         ).pack(side='right', padx=(4, 10), pady=8)
 
         self.gm_player_var = tk.StringVar(value='Auto (active character)')
-        self.gm_player_menu = tk.OptionMenu(hdr, self.gm_player_var, 'Auto (active character)')
-        self.gm_player_menu.configure(
+        self.gm_player_btn = tk.Menubutton(
+            hdr, textvariable=self.gm_player_var, indicatoron=True, direction='below',
             bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
             highlightthickness=1, highlightbackground=BORDER, relief='flat', bd=0,
-            font=('Segoe UI', 8), cursor='hand2',
+            font=('Segoe UI', 8), cursor='hand2', padx=8, pady=3,
         )
-        self.gm_player_menu['menu'].configure(bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white')
-        self.gm_player_menu.pack(side='right', padx=(4, 4), pady=8)
+        self.gm_player_menu = tk.Menu(
+            self.gm_player_btn, tearoff=0,
+            bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white',
+            disabledforeground=TEXT_MUTED,
+        )
+        self.gm_player_menu.add_command(
+            label='Auto (active character)',
+            command=lambda: self._select_gm_target(None, 'Auto (active character)'),
+        )
+        self.gm_player_btn.configure(menu=self.gm_player_menu)
+        self.gm_player_btn.pack(side='right', padx=(4, 4), pady=8)
         tk.Label(hdr, text='Target:', bg=BG_CARD_ALT, fg=TEXT_DIM,
                  font=('Segoe UI', 8, 'bold')).pack(side='right', padx=(8, 2))
 
@@ -651,34 +662,100 @@ class DarkBloodLauncher(tk.Tk):
             ex = ex[1:].strip()
         self.gm_cmd_var.set(ex if ex else c['name'])
 
+    def _select_gm_target(self, char_id, label):
+        self._gm_target_char_id = char_id
+        self.gm_player_var.set(label)
+
     def _refresh_gm_players_async(self):
         def worker():
-            resp = query_gm_bridge({'action': 'list_players'})
+            resp = query_gm_bridge({'action': 'status'})
             self.after(0, lambda: self._apply_gm_players(resp))
         threading.Thread(target=worker, daemon=True).start()
 
     def _apply_gm_players(self, resp):
-        menu = self.gm_player_menu['menu']
+        menu = self.gm_player_menu
         menu.delete(0, 'end')
         self._gm_players = resp.get('players', []) if resp.get('ok') else []
-        choices = ['Auto (active character)'] + [
-            f"{p['name']} (Lv.{p['level']}, #{p['char_id']})" for p in self._gm_players
-        ]
-        for ch in choices:
-            menu.add_command(label=ch, command=lambda v=ch: self.gm_player_var.set(v))
-        if self.gm_player_var.get() not in choices:
-            self.gm_player_var.set(choices[0])
+        self._gm_clients = resp.get('clients', []) if resp.get('ok') else []
+
+        menu.add_command(
+            label='Auto (active character)',
+            command=lambda: self._select_gm_target(None, 'Auto (active character)'),
+        )
+
+        # Fallback: if talking to an older server without 'clients', build minimal entries from 'players'
+        clients = self._gm_clients
+        if not clients and self._gm_players:
+            clients = [
+                {
+                    'account': p.get('account') or f"Client#{p['char_id']}",
+                    'active_char_id': p['char_id'],
+                    'active_char_name': p['name'],
+                    'active_char_level': p['level'],
+                    'characters': [{
+                        'char_id': p['char_id'],
+                        'name': p['name'],
+                        'level': p['level'],
+                        'active': True,
+                    }],
+                }
+                for p in self._gm_players
+            ]
+
+        online_labels = {}
+        if clients:
+            menu.add_separator()
+            for idx, cl in enumerate(clients, 1):
+                acc = cl.get('account', f'Client {idx}')
+                act_name = cl.get('active_char_name', '?')
+                act_lv = cl.get('active_char_level', 1)
+                sub = tk.Menu(
+                    menu, tearoff=0,
+                    bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white',
+                    disabledforeground=TEXT_MUTED,
+                )
+                for ch in cl.get('characters', []):
+                    cid = int(ch['char_id'])
+                    cname = ch['name']
+                    clv = ch['level']
+                    is_active = bool(ch.get('active'))
+                    if is_active:
+                        target_lbl = f"{acc}: {cname} (Lv.{clv}, #{cid})"
+                        online_labels[cid] = target_lbl
+                        sub.add_command(
+                            label=f"● {cname} (Lv.{clv}, #{cid})  [Current]",
+                            command=lambda c=cid, l=target_lbl: self._select_gm_target(c, l),
+                        )
+                    else:
+                        sub.add_command(
+                            label=f"○ {cname} (Lv.{clv}, #{cid})  [Offline]",
+                            state='disabled',
+                        )
+                menu.add_cascade(
+                    label=f"Client {idx}: {acc} — ● {act_name} (Lv.{act_lv})",
+                    menu=sub,
+                )
+
+        if self._gm_target_char_id in online_labels:
+            self.gm_player_var.set(online_labels[self._gm_target_char_id])
+        else:
+            self._gm_target_char_id = None
+            self.gm_player_var.set('Auto (active character)')
+
         if resp.get('offline'):
             self.gm_result_lbl.config(text='Local server offline — start server to execute [LIVE] commands.', fg=TEXT_MUTED)
-        elif not self._gm_players:
+        elif not resp.get('ok'):
+            self.gm_result_lbl.config(text=f"GM bridge error: {resp.get('message', 'unknown')}", fg=ERR_RED)
+        elif not clients:
             self.gm_result_lbl.config(text='Server online — log in a character to execute [LIVE] commands.', fg=WARN_AMBER)
         else:
-            self.gm_result_lbl.config(text=f'Server online — {len(self._gm_players)} character(s) connected.', fg=OK_GREEN)
+            self.gm_result_lbl.config(
+                text=f'Server online — {len(clients)} client(s) connected.',
+                fg=OK_GREEN,
+            )
 
     def _selected_gm_char_id(self):
-        label = self.gm_player_var.get()
-        m = re.search(r'#(\d+)\)$', label)
-        return int(m.group(1)) if m else None
+        return self._gm_target_char_id
 
     def _copy_gm_command(self):
         cmd = (self.gm_cmd_var.get() or '').strip()

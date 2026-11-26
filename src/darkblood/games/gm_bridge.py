@@ -94,6 +94,47 @@ def _list_players() -> list:
     return out
 
 
+def _list_clients() -> list:
+    """Connected clients grouped by account, each with its full character roster and active char marked."""
+    world = GameWorldManager.get()
+    clients = []
+    seen_accounts = {}
+    for cid, wp in sorted(world.players.items()):
+        session = wp.session
+        account = str(getattr(session, 'account', '') or f'Client#{cid}')
+        active_id = int(cid)
+        roster = []
+        store = session.store() if session and hasattr(session, 'store') else None
+        if store is not None:
+            for ch in store.characters(account):
+                ch_id = int(ch.get('id', 0))
+                roster.append({
+                    'char_id': ch_id,
+                    'name': str(ch.get('name', f'Char#{ch_id}')),
+                    'level': int(ch.get('level', 1)),
+                    'active': ch_id == active_id,
+                })
+        if not roster:
+            c = wp.char_data or {}
+            roster.append({
+                'char_id': active_id,
+                'name': str(c.get('name', f'Char#{active_id}')),
+                'level': int(c.get('level', 1)),
+                'active': True,
+            })
+        roster.sort(key=lambda r: (not r['active'], r['char_id']))
+        entry = {
+            'account': account,
+            'active_char_id': active_id,
+            'active_char_name': str((wp.char_data or {}).get('name', f'Char#{active_id}')),
+            'active_char_level': int((wp.char_data or {}).get('level', 1)),
+            'characters': roster,
+        }
+        seen_accounts[account] = entry
+        clients.append(entry)
+    return clients
+
+
 def _resolve_player(char_id=None):
     world = GameWorldManager.get()
     if char_id is not None:
@@ -353,11 +394,12 @@ async def _handle_bridge_client(reader: asyncio.StreamReader, writer: asyncio.St
             return
         req = json.loads(line.decode('utf-8', errors='replace'))
         action = req.get('action')
-        if action == 'status':
+        if action in ('status', 'list_players'):
             resp = {
                 'ok': True,
                 'gm_mode': bool(options.get('gm_mode')),
                 'players': _list_players(),
+                'clients': _list_clients(),
                 'live_commands': sorted(SERVER_LIVE_COMMANDS),
             }
         elif action == 'exec':
