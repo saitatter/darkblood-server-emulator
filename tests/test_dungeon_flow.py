@@ -611,6 +611,25 @@ class DungeonFlowTest(ServerTestCase):
             self.assertEqual(ack5091, struct.pack('<i', results.INVALID_STATE))
             self.assertEqual(len(char['items']), after_claim)
 
+            # Extra chests (card_index = 2 for rank A): require AR, echo box_type/box_cost, deduct AR, reject repeat/OOB
+            self.assertEqual(parsed.rewards[char_id].extra_box_count, 1)
+            self.assertGreater(parsed.extra_box_cost, 0)
+            char['gold'] = parsed.extra_box_cost * 2
+            char['u66'] = char['gold']
+            client.send_event(5090, struct.pack('<ii', 0x7fffffff, 2))
+            _, ack5091_ex = await client.expect_event(5091)
+            ex_res, ex_uid = struct.unpack_from('<iq', ack5091_ex, 0)
+            ex_box_type, ex_box_cost = struct.unpack_from('<ii', ack5091_ex, 24)
+            self.assertEqual((ex_res, ex_uid, ex_box_type, ex_box_cost), (0, char_id, 2, parsed.extra_box_cost))
+            self.assertEqual(char['gold'], parsed.extra_box_cost)
+            after_claim = len(char['items'])
+
+            # Duplicate extra chest 2 and out-of-range extra chest 3 are rejected
+            for bad_idx in (2, 3):
+                client.send_event(5090, struct.pack('<ii', 0x7fffffff, bad_idx))
+                _, ack5091_bad = await client.expect_event(5091)
+                self.assertEqual(ack5091_bad, struct.pack('<i', results.INVALID_STATE))
+
             # The next run can award a new card, but only after a victory.
             for victory in (False, True):
                 client.send_event(5013, messages.StartGameReq(map_code='Act1_G1_A30').encode())

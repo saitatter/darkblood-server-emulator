@@ -38,6 +38,8 @@ from darkblood.player_management.characters import (
 _RANK_EXP_BONUS = {0: 0.065, 1: 0.07, 2: 0.075, 3: 0.10, 4: 0.13, 5: 0.17, 6: 0.20}
 # DictDungeonReward:LoadDungeonReward BoxGrade: D/C/B->0, A->1, S->2, SS->3, SSS->4.
 _RANK_BOX_GRADE = {0: 0, 1: 0, 2: 0, 3: 1, 4: 2, 5: 3, 6: 4}
+# DictDungeonReward:LoadDungeonReward ItemBoxNum (extra chests shown in 0x0071FB90): D->0, C/B/A->1, S/SS->2, SSS->3.
+_RANK_EXTRA_BOXES = {0: 0, 1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 
 
 def _ratio_to_rank(ratio: float) -> int:
@@ -158,6 +160,7 @@ class DungeonRewardsHandlers:
         # mapSingleReward used to go out empty and the result screen froze.
         rewards = {}
         member_ranks = []
+        extra_box_cost = 0
         for member, char in members:
             dungeon = member.dungeon
             dungeon.dungeon_cleared = bool(req.is_clear)
@@ -165,14 +168,19 @@ class DungeonRewardsHandlers:
                 dungeon._record_dungeon_clear(char, map_code)
                 await dungeon._update_quest_dungeon_clear(map_code, char)
             uid = int(char.get('id', 0))
-            if req.is_clear and getattr(dungeon, 'in_dungeon', False) and dungeon.reward_card is None:
-                dungeon.reward_card = (uid, map_code)
             gained = getattr(dungeon, 'dungeon_exp', 0)
             if total_monster_hp > 0 and uid in party_scores:
                 user_rank = _ratio_to_rank(party_scores[uid] / total_monster_hp)
             else:
                 user_rank = fallback_rank
             member_ranks.append(user_rank)
+            extra_boxes = _RANK_EXTRA_BOXES.get(user_rank, 0) if req.is_clear else 0
+            member_extra_cost = max(500, int(char.get('level', 1)) * 200) if req.is_clear else 0
+            if member_extra_cost > extra_box_cost:
+                extra_box_cost = member_extra_cost
+            if req.is_clear and getattr(dungeon, 'in_dungeon', False) and dungeon.reward_card is None:
+                dungeon.reward_card = (uid, map_code, extra_boxes, member_extra_cost)
+                dungeon.reward_cards_claimed = set()
             bonus_exp = round(gained * _RANK_EXP_BONUS.get(user_rank, 0.0)) if (req.is_clear and gained > 0) else 0
             if bonus_exp > 0:
                 await member.quests.grant_exp(char, bonus_exp)
@@ -189,6 +197,7 @@ class DungeonRewardsHandlers:
                 exp=gained,
                 bonus_exp=bonus_exp,
                 final_total_exp=gained + bonus_exp,
+                extra_box_count=extra_boxes,
                 rank=user_rank,
             )
         if members and req.is_clear:
@@ -212,7 +221,7 @@ class DungeonRewardsHandlers:
             rank_first=party_rank,
             rank_final=party_rank,
             box_grade=_RANK_BOX_GRADE.get(party_rank, 0),
-            extra_box_cost=0,
+            extra_box_cost=extra_box_cost if include_rewards else 0,
         ).encode()
         if run_char_id:
             self._finish_game_reply = (run_char_id, ack)
@@ -263,17 +272,33 @@ class DungeonRewardsHandlers:
 
     @packet_handler(ChoiceRewardPartyRankReq)
     async def handle_choice_reward_party_rank(self, correlation, body):
-        # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x00780000.c:9280) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
+        # eERC_CHOICE_REWARD_PARTYRANK_REQ (0x0078D5C0) -> 5091 eERC_CHOICE_REWARD_PARTYRANK_ACK (0x0078D660).
+        # card_index: 0 = basic free chest, 1 = VIP/PC-bang chest, 2..(2 + extra_boxes - 1) = extra chests (0x007208D0).
         req = ChoiceRewardPartyRankReq.decode(body)
         char = self._current_char()
         card = self.reward_card
-        if (char is None or card is None or card[0] != char['id'] or self.reward_card_claimed
+        if (char is None or card is None or card[0] != char['id']
                 or not getattr(self, 'in_dungeon', False) or not getattr(self, 'dungeon_cleared', False)):
             await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
                              note='reward card unavailable')
             return
 
-        char_id, map_code = card
+        char_id, map_code, extra_boxes, extra_box_cost = card
+        idx = int(req.card_index)
+        claimed = getattr(self, 'reward_cards_claimed', set())
+        valid_extra = 2 <= idx < 2 + extra_boxes
+        if idx in claimed or (idx not in (0, 1) and not valid_extra):
+            await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
+                             note=f'reward card {idx} unavailable (claimed={sorted(claimed)}, extra={extra_boxes})')
+            return
+
+        cost = extra_box_cost if valid_extra else 0
+        gold = int(char.get('gold', char.get('u66', 0)))
+        if cost > gold:
+            await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
+                             note=f'extra reward card {idx} refused (need {cost} AR, have {gold})')
+            return
+
         reward_code, reward_count = loot.roll_dungeon_reward(map_code, int(char.get('char_class', 0)))
         grant = [(reward_code, reward_count)]
         free = free_bag_slots(char)
@@ -282,19 +307,26 @@ class DungeonRewardsHandlers:
                              note='reward card refused (bag full)')
             return
 
+        if cost:
+            gold -= cost
+            char['gold'] = gold
+            char['u66'] = gold
         stored_items = add_reward_items(char, grant)
         self.save_char()
-        self.reward_card_claimed = True
+        claimed.add(idx)
+        self.reward_cards_claimed = claimed
         ack = ChoiceRewardPartyRankAck(
             char_uid=char_id,
             item_id=jhash(reward_code) & 0xFFFFFFFF,
             count=reward_count,
+            box_type=idx,
+            box_cost=cost,
             items=[Item(owner=UPDATE_OWNER, **item) for item in stored_items],
-            gold=char.get('gold', char.get('u66', 0)),
+            gold=gold,
         )
         await self.reply(
             ack, correlation,
-            note=f'choice reward partyrank ack (card={req.card_index} item={reward_code} x{reward_count})',
+            note=f'choice reward partyrank ack (card={idx} cost={cost} item={reward_code} x{reward_count})',
         )
 
     @packet_handler(5065)

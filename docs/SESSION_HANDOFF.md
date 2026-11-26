@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Enable end-of-dungeon extra reward chests (`5018 FinishGameAck`, `5090/5091 ChoiceRewardPartyRank`, 2026-11-26)**:
+  - Disassembly of `0x0071FB90` (`extra_box` builder), `0x00721C99` (`5090` sender passing `index + 2`), and `0x007208D0` (`5091` UI apply switching on `box_type`: `0/1` basic, `2+` extra chest `box_type - 2`) showed `5018` was sending `SingleReward.extra_box_count = 0` and `extra_box_cost = 0`, and `5090` blocked all claims after the first card and hardcoded `box_type = 0`.
+  - Populated `SingleReward.extra_box_count` from `DictDungeonReward:LoadDungeonReward` (`ItemBoxNum`: D=0, C/B/A=1, S/SS=2, SSS=3) and `extra_box_cost` in `5018`, tracked claimed card indices per run (`reward_cards_claimed`), deducted `extra_box_cost` AR on extra chest claims (`card_index >= 2`), and echoed `box_type` and `box_cost` in `5091`.
 - **Fix missing dungeon loot drops in `_B`/`_R` and higher `_A` maps (`src/darkblood/games/loot.py`, 2026-11-26)**:
   - `loot.dungeon_tables(map_code)` previously only checked exact `map_code` and `re.sub(r'_A\d+$', '_A1', map_code)`, while `5013 StartGameReq` sends `MapID` (`Act1_G2_B10`, `Act2_G2_R10`, `Act1_G1_A20`, ...) and `assets/looting.json` is keyed by `DungeonID` (`Act1_G2_B1`, `Act2_G2_R1`, `Act1_G1_A2`, ...). This left all 124 `_B`/`_R` dungeon maps with zero drops and sent `_A20.._A50` maps to `_A1`.
   - Updated `dungeon_tables` to resolve `map_code -> DungeonID` via `client_dict.dungeon_maps()` first (matching 237/245 maps, all non-tutorial/event dungeons).

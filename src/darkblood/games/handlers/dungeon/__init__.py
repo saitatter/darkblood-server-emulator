@@ -23,7 +23,7 @@ class DungeonHandlers(
         self.room = None
         self._finish_game_reply = None
         self.reward_card = None
-        self.reward_card_claimed = False
+        self.reward_cards_claimed = set()
 
 
 __all__ = [

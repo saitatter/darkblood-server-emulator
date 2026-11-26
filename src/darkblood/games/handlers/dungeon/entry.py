@@ -215,7 +215,7 @@ class DungeonEntryHandlers:
         self.visited_dungeon_layers = set()
         self._finish_game_reply = None
         self.reward_card = None
-        self.reward_card_claimed = False
+        self.reward_cards_claimed = set()
 
     async def _consume_session_stress(self, session, amount=None):
         char = session.dungeon.current_char()
