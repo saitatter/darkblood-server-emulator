@@ -4,32 +4,25 @@
 > as zero or a default because its meaning is not recovered. Fix it by recovering the client
 > reader/writer, naming the field in `schemas/<domain>.jsch`, and regenerating.
 
-## arena (22 of 206 fields)
+## arena (15 of 212 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `5098 DuelStartAck` | `map<?>` | arena.jsch:38 |  |
-| `ArenaSquare` | `u32` | arena.jsch:82 |  |
-| `ArenaSquare` | `u32` | arena.jsch:84 |  |
-| `ArenaRoomInfo` | `map<?>` | arena.jsch:121 | custom map data (never sent) |
-| `2306 ArenaGetRoomListReq` | `bool` | arena.jsch:130 |  |
-| `5146 ArenaJoinRoomAck` | `vector<?>` | arena.jsch:164 | members, element layout unknown |
-| `5149 ArenaLeaveRoomAck` | `vector<?>` | arena.jsch:173 |  |
-| `5149 ArenaLeaveRoomAck` | `raw[14]` | arena.jsch:174 |  |
-| `5149 ArenaLeaveRoomAck` | `raw[14]` | arena.jsch:175 |  |
-| `2309 ArenaGetInviteListAck` | `vector<?>` | arena.jsch:184 | invites, element layout unknown |
-| `ArenaTeamInfo` | `map<?>` | arena.jsch:201 |  |
-| `5275 ArenaTeamLeaveAck` | `raw[14]` | arena.jsch:243 |  |
-| `2551 LeagueSeasonArenaGetRankAck` | `raw[12]` | arena.jsch:270 | footer |
-| `2537 LeagueSeasonCharAwardNot` | `map<?>` | arena.jsch:286 | awards (0x007682A0) |
-| `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:291 | guild awards (0x007682A0) |
-| `2472 ArenaRandomMatchingUserCntNot` | `vector<?>` | arena.jsch:331 | m_vecSeasonRankTop (0x00487F40) |
-| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:423 | mapLearnSkill (0x004B8B80) |
-| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:424 | mapSubCharInfo (0x004BA530) |
-| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:425 | mapQuickSlot (0x004B7460) |
-| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:426 | mapLeagueArenaCharInfo (0x0048B380) |
-| `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:474 | mapSlotInfo (0x004AA240) |
-| `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:486 | m_mapSlotInfo (0x004AA240) |
+| `ArenaSquare` | `u32` | arena.jsch:95 |  |
+| `ArenaSquare` | `u32` | arena.jsch:97 |  |
+| `ArenaRoomInfo` | `map<?>` | arena.jsch:134 | custom map data (never sent) |
+| `2306 ArenaGetRoomListReq` | `bool` | arena.jsch:143 |  |
+| `5146 ArenaJoinRoomAck` | `vector<?>` | arena.jsch:178 | vecJoinChar (0x004894D0), element layout not recovered |
+| `5149 ArenaLeaveRoomAck` | `vector<?>` | arena.jsch:188 |  |
+| `5149 ArenaLeaveRoomAck` | `raw[14]` | arena.jsch:189 |  |
+| `5149 ArenaLeaveRoomAck` | `raw[14]` | arena.jsch:190 |  |
+| `ArenaTeamInfo` | `map<?>` | arena.jsch:217 |  |
+| `5275 ArenaTeamLeaveAck` | `raw[14]` | arena.jsch:259 |  |
+| `2537 LeagueSeasonCharAwardNot` | `map<?>` | arena.jsch:302 | awards (0x007682A0) |
+| `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:307 | guild awards (0x007682A0) |
+| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:440 | mapSubCharInfo (0x004BA530 -> i64 key, 0x00A55C50: character details, wstr, skills/quickslot/item/bag containers), not recovered |
+| `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:490 | mapSlotInfo (0x004AA240) |
+| `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:502 | m_mapSlotInfo (0x004AA240) |
 
 ## commerce (9 of 153 fields)
 

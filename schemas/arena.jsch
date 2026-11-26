@@ -10,6 +10,10 @@ domain arena Dark Blood protocol wire messages - Arena, PvP Duels, and League do
 
 extern PageCharTemp from darkblood.games.network.messages.lobby readable
 extern RoomMemberInfo from darkblood.games.network.messages.dungeon readable
+extern LearnedSkill from darkblood.games.network.messages.skills readable
+extern DateTime6 from darkblood.games.network.messages.commerce readable
+extern QuickSlot from darkblood.games.network.messages.skills readable
+extern LeagueArenaCharInfo from darkblood.games.network.messages.social readable
 
 message 5100 DuelRequestReq header?
   ## Sender 0x006B7410.
@@ -32,10 +36,19 @@ message 5097 DuelStartReq header?
 end
 
 message 5098 DuelStartAck
-  ## Table case in 0x006D2610 -> 0x006CBE60: result, 36-byte struct, map.
+  ## Table case in 0x006D2610 -> 0x006CBE60 (assert: jDuel >> mapChallengerSkillList >>
+  ## mapChampionSkillList >> vecChallengerProficiency >> vecChampionProficiency >>
+  ## ucChallengerLevel >> ucChampionLevel >> jRelayAddress). The earlier layout stopped
+  ## after one map, so the client read past the end of the reply.
   u32 result
-  raw[36] session_blob
-  map<?> _
+  raw[36] session_blob       # jDuel (0x00A489F0, 36 raw bytes)
+  map<u16,LearnedSkill> challenger_skills  # mapChallengerSkillList (0x0047EEB0, elements 0x004ACB80)
+  map<u16,LearnedSkill> champion_skills    # mapChampionSkillList
+  vector<f32> challenger_proficiency       # vecChallengerProficiency (0x004B13E0)
+  vector<f32> champion_proficiency         # vecChampionProficiency
+  u8 challenger_level = 1    # ucChallengerLevel
+  u8 champion_level = 1      # ucChampionLevel
+  raw[6] relay               # jRelayAddress (0x00A48910): IPv4 + u16 port
 end
 
 message 5099 DuelStartNot
@@ -157,11 +170,13 @@ message 5145 ArenaJoinRoomReq header?
 end
 
 message 5146 ArenaJoinRoomAck
-  ## Handled at 0x004C6080 -> 0x004C5380.
+  ## Handled at 0x004C6080 -> 0x004C5380 (assert: jRoomInfo >> iHostUID >> vecJoinChar
+  ## >> jRelayAddr). The relay address was missing.
   u32 result
   ArenaRoomInfo room = ArenaRoomInfo()
-  u64 host_uid
-  vector<?> _                # members, element layout unknown
+  u64 host_uid               # iHostUID
+  vector<?> _                # vecJoinChar (0x004894D0), element layout not recovered
+  raw[6] relay               # jRelayAddr (0x00A48910)
 end
 
 message 5148 ArenaLeaveRoomReq header?
@@ -179,9 +194,10 @@ message 2308 ArenaGetInviteListReq header?
 end
 
 message 2309 ArenaGetInviteListAck
-  ## Case in 0x004C5200 -> 0x004B4680.
+  ## Case in 0x004C5200 -> 0x004B4680 (assert: m_vecInviteUser >> m_iCurPage).
   u32 result
-  vector<?> _                # invites, element layout unknown
+  vector<RoomMemberInfo> users  # m_vecInviteUser (0x004B2720 -> 0x004B1AD0, the 5061/2025 member struct)
+  u32 cur_page               # m_iCurPage (was missing)
 end
 
 struct ArenaTeamInfo
@@ -263,11 +279,11 @@ message 2550 LeagueSeasonArenaGetRankReq header?
 end
 
 message 2551 LeagueSeasonArenaGetRankAck
-  ## Case in 0x0049B230 -> 0x00499DC0: result, season, entries, 12-byte footer.
+  ## Case in 0x0049B230 -> 0x00499DC0 (assert: nPageIdx >> m_vecSeasonRank >> jSeasonBeginTime).
   u32 result
-  i32 season_id = 1
-  vector<LeagueRankEntry> ranks
-  raw[12] _                  # footer
+  i32 season_id = 1          # nPageIdx (named season_id by the earlier server)
+  vector<LeagueRankEntry> ranks  # m_vecSeasonRank
+  DateTime6 season_begin_time = DateTime6()  # jSeasonBeginTime (0x00A49110)
 end
 
 message 2552 LeagueSeasonArenaGetMyRankReq header?
@@ -328,8 +344,8 @@ end
 
 message 2472 ArenaRandomMatchingUserCntNot
   ## Handler 0x0048A7A0 (assert: m_vecSeasonRankTop >> m_jSeasonBeginTime).
-  vector<?> _                # m_vecSeasonRankTop (0x00487F40)
-  raw[12] season_begin_time
+  vector<LeagueRankEntry> season_rank_top  # m_vecSeasonRankTop (0x00487F40 -> 0x00475AA0 -> 0x00A4A120)
+  DateTime6 season_begin_time = DateTime6()  # m_jSeasonBeginTime (12 bytes, DateTime6 layout as in 2551)
 end
 
 message 2556 LeagueSeasonArenaCharStatUpdateReq header?
@@ -420,10 +436,10 @@ message 5173 ArenaStartGameAck ok_only
   u32 result
   i32 rand_sync
   i32 played_map_id
-  map<?> _                   # mapLearnSkill (0x004B8B80)
-  map<?> _                   # mapSubCharInfo (0x004BA530)
-  map<?> _                   # mapQuickSlot (0x004B7460)
-  map<?> _                   # mapLeagueArenaCharInfo (0x0048B380)
+  map<i64,map<u16,LearnedSkill>> learn_skills  # mapLearnSkill (0x004B8B80, the 5014 peer_skills reader)
+  map<?> _                   # mapSubCharInfo (0x004BA530 -> i64 key, 0x00A55C50: character details, wstr, skills/quickslot/item/bag containers), not recovered
+  map<i64,vector<QuickSlot>> quick_slots  # mapQuickSlot (0x004B7460 -> 0x004B4560: i64, 0x004B2C30 quickslot vector)
+  map<i64,LeagueArenaCharInfo> league_infos  # mapLeagueArenaCharInfo (0x0048B380 -> 0x004754D0 -> 0x00A50B80)
   map<i64,vector<f32>> proficiencies  # mapProficiency (0x004B7550)
 end
 

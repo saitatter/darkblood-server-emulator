@@ -7,8 +7,11 @@ from typing import ClassVar
 
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
+from darkblood.games.network.messages.commerce import DateTime6
 from darkblood.games.network.messages.dungeon import RoomMemberInfo
 from darkblood.games.network.messages.lobby import PageCharTemp
+from darkblood.games.network.messages.skills import LearnedSkill, QuickSlot
+from darkblood.games.network.messages.social import LeagueArenaCharInfo
 
 __all__ = [
     'DuelRequestReq',
@@ -137,16 +140,21 @@ class DuelStartReq(WireMessage):
 class DuelStartAck(WireMessage):
     """Opcode 5098: eERC_DUEL_START_ACK (reply).
 
-    Table case in 0x006D2610 -> 0x006CBE60: result, 36-byte struct, map.
+    Table case in 0x006D2610 -> 0x006CBE60 (assert: jDuel >> mapChallengerSkillList >>
+    mapChampionSkillList >> vecChallengerProficiency >> vecChampionProficiency >>
+    ucChallengerLevel >> ucChampionLevel >> jRelayAddress). The earlier layout stopped
+    after one map, so the client read past the end of the reply.
     """
     OPCODE: ClassVar[int] = 5098
     result: u32 = 0
-    session_blob: Raw[36] = bytes(36)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'session_blob',
-        Const(EmptyMap),
-    )
+    session_blob: Raw[36] = bytes(36)  # jDuel (0x00A489F0, 36 raw bytes)
+    challenger_skills: Map[u16, LearnedSkill] = field(default_factory=dict)  # mapChallengerSkillList (0x0047EEB0, elements 0x004ACB80)
+    champion_skills: Map[u16, LearnedSkill] = field(default_factory=dict)  # mapChampionSkillList
+    challenger_proficiency: Vector[f32] = field(default_factory=list)  # vecChallengerProficiency (0x004B13E0)
+    champion_proficiency: Vector[f32] = field(default_factory=list)  # vecChampionProficiency
+    challenger_level: u8 = 1  # ucChallengerLevel
+    champion_level: u8 = 1  # ucChampionLevel
+    relay: Raw[6] = bytes(6)  # jRelayAddress (0x00A48910): IPv4 + u16 port
 
 
 @dataclass
@@ -380,17 +388,20 @@ class ArenaJoinRoomReq(WireMessage):
 class ArenaJoinRoomAck(WireMessage):
     """Opcode 5146: eERC_ARENA_JOIN_ROOM_ACK (reply).
 
-    Handled at 0x004C6080 -> 0x004C5380.
+    Handled at 0x004C6080 -> 0x004C5380 (assert: jRoomInfo >> iHostUID >> vecJoinChar
+    >> jRelayAddr). The relay address was missing.
     """
     OPCODE: ClassVar[int] = 5146
     result: u32 = 0
     room: ArenaRoomInfo = field(default_factory=ArenaRoomInfo)
-    host_uid: u64 = 0
+    host_uid: u64 = 0  # iHostUID
+    relay: Raw[6] = bytes(6)  # jRelayAddr (0x00A48910)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'room',
         'host_uid',
         Const(EmptyVector),
+        'relay',
     )
 
 
@@ -430,14 +441,12 @@ class ArenaGetInviteListReq(WireMessage):
 class ArenaGetInviteListAck(WireMessage):
     """Opcode 2309: eEGS_ARENA_GET_INVITELIST_ACK (reply).
 
-    Case in 0x004C5200 -> 0x004B4680.
+    Case in 0x004C5200 -> 0x004B4680 (assert: m_vecInviteUser >> m_iCurPage).
     """
     OPCODE: ClassVar[int] = 2309
     result: u32 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Const(EmptyVector),
-    )
+    users: Vector[RoomMemberInfo] = field(default_factory=list)  # m_vecInviteUser (0x004B2720 -> 0x004B1AD0, the 5061/2025 member struct)
+    cur_page: u32 = 0  # m_iCurPage (was missing)
 
 
 @dataclass
@@ -576,18 +585,13 @@ class LeagueSeasonArenaGetRankReq(WireMessage):
 class LeagueSeasonArenaGetRankAck(WireMessage):
     """Opcode 2551: eEGS_LEAGUE_SEASON_ARENA_GET_RANK_ACK (reply).
 
-    Case in 0x0049B230 -> 0x00499DC0: result, season, entries, 12-byte footer.
+    Case in 0x0049B230 -> 0x00499DC0 (assert: nPageIdx >> m_vecSeasonRank >> jSeasonBeginTime).
     """
     OPCODE: ClassVar[int] = 2551
     result: u32 = 0
-    season_id: i32 = 1
-    ranks: Vector[LeagueRankEntry] = field(default_factory=list)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'season_id',
-        'ranks',
-        Const(Raw[12], bytes(12)),
-    )
+    season_id: i32 = 1  # nPageIdx (named season_id by the earlier server)
+    ranks: Vector[LeagueRankEntry] = field(default_factory=list)  # m_vecSeasonRank
+    season_begin_time: DateTime6 = field(default_factory=DateTime6)  # jSeasonBeginTime (0x00A49110)
 
 
 @dataclass
@@ -719,11 +723,8 @@ class ArenaRandomMatchingUserCntNot(WireMessage):
     Handler 0x0048A7A0 (assert: m_vecSeasonRankTop >> m_jSeasonBeginTime).
     """
     OPCODE: ClassVar[int] = 2472
-    season_begin_time: Raw[12] = bytes(12)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyVector),
-        'season_begin_time',
-    )
+    season_rank_top: Vector[LeagueRankEntry] = field(default_factory=list)  # m_vecSeasonRankTop (0x00487F40 -> 0x00475AA0 -> 0x00A4A120)
+    season_begin_time: DateTime6 = field(default_factory=DateTime6)  # m_jSeasonBeginTime (12 bytes, DateTime6 layout as in 2551)
 
 
 @dataclass
@@ -914,15 +915,18 @@ class ArenaStartGameAck(WireMessage):
     result: u32 = 0
     rand_sync: i32 = 0
     played_map_id: i32 = 0
+    learn_skills: Map[i64, Map[u16, LearnedSkill]] = field(default_factory=dict)  # mapLearnSkill (0x004B8B80, the 5014 peer_skills reader)
+    quick_slots: Map[i64, Vector[QuickSlot]] = field(default_factory=dict)  # mapQuickSlot (0x004B7460 -> 0x004B4560: i64, 0x004B2C30 quickslot vector)
+    league_infos: Map[i64, LeagueArenaCharInfo] = field(default_factory=dict)  # mapLeagueArenaCharInfo (0x0048B380 -> 0x004754D0 -> 0x00A50B80)
     proficiencies: Map[i64, Vector[f32]] = field(default_factory=dict)  # mapProficiency (0x004B7550)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         'rand_sync',
         'played_map_id',
+        'learn_skills',
         Const(EmptyMap),
-        Const(EmptyMap),
-        Const(EmptyMap),
-        Const(EmptyMap),
+        'quick_slots',
+        'league_infos',
         'proficiencies',
     )
 

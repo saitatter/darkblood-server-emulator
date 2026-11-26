@@ -130,7 +130,20 @@ class ArenaHandlers(BaseDomainService):
         """
         req = DuelStartReq.decode(body)
         self.transport.record('duel-start-req', body, opponent_uid=req.opponent_uid)
-        ack = DuelStartAck(result=0)
+        from darkblood.core.network.proudnet import relay_address
+        from darkblood.games.handlers.skills import learned_skill_map, proficiency_values_for_char
+        me = self.current_char() or {}
+        opponent = self.find_char(req.opponent_uid) or {}
+        ack = DuelStartAck(
+            result=0,
+            challenger_skills=learned_skill_map(me.get('skills', {})),
+            champion_skills=learned_skill_map(opponent.get('skills', {})),
+            challenger_proficiency=proficiency_values_for_char(me),
+            champion_proficiency=proficiency_values_for_char(opponent),
+            challenger_level=min(int(me.get('level', 1)), 0xFF),
+            champion_level=min(int(opponent.get('level', 1)), 0xFF),
+            relay=relay_address(),
+        )
         await self.reply(ack, correlation, note=f'duel start ack (opponent={req.opponent_uid})')
         not_start = DuelStartNot()
         await self.send_msg(not_start, note=f'duel start not (opponent={req.opponent_uid})')
@@ -257,7 +270,8 @@ class ArenaHandlers(BaseDomainService):
         self._current_arena_room_id = room.room_id
 
         self.transport.record('arena-join-room-req', body, room_id=req.room_id)
-        ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid)
+        from darkblood.core.network.proudnet import relay_address
+        ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid, relay=relay_address())
         await self.reply(ack, correlation, note=f'arena join room ack (room={room.room_id})')
 
     @packet_handler(ArenaLeaveRoomReq)
