@@ -836,7 +836,8 @@ class IncreasingStatusNot(WireMessage):
 class DungeonExpBonusFinishNot(WireMessage):
     """Opcode 2288: eEGS_DUNGEON_EXP_BONUS_FINISH_NOT (reply).
 
-    Handler 0x007986F0 (empty body).
+    Handler 0x007986F0 (empty body). 2288/2301 belong to a timed dungeon bonus-EXP
+    buff that the server does not implement yet.
     """
     OPCODE: ClassVar[int] = 2288
 
@@ -886,7 +887,9 @@ class ServerBuffDeleteNot(WireMessage):
 class MonsterDeadNot(WireMessage):
     """Opcode 2421: eEGS_MONSTER_DEAD_NOT (reply).
 
-    Handler 0x0076A000 (assert: nDeadMobID >> strMapID >> nSlotID).
+    Handler 0x0076A000 (assert: nDeadMobID >> strMapID >> nSlotID). It discards the
+    fields and only sets byte +0x44 of the 0x00466100 singleton (0x00F37930); no
+    reader was found near its 17 callers, so the server does not send it yet.
     """
     OPCODE: ClassVar[int] = 2421
     dead_mob_id: i32 = 0

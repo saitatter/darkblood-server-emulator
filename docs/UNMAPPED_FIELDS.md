@@ -70,20 +70,20 @@
 | `RoomMemberInfo` | `i64` | dungeon.jsch:339 | +0x3C, meaning not recovered |
 | `RoomMemberInfo` | `raw[74]` | dungeon.jsch:340 | +0x44, 0x00A48B40 reads 0x4A raw bytes; meaning not recovered |
 | `5061 RoomMemInfoAck` | `vector<?>` | dungeon.jsch:350 | +0x1C, 0x004B0BB0 (0x30-byte elements), not recovered |
-| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:457 | vecKeepBuffChange (0x0076EB20) |
-| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:458 | jKeepCooltimeInfo (0x00A4A070) |
-| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:486 | vecFishingInfo |
-| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:580 | m_mapDailyInfo (0x004D4710) |
-| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:628 | mapInfo (0x004D4710) |
-| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:667 | mapReward (0x00532F50) |
-| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:674 | mapReward (0x00532F50) |
-| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:698 | mapReward (0x00532F50) |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:709 | mapExplorePoint (0x006B9060) |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:710 | 0x006C2190 |
-| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:711 | 0x006B9130 |
-| `5359 ExploreJoinAck` | `u16` | dungeon.jsch:712 | 0x00B351E0 |
-| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:735 | 0x00A51060 |
-| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:736 | 0x00A3EA40 |
+| `2517 KeepBuffInsertNot` | `vector<?>` | dungeon.jsch:460 | vecKeepBuffChange (0x0076EB20) |
+| `2517 KeepBuffInsertNot` | `raw[24]` | dungeon.jsch:461 | jKeepCooltimeInfo (0x00A4A070) |
+| `2641 ServerBuffAdditionFishingNot` | `vector<?>` | dungeon.jsch:489 | vecFishingInfo |
+| `2291 CronosCalendarNot` | `map<?>` | dungeon.jsch:583 | m_mapDailyInfo (0x004D4710) |
+| `2300 CronosStampAck` | `map<?>` | dungeon.jsch:631 | mapInfo (0x004D4710) |
+| `2654 ExploreCancelAck` | `map<?>` | dungeon.jsch:670 | mapReward (0x00532F50) |
+| `2655 ExploreCompleteNot` | `map<?>` | dungeon.jsch:677 | mapReward (0x00532F50) |
+| `2663 ExploreCancelByUserUidAck` | `map<?>` | dungeon.jsch:701 | mapReward (0x00532F50) |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:712 | mapExplorePoint (0x006B9060) |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:713 | 0x006C2190 |
+| `5359 ExploreJoinAck` | `map<?>` | dungeon.jsch:714 | 0x006B9130 |
+| `5359 ExploreJoinAck` | `u16` | dungeon.jsch:715 | 0x00B351E0 |
+| `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:738 | 0x00A51060 |
+| `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:739 | 0x00A3EA40 |
 
 ## events (8 of 36 fields)
 

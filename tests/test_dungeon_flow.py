@@ -719,6 +719,13 @@ class DungeonFlowTest(ServerTestCase):
             self.assertFalse(any(i.get('code') == 'IticR5040' for i in char.get('items', [])))
             self.assertEqual(char['daily_dun_enter_counts']['Act4_G2_R13'], 1)
 
+            # Clearing a clear-limited dungeon (ClearLimit=3) counts it and pushes 2443.
+            client.send_event(5017, b'\x01')
+            _, not2443 = await client.expect_event(2443)
+            self.assertEqual(messages.DailyDunClearCountUpdateNot.decode(not2443).clear_counts, {'Act4_G2_R13': 1})
+            await client.expect_event(5018)
+            self.assertEqual(char['daily_dun_clear_counts']['Act4_G2_R13'], 1)
+
             # Reaching daily EnterLimit=6 blocks entry with 5222 + 5014(139) even if tickets exist
             char['daily_dun_enter_counts']['Act4_G2_R13'] = 6
             char['items'].append({

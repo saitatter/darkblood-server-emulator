@@ -16,6 +16,7 @@ from darkblood.games.network import results
 from darkblood.games.network.messages import (
     ChoiceRewardPartyRankAck,
     ChoiceRewardPartyRankReq,
+    DailyDunClearCountUpdateNot,
     DragItemAck,
     DropItemNot,
     FinishGameAck,
@@ -167,6 +168,7 @@ class DungeonRewardsHandlers:
             if req.is_clear:
                 dungeon._record_dungeon_clear(char, map_code)
                 await dungeon._update_quest_dungeon_clear(map_code, char)
+                await self._count_daily_clear(member, char, map_code)
             uid = int(char.get('id', 0))
             gained = getattr(dungeon, 'dungeon_exp', 0)
             if total_monster_hp > 0 and uid in party_scores:
@@ -234,6 +236,24 @@ class DungeonRewardsHandlers:
             event(5018, ack),
             f'finish game (party, {map_code} rank={party_rank})',
         )
+
+    @staticmethod
+    async def _count_daily_clear(member, char, map_code):
+        """Clear-limited dungeons (rule clear_limit > 0) count today's clears and push
+        the whole map with 2443 (handler 0x0079D0A0 -> 0x00964A00, the map 2007 fills at
+        +0x3DD). Daily reset: progression.refresh_dungeon_entry_limits."""
+        from darkblood.games.game_data.world import dungeon_entry_rule
+        rule = dungeon_entry_rule(map_code)
+        if not rule or int(rule.get('clear_limit', 0)) <= 0:
+            return
+        counts = char.setdefault('daily_dun_clear_counts', {})
+        counts[map_code] = int(counts.get(map_code, 0)) + 1
+        notice = DailyDunClearCountUpdateNot(clear_counts={str(k): int(v) for k, v in counts.items()})
+        try:
+            await member.transport.send_event(event(2443, notice.encode()),
+                                              note=f'daily dun clear count ({map_code}={counts[map_code]})')
+        except (ConnectionError, OSError):
+            pass
 
     async def _drop_loot(self, source_id, monster, char):
         """Roll itemlooting.lua drops for a kill and announce them with 5064.

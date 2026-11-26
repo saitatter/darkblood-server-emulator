@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Daily clear counts (`2443`) and unsent dungeon notices (2026-11-26, static + headless)**:
+  - Clearing a dungeon whose entry rule has `clear_limit > 0` (`Act2/3/4_G2_R13`, `_R23`) now increments `daily_dun_clear_counts[map]` and sends `2443 DailyDunClearCountUpdateNot` (handler `0x0079D0A0`), mirroring `2318` for enter counts. The counts were previously reset daily but never incremented. Limits are not enforced on clears.
+  - `2421 MonsterDeadNot` (`0x0076A000`) discards its fields and only sets byte `+0x44` of the `0x00466100` singleton; no reader was found, so it stays unsent. `2288`/`2301` need a dungeon bonus-EXP buff feature first.
 - **3D model format, extractor and viewer (`tools/dbmesh.py`, `tools/model_viewer/`, `docs/MODEL_FORMAT.md`, 2026-11-26)**:
   - Recovered the `.x`/`.prt`/`.ani` layout from the client loader (`0x00B1DDB0` top level, `0x00B1D6E0` frame/mesh container, `0x00B1D530` vertex/index/attribute buffers, `0x00B1D2E0` skin info, `0x00B1CD60` keyframed animation sets): a JSerBuffer serialization of D3DX skinned meshes (FVF `0x112`, `D3DXCreateMeshFVF` options `0x220`), not DirectX X. `dbmesh.py` consumes every byte of all 6,575 extracted entries; only 15 `xof 0303bzip0032` effect files are unsupported.
   - Verified on data: stored quaternions are conjugated (match `.ani` frame matrices to 1e-7), ticks 4800/s at 30 fps, characters = class skeleton `unit/character/<class>/<class>.x` + `part/*/*.prt` equipment binding bones by name.
