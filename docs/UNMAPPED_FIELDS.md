@@ -32,7 +32,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:474 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:486 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (12 of 146 fields)
+## commerce (11 of 146 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -47,7 +47,6 @@
 | `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:153 | meaning unknown |
 | `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:240 | 0x005F6540 |
 | `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
-| `2387 RouletteRollDiceAck` | `vector<?>` | commerce.jsch:350 | 0x00A3EA40 |
 
 ## dungeon (52 of 283 fields)
 
@@ -106,18 +105,18 @@
 | `DungeonClearRankInfo` | `map<?>` | dungeon.jsch:724 | 0x00A51060 |
 | `DungeonClearRankInfo` | `vector<?>` | dungeon.jsch:725 | 0x00A3EA40 |
 
-## events (8 of 35 fields)
+## events (8 of 36 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `5352 RequestTeachingAck` | `u8` | events.jsch:29 | meaning unknown |
-| `5352 RequestTeachingAck` | `u8` | events.jsch:30 | meaning unknown |
-| `5352 RequestTeachingAck` | `u8` | events.jsch:31 | meaning unknown |
-| `5346 CitadelRewardNot` | `map<?>` | events.jsch:64 |  |
-| `5362 GoldGoblinAppearNot` | `vector<?>` | events.jsch:71 |  |
-| `5366 GoldGoblinDeadAck` | `i32` | events.jsch:92 | meaning unknown |
-| `5366 GoldGoblinDeadAck` | `i16` | events.jsch:93 | meaning unknown |
-| `5366 GoldGoblinDeadAck` | `i16` | events.jsch:94 | meaning unknown |
+| `5352 RequestTeachingAck` | `u8` | events.jsch:33 | meaning unknown |
+| `5352 RequestTeachingAck` | `u8` | events.jsch:34 | meaning unknown |
+| `5352 RequestTeachingAck` | `u8` | events.jsch:35 | meaning unknown |
+| `5346 CitadelRewardNot` | `map<?>` | events.jsch:68 |  |
+| `5362 GoldGoblinAppearNot` | `vector<?>` | events.jsch:75 |  |
+| `5366 GoldGoblinDeadAck` | `i32` | events.jsch:96 | meaning unknown |
+| `5366 GoldGoblinDeadAck` | `i16` | events.jsch:97 | meaning unknown |
+| `5366 GoldGoblinDeadAck` | `i16` | events.jsch:98 | meaning unknown |
 
 ## gm (4 of 94 fields)
 
@@ -144,64 +143,64 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (54 of 146 fields)
+## lobby (54 of 151 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `DepotInfo` | `i64` | lobby.jsch:52 | +0x54 unknown |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:61 | 0x00A3ED30, max 3 |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:62 | 0x00A1E840, max 10 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:64 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:65 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:66 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:67 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:68 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:69 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:74 | 0x00A3EEC0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:76 | 0x0076E560 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:78 | 0x00A3E410 |
+| `PetDepotSlotInfo` | `u64` | lobby.jsch:53 |  |
+| `DepotInfo` | `i64` | lobby.jsch:64 | +0x54 unknown |
+| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:73 | 0x00A3ED30, max 3 |
+| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:74 | 0x00A1E840, max 10 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:76 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:77 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:78 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:79 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:80 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:81 |  |
-| `2007 SelectCharacterAck` | `raw[18]` | lobby.jsch:84 | 0x00641E00 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:86 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:87 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:88 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:89 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:90 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:80 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:81 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:86 | 0x00A3EEC0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:88 | 0x0076E560 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:90 | 0x00A3E410 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:91 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:92 | 0x004B1A60 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:93 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:94 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:95 |  |
-| `2007 SelectCharacterAck` | `f32` | lobby.jsch:96 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:97 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:98 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:102 | 0x0074C1D0: two maps and a bool |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:103 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:104 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:92 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:93 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:99 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:100 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:101 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:102 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:103 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:104 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:105 | 0x004B1A60 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:106 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:107 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:108 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:111 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:112 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:113 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:116 | 0x00A1E8C0: map, u64, bool, u64 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:117 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:118 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:107 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:108 |  |
+| `2007 SelectCharacterAck` | `f32` | lobby.jsch:109 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:110 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:111 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:115 | 0x0074C1D0: two maps and a bool |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:116 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:117 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:119 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:121 | 0x00A1EEA0: u32, 3 x u64 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:122 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:123 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:124 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:125 | 0x00A1E900: map + vector |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:126 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:127 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:131 | 0x00485220 |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:132 | 0x004B9210 |
-| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:156 | vecTargetState (0x00773870), element layout unknown |
-| `RelayJoinGroupAck` | `u16` | lobby.jsch:164 | RMI id |
-| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:185 | vecDuel |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:120 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:121 |  |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:124 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:125 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:126 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:129 | 0x00A1E8C0: map, u64, bool, u64 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:130 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:131 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:132 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:134 | 0x00A1EEA0: u32, 3 x u64 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:135 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:136 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:137 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:138 | 0x00A1E900: map + vector |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:139 |  |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:140 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:144 | 0x00485220 |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:145 | 0x004B9210 |
+| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:169 | vecTargetState (0x00773870), element layout unknown |
+| `RelayJoinGroupAck` | `u16` | lobby.jsch:177 | RMI id |
+| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:198 | vecDuel |
 
 ## party (8 of 104 fields)
 

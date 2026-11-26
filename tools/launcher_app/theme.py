@@ -9,9 +9,7 @@ if not IS_FROZEN:
         if _p not in sys.path:
             sys.path.insert(0, _p)
 
-import gamectl  # noqa: E402
-
-CLIENT_DIR = gamectl.LAB
+CLIENT_DIR = ROOT / 'research' / 'client'
 CLIENT_EXE = CLIENT_DIR / 'DarkBlood.exe'
 CLIENT_DLL = CLIENT_DIR / 'steam_api.dll'
 HOOK_BUILD_BAT = ROOT / 'client_hook' / 'build.bat'

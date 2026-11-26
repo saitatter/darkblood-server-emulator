@@ -361,7 +361,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2387 | `eEGS_ROULETTE_ROLL_DICE_ACK` | — | — | `RouletteRollDiceAck` |  |
 | 2388 | `eEGS_ROULETTE_NOTICE_REQ` | — | `commerce/stores.py` (`handle_roulette_notice`) | `RouletteNoticeReq` | eEGS_ROULETTE_NOTICE_REQ -> 2389 eEGS_ROULETTE_POINT_INSERT_NOT (0x0063C390). |
 | 2389 | `eEGS_ROULETTE_POINT_INSERT_NOT` | — | — | `RoulettePointInsertNot` |  |
-| 2390 | `eEGS_ROULETTE_MANAGER_INFO_REQ` | — | `commerce/stores.py` (`handle_roulette_manager_info`) | — | eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x6CC6B0. |
+| 2390 | `eEGS_ROULETTE_MANAGER_INFO_REQ` | — | `commerce/stores.py` (`handle_roulette_manager_info`) | — | eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x0062CBC0. |
 | 2391 | `eEGS_ROULETTE_MANAGER_INFO_ACK` | — | — | `RouletteManagerInfoAck` |  |
 | 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | `BrokerChangeRegistCountNot` |  |
 | 2399 | `eEGS_POST_DAILY_SEND_RECOVER_NOT` | 0x0079A880 | — | `PostDailySendRecoverNot` |  |
