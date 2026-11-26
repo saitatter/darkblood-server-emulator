@@ -54,6 +54,22 @@ class BaseDomainService:
             note=note,
         )
 
+    @staticmethod
+    async def send_to(sessions, packet, note: str = None):
+        """Send one event to each session, skipping sessions without a transport or
+        whose connection dropped. `packet` is event bytes or a WireMessage (sent
+        unsolicited, correlation 0)."""
+        if hasattr(packet, 'OPCODE'):
+            packet = event(packet.OPCODE, packet.encode())
+        for session in sessions:
+            transport = getattr(session, 'transport', None)
+            if transport is None:
+                continue
+            try:
+                await transport.send_event(packet, note=note)
+            except (ConnectionError, OSError):
+                pass
+
     async def send_msg(self, message, note: str = None, compress: bool = False):
         """Encode a typed WireMessage (using its OPCODE) and send it as an unsolicited notice."""
         await self.reply(message, correlation=0, note=note, compress=compress)

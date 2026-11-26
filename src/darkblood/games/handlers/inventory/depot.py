@@ -1,9 +1,8 @@
 """Depot / warehouse gold and slot handlers (2228, 2230, 2242, 2461)."""
-import struct
 
-from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
+    DepotShareExpireTimeGetAck,
     DepotLoadArAck,
     DepotLoadArReq,
     DepotSaveArAck,
@@ -77,8 +76,7 @@ class DepotHandlersMixin:
     @packet_handler(2242)
     async def handle_depot_share_expire_time(self, correlation, body):
         """Opcode 2242 (eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ) -> 2243: return shared depot expiration map."""
-        await self.transport.send_event(event(2243, struct.pack('<I', 0) + bytes.fromhex('1780'), correlation),
-                                        note='depot share expire time ack (none)')
+        await self.reply(DepotShareExpireTimeGetAck(), correlation, note='depot share expire time ack (none)')
 
     @packet_handler(DepotSlotExtendReq)
     async def handle_depot_slot_extend(self, correlation, body):

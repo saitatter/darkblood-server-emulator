@@ -34,12 +34,7 @@ class ChatHandlers:
         # compares server_key at +0x76 against local bits 54-58 and target name);
         # any other channel goes to the sender's party room.
         recipients = self._chat_recipients(req.channel, target)
-        packet = event(5041, ack)
-        for session in recipients:
-            try:
-                await session.transport.send_event(packet, note=f'chat from {char_name} (channel {req.channel})')
-            except (ConnectionError, OSError):
-                pass
+        await self.send_to(recipients, event(5041, ack), f'chat from {char_name} (channel {req.channel})')
         self.transport.record('chat-route', b'', channel=req.channel, target=target, recipients=len(recipients))
 
 

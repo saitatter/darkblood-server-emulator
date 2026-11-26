@@ -249,8 +249,8 @@ class QuestHandlers(BaseDomainService):
             level_notifications.append(level_up_not(char))
         char['exp'] = char_exp
         for level_not in level_notifications:
-            await self.transport.send_event(event(5087, level_not.encode()),
-                                            note=f'level up not (level={level_not.new_level})')
+            await self.send_msg(level_not,
+                                note=f'level up not (level={level_not.new_level})')
         if level_notifications and level >= 30:
             from darkblood.games.entities.character import mark_base_count
             from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot

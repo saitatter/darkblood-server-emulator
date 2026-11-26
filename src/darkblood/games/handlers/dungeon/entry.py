@@ -146,14 +146,7 @@ class DungeonEntryHandlers:
             if fail_opcode == 5136
             else FailDungeonEnterLimitNot(fail_char_uid=fail_char_uid)
         )
-        payload = event(fail_opcode, msg.encode())
-        for member in participants:
-            try:
-                await member.transport.send_event(
-                    payload, note=f'dungeon entry fail {fail_opcode} (char={fail_char_uid})',
-                )
-            except (ConnectionError, OSError):
-                pass
+        await self.send_to(participants, msg, f'dungeon entry fail {fail_opcode} (char={fail_char_uid})')
 
     async def _consume_dungeon_entry(self, map_code: str, participants):
         """Decrement Citadel/daily entry counts and consume required entry items on dungeon start."""
@@ -171,27 +164,16 @@ class DungeonEntryHandlers:
                 remain = max(0, int(char.get('citadel_play_count', 0)) - 1)
                 char['citadel_play_count'] = remain
                 changed = True
-                try:
-                    await member.transport.send_event(
-                        event(2631, CitadelPlayCountUpdateNot(remain_play_count=remain).encode()),
-                        note=f'citadel play count update ({remain})',
-                    )
-                except (ConnectionError, OSError):
-                    pass
+                await self.send_to([member], CitadelPlayCountUpdateNot(remain_play_count=remain),
+                                   f'citadel play count update ({remain})')
 
             if int(rule.get('enter_limit', 0)) > 0:
                 counts = char.setdefault('daily_dun_enter_counts', {})
                 counts[map_code] = int(counts.get(map_code, 0)) + 1
                 changed = True
-                try:
-                    await member.transport.send_event(
-                        event(2318, DailyDunEnterCountUpdateNot(
-                            enter_counts={str(k): int(v) for k, v in counts.items()}
-                        ).encode()),
-                        note=f'daily dun enter count ({map_code}={counts[map_code]})',
-                    )
-                except (ConnectionError, OSError):
-                    pass
+                await self.send_to([member], DailyDunEnterCountUpdateNot(
+                    enter_counts={str(k): int(v) for k, v in counts.items()}),
+                    f'daily dun enter count ({map_code}={counts[map_code]})')
 
             req_item = rule.get('enter_item_id') or ''
             req_amt = int(rule.get('enter_item_amount', 0))
@@ -218,13 +200,8 @@ class DungeonEntryHandlers:
                         wire_updates.append(Item(owner=UPDATE_OWNER, **it))
                 if wire_updates:
                     changed = True
-                    try:
-                        await member.transport.send_event(
-                            event(2037, DragItemAck(result=0, items=wire_updates).encode()),
-                            note=f'consume dungeon entry item ({req_item} x{req_amt})',
-                        )
-                    except (ConnectionError, OSError):
-                        pass
+                    await self.send_to([member], DragItemAck(result=0, items=wire_updates),
+                                       f'consume dungeon entry item ({req_item} x{req_amt})')
 
             if changed:
                 member.dungeon.save_char()

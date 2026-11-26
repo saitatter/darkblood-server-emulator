@@ -76,8 +76,7 @@ class DungeonRoomHandlers:
         # The last field is shown plus one (live: 1 displayed "1 / 2"), so it is
         # the last page index.
         ack = RoomInfoListAck(show_only_wait=wait_only, page=0, rooms=rooms, pages=0)
-        await self.transport.send_event(event(2011, ack.encode(), correlation),
-                                        note='room info list ack (%d rooms)' % len(rooms))
+        await self.reply(ack, correlation, note='room info list ack (%d rooms)' % len(rooms))
 
 
     @packet_handler(5060)
@@ -96,8 +95,7 @@ class DungeonRoomHandlers:
             for member, record in room.members.items():
                 members.append(self._member_info(member, record))
         ack = RoomMemInfoAck(result=result, room_uid=room_uid, members=members)
-        await self.transport.send_event(event(5061, ack.encode(), correlation),
-                                        note='room member info ack (%d, result %d)' % (room_uid, result))
+        await self.reply(ack, correlation, note='room member info ack (%d, result %d)' % (room_uid, result))
 
 
     def _member_info(self, session, record):
@@ -132,13 +130,11 @@ class DungeonRoomHandlers:
         # The host's client applies gate/map/diff itself before sending (0x0063BAC3);
         # keep them for the room list (2011) and later joiners (5004).
         info.gate_id, info.map_id, info.diff = req.gate_id, req.map_id, req.diff
-        ack = ChangeRoomInfoAck(result=0, room=self._room_info(room)).encode()
-        await self.transport.send_event(event(5012, ack, correlation),
-                                        note='change room info ack (%s, max %d)' % (info.name, info.max_users))
         # 5012 on a member updates only the title and max users (0x0058432D);
         # no recovered message pushes gate/map/diff to members already in the room.
-        await self._notify_room(room, [m for m in room.members if m is not self.session],
-                                event(5012, ack), 'change room info (member sync)')
+        await self._reply_and_sync(ChangeRoomInfoAck(result=0, room=self._room_info(room)), correlation,
+                                   'change room info ack (%s, max %d)' % (info.name, info.max_users),
+                                   'change room info (member sync)')
 
 
     @packet_handler(ChangeItemObtainReq)
@@ -154,11 +150,8 @@ class DungeonRoomHandlers:
             if room.host is not self.session:
                 return
             room.loot_mode = int(mode)
-        ack = ChangeItemObtainAck(mode=mode).encode()
-        await self.transport.send_event(event(5089, ack, correlation), note='change item obtain ack (mode=%d)' % mode)
-        if room is not None:
-            await self._notify_room(room, [m for m in room.members if m is not self.session],
-                                    event(5089, ack), 'change item obtain (member sync)')
+        await self._reply_and_sync(ChangeItemObtainAck(mode=mode), correlation,
+                                   'change item obtain ack (mode=%d)' % mode, 'change item obtain (member sync)')
 
 
     @packet_handler(5047)
@@ -180,11 +173,7 @@ class DungeonRoomHandlers:
         host = room.host
         room.join_requests[int(char['id'])] = (self.session, correlation)
         ack = RequestJoinRoomAck(room_uid=room_uid, requester=self._member_info(self.session, char))
-        try:
-            await host.transport.send_event(event(5048, ack.encode()),
-                                            note='request join room (%s -> room %d)' % (char.get('name'), room_uid))
-        except (ConnectionError, OSError):
-            pass
+        await self.send_to([host], ack, 'request join room (%s -> room %d)' % (char.get('name'), room_uid))
 
 
     @packet_handler(CreateRoomReq)
@@ -207,8 +196,7 @@ class DungeonRoomHandlers:
         self.room = DungeonRoom(info, self.session, {self.session: char})
         server.dungeon_rooms[info.room_id] = self.room
         ack = CreateRoomAck(room=info, relay=relay_address())
-        await self.transport.send_event(event(5002, ack.encode(), correlation),
-                                        note='create room ack (%s)' % req.name)
+        await self.reply(ack, correlation, note='create room ack (%s)' % req.name)
 
 
     @packet_handler(JoinRoomReq)
@@ -248,19 +236,22 @@ class DungeonRoomHandlers:
         roster = [RoomMember(Character.from_dict(record)) for record in room.members.values()]
         ack = JoinRoomAck(room=self._room_info(room), host_uid=room.info.host_uid, members=roster, relay=relay_address(),
                          free_item_obtain=room.loot_mode == 1)
-        await self.transport.send_event(event(5004, ack.encode(), correlation), note='join room ack')
+        await self.reply(ack, correlation, note='join room ack')
         if is_new and self.room is room:
             joined = RoomMemberJoinedNot(RoomMember(Character.from_dict(char)))
             await self._notify_room(room, peers, event(5035, joined.encode()), 'room member joined')
 
 
+    async def _reply_and_sync(self, message, correlation, note, sync_note, sync=True):
+        """Answer the requester, then send the same message to the other members of its room."""
+        await self.reply(message, correlation, note=note)
+        room = self.room
+        if sync and room is not None:
+            await self._notify_room(room, [m for m in room.members if m is not self.session], message, sync_note)
+
     async def _notify_room(self, room, peers, packet, note):
-        for peer in peers:
-            if peer.dungeon.room is room:
-                try:
-                    await peer.transport.send_event(packet, note=note)
-                except (ConnectionError, OSError):
-                    continue
+        """Send to the peers that are still in `room`."""
+        await self.send_to([peer for peer in peers if peer.dungeon.room is room], packet, note)
 
 
     async def leave_room(self):
@@ -312,11 +303,8 @@ class DungeonRoomHandlers:
             return
         room.host = target
         room.info.host_uid = new_host_uid
-        ack = ChangeRoomHostAck(new_host_uid=new_host_uid).encode()
-        await self.transport.send_event(event(5022, ack, correlation),
-                                        note='change room host ack (%d)' % new_host_uid)
-        await self._notify_room(room, [m for m in room.members if m is not self.session],
-                                event(5022, ack), 'change room host (%d)' % new_host_uid)
+        await self._reply_and_sync(ChangeRoomHostAck(new_host_uid=new_host_uid), correlation,
+                                   'change room host ack (%d)' % new_host_uid, 'change room host (%d)' % new_host_uid)
 
 
     @packet_handler(5043)
@@ -331,9 +319,9 @@ class DungeonRoomHandlers:
             pass
         char = self.current_char() or {}
         ack = self._select_dungeon_ack(gate, char)
-        await self.transport.send_event(event(5044, ack.encode(), correlation),
-                                        note=f'select dungeon ack ({gate}, history {ack.dun_history}, '
-                                             f'{len(ack.quest_ids)} active quests)')
+        await self.reply(ack, correlation,
+                         note=f'select dungeon ack ({gate}, history {ack.dun_history}, '
+                              f'{len(ack.quest_ids)} active quests)')
         # The whole party enters the gate: entering it (0x006C7920) sends P2P 0x5F
         # and waits up to 15 s (0x005C6D40(2, 15000)) until every room member has
         # answered with its own 0x5F (0x009695F0 -> 0x005C4E40). Members only enter
@@ -344,12 +332,7 @@ class DungeonRoomHandlers:
             for member, record in list(room.members.items()):
                 if member is self.session:
                     continue
-                notice = self._select_dungeon_ack(gate, record)
-                try:
-                    await member.transport.send_event(event(5044, notice.encode()),
-                                                      note=f'select dungeon (party gate {gate})')
-                except (ConnectionError, OSError):
-                    pass
+                await self.send_to([member], self._select_dungeon_ack(gate, record), f'select dungeon (party gate {gate})')
 
 
     def _select_dungeon_ack(self, gate, char):
@@ -404,14 +387,11 @@ class DungeonRoomHandlers:
         except (WireError, UnicodeDecodeError):
             pass
         self.map_code = code
-        ack = ChangeMapCodeAck(map_code=code, flag=flag).encode()
-        await self.transport.send_event(event(5010, ack, correlation),
-                                        note='change mapcode ack (%s)' % code)
         room = self.room
-        if room is not None and room.host is self.session and room.info.name != '_singleplay':
-            # The members sit in the same gate (5044 above): show the host's choice.
-            await self._notify_room(room, [m for m in room.members if m is not self.session],
-                                    event(5010, ack), 'change mapcode (party gate %s)' % code)
+        # The members sit in the same gate (5044 above): show the host's choice.
+        sync = room is not None and room.host is self.session and room.info.name != '_singleplay'
+        await self._reply_and_sync(ChangeMapCodeAck(map_code=code, flag=flag), correlation,
+                                   'change mapcode ack (%s)' % code, 'change mapcode (party gate %s)' % code, sync)
 
 
     @staticmethod
@@ -477,13 +457,6 @@ class DungeonRoomHandlers:
         await self.reply(ack, correlation, note=f'change team ack (team={req.team_id})')
 
 
-    @staticmethod
-    async def _send_to(sessions, packet, note):
-        for member in sessions:
-            try:
-                await member.transport.send_event(packet, note=note)
-            except (ConnectionError, OSError):
-                pass
 
 
     @packet_handler(5052)

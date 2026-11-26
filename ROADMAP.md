@@ -90,6 +90,15 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Decide what to do with the invented party opcodes (2100-2107), which the client names as cheat messages and does
   not handle. (The invented 5021/5022 square notices were removed on 2026-11-26; those opcodes are the room-host pair.)
 - [ ] C# backend for `tools/codegen/gen_messages.py` that emits the same schemas as C# classes.
+- [ ] Refactor backlog (survey 2026-11-26; done: `BaseDomainService.send_to`, `find_char`/`char_id_from_uid`,
+  rooms `_reply_and_sync`, `build_select_char_ack` normalisation, `achievements.total_info`):
+  - Move the ~140 function-local `from darkblood.games.network.messages import ...` lines to module level
+    (the messages package imports no handlers, so there is no cycle).
+  - Give the raw `struct.pack` replies schemas: frontend `2002`, `2009`, `2013`, `2022`, `2403`; GM cheat acks
+    `2102`, `2104`, `2106`; failure-only replies of `2007`/`2449` (need `ok_only` variants).
+  - The two remaining per-member loops with extra work (party back-to-square in `square.py`, party `5014` fan-out
+    in `entry.py`) could use `send_to` plus a separate stress step.
+  - Split the largest handler modules (`arena.py`, `quests.py`, `inventory/items.py`, `dungeon/rooms.py`, 540-580 lines).
 - [ ] Reduce the unmapped fields shown in the README progress table (the number that matters most for fidelity).
 
 ### C# / .NET 8 port (P10, MHServerEmu layout)

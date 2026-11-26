@@ -231,14 +231,13 @@ class DungeonRewardsHandlers:
             event(5018, ack, correlation),
             note=f'finish game ack ({map_code} clear={req.is_clear} rank={party_rank})',
         )
-        await self._send_to(
+        await self.send_to(
             [member for member, _ in members if member is not self.session],
             event(5018, ack),
             f'finish game (party, {map_code} rank={party_rank})',
         )
 
-    @staticmethod
-    async def _count_daily_clear(member, char, map_code):
+    async def _count_daily_clear(self, member, char, map_code):
         """Clear-limited dungeons (rule clear_limit > 0) count today's clears and push
         the whole map with 2443 (handler 0x0079D0A0 -> 0x00964A00, the map 2007 fills at
         +0x3DD). Daily reset: progression.refresh_dungeon_entry_limits."""
@@ -249,11 +248,7 @@ class DungeonRewardsHandlers:
         counts = char.setdefault('daily_dun_clear_counts', {})
         counts[map_code] = int(counts.get(map_code, 0)) + 1
         notice = DailyDunClearCountUpdateNot(clear_counts={str(k): int(v) for k, v in counts.items()})
-        try:
-            await member.transport.send_event(event(2443, notice.encode()),
-                                              note=f'daily dun clear count ({map_code}={counts[map_code]})')
-        except (ConnectionError, OSError):
-            pass
+        await self.send_to([member], notice, f'daily dun clear count ({map_code}={counts[map_code]})')
 
     async def _drop_loot(self, source_id, monster, char):
         """Roll itemlooting.lua drops for a kill and announce them with 5064.
@@ -282,13 +277,8 @@ class DungeonRewardsHandlers:
                 holder.floor_gold[uid] = count
             entries.append(ItemDropEntry(drop_uid=uid, item_id=jhash(code), count=count))
         packet = event(5064, DropItemNot(source_id=source_id, drops=entries).encode())
-        for member, _ in self._run_members():
-            try:
-                await member.transport.send_event(
-                    packet, note='drop item not (%s: %s)' % (monster['id'], ', '.join(codes))
-                )
-            except (ConnectionError, OSError):
-                pass
+        await self.send_to([member for member, _ in self._run_members()], packet,
+                           'drop item not (%s: %s)' % (monster['id'], ', '.join(codes)))
 
     @packet_handler(ChoiceRewardPartyRankReq)
     async def handle_choice_reward_party_rank(self, correlation, body):
@@ -363,7 +353,7 @@ class DungeonRewardsHandlers:
                 event(5091, struct.pack('<i', results.DUN_REWARD_SENT_MAIL) + ack_body[4:], correlation),
                 note=f'choice reward partyrank ack -> mail (card={idx} cost={cost} item={reward_code} x{reward_count})',
             )
-            await self.transport.send_event(event(2227, PostNewArrivalNot().encode()), note='dungeon reward mail arrival')
+            await self.send_msg(PostNewArrivalNot(), note='dungeon reward mail arrival')
             return
 
         stored_items = add_reward_items(char, grant)
@@ -429,7 +419,7 @@ class DungeonRewardsHandlers:
             note='picked AR (%s: +%d, total %d)' % (code, amount, char['gold']),
         )
         seen = GetDropArNot(result=1, gold=amount, drop_id=drop_uid, picker_uid=char['id']).encode()
-        await self._send_to(others, event(5114, seen), 'AR picked by %s' % char.get('name'))
+        await self.send_to(others, event(5114, seen), 'AR picked by %s' % char.get('name'))
 
     async def _pickup_item_drop(self, drop_uid, code, drops, run, is_random, char):
         needed = slots_needed([(code, 1)])
@@ -462,7 +452,7 @@ class DungeonRewardsHandlers:
         result = event(5068, PickUpItemResultAck(result=0, picker_uid=char['id'], drop=entry).encode())
         await winner.transport.send_event(result, note='pick up item result (drop %d: %s)' % (drop_uid, code))
         # The bag update (2037) goes to the winner only; 5068 removes the drop for all.
-        await self._send_to(others, result, 'item picked by %s' % char.get('name'))
+        await self.send_to(others, result, 'item picked by %s' % char.get('name'))
         await winner.transport.send_event(
             event(2037, DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]).encode()),
             note='picked item into bag (%s)' % code,
