@@ -313,9 +313,9 @@ def refresh_dungeon_entry_limits(char, now=None) -> bool:
     """
     import datetime
     now = time.time() if now is None else float(now)
-    dt = datetime.datetime.fromtimestamp(now)
-    today_str = dt.strftime('%Y-%m-%d')
-    iso = dt.isocalendar()
+    today = datetime.datetime.fromtimestamp(now).date()
+    today_str = today.isoformat()
+    iso = today.isocalendar()
     week_str = f'{iso[0]}-W{iso[1]:02d}'
     changed = False
 
@@ -325,16 +325,24 @@ def refresh_dungeon_entry_limits(char, now=None) -> bool:
         char['daily_dun_clear_counts'] = {}
         changed = True
 
-    if char.get('citadel_week') != week_str or 'citadel_play_count' not in char:
+    previous_week = char.get('citadel_week')
+    if previous_week != week_str or 'citadel_play_count' not in char:
+        missed_days = today.weekday() if previous_week and 'citadel_play_count' in char else 0
         char['citadel_week'] = week_str
         char['citadel_last_day'] = today_str
-        char['citadel_play_count'] = CITADEL_WEEKLY_INIT
+        char['citadel_play_count'] = min(CITADEL_MAX_PLAY_COUNT, CITADEL_WEEKLY_INIT + missed_days)
         changed = True
     elif char.get('citadel_last_day') != today_str:
-        char['citadel_last_day'] = today_str
-        cur = int(char.get('citadel_play_count', 0))
-        char['citadel_play_count'] = min(CITADEL_MAX_PLAY_COUNT, cur + 1)
-        changed = True
+        try:
+            last_day = datetime.date.fromisoformat(char.get('citadel_last_day', ''))
+        except (TypeError, ValueError):
+            last_day = today - datetime.timedelta(days=1)
+        elapsed_days = (today - last_day).days
+        if elapsed_days > 0:
+            char['citadel_last_day'] = today_str
+            cur = int(char['citadel_play_count'])
+            char['citadel_play_count'] = min(CITADEL_MAX_PLAY_COUNT, cur + elapsed_days)
+            changed = True
 
     return changed
 
