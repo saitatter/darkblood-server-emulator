@@ -33,9 +33,7 @@ import gamectl  # noqa: E402
 import updater  # noqa: E402
 
 from launcher_app.changelog import (  # noqa: E402
-    VISIBLE_COMMIT_TYPES,
     _current_release_tags,
-    _is_user_facing_commit,
     _parse_github_commit_items,
     _resolve_github_release_range,
     _resolve_github_username,

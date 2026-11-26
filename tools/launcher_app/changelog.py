@@ -16,8 +16,6 @@ _GITHUB_USERNAMES = {
     'cri999sti@gmail.com': 'CristianVita',
 }
 
-VISIBLE_COMMIT_TYPES = frozenset({'feat', 'fix'})
-
 
 def parse_commit_prefix(subject):
     """Extract conventional-commit type (feat/fix/docs/...) and clean title."""
@@ -95,11 +93,6 @@ def _resolve_github_release_range(cur_tag: str, prev_tag: str):
     return cur_tag, prev_tag
 
 
-def _is_user_facing_commit(subject: str) -> bool:
-    ctype, _, _ = parse_commit_prefix(subject)
-    return ctype.lower() in VISIBLE_COMMIT_TYPES
-
-
 def _parse_github_commit_items(items, limit=None):
     commits = []
     for item in items:
@@ -109,8 +102,6 @@ def _parse_github_commit_items(items, limit=None):
         c_author = c.get('author') or {}
         subject = (c.get('message', '') or '').splitlines()[0]
         if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
-            continue
-        if not _is_user_facing_commit(subject):
             continue
         author = _resolve_github_username(
             c_author.get('name', ''),
@@ -128,7 +119,7 @@ def _parse_github_commit_items(items, limit=None):
 
 
 def fetch_recent_commits(limit=None):
-    """Return list of dicts {sha, short, date, author, subject} (FEAT/FIX only) for the current release."""
+    """Return list of dicts {sha, short, date, author, subject} for all commits in the current release."""
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     cur_tag, prev_tag = _current_release_tags(flags)
     rev_spec = f'{prev_tag}..{cur_tag}' if (cur_tag and prev_tag) else (cur_tag or 'HEAD')
@@ -149,8 +140,6 @@ def fetch_recent_commits(limit=None):
                 parts = line.split('\x1f')
                 if len(parts) == 6:
                     if '[skip ci]' in parts[5] or 'github-actions[bot]' in parts[3].lower():
-                        continue
-                    if not _is_user_facing_commit(parts[5]):
                         continue
                     commits.append({
                         'sha': parts[0], 'short': parts[1],
@@ -185,7 +174,7 @@ def fetch_recent_commits(limit=None):
             data = json.loads(resp.read().decode('utf-8'))
         return _parse_github_commit_items(data, limit=limit), (f'release {cur_tag}' if cur_tag else 'GitHub')
     except Exception as exc:
-        # Offline portable fallback: parse bundled RELEASE_NOTES.md (Features & Bug Fixes only)
+        # Offline portable fallback: parse all sections of bundled RELEASE_NOTES.md
         notes_file = ROOT / 'RELEASE_NOTES.md'
         if notes_file.is_file():
             commits = []
@@ -193,16 +182,21 @@ def fetch_recent_commits(limit=None):
             pat = re.compile(r'^- (?:(?:\*\*([^*\n]+)\*\*:\s*)?)(.+?) \(`([0-9a-f]{7})`, @([^)]+)\)$')
             for raw_line in notes_file.read_text(encoding='utf-8', errors='replace').splitlines():
                 s = raw_line.strip()
+                if s.startswith('### '):
+                    section_kind = None
+                    continue
                 if s.startswith('#### '):
                     low = s.lower()
                     if 'feature' in low:
                         section_kind = 'feat'
                     elif 'fix' in low:
                         section_kind = 'fix'
+                    elif 'refactor' in low or 'perf' in low:
+                        section_kind = 'refactor'
                     else:
-                        section_kind = None
+                        section_kind = 'chore'
                     continue
-                if section_kind not in VISIBLE_COMMIT_TYPES:
+                if not section_kind:
                     continue
                 m = pat.match(s)
                 if m:

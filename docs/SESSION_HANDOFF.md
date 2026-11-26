@@ -18,8 +18,9 @@
 - **Dual Skill Activation Order (`2038 -> 2039 + 2578 DualSkillActiveNot`, `2007`, PR #24 / Issue #15 item 6)**:
   - Mapped all 3 `Type = 54` Dual Skill items (`IDSk1Cash269` 30d, `IDSk20S159` 10d, `IDSk20R434` 30d) in `src/darkblood/games/handlers/inventory/items.py`: using an item persists `dual_skill_expire` and sends `2578 DualSkillActiveNot` (`extend_time` in remaining seconds, multiplied by 1000 in `0x00945C60`).
   - Mapped `+0x18A` (`dual_skill_index`) and `+0x194` (`dual_skill_remain_sec`) in `Character.encode_world_details` (`0x00A52630`, `2007 SelectCharacterAck`) so active Dual Skill persists across relogging.
-- **Launcher & GM Bridge (`tools/launcher.py`, `tools/updater.py`, `tools/build_release.py`, `src/darkblood/games/gm_bridge.py`)**:
+- **Launcher & GM Bridge (`tools/launcher.py`, `tools/launcher_app/changelog.py`, `tools/updater.py`, `tools/build_release.py`, `src/darkblood/games/gm_bridge.py`)**:
   - Restricted launcher updates strictly to published GitHub Releases (`releases_only=True`, no fallback to unreleased `main` commits) and fixed release changelog scoping via GitHub `/compare/{prev_tag}...{cur_tag}`.
+  - Updated the launcher release changelog (`tools/launcher_app/changelog.py`) to display all commits in the release (not only `feat`/`fix`) across local git log, GitHub API, and offline `RELEASE_NOTES.md` fallback.
   - Eliminated Windows light-theme flash on tab/page switches via `tkraise()` and off-screen atomic `ScrollFrame.swap_inner()`.
   - Hid `Build & Deploy Hook` in frozen release builds, added `--icon assets/darkblood.ico` to `DarkBloodLauncher.exe`, defaulted `skip_logos` and `skip_tutorial_always` to `True`, and added `ensure_hook_deployed()` on Play.
   - Added searchable `GM COMMANDS` tab (shown only when `gm_mode` is enabled) backed by localhost-only GM bridge (`127.0.0.1:9402`) for live execution of server-backed GM commands.
@@ -55,7 +56,7 @@
 
 ## Verification status
 
-- **Headless suite**: **238/238** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **241/241** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
