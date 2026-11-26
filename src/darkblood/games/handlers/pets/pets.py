@@ -1,7 +1,9 @@
 """Pet lifecycle and monster taming domain handlers."""
+import struct
 import time
 
 from darkblood.core.hashing import jhash
+from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.handlers.pets.mounts import build_ridings_map, mount_item_info
@@ -9,6 +11,7 @@ from darkblood.games.network.messages.pets import (
     PetCashFoodEquipAck,
     PetCashFoodEquipReq,
     PetCashFoodUnequipAck,
+    PetChangeExpNot,
     PetCreateAck,
     PetCreateReq,
     PetDeleteAck,
@@ -22,6 +25,7 @@ from darkblood.games.network.messages.pets import (
     PetExtendDepotAck,
     PetExtendDepotReq,
     PetInfo,
+    PetLevelUpNot,
     PetLoadAck,
     PetLoadReq,
     PetNickChangeAck,
@@ -42,6 +46,59 @@ from darkblood.games.network.messages.pets import (
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
 )
+
+
+async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
+    """Grant EXP to the character's currently summoned pet and send 5324 / 5323 notifications.
+
+    Uses the UPExp curve from DictPet:LoadPetStat (identical to char_level_stat(0, lv)['upexp']).
+    Returns True if the pet record was updated.
+    """
+    if not char or exp_amount <= 0:
+        return False
+    pet_uid = char.get('summoned_pet')
+    if not pet_uid:
+        return False
+    pet = next((p for p in (char.get('pets') or []) if p.get('uid') == pet_uid), None)
+    if pet is None:
+        return False
+
+    from darkblood.games.game_data.client_dict import char_level_stat
+    from darkblood.games.progression import MAX_LEVEL
+
+    gain = max(1, int(exp_amount))
+    level = max(1, int(pet.get('level', 1)))
+    cur_exp = max(0, int(pet.get('exp', 0))) + gain
+    leveled_up = False
+    while level < MAX_LEVEL:
+        up_exp = max(1, int(char_level_stat(0, level)['upexp']))
+        if cur_exp >= up_exp:
+            cur_exp -= up_exp
+            level += 1
+            leveled_up = True
+        else:
+            break
+    if level >= MAX_LEVEL:
+        cur_exp = 0
+
+    pet['level'] = level
+    pet['exp'] = cur_exp
+    char_uid = int(char.get('id', 0))
+
+    if leveled_up:
+        # 5323 eERC_PET_LEVEL_UP_NOT (0x007754E0 -> 0x00A48B80 -> 0x00952300): 21 raw bytes <qqBi
+        payload = struct.pack('<qqBi', char_uid, int(pet_uid), level & 0xFF, cur_exp)
+        await session.transport.send_event(
+            event(5323, PetLevelUpNot(level_up_info=payload).encode()),
+            note=f'pet level up not (pet={pet_uid} lv={level} exp={cur_exp})',
+        )
+    else:
+        # 5324 eERC_PET_CHANGE_EXP_NOT (0x0079EFA0 -> 0x009522A0): gain_2 > 0 required
+        await session.transport.send_event(
+            event(5324, PetChangeExpNot(pet_uid=int(pet_uid), change_exp=cur_exp, gain_2=gain).encode()),
+            note=f'pet change exp not (pet={pet_uid} +{gain} exp={cur_exp})',
+        )
+    return True
 
 
 class PetCoreHandlersMixin:

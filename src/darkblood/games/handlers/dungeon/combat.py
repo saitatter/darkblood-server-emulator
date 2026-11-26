@@ -116,6 +116,7 @@ class DungeonCombatHandlers:
         members = self._run_members()
         # Every member of the run gets the kill's EXP, score, roulette points and quest progress.
         from darkblood.games.handlers.commerce.stores import add_roulette_points
+        from darkblood.games.handlers.pets.pets import grant_pet_exp
         from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         for member, char in members:
             run = member.dungeon
@@ -125,6 +126,7 @@ class DungeonCombatHandlers:
             if exp > 0:
                 run.dungeon_exp = getattr(run, 'dungeon_exp', 0) + exp
                 await member.quests.grant_exp(char, exp)
+                await grant_pet_exp(member, char, exp)
             new_pts = add_roulette_points(char, 0)
             await member.transport.send_event(
                 event(2389, RoulettePointInsertNot(roulette_points=new_pts).encode()),

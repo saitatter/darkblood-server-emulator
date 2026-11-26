@@ -22,3 +22,5 @@ INVALID_STATE = 12          # "Can't perform in the current position."
 INVEN_NO_BAG_SPACE = 62     # JERI_INVEN_00 "There is no empty space for a bag."
 INVEN_ITEM_NOT_FOUND = 63   # JERI_INVEN_01 "Can't locate the item in the inventory."
 INVEN_FULL = 67             # JERI_INVEN_05 "Not enough space in inventory."
+NOT_ENOUGH_AR = 168         # JERI_NOT_ENOUGH_AR (5091 shows UI_750 "Not enough Ar.")
+DUN_REWARD_SENT_MAIL = 294  # JERI_DUN_REWARD_00 (0x126: 5091 opens chest + shows UI_3329 sent via mail)

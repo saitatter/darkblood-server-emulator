@@ -295,22 +295,57 @@ class DungeonRewardsHandlers:
         cost = extra_box_cost if valid_extra else 0
         gold = int(char.get('gold', char.get('u66', 0)))
         if cost > gold:
-            await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
+            await self.reply(ChoiceRewardPartyRankAck(result=results.NOT_ENOUGH_AR), correlation,
                              note=f'extra reward card {idx} refused (need {cost} AR, have {gold})')
             return
 
         reward_code, reward_count = loot.roll_dungeon_reward(map_code, int(char.get('char_class', 0)))
         grant = [(reward_code, reward_count)]
         free = free_bag_slots(char)
-        if free is not None and free < slots_needed(grant):
-            await self.reply(ChoiceRewardPartyRankAck(result=results.INVEN_FULL), correlation,
-                             note='reward card refused (bag full)')
-            return
+        bag_full = free is not None and free < slots_needed(grant)
 
         if cost:
             gold -= cost
             char['gold'] = gold
             char['u66'] = gold
+
+        if bag_full:
+            # 0x0078D660 accepts result 0x126 (294 JERI_DUN_REWARD_00) with the full chest payload,
+            # opens the chest visually, and shows UI_3329 ("Send via mail as there is not enough space in the inventory.").
+            from darkblood.games.network.messages.mail import PostNewArrivalNot
+            from darkblood.player_management.characters import next_item_uid
+            mail_item = {'code': reward_code, 'uid': next_item_uid(char), 'count': reward_count}
+            self.store().send_mail(
+                sender_char_id=0,
+                sender_name='System',
+                recipient_char_id=char_id,
+                title='Dungeon Reward',
+                content='',
+                gold=0,
+                extra=0,
+                items=[mail_item],
+                post_type=1,
+            )
+            self.save_char()
+            claimed.add(idx)
+            self.reward_cards_claimed = claimed
+            ack_body = ChoiceRewardPartyRankAck(
+                result=0,
+                char_uid=char_id,
+                item_id=jhash(reward_code) & 0xFFFFFFFF,
+                count=reward_count,
+                box_type=idx,
+                box_cost=cost,
+                items=[],
+                gold=gold,
+            ).encode()
+            await self.transport.send_event(
+                event(5091, struct.pack('<i', results.DUN_REWARD_SENT_MAIL) + ack_body[4:], correlation),
+                note=f'choice reward partyrank ack -> mail (card={idx} cost={cost} item={reward_code} x{reward_count})',
+            )
+            await self.transport.send_event(event(2227, PostNewArrivalNot().encode()), note='dungeon reward mail arrival')
+            return
+
         stored_items = add_reward_items(char, grant)
         self.save_char()
         claimed.add(idx)

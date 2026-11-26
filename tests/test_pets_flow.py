@@ -609,6 +609,37 @@ class PetsFlowTest(ServerTestCase):
         after = contribute_roulette_jackpot(1000)
         self.assertEqual(after, before + 200)
 
+    def test_summoned_pet_gains_exp_and_levels_up_on_kills(self):
+        """Summoned pet receives 5324 PetChangeExpNot and 5323 PetLevelUpNot on monster kills."""
+        from darkblood.games.handlers.pets.pets import grant_pet_exp
+
+        sent = []
+
+        class _FakeTransport:
+            async def send_event(self, payload, note=''):
+                sent.append((payload, note))
+
+        class _FakeSession:
+            transport = _FakeTransport()
+
+        char = {
+            'id': 7,
+            'summoned_pet': 42,
+            'pets': [{'uid': 42, 'code': 'PetCall001', 'level': 1, 'exp': 0, 'satiety': 100, 'name': 'Pup'}],
+        }
+        # Small gain -> 5324 PetChangeExpNot
+        self.run_async(grant_pet_exp(_FakeSession(), char, 50))
+        self.assertEqual((char['pets'][0]['level'], char['pets'][0]['exp']), (1, 50))
+        self.assertEqual(len(sent), 1)
+        self.assertIn('pet change exp not', sent[0][1])
+
+        # Crossing level-1 UPExp (144) -> 5323 PetLevelUpNot with 21-byte <qqBi payload
+        self.run_async(grant_pet_exp(_FakeSession(), char, 120))
+        self.assertEqual((char['pets'][0]['level'], char['pets'][0]['exp']), (2, 26))
+        self.assertEqual(len(sent), 2)
+        self.assertIn('pet level up not', sent[1][1])
+        self.assertIn(struct.pack('<qqBi', 7, 42, 2, 26), sent[1][0])
+
 
 if __name__ == '__main__':
     unittest.main()

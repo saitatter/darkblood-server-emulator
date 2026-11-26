@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Pet EXP/level-up on kills (`5324`/`5323`) & full-inventory dungeon chest mail delivery (`5091` result `294`, 2026-11-26)**:
+  - Added `grant_pet_exp()` (`src/darkblood/games/handlers/pets/pets.py`) called from `handle_monster_dead` (`dungeon/combat.py`), sending `5324 PetChangeExpNot` (`gain_2 > 0`, verified in `0x0079EFA0 -> 0x009522A0`) and `5323 PetLevelUpNot` (`<qqBi`, verified in `0x007754E0 -> 0x00952300`) against the `UPExp` curve.
+  - Updated `handle_choice_reward_party_rank` (`5090 -> 5091`, `dungeon/rewards.py`): when inventory is full, delivers the rolled reward to the character's mailbox (`send_mail` + `2227 PostNewArrivalNot`) and replies with `result=294` (`0x126` `JERI_DUN_REWARD_00`) + full chest payload so `0x0078D660` opens the chest and shows `UI_3329` ("Send via mail as there is not enough space in the inventory."); insufficient AR for extra chests returns `168` (`0xA8` `JERI_NOT_ENOUGH_AR` -> `UI_750`).
 - **Enable end-of-dungeon extra reward chests (`5018 FinishGameAck`, `5090/5091 ChoiceRewardPartyRank`, 2026-11-26)**:
   - Disassembly of `0x0071FB90` (`extra_box` builder), `0x00721C99` (`5090` sender passing `index + 2`), and `0x007208D0` (`5091` UI apply switching on `box_type`: `0/1` basic, `2+` extra chest `box_type - 2`) showed `5018` was sending `SingleReward.extra_box_count = 0` and `extra_box_cost = 0`, and `5090` blocked all claims after the first card and hardcoded `box_type = 0`.
   - Populated `SingleReward.extra_box_count` from `DictDungeonReward:LoadDungeonReward` (`ItemBoxNum`: D=0, C/B/A=1, S/SS=2, SSS=3) and `extra_box_cost` in `5018`, tracked claimed card indices per run (`reward_cards_claimed`), deducted `extra_box_cost` AR on extra chest claims (`card_index >= 2`), and echoed `box_type` and `box_cost` in `5091`.
@@ -89,7 +92,7 @@
 
 ## Verification status
 
-- **Headless suite**: **246/246** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **247/247** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
