@@ -20,10 +20,13 @@ DROP_RATE = 1.0  # global multiplier for the table probabilities
 
 
 def dungeon_tables(map_code):
-    """Loot entries for a map code: exact DungeonID, else the _A1 variant (assumption)."""
+    """Loot entries for a map code: exact key, DungeonID from dungeon_maps, else _A1 fallback."""
     mon, _, _ = client_dict.looting()
     if map_code in mon:
         return mon[map_code]
+    info = client_dict.dungeon_maps().get(map_code)
+    if info and info[0] in mon:
+        return mon[info[0]]
     return mon.get(re.sub(r'_A\d+$', '_A1', map_code), [])
 
 

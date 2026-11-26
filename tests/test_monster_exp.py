@@ -148,5 +148,21 @@ class MonsterExpTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_dungeon_tables_resolves_map_id_to_dungeon_id(self):
+        """MapIDs like Act1_G2_B10, Act2_G2_R10, and Act1_G1_A20 resolve via dungeon_maps to their DungeonID."""
+        from darkblood.games import loot
+        from darkblood.games.game_data import client_dict
+
+        mon, _, _ = client_dict.looting()
+        for map_id, dungeon_id in (
+            ('Act1_G2_B10', 'Act1_G2_B1'),
+            ('Act2_G2_B10', 'Act2_G2_B1'),
+            ('Act2_G2_R10', 'Act2_G2_R1'),
+            ('Act4_G2_B10', 'Act4_G2_B1'),
+            ('Act1_G1_A20', 'Act1_G1_A2'),
+        ):
+            self.assertIn(dungeon_id, mon)
+            self.assertEqual(loot.dungeon_tables(map_id), mon[dungeon_id])
+
 if __name__ == '__main__':
     unittest.main()

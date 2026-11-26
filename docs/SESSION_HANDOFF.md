@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Fix missing dungeon loot drops in `_B`/`_R` and higher `_A` maps (`src/darkblood/games/loot.py`, 2026-11-26)**:
+  - `loot.dungeon_tables(map_code)` previously only checked exact `map_code` and `re.sub(r'_A\d+$', '_A1', map_code)`, while `5013 StartGameReq` sends `MapID` (`Act1_G2_B10`, `Act2_G2_R10`, `Act1_G1_A20`, ...) and `assets/looting.json` is keyed by `DungeonID` (`Act1_G2_B1`, `Act2_G2_R1`, `Act1_G1_A2`, ...). This left all 124 `_B`/`_R` dungeon maps with zero drops and sent `_A20.._A50` maps to `_A1`.
+  - Updated `dungeon_tables` to resolve `map_code -> DungeonID` via `client_dict.dungeon_maps()` first (matching 237/245 maps, all non-tutorial/event dungeons).
 - **Fix Life Skills / Proficiencies visibility & relog persistence (`2007`, `2050/2051`, `2384/2385`, Issue #15 item 5, 2026-11-26)**:
   - Disassembly of `0x00572BA0` (`LifeSkillPage` side-tab builder), `0x00A5F610` (`BaseSupply` proficiencies `7, 8, 9`), `0x00AC9CE0` (`JProficiencyMgr` max-2 chosen proficiencies), and `0x007AA92E -> 0x00AC9BD0` (`JProficiencyMgr::Init` in `2007 SelectCharacterAck`) revealed two root causes:
     1. `0x00572BA0` builds the 5 side tabs as `[7, 8, 9]` (`BaseSupply=1`: `9005` Avatar Making, `9006` Quality Stone Making, `9009` Fishing) followed by `JProficiencyMgr::vecLearned` (up to 2 chosen proficiencies from `0..6`: Mining `9007`, Gathering `9008`, Weapon/Armor/Accessory/Potion/MagicStone Making `9000..9004`) and **`break`s on the first unlearned skill**. Missing `9005` or `9006` caused Fishing and all learned gathering/crafting skills to disappear from the Life Skills UI.
@@ -83,7 +86,7 @@
 
 ## Verification status
 
-- **Headless suite**: **245/245** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **246/246** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
