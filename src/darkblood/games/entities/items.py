@@ -34,13 +34,15 @@ class Item(WireMessage):
     slot: u8 = 0
     count: u16 = 1
     durability: float = None  # None -> the item's max Durability from the client tables
+    upgrade: int = None       # None -> 0xFFFF (un-upgraded); 0..20 -> UpgStep
+    quality: u16 = 0          # 0 = base tier (+4 Quality)
 
     _WIRE_LAYOUT: ClassVar[tuple] = (
         Const(EmptyArray),                      # +0x0C dye array 1 (0x00A4B250)
         Const(EmptyArray),                      # +0x6B dye array 2 (0x00A4B250)
         'count',                                # +0 Amount
-        Const(u16, 0xFFFF),                     # +2 UpgStep
-        Const(u16, 0),                          # +4 Quality (0 = base tier)
+        Computed(u16, lambda s: (int(s.upgrade) & 0xFFFF) if s.upgrade is not None else 0xFFFF),  # +2 UpgStep
+        Computed(u16, lambda s: int(s.quality) & 0xFFFF),  # +4 Quality (0 = base tier)
         Computed(f32, lambda s: s.current_durability()),  # +7 Durability
         Const(boolean, False),                  # +6 RCHold
         Const(u16, 0xFFFF),                     # +0x20

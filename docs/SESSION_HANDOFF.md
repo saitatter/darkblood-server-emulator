@@ -4,6 +4,10 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Fix server crash on `2008 CharListReq` after GM item upgrade/quality (2026-11-26)**:
+  - `gm.py` (`forceupgrade`, `quality`) and `gm_commands.py` (`apply_equip_upgrade`) persisted `'upgrade'` and `'quality'` keys onto character item dicts, causing `Item(owner=..., **item)` to raise `TypeError: __init__() got an unexpected keyword argument 'upgrade'` on reconnect (`2008 -> 2009`).
+  - Added `upgrade: int = None` (`+2 UpgStep`, default `0xFFFF`) and `quality: u16 = 0` (`+4 Quality`) to `Item` in `src/darkblood/games/entities/items.py` and wired both into `Item._WIRE_LAYOUT`, with a regression test in `tests/test_gm_flow.py`.
+
 - **Goblin Roulette (`2390/2391`, `2386/2387`, `2388/2389`) & Ascension temp-skills relog persistence (`2007`) (2026-11-26)**:
   - Disassembly of `JAppPageRoulette::OneEGS_ROULETTE_MANAGER_INFO_ACK` (`0x0062CBC0` -> `0x00A1E7E0`), `OneEGS_ROULETTE_ROLL_DICE_ACK` (`0x0062C850` -> `0x00A3EC60`), and `OneEGS_ROULETTE_POINT_INSERT_NOT` (`0x0063C390` -> `0x00A48B60`) revealed all three schemas had broken wire layouts: `2391` has no `result` u32 and reads `0x1E` + `0x0D` bytes (`i32 manager_id, bool active, i64 jackpot_ar`); `2389` reads `0x1E` + `f32 roulette_points` (`player+0x328`); `2387` reads `u32 result` + `0x1E` + `h32 reward_id` (`jhash` of `roulette.lua` ID) + `reward_type/rate/jackpot_ar/count/reward_ar/vector<wstr> reward_items/notify/cur_ar`.
   - Wired all 12 `roulette.lua` rewards (`moneyreward1..6` AR jackpot shares and `itemreward7..12` item grants with `2037 DragItemAck` + `2389` float gauge sync) and connected `DictRoulette:LoadRoulettePoint` (`+0.7` kill, `+10.0` dungeon clear, `+6.0` quest completion, capped at `100.0`) + `LoadSavingAr` (`20%` AR jackpot contribution on NPC purchases & quest gold) across `stores.py`, `dungeon/combat.py`, `dungeon/rewards.py`, and `quests.py`.
@@ -65,7 +69,7 @@
 
 ## Verification status
 
-- **Headless suite**: **243/243** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **244/244** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 

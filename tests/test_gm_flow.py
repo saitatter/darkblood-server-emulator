@@ -268,6 +268,32 @@ class GmFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_item_upgrade_and_quality_survive_char_list_and_relog(self):
+        """Items modified with 'upgrade' or 'quality' (GM commands) must serialize cleanly on 2008/2009 and 2006/2007."""
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Upgrader', char_class=0))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+
+            from darkblood.games import session
+            store = session.GameSession.store()
+            char = store.get('OfflinePlayer', char_id)
+            worn = next(it for it in char['items'] if it.get('container') == 1)
+            worn['upgrade'] = 10
+            worn['quality'] = 3
+            store.save_char('OfflinePlayer', char_id)
+
+            client.send_event(2008, b'')
+            _, ack2009 = await client.expect_event(2009)
+            self.assertEqual(struct.unpack_from('<I', ack2009, 0)[0], 0)
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+            self.assertEqual(struct.unpack_from('<I', ack2007, 0)[0], 0)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()
