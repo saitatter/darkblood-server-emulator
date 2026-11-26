@@ -157,7 +157,7 @@ class MonsterExpTest(ServerTestCase):
         for map_id, dungeon_id in (
             ('Act1_G2_B10', 'Act1_G2_B1'),
             ('Act2_G2_B10', 'Act2_G2_B1'),
-            ('Act2_G2_R10', 'Act2_G2_R1'),
+            ('Act2_G2_R13', 'Act2_G2_R1'),
             ('Act4_G2_B10', 'Act4_G2_B1'),
             ('Act1_G1_A20', 'Act1_G1_A2'),
         ):
