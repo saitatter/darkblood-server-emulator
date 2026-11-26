@@ -178,7 +178,6 @@ class SelectCharacterAck(WireMessage):
         Const(u32, 0),
         'active_quests',
         'u32_set_a',
-        Lit(b'\x1e'),
         'quest_special_info',
         'u32_set_b',
         Const(u64, 0),

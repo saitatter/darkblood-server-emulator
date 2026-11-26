@@ -93,7 +93,6 @@ message 2007 SelectCharacterAck
   u32 _
   pairs<ActiveQuest> active_quests  # 0x00A3E450 (0x00A209B0); same map 2074 fills via 0x00A60960
   set<u32> u32_set_a         # 0x005EE0F0
-  lit 1e
   QuestSpecialInfo quest_special_info = QuestSpecialInfo()  # 0x00641E00 -> JQuestMgr::Init (restores TempSkillSet on relog)
   set<u32> u32_set_b         # 0x005EE0F0
   u64 _

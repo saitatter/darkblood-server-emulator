@@ -522,7 +522,7 @@ class QuestFlowTest(ServerTestCase):
             # Relog (2006 -> 2007 SelectCharacterAck) restores QuestSpecialInfo(action_type=1)
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             _, ack2007 = await client.expect_event(2007)
-            expected_qsi = b'\x1e' + struct.pack('<iHiiI', 1, 0x11, 224, 295, q_hash)
+            expected_qsi = struct.pack('<iHiiI', 1, 0x11, 224, 295, q_hash)
             self.assertIn(expected_qsi, ack2007)
 
             # Abandoning the trial quest removes temp skills and sends action_type=3

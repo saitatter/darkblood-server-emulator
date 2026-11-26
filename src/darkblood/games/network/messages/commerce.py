@@ -720,7 +720,7 @@ class RouletteRollDiceReq(WireMessage):
 class RouletteRollDiceAck(WireMessage):
     """Opcode 2387: eEGS_ROULETTE_ROLL_DICE_ACK (reply).
 
-    Handler 0x0062C850 (tag 0x1E + struct reader 0x00A3EC60).
+    Handler 0x0062C850 (implicit struct 0x1E + struct reader 0x00A3EC60).
     reward_id = jhash(roulette.lua entry ID, e.g. "moneyreward6" / "itemreward12").
     """
     OPCODE: ClassVar[int] = 2387
@@ -735,19 +735,6 @@ class RouletteRollDiceAck(WireMessage):
     reward_items: Vector[wstr] = field(default_factory=list)  # 0x00A3EA40 -> 0x00A3E600: item IDs when reward_type == 1
     notify: bool = False  # broadcast/jackpot notice flag
     cur_ar: i64 = 0  # updated player AR / timestamp
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        Lit(b'\x1e'),
-        'reward_id',
-        'reward_type',
-        'reward_rate',
-        'jackpot_ar',
-        'reward_count',
-        'reward_ar',
-        'reward_items',
-        'notify',
-        'cur_ar',
-    )
 
 
 @dataclass
@@ -765,14 +752,10 @@ class RouletteNoticeReq(WireMessage):
 class RoulettePointInsertNot(WireMessage):
     """Opcode 2389: eEGS_ROULETTE_POINT_INSERT_NOT (reply).
 
-    Handler 0x0063C390 (assert: jRouletteCharInfo, tag 0x1E + 0x00A48B60: 4 raw bytes f32 -> player+0x328).
+    Handler 0x0063C390 (assert: jRouletteCharInfo, 0x00A48B60: 4 raw bytes f32 -> player+0x328).
     """
     OPCODE: ClassVar[int] = 2389
     roulette_points: f32 = 0.0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Lit(b'\x1e'),
-        'roulette_points',
-    )
 
 
 @dataclass

@@ -33,19 +33,13 @@ class RouletteManagerInfoAck(WireMessage):
     """Opcode 2391: eEGS_ROULETTE_MANAGER_INFO_ACK (reply).
 
     JAppPageRoulette::OneEGS_ROULETTE_MANAGER_INFO_ACK (0x0062CBC0):
-    No result u32; tag 0x1E + 0x0D raw bytes (0x00A1E7E0 -> 0x00B35760(0x0D)).
+    No result u32; implicit struct 0x1E (no wire tag) + 0x0D raw bytes (0x00A1E7E0).
     +0x00 i32 manager_id, +0x04 bool active, +0x05 i64 jackpot_ar (stored at +0x1C0).
     """
     OPCODE: ClassVar[int] = 2391
     manager_id: i32 = 1
     active: bool = True
     jackpot_ar: i64 = 1000000
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Lit(b'\x1e'),
-        'manager_id',
-        'active',
-        'jackpot_ar',
-    )
 
 
 @dataclass

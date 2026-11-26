@@ -339,10 +339,9 @@ message 2386 RouletteRollDiceReq header?
 end
 
 message 2387 RouletteRollDiceAck ok_only
-  ## Handler 0x0062C850 (tag 0x1E + struct reader 0x00A3EC60).
+  ## Handler 0x0062C850 (implicit struct 0x1E + struct reader 0x00A3EC60).
   ## reward_id = jhash(roulette.lua entry ID, e.g. "moneyreward6" / "itemreward12").
   u32 result
-  lit 1e
   h32 reward_id
   i32 reward_type            # 0 = AR share of jackpot, 1 = item
   f32 reward_rate            # AR share (0.01..0.99) when reward_type == 0
@@ -359,8 +358,7 @@ message 2388 RouletteNoticeReq header?
 end
 
 message 2389 RoulettePointInsertNot
-  ## Handler 0x0063C390 (assert: jRouletteCharInfo, tag 0x1E + 0x00A48B60: 4 raw bytes f32 -> player+0x328).
-  lit 1e
+  ## Handler 0x0063C390 (assert: jRouletteCharInfo, 0x00A48B60: 4 raw bytes f32 -> player+0x328).
   f32 roulette_points
 end
 
