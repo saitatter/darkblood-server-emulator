@@ -292,6 +292,13 @@ class GmFlowTest(ServerTestCase):
             _, ack2007 = await client.expect_event(2007)
             self.assertEqual(struct.unpack_from('<I', ack2007, 0)[0], 0)
 
+            # 2216 PlayOptionUpdateReq persists the 24-byte GameOption block (incl. HideHelmet byte 23) across relog
+            opt_bytes = bytes.fromhex('010101010100010100000101010101b6f3fd3eb6f3fd3e01')
+            client.send_event(2216, struct.pack('<q', char_id) + opt_bytes)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007_opt = await client.expect_event(2007)
+            self.assertIn(opt_bytes, ack2007_opt)
+
         self.run_async(self.with_server(scenario))
 
 

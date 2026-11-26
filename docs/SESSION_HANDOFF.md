@@ -4,6 +4,8 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Persist `2216 PlayOptionUpdateReq` (Game tab settings / Hide Helmet) across relog (2026-11-26)**:
+  - `handle_play_option_update` (`src/darkblood/games/handlers/commerce/cash_shop.py`) now saves the 24-byte `PlayOption` block (`req.raw`) into `char['play_option']` and `Character.encode_world_details` (`src/darkblood/games/entities/character.py`) serializes it at `+0x84` (`0x00A488F0`) in `2007 SelectCharacterAck` instead of always sending hardcoded defaults.
 - **Fix server crash on `2008 CharListReq` after GM item upgrade/quality (2026-11-26)**:
   - `gm.py` (`forceupgrade`, `quality`) and `gm_commands.py` (`apply_equip_upgrade`) persisted `'upgrade'` and `'quality'` keys onto character item dicts, causing `Item(owner=..., **item)` to raise `TypeError: __init__() got an unexpected keyword argument 'upgrade'` on reconnect (`2008 -> 2009`).
   - Added `upgrade: int = None` (`+2 UpgStep`, default `0xFFFF`) and `quality: u16 = 0` (`+4 Quality`) to `Item` in `src/darkblood/games/entities/items.py` and wired both into `Item._WIRE_LAYOUT`, with a regression test in `tests/test_gm_flow.py`.

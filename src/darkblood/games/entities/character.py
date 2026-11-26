@@ -154,6 +154,8 @@ class Character:
     mark_active: bool = False
     mark_base_cnt: int = 0
     mark_bonus_cnt: int = 0
+    # Details +0x84 (0x00A488F0): 24-byte PlayOption block persisted via 2216 PlayOptionUpdateReq.
+    play_option: bytes = None
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
@@ -215,6 +217,11 @@ class Character:
             mark_active=bool(data.get('mark_active', False)),
             mark_base_cnt=int(data.get('mark_base_cnt', 0)),
             mark_bonus_cnt=int(data.get('mark_bonus_cnt', 0)),
+            play_option=(
+                bytes.fromhex(data['play_option'])
+                if isinstance(data.get('play_option'), str) and len(data['play_option']) == 48
+                else None
+            ),
         )
 
     def to_dict(self) -> dict:
@@ -300,9 +307,12 @@ class Character:
         # Sub-struct 0xa488f0: untagged 24-byte GameOption block (+0x84), copied
         # by 0x00470D10 into 0x00F2DA28 +0xBE..+0xD5 on 2007 SelectCharacterAck.
         # Defaults from client constructor 0x0045FD50 (+0xBE=1 AllowPartyInvite,
-        # +0xCB=1 AllowTrade/Guild, +0xCC=1 AllowWhisper, +0xCD/+0xD1=0.5f).
+        # +0xCB=1 AllowTrade/Guild, +0xCC=1 AllowWhisper, +0xCD/+0xD1=0.5f, +0xD5=0 ShowHelmet).
         # Sending 24 zero bytes disabled party invites (+0xBE==0) and social options.
-        b += struct.pack('<15BffB', 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0.5, 0.5, 0)
+        if self.play_option and len(self.play_option) == 24:
+            b += self.play_option
+        else:
+            b += struct.pack('<15BffB', 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0.5, 0.5, 0)
         # Details +0x5F (u64) and +0x9C (bool), copied by 0x0095A150 into the
         # player object at +0xF0 and +0x80 respectively:
         #  * player+0xF0 is nJoinLayerNetID. JAppStateSquarePlay's CanEnter

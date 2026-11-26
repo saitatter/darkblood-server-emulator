@@ -78,9 +78,13 @@ class CashShopHandlers:
 
     @packet_handler(PlayOptionUpdateReq)
     async def handle_play_option_update(self, correlation, body):
-        # eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729) - fire and forget.
+        # eEGS_PLAY_OPTION_UPDATE_REQ (0x00794ED0) - fire and forget; persist 24-byte PlayOption block (+0x84 in 2007).
         req = PlayOptionUpdateReq.decode(body)
         self.transport.record('play-option-update', body, char_uid=req.char_uid)
+        char = self.current_char()
+        if char is not None and len(req.raw) == 24:
+            char['play_option'] = req.raw.hex()
+            self.save_char()
 
 
     @packet_handler(ContractUpdateReq)

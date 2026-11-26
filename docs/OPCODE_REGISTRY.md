@@ -227,7 +227,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2213 | `eEGS_CHEAT_GUILD_ALL_SKILL_INIT_ACK` | — | — | `CheatGuildAllSkillInitAck` |  |
 | 2214 | `eEGS_GUILD_ALL_SKILL_INIT_REQ` | — | `social/guild.py` (`handle_guild_all_skill_init`) | `GuildAllSkillInitReq` | eEGS_GUILD_ALL_SKILL_INIT_REQ -> 2215 eEGS_GUILD_ALL_SKILL_INIT_ACK (0x00752D80). |
 | 2215 | `eEGS_GUILD_ALL_SKILL_INIT_ACK` | — | — | `GuildAllSkillInitAck` |  |
-| 2216 | `eEGS_PLAY_OPTION_UPDATE_REQ` | — | `commerce/cash_shop.py` (`handle_play_option_update`) | `PlayOptionUpdateReq` | eEGS_PLAY_OPTION_UPDATE_REQ (0x00790000.c:3729) - fire and forget. |
+| 2216 | `eEGS_PLAY_OPTION_UPDATE_REQ` | — | `commerce/cash_shop.py` (`handle_play_option_update`) | `PlayOptionUpdateReq` | eEGS_PLAY_OPTION_UPDATE_REQ (0x00794ED0) - fire and forget; persist 24-byte PlayOption block (+0x84 in 2007). |
 | 2218 | `eEGS_REFUSE_GUILD_INVITE_NOT` | — | `social/guild.py` (`handle_refuse_guild_invite`) | `RefuseGuildInviteNot` | eEGS_REFUSE_GUILD_INVITE_NOT (0x00795000) -> forwards 6019 to online inviter. |
 | 2219 | `eEGS_POST_REQUEST_LIST_REQ` | — | `mail.py` (`handle_post_list`) | `PostListReq` | eEGS_POST_REQUEST_LIST_REQ (0x007962F0) -> 2220 eEGS_POST_REQUEST_LIST_ACK (0x007AEF70). |
 | 2220 | `eEGS_POST_REQUEST_LIST_ACK` | 0x007AEF70 | — | `PostListAck` |  |
