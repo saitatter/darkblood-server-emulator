@@ -83,6 +83,10 @@ def ensure_inventory(char):
             char['items'].append(record)
         changed = True
 
+    from darkblood.games.handlers.skills import ensure_base_life_skills
+    if ensure_base_life_skills(char):
+        changed = True
+
     return changed
 
 

@@ -130,6 +130,7 @@ class SelectCharacterAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 2007
     result: u32 = 0
+    proficiencies: Array[f32] = field(default_factory=list)  # 0x00A1E840 (+0x395 -> JProficiencyMgr::Init 0x00AC9BD0, 10 floats)
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
     depots: Map[i64, DepotInfo] = field(default_factory=dict)  # 0x00A40720 -> 0x00A40590 -> 0x00A40380, consumed by JDepotMgr 0x00942EE0
     bags: Vector[Extern[Bag, 'encode', False]] = field(default_factory=list)  # 0x00558010 (+0x293), consumed by 0x00837D60 -> 0x00836010
@@ -145,7 +146,7 @@ class SelectCharacterAck(WireMessage):
     daily_dun_clear_counts: Map[wstr, i16] = field(default_factory=dict)  # 0x00485220 (+0x3DD -> 0x00964A00)
     custom_keys: wstr = ''  # 0x00B35AB0 (+0x25D -> 0x0045FCF0 custom keyboard bindings)
     waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
-    u32_vec_a: Vector[u32] = field(default_factory=list)  # 0x004DA660
+    learned_proficiencies: Vector[u32] = field(default_factory=list)  # 0x004DA660 (+0x418 -> JProficiencyMgr::Init 0x00AC9BD0, max 2 chosen prof types 0..6)
     u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_a: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9190 -> 0x005F6640
     ridings: Map[h32, Extern[RidingInfo, 'encode', False]] = field(default_factory=dict)  # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
@@ -159,7 +160,7 @@ class SelectCharacterAck(WireMessage):
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'result',
         Const(EmptyArray),
-        Const(EmptyArray),
+        'proficiencies',
         'character',
         Const(u64, 0),
         Const(u64, 0),
@@ -206,7 +207,7 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         Const(u64, 0),
         Const(u32, 0),
-        'u32_vec_a',
+        'learned_proficiencies',
         'u32_vec_b',
         Const(u16, 0),
         Const(u64, 0),

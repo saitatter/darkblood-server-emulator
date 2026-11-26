@@ -530,7 +530,12 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack)[0], 0)  # already level 2: free
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(char['sp'], 0)
-            self.assertEqual(char['skills'], {'5': 2, '254': 1})
+            self.assertEqual(char['skills'].get('5'), 2)
+            self.assertEqual(char['skills'].get('254'), 1)
+            self.assertEqual(
+                {k: v for k, v in char['skills'].items() if int(k) < 9000},
+                {'5': 2, '254': 1},
+            )
 
             # SP reaches the client at login (details u32 array +0x51).
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
@@ -785,5 +790,63 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(refresh2037_full, b'\x00\x00\x00\x00\x10\x80')
             self.assertNotIn('0:1', char['quickslots'])
             self.assertIn('0:0', char['quickslots'])
+
+        self.run_async(self.with_server(scenario))
+
+    def test_life_skills_base_supply_learning_relog_and_reset(self):
+        """BaseSupply life skills (9005/9006/9009), 2-chosen-proficiency cap, 2007 persistence, and 2384 reset."""
+        from darkblood.core.serialization.jser import varuint
+        from darkblood.games.network.messages import InitProficiencyReq, LearnSkillReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('LifeHero', char_class=0))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007 = await client.expect_event(2007)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            for sid in ('9005', '9006', '9009'):
+                self.assertEqual(char['skills'].get(sid), 1)
+            # 2007 carries 10-float proficiencies array at offset 5 (after u32 result + empty array 0x80)
+            self.assertEqual(ack2007[:5], b'\x00\x00\x00\x00\x80')
+            self.assertEqual(ack2007[5:6], varuint(10))
+            self.assertEqual(struct.unpack_from('<10f', ack2007, 6), (0.0,) * 10)
+
+            # Learn Mining (9007 -> prof 0) and Gathering (9008 -> prof 1)
+            for sid in (9007, 9008):
+                client.send_event(2050, LearnSkillReq(skill_index=sid, level=1).encode())
+                _, ack2051 = await client.expect_event(2051)
+                self.assertEqual(struct.unpack_from('<i', ack2051, 0)[0], 0)
+            self.assertEqual(char['learned_proficiencies'], [0, 1])
+
+            # 3rd chosen proficiency (9000 Weapon Making -> prof 2) must be rejected (client max 2)
+            client.send_event(2050, LearnSkillReq(skill_index=9000, level=1).encode())
+            _, ack2051_fail = await client.expect_event(2051)
+            self.assertNotEqual(struct.unpack_from('<i', ack2051_fail, 0)[0], 0)
+            self.assertNotIn('9000', char['skills'])
+
+            # Update proficiency floats and relog -> 2007 encodes updated floats and learned_proficiencies=[0, 1]
+            char['proficiencies'] = [12.5, 34.0] + [0.0] * 8
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, ack2007_relog = await client.expect_event(2007)
+            self.assertEqual(struct.unpack_from('<10f', ack2007_relog, 6)[:2], (12.5, 34.0))
+            # Encoded vector<u32> [0, 1] = 0x10 + varuint(2) + u32(0) + u32(1)
+            self.assertIn(b'\x10' + varuint(2) + struct.pack('<II', 0, 1), ack2007_relog)
+
+            # Reset Mining (pf_index=0) via 2384 -> clears prof 0, removes 9007, frees a slot for 9000
+            client.send_event(2384, InitProficiencyReq(item_uid=999999, pf_index=0).encode())
+            _, ack2385 = await client.expect_event(2385)
+            self.assertEqual(struct.unpack_from('<i', ack2385, 0)[0], 0)
+            self.assertEqual(char['learned_proficiencies'], [1])
+            self.assertEqual(char['proficiencies'][0], 0.0)
+            self.assertNotIn('9007', char['skills'])
+
+            client.send_event(2050, LearnSkillReq(skill_index=9000, level=1).encode())
+            _, ack2051_ok = await client.expect_event(2051)
+            self.assertEqual(struct.unpack_from('<i', ack2051_ok, 0)[0], 0)
+            self.assertEqual(char['learned_proficiencies'], [1, 2])
 
         self.run_async(self.with_server(scenario))

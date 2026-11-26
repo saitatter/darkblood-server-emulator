@@ -143,14 +143,13 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (51 of 151 fields)
+## lobby (50 of 151 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `PetDepotSlotInfo` | `u64` | lobby.jsch:54 |  |
 | `DepotInfo` | `i64` | lobby.jsch:65 | +0x54 unknown |
 | `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:74 | 0x00A3ED30, max 3 |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:75 | 0x00A1E840, max 10 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:77 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:78 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:79 |  |

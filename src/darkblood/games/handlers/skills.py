@@ -27,6 +27,73 @@ from darkblood.games.network.messages import (
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
+# Life skills (gathering.lua, making.lua, fishing.lua): skill NameIndex <-> ProficiencyType (0..9).
+# Client 0x00A5F610 marks ProficiencyTypes 7, 8, 9 (BaseSupply=1) as always-present base tabs;
+# 0x00572BA0 builds the 5 side tabs as [7, 8, 9] + JProficiencyMgr::vecLearned (max 2 from 0..6)
+# and breaks on the first unlearned skill, so every character must hold BaseSupply skills 9005/9006/9009.
+LIFE_SKILL_TO_PROFICIENCY = {
+    9007: 0,  # Mining (Rocks_Collection.tga)
+    9008: 1,  # Gathering (HerbsMW_Collection.tga)
+    9000: 2,  # Weapon Making
+    9001: 3,  # Armor Making
+    9002: 4,  # Accessory Making
+    9003: 5,  # Potion Making
+    9004: 6,  # Magic Stone Making
+    9005: 7,  # Avatar Making (BaseSupply=1)
+    9006: 8,  # Quality Stone Making (BaseSupply=1)
+    9009: 9,  # Fishing (BaseSupply=1)
+}
+PROFICIENCY_TO_LIFE_SKILL = {pf: sid for sid, pf in LIFE_SKILL_TO_PROFICIENCY.items()}
+BASE_SUPPLY_PROFICIENCIES = (7, 8, 9)
+BASE_SUPPLY_LIFE_SKILLS = (9005, 9006, 9009)
+MAX_CHOSEN_PROFICIENCIES = 2
+
+
+def ensure_base_life_skills(char: dict) -> bool:
+    """Ensure BaseSupply=1 life skills (9005, 9006, 9009) are present at level >= 1."""
+    if not isinstance(char, dict):
+        return False
+    skills = char.setdefault('skills', {})
+    changed = False
+    for sid in BASE_SUPPLY_LIFE_SKILLS:
+        key = str(sid)
+        if int(skills.get(key, 0)) < 1:
+            skills[key] = 1
+            changed = True
+    return changed
+
+
+def proficiency_values_for_char(char: dict) -> list:
+    """10 proficiency float values for 2007 SelectCharacterAck (0x00A1E840 -> JProficiencyMgr+0x14)."""
+    raw = list(char.get('proficiencies', [])) if isinstance(char, dict) else []
+    return [float(raw[i]) if i < len(raw) else 0.0 for i in range(10)]
+
+
+def learned_proficiencies_for_char(char: dict) -> list:
+    """Up to 2 chosen non-BaseSupply proficiency types (0..6) for 2007 SelectCharacterAck (+0x418)."""
+    if not isinstance(char, dict):
+        return []
+    stored = char.get('learned_proficiencies')
+    if isinstance(stored, list):
+        out = []
+        for pf in stored:
+            pfi = int(pf)
+            if 0 <= pfi < 7 and pfi not in out:
+                out.append(pfi)
+                if len(out) >= MAX_CHOSEN_PROFICIENCIES:
+                    break
+        return out
+    # Backfill for existing characters that learned life skills before learned_proficiencies existed.
+    skills = char.get('skills', {}) or {}
+    derived = sorted(
+        LIFE_SKILL_TO_PROFICIENCY[int(k)]
+        for k, v in skills.items()
+        if int(k) in LIFE_SKILL_TO_PROFICIENCY
+        and int(v) > 0
+        and LIFE_SKILL_TO_PROFICIENCY[int(k)] not in BASE_SUPPLY_PROFICIENCIES
+    )
+    return derived[:MAX_CHOSEN_PROFICIENCIES]
+
 
 def learned_skill_map(skills, speeches=None, locked=(), show_cooltime=()):
     """Stored skills ({index: level}, keys may be strings) -> map for 2698, 2007, 2280, 2385, 2580."""
@@ -74,6 +141,16 @@ class SkillHandlers(BaseDomainService):
         char = self.current_char()
         remain_sp = remain_gold = 0
         if char:
+            pf = LIFE_SKILL_TO_PROFICIENCY.get(int(req.skill_index))
+            if pf is not None and pf not in BASE_SUPPLY_PROFICIENCIES:
+                learned_profs = learned_proficiencies_for_char(char)
+                if pf not in learned_profs and len(learned_profs) >= MAX_CHOSEN_PROFICIENCIES:
+                    await self.reply(LearnSkillAck(result=1), correlation,
+                                     note=f'learn life skill fail (already has {len(learned_profs)} proficiencies)')
+                    return
+                if pf not in learned_profs:
+                    learned_profs.append(pf)
+                char['learned_proficiencies'] = learned_profs
             if not self._charge_skills(char, [(req.skill_index, req.level)]):
                 await self.reply(LearnSkillAck(result=1), correlation, note='learn skill fail (not enough SP/AR)')
                 return
@@ -263,7 +340,18 @@ class SkillHandlers(BaseDomainService):
             else:
                 used['count'] = cnt
                 updated.append(Item(owner=UPDATE_OWNER, **used))
-            self.save_char()
+        pf = int(req.pf_index)
+        if 0 <= pf < 10:
+            profs = proficiency_values_for_char(char)
+            profs[pf] = 0.0
+            char['proficiencies'] = profs
+        if pf not in BASE_SUPPLY_PROFICIENCIES:
+            learned_profs = [p for p in learned_proficiencies_for_char(char) if p != pf]
+            char['learned_proficiencies'] = learned_profs
+            sid = PROFICIENCY_TO_LIFE_SKILL.get(pf)
+            if sid is not None:
+                char.get('skills', {}).pop(str(sid), None)
+        self.save_char()
         skills_map = learned_skill_map(
             char.get('skills', {}),
             char.get('skill_speeches', {}),
@@ -296,14 +384,20 @@ class SkillHandlers(BaseDomainService):
             'quickslots': dict(char.get('quickslots', {})),
             'sp': int(char.get('sp', 0)),
         }
+        life_skills = {
+            k: v for k, v in char.get('skills', {}).items()
+            if int(k) in LIFE_SKILL_TO_PROFICIENCY
+        }
         if new_idx in sets:
             target = sets[new_idx]
-            char['skills'] = dict(target.get('skills', {}))
+            merged = dict(target.get('skills', {}))
+            merged.update(life_skills)
+            char['skills'] = merged
             char['quickslots'] = dict(target.get('quickslots', {}))
             char['sp'] = int(target.get('sp', char.get('sp', 0)))
         else:
             from darkblood.games.progression import total_ap
-            char['skills'] = {}
+            char['skills'] = dict(life_skills)
             char['quickslots'] = {}
             char['sp'] = total_ap(char)
         char['dual_skill_index'] = req.dual_skill_index

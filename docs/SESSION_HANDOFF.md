@@ -4,6 +4,11 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-26)
 
+- **Fix Life Skills / Proficiencies visibility & relog persistence (`2007`, `2050/2051`, `2384/2385`, Issue #15 item 5, 2026-11-26)**:
+  - Disassembly of `0x00572BA0` (`LifeSkillPage` side-tab builder), `0x00A5F610` (`BaseSupply` proficiencies `7, 8, 9`), `0x00AC9CE0` (`JProficiencyMgr` max-2 chosen proficiencies), and `0x007AA92E -> 0x00AC9BD0` (`JProficiencyMgr::Init` in `2007 SelectCharacterAck`) revealed two root causes:
+    1. `0x00572BA0` builds the 5 side tabs as `[7, 8, 9]` (`BaseSupply=1`: `9005` Avatar Making, `9006` Quality Stone Making, `9009` Fishing) followed by `JProficiencyMgr::vecLearned` (up to 2 chosen proficiencies from `0..6`: Mining `9007`, Gathering `9008`, Weapon/Armor/Accessory/Potion/MagicStone Making `9000..9004`) and **`break`s on the first unlearned skill**. Missing `9005` or `9006` caused Fishing and all learned gathering/crafting skills to disappear from the Life Skills UI.
+    2. `2007 SelectCharacterAck` sent empty `proficiencies` (`0x00A1E840`, `+0x395`, 10 floats) and empty `learned_proficiencies` (`0x004DA660`, `+0x418`, `u32_vec_a`, max 2), so `JProficiencyMgr` lost all chosen life skills on relog.
+  - Mapped `array<f32> proficiencies` and `vector<u32> learned_proficiencies` in `schemas/lobby.jsch`, granted `BaseSupply=1` life skills (`9005`, `9006`, `9009`) on character creation and `2007` login (`ensure_base_life_skills`), enforced the client's max-2 chosen proficiency cap in `handle_learn_skill` (`2050`), wired `handle_init_proficiency` (`2384`) to clear the reset proficiency/skill, and preserved life skills across Dual Skill page switches (`2579`).
 - **Persist pets across relog (`2007 SelectCharacterAck`) & fix `5053 AgainSelectDungeonAck` active quests (2026-11-26)**:
   - Disassembly of `0x00A1E8C0 -> 0x00A54E70 -> 0x0064EA00 -> 0x00643940 -> 0x00A52CF0` mapped `map<i64, PetInfo> pets`, `i64 summoned_pet_uid`, and `bool pet_summoned` in `schemas/lobby.jsch` and populated them from `char['pets']` / `char['summoned_pet']` in `src/darkblood/games/handlers/frontend.py`.
   - Fixed `handle_again_select_dungeon` (`5053` in `src/darkblood/games/handlers/dungeon/rooms.py`) to read `char.get('quests_active', {})` instead of the nonexistent `char.get('quests', [])`.
@@ -77,12 +82,12 @@
 
 ## Verification status
 
-- **Headless suite**: **244/244** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **245/245** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
 - **Issue #15 remaining items**:
-  5. Life Skills screen not updating visually after learning.
+  5. Life Skills screen fix (code & headless test complete; verify in-game).
   6. Dual Skill item live verification (code & headless test complete; verify in-game).
 - **Subclass promotion skills**: Confirm exact subclass and expected auto-learned skills before changing `2283 PromotionNot`'s empty learned-skill map.
 - **Roadmap priorities (`ROADMAP.md`)**: Shared co-op dungeon instances, town movement desync, remaining unmapped fields (`docs/UNMAPPED_FIELDS.md`).

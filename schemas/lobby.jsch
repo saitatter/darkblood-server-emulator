@@ -72,7 +72,7 @@ message 2007 SelectCharacterAck
   ## meanings are unknown unless commented; they are sent as zero or empty.
   u32 result
   array<?> _                 # 0x00A3ED30, max 3
-  array<?> _                 # 0x00A1E840, max 10
+  array<f32> proficiencies   # 0x00A1E840 (+0x395 -> JProficiencyMgr::Init 0x00AC9BD0, 10 floats)
   Character character = Character()
   u64 _
   u64 _
@@ -119,7 +119,7 @@ message 2007 SelectCharacterAck
   u64 _
   u64 _
   u32 _
-  vector<u32> u32_vec_a      # 0x004DA660
+  vector<u32> learned_proficiencies  # 0x004DA660 (+0x418 -> JProficiencyMgr::Init 0x00AC9BD0, max 2 chosen prof types 0..6)
   vector<u32> u32_vec_b      # 0x004DA660
   u16 _
   u64 _

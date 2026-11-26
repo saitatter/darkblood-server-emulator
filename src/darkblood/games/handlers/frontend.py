@@ -8,7 +8,12 @@ from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character, delete_seconds_left
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
-from darkblood.games.handlers.skills import learned_skill_map
+from darkblood.games.handlers.skills import (
+    ensure_base_life_skills,
+    learned_proficiencies_for_char,
+    learned_skill_map,
+    proficiency_values_for_char,
+)
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
     CheatSystemDeleteCharacterAck,
@@ -124,6 +129,7 @@ def build_select_char_ack(char, account_chars=None):
                 depots[int(entry['id'])] = _build_depot_info(entry)
     return SelectCharacterAck(
         result=0,
+        proficiencies=proficiency_values_for_char(char),
         character=c,
         depots=depots,
         active_quests=sorted(active, key=lambda q: q.uid),
@@ -145,6 +151,7 @@ def build_select_char_ack(char, account_chars=None):
         },
         custom_keys=str(char.get('custom_keys', '')) if isinstance(char, dict) else '',
         waypoints=_build_waypoints_map(char) if isinstance(char, dict) else {},
+        learned_proficiencies=learned_proficiencies_for_char(char),
         ridings=_build_ridings_map(char) if isinstance(char, dict) else {},
         pets=_build_pets_map(char) if isinstance(char, dict) else {},
         summoned_pet_uid=int(char.get('summoned_pet') or 0) if isinstance(char, dict) else 0,
@@ -356,7 +363,10 @@ class FrontendHandlers(BaseDomainService):
             await world.remove_session_player(self.session)
         self.session.active_char_id = char_id
         from darkblood.games.progression import active_penalty_notice, refresh_character_timers
-        if refresh_character_timers(char):
+        dirty = refresh_character_timers(char)
+        if ensure_base_life_skills(char):
+            dirty = True
+        if dirty:
             self.save_char()
         ack = build_select_char_ack(char, account_chars=self.store().characters(self.account))
         await self.transport.send_event(event(2007, ack, correlation),
