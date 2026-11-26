@@ -15,3 +15,9 @@ when moving them.
 
 Cross-folder imports add the needed folder to `sys.path` explicitly (for example
 `launcher.py` imports `automation/gamectl.py`); `tests/common.py` adds every folder.
+
+## Release packaging
+
+Run `python tools/launcher/build_release.py --version <tag>` from the checkout
+you want to package. The generated release notes cover the commits since the
+closest previous release tag in that checkout's history.

@@ -1,8 +1,10 @@
-# Session handoff — 2026-11-24
+# Session handoff — 2026-11-27
 
 > Older per-session logs (2026-11-16 through 2026-11-21) were pruned to keep this handoff concise; they remain in Git history and their results are reflected in `README.md`, `docs/STATUS.md`, `docs/OPCODE_REGISTRY.md`, and `ROADMAP.md`.
 
-## Recent verified changes (2026-11-22 – 2026-11-26)
+## Recent verified changes (2026-11-22 – 2026-11-27)
+
+- **Release notes (2026-11-27)**. Rebuilding an older release uses the closest version tag reachable from the build commit and excludes the version being built. A test with three tags verifies that the middle release includes its own change even with the newer tag present.
 
 - **Field recovery, batch 4 (2026-11-26)**: `2570` is `eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK` (`mapFriendBlockList`, `map<i64,FriendEntry>`), moved from the guild schema (was "GuildOrAttendanceAck") and filled from `blocked_friends`. GM `2062`/`2064` `vecCheatSkill` are `vector<LearnedSkill>` (2064 now returns the learned skill), `2491` skills `vector<u16>`. Refactor helpers added this session: `BaseDomainService.send_to`/`find_char`, rooms `_reply_and_sync`; backlog in ROADMAP P9. Next: remaining lobby `2007` fields, `5041` jChatInfo (reader 0x00A53490), `2157`/`2158` guild records (0x00A49950), commerce `StoreRecord`.
 - **Field recovery, batch 3: arena (2026-11-26, asserts + reader walks)**: `5098` now follows its assert (jDuel, both skill maps, both proficiency vectors, both levels, relay address; the earlier layout stopped after one map) and is filled from both characters. `5146` gained the missing `jRelayAddr`; `2309` is `vector<RoomMemberInfo>` plus the missing `m_iCurPage`; `2551`/`2472` season time is `DateTime6`; `5173` maps typed (`learn_skills`, `quick_slots`, `league_infos`; `mapSubCharInfo` documented). Live checks W10-W12.
