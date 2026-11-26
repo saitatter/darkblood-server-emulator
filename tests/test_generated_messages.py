@@ -8,13 +8,13 @@ from tests.common import ROOT
 
 class GeneratedMessagesTest(unittest.TestCase):
     def test_generated_modules_are_current(self):
-        proc = subprocess.run([sys.executable, str(ROOT / 'tools' / 'gen_messages.py'), '--check'],
+        proc = subprocess.run([sys.executable, str(ROOT / 'tools' / 'codegen' / 'gen_messages.py'), '--check'],
                               cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               universal_newlines=True)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
     def test_schema_errors_are_reported(self):
-        sys.path.insert(0, str(ROOT / 'tools'))
+        sys.path.insert(0, str(ROOT / 'tools' / 'codegen'))
         try:
             import gen_messages
         finally:

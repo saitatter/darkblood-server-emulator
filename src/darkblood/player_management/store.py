@@ -371,7 +371,7 @@ class SqliteCharacterStore(ICharacterStore):
             conn.commit()
 
     # Account values (cash shop balance). Read from SQLite on every call, not
-    # cached, so changes made by tools/dashboard.py (a separate process)
+    # cached, so changes made by tools/launcher/dashboard.py (a separate process)
     # reach the running server.
     def account_cash(self, account: str) -> int:
         with self.lock:

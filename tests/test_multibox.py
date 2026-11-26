@@ -1,9 +1,9 @@
-"""Unit tests for tools/multibox.py tiling layout and 1-4 client account resolution."""
+"""Unit tests for tools/automation/multibox.py tiling layout and 1-4 client account resolution."""
 import sys
 import unittest
 from pathlib import Path
 
-TOOLS_DIR = Path(__file__).resolve().parent.parent / 'tools'
+TOOLS_DIR = Path(__file__).resolve().parent.parent / 'tools' / 'automation'
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
@@ -12,7 +12,7 @@ if sys.platform == 'win32':
     import multibox  # noqa: E402
 
 
-@unittest.skipUnless(sys.platform == 'win32', 'tools/multibox.py is Windows-only')
+@unittest.skipUnless(sys.platform == 'win32', 'tools/automation/multibox.py is Windows-only')
 class MultiboxLayoutAndAccountsTest(unittest.TestCase):
     def test_default_accounts_up_to_four(self):
         self.assertEqual(

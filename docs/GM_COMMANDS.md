@@ -4,7 +4,7 @@ Complete reference for the native in-game GM console (`JAppPageCheat`, `0x004EF7
 
 ## How to Enable & Use
 
-1. **Enable GM Mode**: set `[server] gm_mode = 1` in `research/client/darkblood_options.ini` (enabled by default; also toggleable in `tools/launcher.py` under **Patches & Hacks -> Server Behaviour -> GM console & cheat commands**).
+1. **Enable GM Mode**: set `[server] gm_mode = 1` in `research/client/darkblood_options.ini` (enabled by default; also toggleable in `tools/launcher/launcher.py` under **Patches & Hacks -> Server Behaviour -> GM console & cheat commands**).
    - When enabled, the server sends `nAuthLevel = 1` in the `5020` welcome packet (`src/darkblood/games/handlers/frontend.py`), unlocking the client's built-in GM features.
 2. **Open the GM Console or Run Commands**:
    - Press **`Left Ctrl + Left Shift + C`** in-game (`0x00451A87`: `DIK_LCONTROL` + `DIK_LSHIFT` + `DIK_C`) to toggle the visual `Page_Cheat` console window (`eAP_Cheat = 0x37`).
@@ -13,7 +13,7 @@ Complete reference for the native in-game GM console (`JAppPageCheat`, `0x004EF7
 
 ## ID Reference Catalogs
 
-Regenerated from extracted client data via `python tools/gen_gm_reference.py`:
+Regenerated from extracted client data via `python tools/codegen/gen_gm_reference.py`:
 
 | Catalog | Contents | Used By Commands |
 | :--- | :--- | :--- |

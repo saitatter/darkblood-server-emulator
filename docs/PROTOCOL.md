@@ -141,7 +141,7 @@ Reader widths: `0x00B35150` u8, `0x00B35680` bool, `0x00B351E0` u16, `0x00B35300
 
 ## 5. Application flow (observed in the live client)
 
-Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/extract_opcodes.py`). Handlers come from the runtime map at `0x00F45250` (lookup `0x0075FD30`), dumped by the shim to `research/client/handler_map.txt`.
+Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/codegen/extract_opcodes.py`). Handlers come from the runtime map at `0x00F45250` (lookup `0x0075FD30`), dumped by the shim to `research/client/handler_map.txt`.
 
 | Step | Client request | Server response | Handler / schema | Status |
 | --- | --- | --- | --- | --- |
@@ -446,7 +446,7 @@ A nonzero `result` in 2039 (`0x0077D4C0`), 2043 (`0x007AE940`), 2045
 system message type `0xD`. Unknown codes show `Invalid value.` (`0x00D58C38`).
 
 - `assets/result_codes.tsv` lists all 497 codes (-2..494, no gaps), with
-  English text for 154. Regenerate with `tools/extract_result_codes.py`.
+  English text for 154. Regenerate with `tools/codegen/extract_result_codes.py`.
 - Code 1 is `JERI_NO_EXIST_CHAR` ("Unavailable character."). The server had
   sent 1 as a generic failure. Live: a full bag on 2038 showed that text.
 - Checks: 206 (`0xCE`) = `JERI_ROUTER_00` "cannot find this character.", and
@@ -630,7 +630,7 @@ All responses are modeled as Python dataclasses in `src/darkblood/games/network/
 ## Protocol map tooling (2026-11-16, saitatter machine)
 
 - `assets/opcodes.tsv`: 1,458 names with no gaps in any block, from the
-  client's name map `0x00F49CF8` (`tools/extract_opcodes.py`). Earlier
+  client's name map `0x00F49CF8` (`tools/codegen/extract_opcodes.py`). Earlier
   extractions missed every opcode containing a `0x0A` byte (e.g. 2594/2595
   `eEGS_HTTPNOTICE_CHECK_REQ/ACK`, 2712/2713 Steam billing) and 2007.
 - `assets/opcode_pairs.tsv`: the client's own request→response map
@@ -639,11 +639,11 @@ All responses are modeled as Python dataclasses in `src/darkblood/games/network/
   WAYI, ...) answers with 5020.
 - `assets/opcode_flags.tsv`: map `0x00F49D04`, values 0/16/17/33/41/64/129;
   meaning not recovered.
-- `tools/opcode_xrefs.py` → `research/opcode_xrefs.tsv`: per opcode, client
+- `tools/reverse/opcode_xrefs.py` → `research/opcode_xrefs.tsv`: per opcode, client
   senders (push + event constructor `0x00408C60`/`0x007AEE00`), switch
   dispatchers, and registered handlers (`call 0x0075F080` registrations plus
   the runtime map). 620 of 910 ACK/NOT opcodes have a receiver.
-- `tools/extract_schemas.py` → `research/schemas.txt`: draft read schemas for
+- `tools/codegen/extract_schemas.py` → `research/schemas.txt`: draft read schemas for
   298 registered handlers and 37 dispatcher cases, from the JSerBuffer reader
   calls (type codes 0..10 = i8,u8,i16,u16,i32,u32,i64,u64,f32,f64,bool;
   `0x0B` wstring, `0x0C` string, `0x1B` varint, `0x0E` raw bytes). Validated on

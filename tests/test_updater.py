@@ -1,4 +1,4 @@
-"""Unit tests for tools/updater.py (GitHub Releases + manifest.json self-updater) and tools/build_release.py."""
+"""Unit tests for tools/launcher/updater.py (GitHub Releases + manifest.json self-updater) and tools/build_release.py."""
 import hashlib
 import io
 import json
@@ -51,7 +51,7 @@ class ReleaseUpdaterTest(unittest.TestCase):
             archive = _make_zip({
                 'DarkBlood-Emulator-v0.2.0/assets/opcodes.tsv': b'new\n',
                 'DarkBlood-Emulator-v0.2.0/client_hook/patches/network_redirect.c': b'/* hook */\n',
-                'DarkBlood-Emulator-v0.2.0/tools/launcher.py': b'# updated launcher\n',
+                'DarkBlood-Emulator-v0.2.0/tools/launcher/launcher.py': b'# updated launcher\n',
                 'DarkBlood-Emulator-v0.2.0/data/darkblood.db': b'SHOULD_BE_SKIPPED',
                 'DarkBlood-Emulator-v0.2.0/research/client/darkblood_options.ini': b'SHOULD_BE_SKIPPED',
                 'DarkBlood-Emulator-v0.2.0/logs/wire.jsonl': b'SHOULD_BE_SKIPPED',

@@ -17,9 +17,9 @@ jobs:
         with:
           python-version: '3.8'
       - name: Generated message modules are current
-        run: python tools/gen_messages.py --check
+        run: python tools/codegen/gen_messages.py --check
       - name: Generated progress & docs are current
-        run: python tools/gen_progress.py --check
+        run: python tools/codegen/gen_progress.py --check
       - name: Headless tests
         run: python -m unittest discover -s tests -v
 
@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: '3.8'
       - name: Regenerate progress
-        run: python tools/gen_progress.py
+        run: python tools/codegen/gen_progress.py
       - name: Commit when changed
         run: |
           if git diff --quiet -- README.md docs/UNMAPPED_FIELDS.md; then

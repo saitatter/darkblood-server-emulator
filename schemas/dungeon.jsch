@@ -242,15 +242,16 @@ message 5090 ChoiceRewardPartyRankReq header
 end
 
 message 5091 ChoiceRewardPartyRankAck ok_only
-  ## On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0) is shown by the
-  ## chest display 0x00713AB0: +0 looked up as an item (0x009E53D0), +6 shown as
-  ## "xN" when >= 2. Refusals sent by the server exit at 0x0078D6F9.
+  ## On_opcode_5091 0x0078D660. The 12-byte block (0x00AC82A0, ctor 0x00AC8250) is
+  ## the AddedItemNotice struct of 2092. The handler passes only +0 and +6 on to
+  ## 0x00560A20; the chest display 0x00713AB0 looks +0 up as an item (0x009E53D0)
+  ## and shows +6 as "xN" when >= 2. Refusals sent by the server exit at 0x0078D6F9.
   i32 result
   i64 char_uid               # nChoiceCharUID
   h32 item_id                # +0 item code
-  u16 _                      # +4 not recovered
+  u16 quality                # +4 (2092 passes it to 0x009E5560); unused by 5091
   u16 count = 1              # +6
-  u32 _                      # +8 not recovered
+  u32 _                      # +8 u16 zero + struct padding (ctor 0x00AC8250), unused by 5091
   i32 box_type               # nBoxType
   i32 box_cost               # nBoxCost
   vector<Item> items         # read when char_uid is the local player (0x004B94C0)
@@ -306,13 +307,13 @@ message 5018 FinishGameAck
   bool is_clear = true       # dungeon clear / victory
   wstr map_code
   bool flag                  # bSamePerson
-  map<?> _                   # mapGuildPersonCnt
+  map<u32,i64> guild_person_counts  # mapGuildPersonCnt: 0x005EAAC0 -> 0x005DFBD0 -> 0x005DDBB0 (u32, i64), sent empty
   map<i64,SingleReward> rewards  # mapSingleReward: char uid -> block
   i32 rank_first = 1         # nPartyRankFirst
   i32 rank_final = 1         # nPartyRankFinal
   i32 box_grade = 1          # nBoxGrade
   i32 extra_box_cost         # nExtraBoxCost
-  vector<?> _                # vecBonusMonster
+  vector<u32> bonus_monsters # vecBonusMonster: 0x004D9610 -> 0x004D6E60 (u32 elements), sent empty
 end
 
 message 5060 RoomMemInfoReq header?

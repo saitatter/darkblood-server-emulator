@@ -1,7 +1,7 @@
 # Mesh / animation format (`.x`, `.prt`, `.ani`)
 
 **Status, 2026-11-26:** recovered from the client loader by disassembly (build in
-[STATUS.md](STATUS.md)) and checked against the extracted data: `tools/dbmesh.py`
+[STATUS.md](STATUS.md)) and checked against the extracted data: `tools/client_data/dbmesh.py`
 reads all 6,575 `.x`/`.prt`/`.ani` entries and consumes every byte of each file.
 The only exceptions are 15 effect files with the DirectX `xof 0303bzip0032` magic
 (compressed DirectX X, a different format, not handled).
@@ -47,7 +47,7 @@ and a frame tree without meshes. A few `.x` files (34) are also skeleton-only.
 
 ## Tools
 
-- `python tools/dbmesh.py info <file-or-dir>` — summary; `export <file-or-dir> --out DIR` — OBJ/MTL + textures (bind pose, right-handed).
+- `python tools/client_data/dbmesh.py info <file-or-dir>` — summary; `export <file-or-dir> --out DIR` — OBJ/MTL + textures (bind pose, right-handed).
 - `py -3.13 tools/model_viewer [files…]` — Qt/OpenGL viewer: asset browser, outliner,
   textured/solid/wireframe/weight-paint shading, armature, animation playback and
   equipment attachment. Requires `pip install -r tools/model_viewer/requirements.txt`

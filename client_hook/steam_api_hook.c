@@ -2,7 +2,7 @@
  *
  * Each runtime hook / byte patch lives in its own file under patches/*.c and
  * is enabled or disabled via darkblood_options.ini next to DarkBlood.exe
- * (edited by tools/launcher.py).
+ * (edited by tools/launcher/launcher.py).
  */
 #include "common.h"
 #include "patches/patches.h"

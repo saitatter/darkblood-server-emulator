@@ -2,7 +2,7 @@
   "mcpServers": {
     "darkblood": {
       "command": "python",
-      "args": ["tools/mcp_server.py"]
+      "args": ["tools/automation/mcp_server.py"]
     }
   }
 }

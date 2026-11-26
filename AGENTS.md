@@ -45,8 +45,8 @@ Use the `reverse-engineer-anything` skill for shipped binary analysis. Do not sp
 
 - Current server: `python run_server.py` from the repo root, binding `127.0.0.1:9400` (game) and `9401` (relay).
 - Code layout follows MHServerEmu for a later C# port: `src/darkblood/{core,frontend,player_management,games}`; read `docs/ARCHITECTURE.md` before adding handlers (new opcode = message dataclass + `on_<opcode>` in the domain mixin + headless test).
-- Drive live tests with `tools/gamectl.py` (or the `darkblood` MCP server): it verifies the client hash, refuses a busy port, and stops only processes it started. Use `enter-lobby` to reach character select.
-- Decompile with `tools/decomp.ps1 OUT.c 0xADDR...`; dump behaviour with the shim's `bp.txt` tracer and `sample.txt` sampler (see STATUS.md).
+- Drive live tests with `tools/automation/gamectl.py` (or the `darkblood` MCP server): it verifies the client hash, refuses a busy port, and stops only processes it started. Use `enter-lobby` to reach character select.
+- Decompile with `tools/reverse/decomp.ps1 OUT.c 0xADDR...`; dump behaviour with the shim's `bp.txt` tracer and `sample.txt` sampler (see STATUS.md).
 - Opcode names: `assets/opcodes.tsv`. Handler addresses: `research/client/handler_map.txt` (written by the shim on connect).
 - No legacy or data-migration code until the first release: the speculative prototype and the JSON character store were removed on 2026-11-16. Change the stored format freely and reset `data/` instead of migrating.
 - ProudNet scalars and JSerBuffer varints are different: width-prefixed signed integers versus seven-bit groups terminating when bit 7 is **set**.
@@ -79,7 +79,7 @@ Until the server emulator implementation is complete:
 
 - SteamUser implements only three initial slots; SteamFriends only the first slot. Other interfaces still return invalid placeholder `1`, and many export signatures/callbacks are incomplete.
 - Server → client messages are unencrypted; fast encryption (0x27) and UDP are not implemented. Control reply `0x1D -> 0x1F` is exploratory.
-- Headless tests: `python -m unittest discover -s tests -v` drives the server with `tools/headless_client.py` (real handshake, encrypted events, no game window). Run them first; launch the client only to verify that it parses a changed response. The user asked to avoid opening the graphics window for every test.
+- Headless tests: `python -m unittest discover -s tests -v` drives the server with `tools/automation/headless_client.py` (real handshake, encrypted events, no game window). Run them first; launch the client only to verify that it parses a changed response. The user asked to avoid opening the graphics window for every test.
 - `docs/CRYPTO_KEYS.md` is provisional. Existing extracted XML is malformed; do not treat it as plaintext or mass-extract using an unverified key.
 - Keep game binaries, dumps, generated DLLs, captures, and unrelated user files out of Git. Keep reproducible source and concise evidence notes.
 

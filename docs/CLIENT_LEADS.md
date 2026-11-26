@@ -32,7 +32,7 @@ against the client reader (or live) before changing a schema, then move the resu
    `WAYPOINTCHARLAYER_*` (6 opcodes) are unimplemented.
 9. **Unimplemented systems.** 9 `FISHING_*`, 44 `GUILD_*` and the `CRONOS_*` opcodes (see `OPCODE_REGISTRY.md`).
    Founding a guild alone clears the party-leader and member-count requirement bits client-side.
-10. **UI text.** `Localization_ST_0.jpk` can be replaced as an archive overlay (`tools/jpk_pack.py`), which fits the
+10. **UI text.** `Localization_ST_0.jpk` can be replaced as an archive overlay (`tools/client_data/jpk_pack.py`), which fits the
     deferred UI-text fix in ROADMAP P4. Font heights live in the JFont descriptors (stride `0x50`, constructors
     `0x411138..0x411604`). Time fields: the client's CRT local-time conversion rejects some valid years.
 11. **Telemetry strings in the client.** `http://mon.changyou.com/client.html?gametype=%s&version=%s&param=%d&mac=%s&ip=

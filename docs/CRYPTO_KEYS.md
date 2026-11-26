@@ -49,7 +49,7 @@ void FUN_00411f90(int param_1, int param_2)
 * **`Common_0.jpk`:** Clean plaintext `configure.txt`, `action.lua`, `macro.lua`.
 * **`Dict_*.jpk`:** Standard Lua 5.1 bytecode chunks beginning with `\x1bLuaQ\x00\x01\x04\x04\x04\x08...` and compiled function `lua_tinker::compile()`.
 * **`Map_0.jpk` / `UI_*.jpk`:** Clean uncompressed and decompressed XML/Lua assets.
-* Implemented in `tools/jpk_extractor.py`.
+* Implemented in `tools/client_data/jpk_extractor.py`.
 
 **Correction (2026-11-16, saitatter machine):** the cipher is selected per
 archive by the header byte at `0x226` and applies to the whole stored blob of

@@ -12,7 +12,7 @@ body:
         > **Automatic Diagnostic Bundle Extraction:**
         > Please run the diagnostic tool in your repository to automatically package all wire call logs, handler maps, environment details, and server state:
         > ```bash
-        > python tools/export_diagnostics.py
+        > python tools/launcher/export_diagnostics.py
         > ```
         > This creates a `darkblood_diagnostics_<timestamp>.zip` file. Please drag and drop it into the upload field below so that AI agents and maintainers can immediately reproduce and resolve the issue.
 
@@ -93,7 +93,7 @@ body:
     attributes:
       label: Diagnostic Bundle / Logs (.zip attachment)
       description: |
-        Drag and drop the ZIP bundle created by `python tools/export_diagnostics.py` here.
+        Drag and drop the ZIP bundle created by `python tools/launcher/export_diagnostics.py` here.
         If you have raw hex dumps or stack traces, paste them here as well.
       placeholder: "Attach darkblood_diagnostics_*.zip here or paste raw wire packet trace."
     validations:

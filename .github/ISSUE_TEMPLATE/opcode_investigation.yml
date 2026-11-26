@@ -11,7 +11,7 @@ body:
         > [!TIP]
         > You can package wire captures and diagnostic logs using:
         > ```bash
-        > python tools/export_diagnostics.py
+        > python tools/launcher/export_diagnostics.py
         > ```
 
   - type: input

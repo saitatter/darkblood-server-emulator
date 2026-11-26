@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / 'tools'))
+sys.path.insert(0, str(ROOT / 'tools' / 'client_data'))
 
 from jpk_extractor import MAGIC, Archive, decrypt_data, encrypt_data  # noqa: E402
 from jpk_pack import pack, stored_blob, varint, wstr, wrap_j  # noqa: E402

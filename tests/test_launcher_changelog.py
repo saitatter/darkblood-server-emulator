@@ -1,4 +1,4 @@
-"""Unit tests for tools/launcher_app/changelog.py."""
+"""Unit tests for tools/launcher/launcher_app/changelog.py."""
 from pathlib import Path
 import subprocess
 import tempfile

@@ -19,7 +19,7 @@ Original entry VA is `0x0119E000`, with an initial transfer eventually reaching 
 
 Launching under Windows Debug API from process creation triggered many first-chance privileged/illegal-instruction exceptions and a protection-error dialog. Those exceptions can be part of the packer; blindly skipping them is not a valid unpacking strategy.
 
-Normal execution with `__COMPAT_LAYER=RunAsInvoker` reached unpacked game code. `tools/debug_client.c`, in `DB_NO_DEBUG` mode, was used to read the mapped image and inspect threads. The helper terminates only the child it created after its bounded observation window.
+Normal execution with `__COMPAT_LAYER=RunAsInvoker` reached unpacked game code. `tools/reverse/debug_client.c`, in `DB_NO_DEBUG` mode, was used to read the mapped image and inspect threads. The helper terminates only the child it created after its bounded observation window.
 
 The derived `research/unpacked.analysis.exe` is not playable. It wraps a captured memory image into a simplified PE for static analysis, with loader directories removed and an artificial disassembly seed. Addresses in this fixture correspond to memory VAs; original disk offsets do not.
 
@@ -62,15 +62,15 @@ REA's connected server initially reported Ghidra unavailable because its process
 
 Full Ghidra analysis through REA produced retained Evidence. The initial artificial seed `0x92C2E0` lies inside the Steam-related function whose actual start is `0x92C2C0`; do not interpret the synthetic `entry` as a recovered original entry point.
 
-`tools/FocusedDecompile.java` provides faster targeted analysis using `-noanalysis`, requested function seeds, limited callee discovery, and return-based stack-purge metadata. Its output may contain incorrect signatures, merged function bodies, and inaccurate stack variables. Check important details against assembly and live observations.
+`tools/reverse/ghidra/FocusedDecompile.java` provides faster targeted analysis using `-noanalysis`, requested function seeds, limited callee discovery, and return-based stack-purge metadata. Its output may contain incorrect signatures, merged function bodies, and inaccurate stack variables. Check important details against assembly and live observations.
 
 ### Full named Ghidra project (2026-11-16, saitatter machine)
 
 Reproducible from local evidence (all outputs stay under ignored `research/`):
 
 ```sh
-python tools/image_to_pe.py research/normal.bin research/normal.analysis.exe --entry 0x92C2C0
-python tools/gen_symbols.py research/normal.bin -o research/symbols.tsv
+python tools/reverse/image_to_pe.py research/normal.bin research/normal.analysis.exe --entry 0x92C2C0
+python tools/reverse/gen_symbols.py research/normal.bin -o research/symbols.tsv
 # GHIDRA_HEADLESS_MAXMEM=8G, JAVA_HOME set:
 analyzeHeadless research/ghidra-full DarkBlood -import research/normal.analysis.exe -overwrite \
   -scriptPath tools -preScript ApplySymbols.java research/symbols.tsv \
@@ -95,7 +95,7 @@ labels; ExportDecompiled produced 32,219 of 32,225 functions (39 MB).
 Handler registrations also occur outside the connect-time map: pattern
 `mov eax, handler ... mov edx, opcode ... call 0x0075F080` (138 found by byte
 scan). The game runs elevated (`requireAdministrator` in the manifest), so
-`tools/dump_stubs.py` must run from an elevated prompt.
+`tools/reverse/dump_stubs.py` must run from an elevated prompt.
 
 Known limit: calls written as `nop; call 0x600xxxxx` go to protector-allocated
 stubs outside the image (no DLL is based there), replacing the original

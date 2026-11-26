@@ -92,19 +92,19 @@ The client's internal serializer (`0x00A40760`, `0x00A52630`, etc.) relies on ta
 Always test changes against the live client before committing:
 ```powershell
 # 1. Start emulator server and game client
-python tools/gamectl.py start
+python tools/automation/gamectl.py start
 
 # 2. Walk automatically to Character Select
-python tools/gamectl.py enter-lobby
+python tools/automation/gamectl.py enter-lobby
 
 # 3. Capture screen to verify visual state
-python tools/gamectl.py screenshot research/verify.png
+python tools/automation/gamectl.py screenshot research/verify.png
 
 # 4. Check decoded wire events
-python tools/gamectl.py events
+python tools/automation/gamectl.py events
 
 # 5. Stop test session cleanly
-python tools/gamectl.py stop
+python tools/automation/gamectl.py stop
 ```
 
 ---
@@ -113,7 +113,7 @@ python tools/gamectl.py stop
 - **Language**: All documentation, code comments, and commit messages **must be written in English**.
 - **No Heavy Third-Party Dependencies**: The core server (`src/darkblood/`) must run on standard Python 3.8+ without mandatory native compilation or heavy package dependencies.
 - **Evidence-Based Reverse Engineering**:
-  - Do not guess packet schemas. Extract handlers using Ghidra (`tools/decomp.ps1`) or REA.
+  - Do not guess packet schemas. Extract handlers using Ghidra (`tools/reverse/decomp.ps1`) or REA.
   - Document disassembled/decompiled function virtual addresses (VAs) in docstrings.
   - Keep `docs/STATUS.md`, `docs/PROTOCOL.md`, and `ROADMAP.md` updated as new milestones are unlocked.
 

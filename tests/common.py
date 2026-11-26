@@ -14,8 +14,9 @@ os.environ.setdefault('DARKBLOOD_DATA', TMP.name)
 os.environ.setdefault('DARKBLOOD_CLIENT_DATA', TMP.name)
 if str(ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(ROOT / 'src'))
-if str(ROOT / 'tools') not in sys.path:
-    sys.path.insert(0, str(ROOT / 'tools'))
+for _sub in ('automation', 'launcher', 'codegen', 'client_data', 'reverse'):
+    if str(ROOT / 'tools' / _sub) not in sys.path:
+        sys.path.insert(0, str(ROOT / 'tools' / _sub))
 
 from darkblood.core.serialization import jser  # noqa: E402
 from darkblood.frontend.server import BootstrapServer  # noqa: E402

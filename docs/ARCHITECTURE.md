@@ -9,9 +9,9 @@ project; folder names inside follow MHServerEmu's (`Network`, `Entities`,
 ```
 run_server.py                    entry point from the repo root (python run_server.py)
 assets/                          normalized tables the server ships (opcodes, items, quests,
-                                 maps, achievements, cash shop...); tools/export_assets.py
+                                 maps, achievements, cash shop...); tools/client_data/export_assets.py
                                  regenerates them from an extracted client
-schemas/                         message schemas (*.jsch); tools/gen_messages.py generates
+schemas/                         message schemas (*.jsch); tools/codegen/gen_messages.py generates
                                  games/network/messages/<domain>.py from them
 src/darkblood/
   __main__.py                    python -m darkblood (src/ on sys.path)  -> C#: DarkBlood (host)
@@ -59,18 +59,18 @@ tools/                           gamectl, MCP server, headless client, asset exp
   `games` may use `core`; `frontend` hosts `games.session`; handlers never
   import `session` (shared helpers live next to the handlers that own them).
 - New opcode: describe the message in `schemas/<domain>.jsch` (client reader
-  and sender addresses in `##` lines) and run `python tools/gen_messages.py`
+  and sender addresses in `##` lines) and run `python tools/codegen/gen_messages.py`
   (see `schemas/README.md`). Every module in `games/network/messages/` except
   `__init__.py` is generated; never edit them by hand. Logic that builds
   message values from game state (store records, learned-skill maps, level-up
   notices) lives next to the handler or domain module that owns it. Then add a
   `@packet_handler(...)` `handle_<name>` method in the
   matching `games/handlers/` service, then a headless test. Regenerate
-  `docs/OPCODE_REGISTRY.md` with `python tools/gen_opcode_registry.py`.
+  `docs/OPCODE_REGISTRY.md` with `python tools/codegen/gen_opcode_registry.py`.
 - Domain rules that are not wire handling (progression, achievements, loot)
   live in plain modules under `games/` so handlers stay thin.
 - Extracted client data (`../darkblood-client-data`) stays private. The
-  server ships normalized tables in `assets/`; `tools/export_assets.py`
+  server ships normalized tables in `assets/`; `tools/client_data/export_assets.py`
   regenerates them.
 
 ## Porting notes

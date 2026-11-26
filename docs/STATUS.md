@@ -210,7 +210,7 @@ Player reports from a live session, with the cause found in the wire log or clie
 - Dungeon clear froze: 5018 looked up `char['char_uid']` (absent), so `mapSingleReward` was empty; it now uses the character id (player UID, details `+0x1C`).
 - Quickslots: 2007 vector `0x4B2C30` (struct `+0x2B3`, loaded by `0x00966080` at `0x007AA8A6`), element `0x00A49DC0` = `u8 type, u8 slot, i32 refID, i64 refUID, bool, i64, u16 0xFFFF`. Storage was keyed by slot only, so the item bar overwrote the skill bar.
 
-Multibox (static + headless; two live windows not tried yet): `python tools/multibox.py start -n 2` launches clients against the running
+Multibox (static + headless; two live windows not tried yet): `python tools/automation/multibox.py start -n 2` launches clients against the running
 server and tiles them on the primary monitor (`tile`, `status`, `stop`). All windows log in as the same local account, so give each window
 its own character. The selected character is now kept per game connection (`GameSession.char_id`); the relay connection takes the oldest
 pending selection on its first JoinGroup (`state.pending_relay`). Whether the client allows a second instance is not verified.
@@ -221,9 +221,9 @@ and SteamID low dword, and returns the ticket `DBACC:<account>;` from SteamUser 
 server registers unknown names on first login (`accounts` table; OfflinePlayer = uid 1) and keeps characters per account. Without a 5386
 within 3 s it falls back to the default account. The client also has an unused NA-dev ID/password form on the server-select page
 (`MainLoginPage`, `TryLogin` `0x0063EB00` → the same 5386 sender; `OnRegister` is the shared stub `0x00464750`). The single-instance
-mutex is "DarkBlood Online" (`0x00472579`); `tools/multibox.py` closes it in running clients and sets one account per window.
+mutex is "DarkBlood Online" (`0x00472579`); `tools/automation/multibox.py` closes it in running clients and sets one account per window.
 
-Options (`tools/patcher.py` GUI → `research/client/darkblood_options.ini`; static, patch bytes verified in a live client's memory):
+Options (`tools/launcher/patcher.py` GUI → `research/client/darkblood_options.ini`; static, patch bytes verified in a live client's memory):
 - Tutorial skip rule: `JAppStateTutorial` Esc (`0x006FBC50`) opens MB_Tutorial_Exit only when user-manager `+0x65` (`+0x66` for class 5)
   is 0. `0x006F8A10` sets these from the 2009 character list (`class & 0xF` of each entry +0x09): 0 only if the list already held a
   character of that group, so a new account's first character cannot skip (seen live with a Player2 Elf Hunter). Option
@@ -287,7 +287,7 @@ Note: another agent (agy.exe) ran its own `run_server.py` on this machine during
 ## Log review: quickslots, tutorial completion, level-up class — saita machine, 2026-11-16 ~21:10
 
 Source: wire log of the 20:56-21:05 session (new character, tutorial). Static + headless; live retest pending.
-- The repeated connect/disconnect pairs every 4 s are `tools/dashboard.py` health probes (auto-refresh). They are harmless.
+- The repeated connect/disconnect pairs every 4 s are `tools/launcher/dashboard.py` health probes (auto-refresh). They are harmless.
 - 2044 quickslot: the live body is `ffffff7f` + u8 type + u8 slot + u32 ref + u64 ref_uid (18 bytes). The decoder read from
   offset 0, so it stored and echoed type/slot 255. Fixed.
 - Tutorial never finished (the same pattern appears in the 05:00 session): the map trigger JBehaviorQuestStart (`0x0089B020`) sends 2346
@@ -402,12 +402,12 @@ dungeon clear and return to town are not yet verified. 13/13 headless tests pass
    archive and the cipher covers every entry blob, not only XML/Lua. Older
    extractions of encrypted archives (e.g. `research/all_extracted`) contain
    still-encrypted textures/effects and 5,209 failed `.j` entries. With the
-   corrected reader 36,648 entries extract (6 placeholder failures). `tools/jpk_pack.py` rebuilds
+   corrected reader 36,648 entries extract (6 placeholder failures). `tools/client_data/jpk_pack.py` rebuilds
    archives byte-identically and can replace edited entries (client loading of
    an edited archive not yet tested).
-3. **Private client-data workspace.** `tools/build_client_data.py` extracts all
+3. **Private client-data workspace.** `tools/client_data/build_client_data.py` extracts all
    archives into `../darkblood-client-data` (separate local Git repository, not
-   for publication) with a manifest and `tools/luac51_dump.py` listings of all
+   for publication) with a manifest and `tools/client_data/luac51_dump.py` listings of all
    86 Lua 5.1 dict chunks.
 
 ## Fifth session findings & breakthroughs (2026-11-16)
@@ -416,7 +416,7 @@ dungeon clear and return to town are not yet verified. 13/13 headless tests pass
    - Reverse engineered JPK asset decryption function in `DarkBlood.exe` at `0x00411F90`.
    - Algorithm: subtract-1 then 73-byte polyalphabetic repeating XOR: `plain[i] = ((cipher[i] - 1) & 0xFF) ^ key[i % 73]`.
    - Secret key recovered from VA `0x00C4A848`: `305D006B-8D74-458f-BB80-CA243100F0DA-11406C9F-8393-42e8-9037-077D988CCF80`.
-   - Verified on live client assets: `Common_0.jpk` extracts clean plaintext (`configure.txt`, `action.lua`, `macro.lua`), `Dict_*.jpk` extracts clean Lua 5.1 bytecode (`\x1bLuaQ`) compiled by `lua_tinker`. Updated `tools/jpk_extractor.py`.
+   - Verified on live client assets: `Common_0.jpk` extracts clean plaintext (`configure.txt`, `action.lua`, `macro.lua`), `Dict_*.jpk` extracts clean Lua 5.1 bytecode (`\x1bLuaQ`) compiled by `lua_tinker`. Updated `tools/client_data/jpk_extractor.py`.
 2. **NPC Dialogue & Quest Progression (Opcode 2094 → 2095):**
    - Client sends `eEGS_NPC_FIRST_MEET_REQ` (2094) upon encountering NPCs or after beating tutorial monsters.
    - Decompiled handler `0x00752B60` (`eEGS_NPC_FIRST_MEET_ACK`, opcode 2095): expects `struct.pack('<II', 0, npc_id)`.
@@ -485,23 +485,23 @@ Verified environment: Windows x64, Python 3.8, MSVC 2022 x86, Ghidra 12.1.4, JDK
 
 ```powershell
 python -m unittest discover -s tests -v          # server end-to-end, ~1 s
-python tools\headless_client.py --port 9400 --select 1   # against a running server
+python tools\automation\headless_client.py --port 9400 --select 1   # against a running server
 ```
 
-`tools/headless_client.py` performs the client side of the handshake (RSA-OAEP-SHA1
+`tools/automation/headless_client.py` performs the client side of the handshake (RSA-OAEP-SHA1
 session key, AES envelopes, type 0x26 mode 1 with the u16 counter) and replays the
 observed lobby requests. It checks the server, not the real client's parsers.
 
 ### Driving the game
 
-`tools/gamectl.py` (CLI) and `tools/mcp_server.py` (MCP stdio server, registered in `.mcp.json`) start/stop the server and client, take screenshots, send keys/clicks, skip the intro, walk to character select, and decode the wire log with opcode names:
+`tools/automation/gamectl.py` (CLI) and `tools/automation/mcp_server.py` (MCP stdio server, registered in `.mcp.json`) start/stop the server and client, take screenshots, send keys/clicks, skip the intro, walk to character select, and decode the wire log with opcode names:
 
 ```powershell
-python tools\gamectl.py start
-python tools\gamectl.py enter-lobby        # intro -> server -> channel -> character select
-python tools\gamectl.py screenshot research\shot.png
-python tools\gamectl.py events
-python tools\gamectl.py stop
+python tools\automation\gamectl.py start
+python tools\automation\gamectl.py enter-lobby        # intro -> server -> channel -> character select
+python tools\automation\gamectl.py screenshot research\shot.png
+python tools\automation\gamectl.py events
+python tools\automation\gamectl.py stop
 ```
 
 `gamectl` stops only processes it started (`logs/session.json`) and refuses to start if port 9400 is busy.
@@ -521,13 +521,13 @@ python tools\gamectl.py stop
 ### Passive capture
 
 ```powershell
-python tools\capture_server.py --port 9400 --output research\wire.jsonl
+python tools\automation\capture_server.py --port 9400 --output research\wire.jsonl
 ```
 
 ### Bounded launch and dump
 
 ```powershell
-.\tools\build_debugger.bat
+.\tools\reverse\build_debugger.bat
 $env:__COMPAT_LAYER = 'RunAsInvoker'
 $env:DB_NO_DEBUG = '1'
 .\research\debug_client.exe "$pwd\research\client\DarkBlood.exe" "$pwd\research\client" research\session.bin 15000 > research\session.log
@@ -551,7 +551,7 @@ No global MCP configuration was changed. Full REA auto-analysis took several min
 For a new fixture, use a confirmed function boundary:
 
 ```powershell
-python tools\image_to_pe.py research\session.bin research\session.analysis.exe --entry 0x92c2c0
+python tools\reverse\image_to_pe.py research\session.bin research\session.analysis.exe --entry 0x92c2c0
 ```
 
 Focused analysis example:

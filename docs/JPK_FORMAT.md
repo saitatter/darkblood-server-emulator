@@ -1,10 +1,10 @@
 # JPK Archive Format
 
-**Verification status, 2026-11-16 (saitatter machine):** `tools/jpk_extractor.py`
+**Verification status, 2026-11-16 (saitatter machine):** `tools/client_data/jpk_extractor.py`
 reads all 176 JPK archives of the supplied client; 36,648 entries extract and
 only 6 placeholder entries (`a_temp_dummy*.j` in Unit_4) fail to inflate. Field meanings marked *unknown* are not recovered. The
 private workspace built from these archives is described in
-`tools/build_client_data.py` and lives outside this repository.
+`tools/client_data/build_client_data.py` and lives outside this repository.
 
 ## Header
 

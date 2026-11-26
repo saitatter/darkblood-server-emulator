@@ -1,14 +1,14 @@
 # Message schemas
 
 `schemas/*.jsch` describe every wire message the server encodes or decodes.
-`tools/gen_messages.py` turns each file into
+`tools/codegen/gen_messages.py` turns each file into
 `src/darkblood/games/network/messages/<domain>.py`. All 15 domain modules are
 generated and start with `DO NOT EDIT`; only `messages/__init__.py` is written by
 hand. To change a message, edit the schema and run:
 
 ```
-python tools/gen_messages.py           # regenerate
-python tools/gen_messages.py --check   # fail when a module is stale (also a unit test)
+python tools/codegen/gen_messages.py           # regenerate
+python tools/codegen/gen_messages.py --check   # fail when a module is stale (also a unit test)
 ```
 
 This mirrors MHServerEmu, which keeps the `.proto` files it extracted from its

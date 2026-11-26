@@ -228,7 +228,7 @@ struct TargetState
 end
 
 message 5125 GTargetListAck
-  ## Dispatcher 0x00874550 -> 0x00873490 (schema from tools/extract_schemas.py).
+  ## Dispatcher 0x00874550 -> 0x00873490 (schema from tools/codegen/extract_schemas.py).
   u32 result
   vector<TargetState> targets
 end

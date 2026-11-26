@@ -1,8 +1,8 @@
-"""Shared configuration in research/client/darkblood_options.ini (edited by tools/launcher.py).
+"""Shared configuration in research/client/darkblood_options.ini (edited by tools/launcher/launcher.py).
 
 Sections:
   [network]  - Server host, game port, and relay port used by patches/network_redirect.c.
-  [launcher] - Default account name and client count for tools/launcher.py / steam_api.dll.
+  [launcher] - Default account name and client count for tools/launcher/launcher.py / steam_api.dll.
   [client]   - Per-file client patches/hooks loaded by steam_api.dll on SteamAPI_Init.
   [server]   - Server-side toggles read by the Python server when used.
 """
@@ -220,7 +220,7 @@ def write_all(values=None, network=None, launcher=None):
     OPTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OPTIONS_PATH, 'w', encoding='utf-8') as stream:
         stream.write(
-            '; Dark Blood custom launcher & emulator options (tools/launcher.py).\n'
+            '; Dark Blood custom launcher & emulator options (tools/launcher/launcher.py).\n'
             '; [network] and [client] keys are applied by steam_api.dll on client start.\n'
             '; [server] keys are read by the Python server.\n'
         )

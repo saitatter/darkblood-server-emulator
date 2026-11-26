@@ -29,8 +29,8 @@ jobs:
       - name: Verify generated files and headless tests
         shell: pwsh
         run: |
-          python tools/gen_messages.py --check
-          python tools/gen_progress.py --check
+          python tools/codegen/gen_messages.py --check
+          python tools/codegen/gen_progress.py --check
           python -m unittest discover -s tests -v
 
       - name: Setup MSVC x86 toolchain
@@ -64,7 +64,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
-          python tools/build_release.py --version $tag --skip-build
+          python tools/launcher/build_release.py --version $tag --skip-build
           ./dist/DarkBloodLauncher.exe --check
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
 

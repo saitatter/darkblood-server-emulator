@@ -60,8 +60,8 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 
 ### Stability and tooling (P5)
 - [ ] Verify complete network isolation: hook `ConnectEx`, IPv6 and UDP (`connect` and `WSAConnect` IPv4 are hooked).
-- [x] Automatic test-client staging (`stage_client_folder()` in `tools/launcher.py` — copies EXE, backs up `steam_api.dll`, creates `Data` junction, deploys hook).
-- [x] Release build producing a portable launcher zip (`tools/build_release.py` + `.github/workflows/release.yml` with prebuilt x86 `steam_api.dll` + GitHub Releases auto-updater in `tools/updater.py`).
+- [x] Automatic test-client staging (`stage_client_folder()` in `tools/launcher/launcher.py` — copies EXE, backs up `steam_api.dll`, creates `Data` junction, deploys hook).
+- [x] Release build producing a portable launcher zip (`tools/launcher/build_release.py` + `.github/workflows/release.yml` with prebuilt x86 `steam_api.dll` + GitHub Releases auto-updater in `tools/launcher/updater.py`).
 - [ ] Find whether the client's `mon.changyou.com` monitoring ping (MAC, IP, disk serial) can run and block it
   (`docs/CLIENT_LEADS.md`).
 - [ ] Steam shim: SteamUser has three slots and SteamFriends one; other interfaces return placeholder `1`.
@@ -89,7 +89,7 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 ### Architecture (P9)
 - [ ] Decide what to do with the invented party opcodes (2100-2107), which the client names as cheat messages and does
   not handle. (The invented 5021/5022 square notices were removed on 2026-11-26; those opcodes are the room-host pair.)
-- [ ] C# backend for `tools/gen_messages.py` that emits the same schemas as C# classes.
+- [ ] C# backend for `tools/codegen/gen_messages.py` that emits the same schemas as C# classes.
 - [ ] Reduce the unmapped fields shown in the README progress table (the number that matters most for fidelity).
 
 ### C# / .NET 8 port (P10, MHServerEmu layout)
@@ -103,10 +103,10 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 
 ## Verification
 
-Headless suite: `python -m unittest discover -s tests -v` (drives the server with `tools/headless_client.py`; real
+Headless suite: `python -m unittest discover -s tests -v` (drives the server with `tools/automation/headless_client.py`; real
 handshake and encryption, no window). CI runs it on every push (`.github/workflows/ci.yml`).
 
-Live checklist (use `tools/gamectl.py enter-lobby`; launch the client only to confirm it parses a changed response):
+Live checklist (use `tools/automation/gamectl.py enter-lobby`; launch the client only to confirm it parses a changed response):
 - [ ] Store: buying decrements gold and adds the bag icon; selling removes it.
 - [ ] Equipment window shows worn gear; dragging a weapon to a slot updates the mesh.
 - [ ] Skill window: spending SP raises the skill and enables it on the hotbar.
@@ -122,5 +122,5 @@ Still to write:
 ---
 
 ## Future tools
-- [ ] Packet inspector in the GM dashboard (`tools/dashboard.py` already shows telemetry and edits characters).
+- [ ] Packet inspector in the GM dashboard (`tools/launcher/dashboard.py` already shows telemetry and edits characters).
 - [ ] Asset modding toolkit: browse, modify and repack JPK archives; quest-string localization.
