@@ -467,6 +467,12 @@ class QuestFlowTest(ServerTestCase):
             await client.expect_event(2007)
             await client.expect_event(2410)
 
+            from darkblood.games.network.messages import DualSkillChangeIndexReq
+
+            # Switching pages archives the pre-promotion combat build in page 0.
+            client.send_event(2579, DualSkillChangeIndexReq(dual_skill_index=1).encode())
+            await client.expect_event(2580)
+
             # Complete QMA086 ("Born as Sorcerer")
             client.send_event(2076, req_complete, compressed=True)
             await client.expect_event(5086)  # EXP gain notification
@@ -495,6 +501,10 @@ class QuestFlowTest(ServerTestCase):
             self.assertEqual(updated['learned_proficiencies'], [0])
             self.assertEqual(updated['locked_skills'], [])
             self.assertIn(q_hash, updated.get('quests_done', []))
+            client.send_event(2579, DualSkillChangeIndexReq(dual_skill_index=0).encode())
+            await client.expect_event(2580)
+            self.assertEqual(updated['skills'], life_skills)
+            self.assertEqual(updated['sp'], 58)
 
         self.run_async(self.with_server(scenario))
 

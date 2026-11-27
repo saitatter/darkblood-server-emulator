@@ -92,6 +92,7 @@ class QuestPromotionHandlers:
                        if int(key) in LIFE_SKILL_TO_PROFICIENCY}
         char.update(char_class=promo_class, sp=new_sp, total_ap=new_sp, skills=life_skills,
                     locked_skills=[], skill_show_cooltime=[])
+        char.pop('dual_skill_sets', None)
         char.pop('temp_skills', None)
         self.save_char()
         await self.send_msg(PromotionNot(result=0, new_class=promo_class, sp=new_sp,
