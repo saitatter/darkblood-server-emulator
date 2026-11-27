@@ -358,10 +358,26 @@ class PetsFlowTest(ServerTestCase):
             _, r = await client.expect_event(2499)
             self.assertEqual(struct.unpack_from('<Ih', r), (0, 1))
 
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['pets'] = [
+                {'uid': 10, 'slot': 0, 'code': 'PetCall001', 'name': 'First'},
+                {'uid': 20, 'slot': 1, 'code': 'PetCall001', 'name': 'Second'},
+                {'uid': 30, 'slot': -1, 'code': 'PetCall001', 'name': 'Active'},
+            ]
+            char['summoned_pet'] = 30
             client.send_event(2500, PetSwitchStorageReq(move_slot_index=0, target_slot_index=1).encode())
             _, r = await client.expect_event(2501)
             ack = PetSwitchStorageAck.decode(r)
             self.assertEqual((ack.result, ack.move_slot_index, ack.target_slot_index), (0, 0, 1))
+            self.assertEqual({pet['uid']: pet['slot'] for pet in char['pets']}, {10: 1, 20: 0, 30: -1})
+            self.assertEqual(char['summoned_pet'], 30)
+
+            from darkblood.games.handlers.frontend import _build_pets_map
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, selected = await client.expect_event(2007)
+            for pet in _build_pets_map(char).values():
+                self.assertIn(pet.encode(), selected)
 
             client.send_event(2646, RidingExpireUpdateReq(item_uid=703, riding_id=5).encode())
             _, r = await client.expect_event(2647)
