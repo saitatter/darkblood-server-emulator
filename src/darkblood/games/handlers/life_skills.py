@@ -348,10 +348,15 @@ class LifeSkillHandlers(BaseDomainService):
         if bait is None:
             return True  # the loop reports the missing bait
         caught = self._roll_catch(kairo)
-        if caught and len(free_cells(char)) < slots_needed([caught], char):
-            await self.send_to([self.session], FishingFailedNot(result=results.INVEN_FULL), note='fishing failed (bags full)')
-            return False
-        bait['count'] = bait.get('count', 1) - 1
+        remaining = bait.get('count', 1) - 1
+        if caught:
+            # The last bait frees a cell before the catch is placed in the bag.
+            inventory = char if remaining else dict(char, items=[i for i in char['items'] if i is not bait])
+            if len(free_cells(inventory)) < slots_needed([caught], inventory):
+                await self.send_to([self.session], FishingFailedNot(result=results.INVEN_FULL),
+                                   note='fishing failed (bags full)')
+                return False
+        bait['count'] = remaining
         if bait['count'] <= 0:
             char['items'].remove(bait)
         updates = [Item(owner=UPDATE_OWNER, **dict(bait, count=max(0, bait['count'])))]

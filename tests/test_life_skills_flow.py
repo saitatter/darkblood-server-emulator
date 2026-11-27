@@ -338,6 +338,36 @@ class LifeSkillsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_catch_can_use_the_last_bait_cell(self):
+        from darkblood.core.hashing import jhash
+        from darkblood.games.network import results
+        from darkblood.player_management.characters import add_reward_items, free_cells
+
+        async def scenario(client):
+            char, _ = await enter_town(client, 'FullBagAngler', level=10)
+            free = len(free_cells(char))
+            bait, *_ = add_reward_items(char, [('ILurN1', 2)] + [('Ihppa0001', 1)] * (free - 1))
+            self.assertFalse(free_cells(char))
+            request = FishingStartReq(fishing_hole_id='Fish_ACT1_N0', bait_item_id=jhash('ILurN1')).encode()
+            with patch.object(life_handlers, 'FISHING_TIME_SCALE', 0.001), \
+                 patch.object(life_handlers.LifeSkillHandlers, '_roll_catch', return_value=('INfiN8', 1)):
+                client.send_event(2523, request)
+                await client.expect_event(2524)
+                _, full = await client.expect_event(2528)
+                self.assertEqual(struct.unpack_from('<i', full)[0], results.INVEN_FULL)
+                self.assertEqual(bait['count'], 2)
+
+                bait['count'] = 1
+                client.send_event(2523, request)
+                await client.expect_event(2524)
+                _, stopped = await client.expect_event(2528)
+                self.assertEqual(struct.unpack_from('<i', stopped)[0], life_handlers.FISHING_NEED_BAIT)
+                fish = next(item for item in char['items'] if item['code'] == 'INfiN8')
+                self.assertEqual((fish['container'], fish['slot']), (bait['container'], bait['slot']))
+                self.assertNotIn(bait, char['items'])
+
+        self.run_async(self.with_server(scenario))
+
     def test_fishing_proficiency_items_raise_the_total(self):
         """Type 46: "Increases the proficiency of the fisher by N when used"; 2529 carries the total."""
         from darkblood.games.network.messages import UseItemReq
