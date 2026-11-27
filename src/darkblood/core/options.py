@@ -132,8 +132,13 @@ def validate_network(host, port, relay_port=None):
 def read():
     """Return boolean toggle values for all OPTIONS."""
     parser = _load_parser()
-    return {key: parser.getboolean(section, key, fallback=default)
-            for key, (section, default, _, _) in OPTIONS.items()}
+    values = {}
+    for key, (section, default, _, _) in OPTIONS.items():
+        try:
+            values[key] = parser.getboolean(section, key, fallback=default)
+        except ValueError:
+            values[key] = default
+    return values
 
 
 def read_network():
