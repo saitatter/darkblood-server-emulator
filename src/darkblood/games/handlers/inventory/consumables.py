@@ -90,6 +90,7 @@ class ConsumableHandlersMixin:
                 note=f'mark item active not (base={base_cnt}, bonus={bonus_cnt})',
             )
         await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
+        await self.session.life.use_fishing_proficiency_item(char, item_str_code, use_count)
 
     async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, random_box: bool):
         stored = add_reward_items(char, contents)

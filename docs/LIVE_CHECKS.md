@@ -72,6 +72,7 @@ When it fails, note what the client did and keep it here.
 | W17 | League ladder (`2551`/`2553`) | The ladder lists the stored characters past placement (10+ games) as "name (Offline)", with wins, rating and "N Consecutive Wins"; a character in placement shows "Not ranked" (`-1`). Set `league_arena` win/lose counts on a character to see a row. |
 | W18 | Stall notices (`5254`/`5250`/`5255`) | A second player on the same town layer sees the stall open, change and close (notices now go to the seller's square and layer instead of square 1). |
 | W19 | Gathering nodes (`5125`/`5126`, `2177`) | Mining/reed/bar nodes appear on town load (about 10% of each kind, `EnableRate`), the mini game sends `2177 ge000NN` and the ore/plant arrives with "Collection" proficiency; the node disappears for everyone (`5126`) and returns after `RegenSecond`. Check what `2177 param` carries (assumed: the node UID). Not yet seen in the client: a run with every node active showed no obvious node near the Elwood fishing grounds, and the bp tracer logged no hits that session. |
+| W20 | Fishing proficiency items (`2038` -> `2529`) | Using Red Shrimp (`ISfiS20`, +1) or Starfish (`ISfiS21`, +2) shows "Fishing Experience has increased (N)" with the new total; a catch alone does not raise it. |
 
 After a team leader changes the arena team name and type (`5301`), joining that
 team (`5271`) shows the updated values.

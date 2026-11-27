@@ -5,7 +5,9 @@ from darkblood.core.hashing import jhash
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import UPDATE_OWNER, Item
 from darkblood.games.game_data.life_skills import (
+    FISHING_PROFICIENCY,
     bait_time_reduction,
+    fishing_proficiency_gain,
     fish_group,
     fishing_kairo,
     gathering_kairo,
@@ -38,9 +40,6 @@ FISHING_NOTHING = 418        # JERI_FISHING_05 "You didn't catch anything."
 
 # Scale applied to the cast time (MaxTime - bait AdjValue); tests shorten it.
 FISHING_TIME_SCALE = 1.0
-# Proficiency per catch. DictKairo:LoadFishing has no gain field (gathering has
-# SuccessProficiencyUp); 1.0 is an assumption, capped by the skill's MaxProficiency.
-FISHING_PROFICIENCY_UP = 1.0
 
 
 class LifeSkillHandlers(BaseDomainService):
@@ -254,16 +253,32 @@ class LifeSkillHandlers(BaseDomainService):
             await self.send_to([self.session], FishingResultNot(result=FISHING_NOTHING, items=updates),
                                note=f'fishing result (nothing, {kairo["target"]})')
             return True
+        # A catch itself adds no proficiency: DictKairo:LoadFishing has no gain field
+        # (gathering has SuccessProficiencyUp). Fishing proficiency comes from using
+        # the caught Type 46 items (use_fishing_proficiency_item).
         updates += [Item(owner=UPDATE_OWNER, **item) for item in add_reward_items(char, [caught])]
-        changed, proficiency = self._raise_proficiency(char, kairo['proficiency_type'], FISHING_PROFICIENCY_UP)
         self.save_char()
         await self.send_to([self.session], FishingResultNot(result=0, items=updates),
                            note=f'fishing result ({kairo["target"]}: {caught})')
-        if changed:
-            await self.send_to([self.session], FishingProficiencyNot(
-                result=0, proficiency=proficiency, proficiency_type=kairo['proficiency_type']),
-                note=f'fishing proficiency not ({proficiency:.1f})')
         return True
+
+    async def use_fishing_proficiency_item(self, char, code, use_count):
+        """Type 46 items: "Increases the proficiency of the fisher by N when used" (AdjValue).
+
+        2529 FishingProficiencyNot carries the new total: its handler 0x00776400 passes
+        it to JProficiencyMgr 0x0073A730, which stores the value and shows UI
+        "Fishing Experience has increased (N)" with the new whole number.
+        """
+        gain = fishing_proficiency_gain(code)
+        if not gain:
+            return
+        changed, proficiency = self._raise_proficiency(char, FISHING_PROFICIENCY, gain * max(1, int(use_count)))
+        if not changed:
+            return
+        self.save_char()
+        await self.send_msg(FishingProficiencyNot(result=0, proficiency=proficiency,
+                                                  proficiency_type=FISHING_PROFICIENCY),
+                            note=f'fishing proficiency not ({code}: {proficiency:.0f})')
 
     def _roll_catch(self, kairo):
         """(ItemID, count) from the hole's weighted catch groups, or None (the weights sum below 1)."""

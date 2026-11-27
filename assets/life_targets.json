@@ -2265,5 +2265,22 @@
   "ILurS2": 10,
   "ILurS3": 20,
   "ILurS4": 30
+ },
+ "proficiency_items": {
+  "ISfiS20": 1,
+  "ISfiS21": 2,
+  "ISfiS22": 4,
+  "ISfiS23": 8,
+  "ISfiS24": 1,
+  "ISfiS25": 2,
+  "ISfiS26": 4,
+  "ISfiS27": 8,
+  "ISfiS28": 1,
+  "ISfiS29": 2,
+  "ISfiS30": 4,
+  "ISfiS31": 8,
+  "ISfiR32": 16,
+  "ISfiR33": 16,
+  "ISfiR34": 16
  }
 }

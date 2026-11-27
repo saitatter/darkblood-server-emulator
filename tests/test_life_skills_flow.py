@@ -138,18 +138,45 @@ class LifeSkillsFlowTest(ServerTestCase):
                 _, start = await client.expect_event(2524)
                 self.assertEqual(FishingStartAck.decode(start).result, 0)
                 _, first = await client.expect_event(2527)
-                _, prof = await client.expect_event(2529)
                 _, second = await client.expect_event(2527)
                 _, stopped = await client.expect_event(2528)
             self.assertEqual(struct.unpack_from('<i', first)[0], 0)
             fish = next(item for item in char['items'] if item['code'] == 'INfiN8')
             self.assertIn(Item(owner=UPDATE_OWNER, **fish).encode(), first)
-            self.assertEqual(FishingProficiencyNot.decode(prof).proficiency, 1.0)
+            self.assertEqual(char.get('proficiencies', [0.0] * 10)[9], 0.0)  # a catch adds no proficiency
             self.assertEqual(struct.unpack_from('<i', second)[0], life_handlers.FISHING_NOTHING)
             self.assertIn(Item(owner=UPDATE_OWNER, code='ILurS3', uid=7700, container=3, slot=20, count=0).encode(),
                           second)  # a miss still carries the bait update
             self.assertEqual(struct.unpack_from('<i', stopped)[0], life_handlers.FISHING_NEED_BAIT)
             self.assertFalse(any(item['code'] == 'ILurS3' for item in char['items']))
+
+        self.run_async(self.with_server(scenario))
+
+    def test_fishing_proficiency_items_raise_the_total(self):
+        """Type 46: "Increases the proficiency of the fisher by N when used"; 2529 carries the total."""
+        from darkblood.games.network.messages import UseItemReq
+
+        async def scenario(client):
+            char, _ = await enter_town(client, 'ShrimpEater', level=10)
+            char['items'] += [dict(code='ISfiS21', uid=7800, container=3, slot=22, count=1),   # Starfish +2
+                              dict(code='ISfiS20', uid=7801, container=3, slot=23, count=3)]   # Red Shrimp +1
+            totals = []
+            for uid, count in ((7800, 1), (7801, 2)):
+                client.send_event(2038, UseItemReq(item_uid=uid, use_count=count).encode())
+                _, used = await client.expect_event(2039)
+                self.assertEqual(struct.unpack_from('<i', used)[0], 0)
+                _, prof = await client.expect_event(2529)
+                notice = FishingProficiencyNot.decode(prof)
+                totals.append((notice.proficiency_type, notice.proficiency))
+            self.assertEqual(totals, [(9, 2.0), (9, 4.0)])
+            self.assertEqual(char['proficiencies'][9], 4.0)
+
+            char['proficiencies'][9] = 199.0  # Fishing Lv1 MaxProficiency is 200
+            char['items'].append(dict(code='ISfiS23', uid=7802, container=3, slot=24, count=1))  # +8
+            client.send_event(2038, UseItemReq(item_uid=7802, use_count=1).encode())
+            await client.expect_event(2039)
+            _, capped = await client.expect_event(2529)
+            self.assertEqual(FishingProficiencyNot.decode(capped).proficiency, 200.0)
 
         self.run_async(self.with_server(scenario))
 

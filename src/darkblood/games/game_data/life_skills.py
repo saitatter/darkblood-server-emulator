@@ -9,6 +9,8 @@ Sources (client dict files):
 - DictSkill:LoadSkill (fishing.lua, gathering.lua): MaxProficiency per skill level.
 - DictItem:LoadItem (fishing.lua) Type 45: fishing baits; AdjValue is the casting time
   reduction in seconds (the fishing page shows "Casting time reduced by N s").
+- DictItem:LoadItem (fishing.lua) Type 46: caught fish that raise the fishing
+  proficiency by AdjValue when used ("Increases the proficiency of the fisher by N").
 
 The town map objects themselves come from assets/gtargets.tsv
 (tools/client_data/extract_gtargets.py).
@@ -28,6 +30,8 @@ FISHING = 'fishing'
 GATHERING = 'gathering'
 MAKING = 'making'
 BAIT_ITEM_TYPE = 45
+PROFICIENCY_ITEM_TYPE = 46
+FISHING_PROFICIENCY = 9    # ProficiencyType of DictKairo:LoadFishing and the 9009 Fishing skill
 
 
 def _read(name):
@@ -67,10 +71,12 @@ def _from_lua() -> dict:
     skills = [dict(skill=int(s['NameIndex']), level=int(s['Lv']), max_proficiency=float(s['MaxProficiency']),
                    proficiency_type=int(s['ProficiencyType']))
               for s in lua_table(fishing, 'DictSkill:LoadSkill') + lua_table(gathering, 'DictSkill:LoadSkill')]
-    baits = {i['ItemID']: int(i.get('AdjValue', 0)) for i in lua_table(fishing, 'DictItem:LoadItem')
-             if i.get('Type') == BAIT_ITEM_TYPE}
+    fishing_items = lua_table(fishing, 'DictItem:LoadItem')
+    baits = {i['ItemID']: int(i.get('AdjValue', 0)) for i in fishing_items if i.get('Type') == BAIT_ITEM_TYPE}
+    proficiency_items = {i['ItemID']: int(i.get('AdjValue', 0)) for i in fishing_items
+                         if i.get('Type') == PROFICIENCY_ITEM_TYPE}
     return dict(targets=targets, gathering=gathering_kairo, fishing=fishing_kairo,
-                fish_groups=fish_groups, skills=skills, baits=baits)
+                fish_groups=fish_groups, skills=skills, baits=baits, proficiency_items=proficiency_items)
 
 
 @lru_cache(maxsize=None)
@@ -109,6 +115,11 @@ def fish_group(group_id):
 def bait_time_reduction(code):
     """Casting time reduction (seconds) of a fishing bait, or None if `code` is not a bait."""
     return life_data().get('baits', {}).get(code)
+
+
+def fishing_proficiency_gain(code):
+    """Fishing proficiency an item adds when used (Type 46), or None."""
+    return life_data().get('proficiency_items', {}).get(code)
 
 
 def max_proficiency(skill_index, skill_level) -> float:
