@@ -35,6 +35,9 @@ class SemverTest(unittest.TestCase):
         self.assertFalse(updater.is_newer_version('v0.2.0', 'v0.1.9'))
         self.assertFalse(updater.is_newer_version('v0.1.0', 'v0.1.0-alpha'))
         self.assertFalse(updater.is_newer_version('v0.1.0', ''))
+        self.assertFalse(updater.is_newer_version('v0.2.0+build.5', 'v0.1.9'))
+        self.assertFalse(updater.is_newer_version('v0.2.0+build.5', 'v0.2.0+build.6'))
+        self.assertTrue(updater.is_newer_version('v0.2.0-rc.1+build.5', 'v0.2.0+build.6'))
 
 
 class ReleaseUpdaterTest(unittest.TestCase):

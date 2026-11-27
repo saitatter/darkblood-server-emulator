@@ -23,4 +23,5 @@ Cross-folder imports add the needed folder to `sys.path` explicitly (for example
 
 Run `python tools/launcher/build_release.py --version <tag>` from the checkout
 you want to package. The generated release notes cover the commits since the
-closest previous release tag in that checkout's history.
+closest previous release tag in that checkout's history. Build metadata such
+as `+build.5` is accepted in version tags and does not affect update ordering.

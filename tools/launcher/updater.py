@@ -44,7 +44,9 @@ USER_AGENT = 'DarkBlood-Launcher-Updater'
 PROTECTED_DIRS = frozenset({'data', 'research', 'logs', '.git', '__pycache__', '.update_staging'})
 PROTECTED_SUFFIXES = frozenset({'.db', '.db-wal', '.db-shm', '.ini', '.log', '.key'})
 
-_SEMVER_RE = re.compile(r'^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?$')
+_SEMVER_RE = re.compile(
+    r'^v?(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$'
+)
 
 
 @dataclass
