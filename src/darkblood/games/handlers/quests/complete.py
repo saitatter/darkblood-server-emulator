@@ -79,8 +79,10 @@ class QuestCompleteHandlers:
                 done.append(quest_id)
             char['gold'] = total
             await self.grant_exp(char, exp)
-            take_quest_items(char, quest_id)
-            reward_items = [] if already else add_reward_items(char, items)
+            reward_items = []
+            if not already:
+                take_quest_items(char, quest_id)
+                reward_items = add_reward_items(char, items)
             self.save_char()
         else:
             reward_items = []

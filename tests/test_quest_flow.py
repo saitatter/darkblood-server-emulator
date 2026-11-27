@@ -31,6 +31,17 @@ class QuestFlowTest(ServerTestCase):
             client.send_event(2076, req, compressed=True)
             _, ack2077 = await client.expect_event(2077)
             self.assertEqual(struct.unpack_from('<I', ack2077)[0], 0)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            collected = dict(code='Iquea0310', uid=801, container=3, slot=0, count=2)
+            char['items'].append(collected)
+            from unittest.mock import patch
+
+            objectives = {'Iquea0310': [(quest, 0, 1)]}
+            with patch('darkblood.games.game_data.client_dict.quest_item_objectives', return_value=objectives):
+                client.send_event(2076, req, compressed=True)
+                _, retry = await client.expect_event(2077)
+            self.assertEqual(struct.unpack_from('<I', retry)[0], 0)
+            self.assertEqual(collected['count'], 2)
             return char_id
 
         char_id = self.run_async(self.with_server(scenario))
