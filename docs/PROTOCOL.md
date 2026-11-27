@@ -822,6 +822,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `result: i32 (0), coins: i16`.
 - `2709 eEGS_USE_ARENA_SP_ITEM_REQ` -> `2710 eEGS_USE_ARENA_SP_ITEM_ACK` (`0x007A7CA0`):
   `item_uid: i64` -> `result: i32 (0), consumed_items: tag 0x10 vector, arena_sp: i32`.
+- `5271 ArenaTeamJoinReq` -> `5272 ArenaTeamJoinAck`: joining the current team keeps its member count. Switching teams removes the player from the previous team's count.
 - `5165 eERC_ARENA_BACK_TO_SQUARE_REQ` -> `5166 eERC_ARENA_BACK_TO_SQUARE_ACK` (`0x00758550`):
   empty -> `result: i32 (0)`.
 - `5256 eERC_SECOND_PASS_CREATE_REQ` -> `5257 eERC_SECOND_PASS_CREATE_ACK` (`0x0075B020`):
