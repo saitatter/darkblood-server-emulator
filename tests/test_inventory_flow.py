@@ -866,7 +866,7 @@ class SkillCostTest(ServerTestCase):
     def test_life_skills_base_supply_learning_relog_and_reset(self):
         """BaseSupply life skills (9005/9006/9009), 2-chosen-proficiency cap, 2007 persistence, and 2384 reset."""
         from darkblood.core.serialization.jser import varuint
-        from darkblood.games.network.messages import InitProficiencyReq, LearnSkillReq
+        from darkblood.games.network.messages import DualSkillChangeIndexReq, InitProficiencyReq, LearnSkillReq
 
         async def scenario(client):
             await lobby_flow(client)
@@ -915,6 +915,10 @@ class SkillCostTest(ServerTestCase):
             # Encoded vector<u32> [0, 1] = 0x10 + varuint(2) + u32(0) + u32(1)
             self.assertIn(b'\x10' + varuint(2) + struct.pack('<II', 0, 1), ack2007_relog)
 
+            client.send_event(2579, DualSkillChangeIndexReq(dual_skill_index=1).encode())
+            await client.expect_event(2580)
+            self.assertEqual(char['skills']['9007'], 1)
+
             # Reset Mining (pf_index=0) via 2384 -> clears prof 0, removes 9007, frees a slot for 9000
             client.send_event(2384, InitProficiencyReq(item_uid=999999, pf_index=0).encode())
             _, ack2385 = await client.expect_event(2385)
@@ -922,6 +926,11 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(char['learned_proficiencies'], [1])
             self.assertEqual(char['proficiencies'][0], 0.0)
             self.assertNotIn('9007', char['skills'])
+
+            client.send_event(2579, DualSkillChangeIndexReq(dual_skill_index=0).encode())
+            await client.expect_event(2580)
+            self.assertNotIn('9007', char['skills'])
+            self.assertEqual(char['skills']['9008'], 1)
 
             client.send_event(2050, LearnSkillReq(skill_index=9000, level=1).encode())
             _, ack2051_ok = await client.expect_event(2051)
