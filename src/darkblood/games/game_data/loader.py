@@ -99,3 +99,11 @@ def _top_entries(section):
 def tsv_rows(path):
     """Data rows (header skipped) of a TSV file as lists of tab-separated columns."""
     return [line.split('\t') for line in Path(path).read_text(encoding='utf-8', errors='replace').splitlines()[1:]]
+
+
+def bundled_asset(name, override=None):
+    """assets/<name> when it should be used: it exists and no client-data override replaces it."""
+    if override:
+        return None
+    path = ASSETS_DIR / name
+    return path if path.is_file() else None

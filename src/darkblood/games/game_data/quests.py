@@ -3,6 +3,7 @@ import re
 from functools import lru_cache
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.loader import (
+    bundled_asset,
     ASSETS_DIR, tsv_rows, _quest_files, _quest_override_files, data_root,
 )
 
@@ -16,24 +17,22 @@ UNIT_VALUE_RE = re.compile(r'^ {8}(?:"([^"]+)"|(-?\d+)),?$')
 @lru_cache(maxsize=None)
 def quests():
     """jhash(quest id) -> {'id', 'exp', 'gold', 'gp', 'items', 'select', 'offer'} from DictQuest:LoadQuest."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv = ASSETS_DIR / 'quests.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 7:
-                    qid, exp, gold, gp, offer, reward, select = parts[:7]
-                    out[jhash(qid)] = dict(
-                        id=qid,
-                        exp=int(float(exp)),
-                        gold=int(float(gold)),
-                        gp=int(float(gp)),
-                        items=reward or None,
-                        select=select or None,
-                        offer=offer or None,
-                    )
-            return out
+    tsv = bundled_asset('quests.tsv', _quest_override_files())
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 7:
+                qid, exp, gold, gp, offer, reward, select = parts[:7]
+                out[jhash(qid)] = dict(
+                    id=qid,
+                    exp=int(float(exp)),
+                    gold=int(float(gold)),
+                    gp=int(float(gp)),
+                    items=reward or None,
+                    select=select or None,
+                    offer=offer or None,
+                )
+        return out
 
     out = {}
     for path in _quest_files():
@@ -65,16 +64,14 @@ def quests():
 @lru_cache(maxsize=None)
 def item_groups():
     """GroupID -> [(item id, second field, count)]."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv = ASSETS_DIR / 'quest_item_groups.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 4:
-                    gid, item, f2, cnt = parts[:4]
-                    out.setdefault(gid, []).append((item, int(f2), int(cnt)))
-            return out
+    tsv = bundled_asset('quest_item_groups.tsv', _quest_override_files())
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 4:
+                gid, item, f2, cnt = parts[:4]
+                out.setdefault(gid, []).append((item, int(f2), int(cnt)))
+        return out
 
     out = {}
     for path in _quest_files():
@@ -235,15 +232,13 @@ def _promotion_target_class(base_class: int, promo_type: int) -> int:
 @lru_cache(maxsize=None)
 def quest_promotion_classes():
     """Mapping: jhash(quest_id) -> promoted class ID (u8) for final class-promotion quests."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv = ASSETS_DIR / 'quest_promotions.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 2 and parts[0]:
-                    out[jhash(parts[0]) & 0xFFFFFFFF] = int(parts[1], 0)
-            return out
+    tsv = bundled_asset('quest_promotions.tsv', _quest_override_files())
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 2 and parts[0]:
+                out[jhash(parts[0]) & 0xFFFFFFFF] = int(parts[1], 0)
+        return out
 
     all_quests = {}
     for p in _quest_files():

@@ -2,6 +2,7 @@
 import re
 from functools import lru_cache
 from darkblood.games.game_data.loader import (
+    bundled_asset,
     ASSETS_DIR, tsv_rows, _env_override, _section, _top_entries, data_root,
 )
 
@@ -21,19 +22,18 @@ CLASS_SECTION_MAP = {
 def char_level_stats():
     """Returns mapping (char_class, level) -> {'upexp', 'hp', 'mp'}."""
     override = _env_override('charstat.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'char_stats.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 5:
-                    cls_id, lv, hp, mp, upexp = parts[:5]
-                    out[(int(cls_id), int(lv))] = {
-                        'hp': int(float(hp)),
-                        'mp': int(float(mp)),
-                        'upexp': int(float(upexp)),
-                    }
-            return out
+    tsv = bundled_asset('char_stats.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 5:
+                cls_id, lv, hp, mp, upexp = parts[:5]
+                out[(int(cls_id), int(lv))] = {
+                    'hp': int(float(hp)),
+                    'mp': int(float(mp)),
+                    'upexp': int(float(upexp)),
+                }
+        return out
 
     path = override or (data_root() / 'charstat.lua')
     out = {}
@@ -79,14 +79,13 @@ def char_level_stat(char_class: int, level: int) -> dict:
 def level_up_ap():
     """AP awarded at each level in the client's DictChar:LoadLevelUp table."""
     override = _env_override('levelup.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'levelup_ap.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 2:
-                    out[int(parts[0])] = int(parts[1])
-            return out
+    tsv = bundled_asset('levelup_ap.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 2:
+                out[int(parts[0])] = int(parts[1])
+        return out
 
     path = override or (data_root() / 'levelup.lua')
     if not path.is_file():
@@ -100,14 +99,13 @@ def level_up_ap():
 def skill_costs():
     """{(skill index, level): (DemandPoint SP, DemandAr)} from skill and making tables."""
     override = _env_override('skill.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'skills.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 4:
-                    out[(int(parts[0]), int(parts[1]))] = (int(parts[2]), int(parts[3]))
-            return out
+    tsv = bundled_asset('skills.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 4:
+                out[(int(parts[0]), int(parts[1]))] = (int(parts[2]), int(parts[3]))
+        return out
 
     root = override.parent if override else data_root()
     out = {}
@@ -149,14 +147,13 @@ def achievement_table():
     GroupCondition and are completed through the client's 2444 report).
     """
     override = _env_override('achieve.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'achievements.tsv'
-        if tsv.is_file():
-            out = []
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 5:
-                    out.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4])))
-            return out
+    tsv = bundled_asset('achievements.tsv', override)
+    if tsv:
+        out = []
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 5:
+                out.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4])))
+        return out
     path = override or (data_root() / 'achieve.lua')
     if not path.exists():
         return []

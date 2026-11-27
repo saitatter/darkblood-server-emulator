@@ -3,6 +3,7 @@ import json
 import re
 from functools import lru_cache
 from darkblood.games.game_data.loader import (
+    bundled_asset,
     ASSETS_DIR, tsv_rows, _env_override, _section, _top_entries, data_root,
 )
 
@@ -11,14 +12,13 @@ from darkblood.games.game_data.loader import (
 def default_equipment():
     """Job -> [item ids] from DictItem:LoadDefaultEquipItem."""
     override = _env_override('defaultequipitem.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'starter_equipment.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 2:
-                    out.setdefault(int(parts[0]), []).append(parts[1])
-            return out
+    tsv = bundled_asset('starter_equipment.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 2:
+                out.setdefault(int(parts[0]), []).append(parts[1])
+        return out
 
     path = override or (data_root() / 'defaultequipitem.lua')
     out, section, job, inside = {}, None, None, False
@@ -182,14 +182,13 @@ TUTORIAL_REWARD_RE = re.compile(r'\{RewardItemAmount = (\d+), RewardItemID = "([
 def tutorial_rewards():
     """{'complete': [(item, n)], 'skip': [(item, n)]}."""
     override = _env_override('tutorialreward.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'tutorial_rewards.tsv'
-        if tsv.is_file():
-            out = {'complete': [], 'skip': []}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 3:
-                    out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
-            return out
+    tsv = bundled_asset('tutorial_rewards.tsv', override)
+    if tsv:
+        out = {'complete': [], 'skip': []}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 3:
+                out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
+        return out
 
     out = {'complete': [], 'skip': []}
     path = override or (data_root() / 'tutorialreward.lua')
@@ -212,14 +211,13 @@ ENTRY_ITEM_RE = re.compile(r'"([^"]+)",\s*(-?\d+),\s*(-?\d+)')
 def cash_items():
     """{ItemID: {'type': int, 'adj': str}} for item_cash.lua DictItem:LoadItem entries."""
     override = _env_override('item_cash.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'cash_items.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 3:
-                    out[parts[0]] = {'type': int(parts[1]), 'adj': parts[2]}
-            return out
+    tsv = bundled_asset('cash_items.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 3:
+                out[parts[0]] = {'type': int(parts[1]), 'adj': parts[2]}
+        return out
 
     paths = [override] if override else [
         data_root() / name for name in ('item_cash.lua', 'item_randombox.lua', 'item_disposable.lua')
@@ -254,14 +252,13 @@ def cash_items():
 def cash_packages():
     """{GroupID: [(ItemID, count)]} from DictItem:LoadPackage (PACKAGEnnn)."""
     override = _env_override('item_cash.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'cash_packages.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 3:
-                    out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
-            return out
+    tsv = bundled_asset('cash_packages.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 3:
+                out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
+        return out
 
     paths = [override] if override else [
         data_root() / name for name in ('item_cash.lua', 'item_disposable.lua')
@@ -289,20 +286,19 @@ def random_boxes():
     """(states, groups) from DictRandomBox: states = {RandomID: [(prob, [GroupID])]},
     groups = {GroupID: [(ItemID, count)]}."""
     override = _env_override('item_cash.lua')
-    if not override:
-        json_path = ASSETS_DIR / 'random_boxes.json'
-        if json_path.is_file():
-            data = json.loads(json_path.read_text(encoding='utf-8'))
-            states = {}
-            for rid, grades in data.get('states', {}).items():
-                states[rid] = [
-                    (float(g['prob']), g['groups']) if isinstance(g, dict) else (float(g[0]), list(g[1]))
-                    for g in grades
-                ]
-            groups = {}
-            for gid, items in data.get('groups', {}).items():
-                groups[gid] = [(item, int(cnt)) for item, cnt in items]
-            return states, groups
+    json_path = bundled_asset('random_boxes.json', override)
+    if json_path:
+        data = json.loads(json_path.read_text(encoding='utf-8'))
+        states = {}
+        for rid, grades in data.get('states', {}).items():
+            states[rid] = [
+                (float(g['prob']), g['groups']) if isinstance(g, dict) else (float(g[0]), list(g[1]))
+                for g in grades
+            ]
+        groups = {}
+        for gid, items in data.get('groups', {}).items():
+            groups[gid] = [(item, int(cnt)) for item, cnt in items]
+        return states, groups
 
     paths = [override] if override else [
         data_root() / name for name in ('item_cash.lua', 'item_randombox.lua')

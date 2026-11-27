@@ -4,6 +4,7 @@ import re
 from functools import lru_cache
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.loader import (
+    bundled_asset,
     ASSETS_DIR, tsv_rows, _env_override, _section, _top_entries, data_root,
 )
 
@@ -12,21 +13,20 @@ from darkblood.games.game_data.loader import (
 def monsters():
     """{jhash(ID) & 0xFFFFFFFF: {'id', 'exp', 'lv', 'drop_cnt'}} from monster.lua."""
     override = _env_override('monster.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'monsters.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 5:
-                    mid, hp, lv, exp, drop = parts[:5]
-                    out[jhash(mid) & 0xFFFFFFFF] = {
-                        'id': mid,
-                        'hp': float(hp),
-                        'lv': int(lv),
-                        'exp': float(exp),
-                        'drop_cnt': int(drop),
-                    }
-            return out
+    tsv = bundled_asset('monsters.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 5:
+                mid, hp, lv, exp, drop = parts[:5]
+                out[jhash(mid) & 0xFFFFFFFF] = {
+                    'id': mid,
+                    'hp': float(hp),
+                    'lv': int(lv),
+                    'exp': float(exp),
+                    'drop_cnt': int(drop),
+                }
+        return out
 
     path = override or (data_root() / 'monster.lua')
     if not path.exists():
@@ -57,17 +57,16 @@ def looting():
       groups        {GroupID: [ItemID]}
     """
     override = _env_override('itemlooting.lua')
-    if not override:
-        json_path = ASSETS_DIR / 'looting.json'
-        if json_path.is_file():
-            data = json.loads(json_path.read_text(encoding='utf-8'))
-            items = {}
-            for lid, val in data.get('looting_items', {}).items():
-                if isinstance(val, (list, tuple)):
-                    items[lid] = (val[0], val[1])
-                else:
-                    items[lid] = (val.get('one_item', ''), val.get('groups', []))
-            return data.get('mon_looting', {}), items, data.get('groups', {})
+    json_path = bundled_asset('looting.json', override)
+    if json_path:
+        data = json.loads(json_path.read_text(encoding='utf-8'))
+        items = {}
+        for lid, val in data.get('looting_items', {}).items():
+            if isinstance(val, (list, tuple)):
+                items[lid] = (val[0], val[1])
+            else:
+                items[lid] = (val.get('one_item', ''), val.get('groups', []))
+        return data.get('mon_looting', {}), items, data.get('groups', {})
 
     path = override or (data_root() / 'itemlooting.lua')
     if not path.exists():
@@ -117,14 +116,13 @@ def looting():
 def money_drops():
     """{item id: (GoldMin, GoldMax)} for AR drop items."""
     override = _env_override('item_moneysetting.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'money_drops.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 3:
-                    out[parts[0]] = (float(parts[1]), float(parts[2]))
-            return out
+    tsv = bundled_asset('money_drops.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 3:
+                out[parts[0]] = (float(parts[1]), float(parts[2]))
+        return out
 
     path = override or (data_root() / 'item_moneysetting.lua')
     if not path.exists():
@@ -147,14 +145,13 @@ def dungeon_maps():
     (Difficult 0..3), later ones quest variants with a QuestLink.
     """
     override = _env_override('maplist.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'dungeon_maps.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 4:
-                    out[parts[0]] = (parts[1], int(parts[2]), parts[3])
-            return out
+    tsv = bundled_asset('dungeon_maps.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 4:
+                out[parts[0]] = (parts[1], int(parts[2]), parts[3])
+        return out
     path = override or (data_root() / 'maplist.lua')
     if not path.exists():
         return {}
@@ -177,14 +174,13 @@ def dungeon_map_copies():
     same file, monsters and stats; only MapID, PlayOrder, QuestLink and Money
     differ). Quest maps with their own content are not listed."""
     override = _env_override('maplist.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'dungeon_maps.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 5 and parts[4]:
-                    out[parts[0]] = parts[4]
-            return out
+    tsv = bundled_asset('dungeon_maps.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 5 and parts[4]:
+                out[parts[0]] = parts[4]
+        return out
     path = override or (data_root() / 'maplist.lua')
     if not path.exists():
         return {}
@@ -213,16 +209,15 @@ def dungeon_map_copies():
 def gate_dungeons():
     """Mapping: gate_id ("Act1_G1") -> list of dungeon_ids (["Act1_G1_A1", ...])."""
     override = _env_override('maplist.lua')
-    if not override:
-        tsv = ASSETS_DIR / 'map_gates.tsv'
-        if tsv.is_file():
-            out = {}
-            for parts in tsv_rows(tsv):
-                if len(parts) >= 2:
-                    gid = parts[0]
-                    dlist = parts[1].split(',') if parts[1] else []
-                    out[gid] = dlist
-            return out
+    tsv = bundled_asset('map_gates.tsv', override)
+    if tsv:
+        out = {}
+        for parts in tsv_rows(tsv):
+            if len(parts) >= 2:
+                gid = parts[0]
+                dlist = parts[1].split(',') if parts[1] else []
+                out[gid] = dlist
+        return out
 
     path = override or (data_root() / 'maplist.lua')
     if not path.exists():
@@ -248,11 +243,10 @@ def dungeon_rewards():
       dungeons {DungeonID: [[prize_code, [n_prob, s_prob, r_prob, u_prob]], ...]}
     """
     override = _env_override('dungeonreward.lua')
-    if not override:
-        json_path = ASSETS_DIR / 'dungeon_rewards.json'
-        if json_path.is_file():
-            data = json.loads(json_path.read_text(encoding='utf-8'))
-            return data.get('prizes', {}), data.get('dungeons', {})
+    json_path = bundled_asset('dungeon_rewards.json', override)
+    if json_path:
+        data = json.loads(json_path.read_text(encoding='utf-8'))
+        return data.get('prizes', {}), data.get('dungeons', {})
 
     path = override or (data_root() / 'dungeonreward.lua')
     if not path.exists():
