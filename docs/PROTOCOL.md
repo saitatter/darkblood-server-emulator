@@ -683,6 +683,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `npc_id: i32, item_uid: i64, count: i32` -> On success: `result: i32 (0), tag 0x10 items vector, gold: i64, tag 0x1e repurchase record (Item struct + i32 + i64), tag 0x13 map`. Removes item count, adds gold, and saves player state.
 - `2071 eEGS_REPURCHASE_ITEM_REQ` (`0x00780000.c:10735`) -> `2072 eEGS_REPURCHASE_ITEM_ACK` (`0x0077EC30`):
   `item_uid: i64` -> On success: `result: i32 (0), tag 0x10 items vector, gold: i64`.
+  The returned equipment keeps the durability, upgrade step and quality it had when sold.
 - `2179 eEGS_GUILD_MONEY_IN_REQ` (`0x00790000.c:3031`) -> `2180 eEGS_GUILD_MONEY_IN_ACK` (`0x00794250`):
   `amount: i64` -> `result: i32 (0), remain_gold: i64`. Deposits gold into guild bank and updates player gold.
 - `2181 eEGS_GUILD_MONEY_OUT_REQ` (`0x00790000.c:3141`) -> `2182 eEGS_GUILD_MONEY_OUT_ACK` (`0x00794470`):

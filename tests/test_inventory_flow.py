@@ -709,6 +709,7 @@ class SkillCostTest(ServerTestCase):
             await client.expect_event(2007)
 
             char = session.GameSession.store().get('OfflinePlayer', char_id)
+            weapon = dict(next(item for item in char['items'] if item['container'] == 1 and item['slot'] == 0))
             char['items'] = [
                 dict(code='Ihppa0000', uid=77, container=3, slot=0, count=2),
             ]
@@ -749,6 +750,19 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(char['gold'], 100 + sell_price)
             self.assertEqual(len(char['items']), 1)
             self.assertEqual(char['items'][0]['code'], 'Ihppa0000')
+
+            weapon.update(container=3, slot=1, durability=25.0, upgrade=7, quality=3)
+            char['items'].append(weapon)
+            client.send_event(2069, SellItemReq(npc_id=1, item_uid=weapon['uid'], count=1).encode())
+            _, sale = await client.expect_event(2070)
+            self.assertEqual(struct.unpack_from('<i', sale)[0], 0)
+            client.send_event(2071, RepurchaseItemReq(item_uid=weapon['uid']).encode())
+            _, buyback = await client.expect_event(2072)
+            self.assertEqual(struct.unpack_from('<i', buyback)[0], 0)
+            restored = next(item for item in char['items'] if item['code'] == weapon['code'])
+            for field in ('durability', 'upgrade', 'quality'):
+                self.assertEqual(restored.get(field), weapon[field], field)
+            self.assertIn(Item(owner=UPDATE_OWNER, **restored).encode(), buyback)
 
         self.run_async(self.with_server(scenario))
 

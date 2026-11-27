@@ -289,8 +289,9 @@ class StoreHandlers:
             await self.reply(RepurchaseItemAck(result=results.INVEN_FULL), correlation,
                              note='repurchase fail (placement failed)')
             return
-        if 'durability' in sold_record:
-            added[0]['durability'] = sold_record['durability']
+        attributes = {key: sold_record[key] for key in ('durability', 'upgrade', 'quality') if key in sold_record}
+        for item in added:
+            item.update(attributes)
         repurchase_map.pop(req.item_uid, None)
         char_gold -= price
         char['gold'] = char_gold
