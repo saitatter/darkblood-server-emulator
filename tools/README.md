@@ -19,6 +19,11 @@ with empty messages and continues to the remaining entries.
 Cross-folder imports add the needed folder to `sys.path` explicitly (for example
 `launcher.py` imports `automation/gamectl.py`); `tests/common.py` adds every folder.
 
+## Release updates
+
+The updater reports an invalid ZIP before staging files. The installed release
+and its version remain intact.
+
 ## Release packaging
 
 Run `python tools/launcher/build_release.py --version <tag>` from the checkout

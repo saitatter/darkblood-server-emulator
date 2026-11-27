@@ -378,7 +378,7 @@ def apply_zip_archive(root: Path, zip_source, new_version: str = '',
                     ok=False, mode='release', old_version=old_version,
                     message=f'SHA-256 mismatch (expected {expected_sha256[:12]}, got {actual[:12]}).',
                 )
-        zf_ctx = zipfile.ZipFile(zip_path, 'r')
+        archive = zip_path
     else:
         raw_bytes = bytes(zip_source)
         if expected_sha256:
@@ -388,7 +388,13 @@ def apply_zip_archive(root: Path, zip_source, new_version: str = '',
                     ok=False, mode='release', old_version=old_version,
                     message=f'SHA-256 mismatch (expected {expected_sha256[:12]}, got {actual[:12]}).',
                 )
-        zf_ctx = zipfile.ZipFile(io.BytesIO(raw_bytes), 'r')
+        archive = io.BytesIO(raw_bytes)
+
+    try:
+        zf_ctx = zipfile.ZipFile(archive, 'r')
+    except (OSError, zipfile.BadZipFile) as exc:
+        return UpdateResult(ok=False, mode='release', old_version=old_version,
+                            message=f'Invalid release ZIP: {exc}')
 
     staging = root / '.update_staging'
     if staging.exists():

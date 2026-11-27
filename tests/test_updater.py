@@ -77,6 +77,30 @@ class ReleaseUpdaterTest(unittest.TestCase):
             self.assertEqual((root / 'logs' / 'wire.jsonl').read_text(encoding='utf-8'), 'keep\n')
             self.assertFalse((root.parent / 'escape.txt').exists())
 
+    def test_invalid_release_zip_leaves_installation_intact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            version_file = root / '.version'
+            version_file.write_text('v0.1.0', encoding='utf-8')
+            installed = root / 'README.md'
+            installed.write_bytes(b'installed release')
+            archive = b'incomplete ZIP download'
+            zip_path = root / 'download.zip'
+            zip_path.write_bytes(archive)
+            checksum = hashlib.sha256(archive).hexdigest()
+
+            for source in (archive, zip_path):
+                with self.subTest(source=source):
+                    result = updater.apply_zip_archive(
+                        root, source, new_version='v0.2.0', expected_sha256=checksum,
+                    )
+                    self.assertFalse(result.ok)
+                    self.assertIn('Invalid release ZIP', result.message)
+                    self.assertEqual(result.old_version, 'v0.1.0')
+                    self.assertEqual(version_file.read_text(encoding='utf-8'), 'v0.1.0')
+                    self.assertEqual(installed.read_bytes(), b'installed release')
+                    self.assertFalse((root / '.update_staging').exists())
+
     def test_sha256_mismatch_aborts_before_touching_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
