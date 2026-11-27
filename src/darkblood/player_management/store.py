@@ -500,10 +500,12 @@ class SqliteCharacterStore(ICharacterStore):
                 return False
             rec = row['recipient_char_id']
             snd = row['sender_char_id']
-            # Swap recipient and sender, set post_type = 2 (returned), can_return = 0
             conn.execute(
-                'UPDATE mailbox SET recipient_char_id = ?, sender_char_id = ?, post_type = 2, can_return = 0 WHERE uid = ?',
-                (snd, rec, mail_uid)
+                '''UPDATE mailbox SET recipient_char_id = ?, sender_char_id = ?,
+                       sender_name = COALESCE((SELECT name FROM characters WHERE id = ?), sender_name),
+                       post_type = 2, can_return = 0, is_read = 0
+                   WHERE uid = ?''',
+                (snd, rec, rec, mail_uid),
             )
             conn.commit()
             return True
