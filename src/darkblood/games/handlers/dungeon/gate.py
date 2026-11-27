@@ -36,6 +36,7 @@ class DungeonGateHandlers:
             for member, record in list(room.members.items()):
                 if member is self.session:
                     continue
+                member.dungeon.gate_id = gate
                 await self.send_to([member], self._select_dungeon_ack(gate, record), f'select dungeon (party gate {gate})')
 
     @staticmethod
