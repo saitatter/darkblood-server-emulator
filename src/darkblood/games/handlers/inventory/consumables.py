@@ -123,6 +123,10 @@ class ConsumableHandlersMixin:
                              note='use item fail (not found)')
             return
         item_str_code = used_item.get('code', '')
+        if item_str_code == 'IAMk1R190' and int(char.get('mark_bonus_cnt', 0)) >= 3:
+            await self.reply(UseItemAck(result=results.INVALID_STATE), correlation,
+                             note='rune agreement refused (all bonus slots unlocked)')
+            return
         contents, random_box = self._cash_box_contents(item_str_code)
         if contents:
             free = free_bag_slots(char)
