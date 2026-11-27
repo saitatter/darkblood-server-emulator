@@ -150,11 +150,29 @@ class ArenaFlowTest(ServerTestCase):
             self.assertEqual(join_ack.room.room_id, 10)
             self.assertEqual(join_ack.host_uid, char_id)
 
-            # 4. Leave Match Room (5148 -> 5149)
-            client.send_event(5148, messages.ArenaLeaveRoomReq().encode())
-            _, ack5149 = await client.expect_event(5149)
-            leave_ack = messages.ArenaLeaveRoomAck.decode(ack5149)
-            self.assertEqual(leave_ack.result, 0)
+            from headless_client import HeadlessClient
+
+            guest = HeadlessClient(port=client.port)
+            try:
+                await lobby_flow(guest)
+                guest.send_event(2012, create_request('ArenaRoomGuest'))
+                _, guest_created = await guest.expect_event(2013)
+                guest_id = struct.unpack_from('<Q', guest_created, 10)[0]
+                guest.send_event(2006, struct.pack('<iQ', 0x7fffffff, guest_id))
+                await guest.expect_event(2007)
+                guest.send_event(5145, messages.ArenaJoinRoomReq(room_id=10, password="secret").encode())
+                await guest.expect_event(5146)
+
+                client.send_event(5148, messages.ArenaLeaveRoomReq().encode())
+                _, ack5149 = await client.expect_event(5149)
+                self.assertEqual(messages.ArenaLeaveRoomAck.decode(ack5149).result, 0)
+
+                guest.send_event(2306, messages.ArenaGetRoomListReq(page=0).encode())
+                _, remaining = await guest.expect_event(2307)
+                room = next(r for r in messages.ArenaGetRoomListAck.decode(remaining).rooms if r.room_id == 10)
+                self.assertEqual(room.host_uid, guest_id)
+            finally:
+                await guest.close()
 
         self.run_async(self.with_server(scenario))
 

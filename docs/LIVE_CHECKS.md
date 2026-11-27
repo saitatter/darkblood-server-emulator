@@ -63,7 +63,7 @@ When it fails, note what the client did and keep it here.
 | W8 | Trade / teaching requests (`5070`/`5352`) | The dialog shows the real target name, level and class. |
 | W9 | Arena relay change (`5135`) | 6-byte address (was 24 bytes); no read error. |
 | W10 | Duel start (`5098`) | Duel begins without a read error; both players' skills/levels are applied (layout was missing seven fields). |
-| W11 | Arena room join (`5146`) and invite list (`2309`) | Join succeeds (relay address now sent); the invite list shows candidates and the page number. |
+| W11 | Arena room join (`5146`) and invite list (`2309`) | Join succeeds (relay address now sent); the invite list shows candidates and the page number. After the host leaves, the room list shows the remaining member as host. |
 | W12 | League ranking (`2551`/`2472`) | Ranking pages and the season start date display. |
 | W13 | Paint message (`JAppPagePaint`, `5040 -> 5041`) | A drawing sent through chat reaches the other player (paint data is now echoed). |
 | W14 | Shop repurchase tab (`2066` vecRePur) | After selling, closing and reopening the shop shows the sold items in the Repurchase tab. |
