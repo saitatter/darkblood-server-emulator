@@ -745,7 +745,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   observed request `J-wstring (timestamp text, meaning unknown), u32 quest_id` (same shape as 2073) -> `result: i32 (0)`, tag `0x10` i32 quest-id vector, 18-byte jInfo, tag `0x10` i32 vector, tag `0x10` item vector. Removes quest from active storage. The client looks each id up (`0x00A7B390`) and drops the ack if it is unknown.
   2078 is owned by the quest handler. Stall open uses 2340. Verified live with a 42-byte timestamp and a subsequent 2073 accept for the abandoned quest.
 - `2080 eEGS_QUEST_FAIL_REQ` -> `2081 eEGS_QUEST_FAIL_ACK` (`0x006223B0`):
-  `quest_id: u32` (request assumed to share the 2078 J-wstring prefix; not yet observed) -> `result: i32 (0), quest_id: u32`. Removes quest from active storage.
+  The request shares the 2078 J-wstring prefix. Failure and discard (`2090` -> `2091`) return the quest ID vector and include `QuestSpecialInfo` action 3 when removing temporary promotion-trial skills.
 - `2254 eEGS_MAGICENCHANT_ENCHANT_REQ` -> `2255 eEGS_MAGICENCHANT_ENCHANT_ACK` (`0x00796DC0`):
   `item_uid: i64, catalyst_uid: i64, scroll_uid: i64` -> `result: i32 (0), items: tag 0x10 vector, gold: i64`.
 - `2256 eEGS_MAGICENCHANT_ERASE_OPTION_REQ` -> `2257 eEGS_MAGICENCHANT_ERASE_OPTION_ACK` (`0x00797120`):

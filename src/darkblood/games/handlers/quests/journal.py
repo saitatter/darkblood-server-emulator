@@ -15,14 +15,16 @@ from darkblood.games.network.messages import (
 
 
 class QuestJournalHandlers:
-    def _drop_active_quest(self, quest_id: int, clear_temp_skills: bool = False) -> QuestSpecialInfo:
-        """Remove `quest_id` from the active quests and save; optionally undo its trial skills."""
+    def _drop_active_quest(self, quest_id: int) -> QuestSpecialInfo:
+        """Remove `quest_id` from the active quests, undo its promotion-trial skills and save.
+
+        Returns QuestSpecialInfo action 3 when trial skills were removed (empty otherwise).
+        """
         char = self.current_char()
         info = QuestSpecialInfo()
         if char and str(quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(quest_id)]
-            if clear_temp_skills:
-                info = self._clear_temp_skills_for_quest(char, quest_id)
+            info = self._clear_temp_skills_for_quest(char, quest_id)
             self.save_char()
         return info
 
@@ -34,7 +36,7 @@ class QuestJournalHandlers:
         Removes active quest from character's tracked log upon abandonment.
         """
         req = QuestGiveupReq.decode(body)
-        special_info = self._drop_active_quest(req.quest_id, clear_temp_skills=True)
+        special_info = self._drop_active_quest(req.quest_id)
         self.transport.record('quest-giveup', body, quest_id=req.quest_id)
         ack = QuestGiveupAck(
             result=0,
@@ -51,19 +53,19 @@ class QuestJournalHandlers:
         Processes quest objective expiration or failure condition.
         """
         req = QuestFailReq.decode(body)
-        self._drop_active_quest(req.quest_id)
+        special_info = self._drop_active_quest(req.quest_id)
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
-        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [])
+        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [], info=special_info)
         await self.reply(ack, correlation, note=f'quest fail ack ({req.quest_id:#010x})')
 
     @packet_handler(QuestDiscardReq)
     async def handle_quest_discard(self, correlation: int, body: bytes):
         """Opcode 2090 (eEGS_QUEST_DISCARD_REQ) -> 2091 (eEGS_QUEST_DISCARD_ACK): discard an active quest."""
         req = QuestDiscardReq.decode(body)
-        self._drop_active_quest(req.quest_id)
+        special_info = self._drop_active_quest(req.quest_id)
         self.transport.record('quest-discard', body, quest_id=req.quest_id)
         await self.reply(
-            QuestDiscardAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []),
+            QuestDiscardAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [], info=special_info),
             correlation, note=f'quest discard ack ({req.quest_id:#010x})',
         )
 

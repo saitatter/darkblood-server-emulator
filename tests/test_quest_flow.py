@@ -558,6 +558,20 @@ class QuestFlowTest(ServerTestCase):
             _, ack2007_after = await client.expect_event(2007)
             self.assertNotIn(expected_qsi, ack2007_after)
 
+            for request, response in ((2080, 2081), (2090, 2091)):
+                with self.subTest(request=request):
+                    client.send_event(2073, req_start, compressed=True)
+                    await client.expect_event(2051)
+                    await client.expect_event(2051)
+                    await client.expect_event(2074)
+                    client.send_event(request, req_giveup, compressed=True)
+                    _, removed = await client.expect_event(response)
+                    self.assertEqual(struct.unpack_from('<iHiiI', removed, 10),
+                                     (3, 0x11, 224, 295, q_hash))
+                    self.assertNotIn('224', char['skills'])
+                    self.assertNotIn('295', char['skills'])
+                    self.assertNotIn('temp_skills', char)
+
         self.run_async(self.with_server(scenario))
 
 
