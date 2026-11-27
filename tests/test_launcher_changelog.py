@@ -10,6 +10,12 @@ from launcher_app import changelog
 
 
 class LauncherChangelogTest(unittest.TestCase):
+    def test_breaking_change_prefix_preserves_type_and_scope(self):
+        self.assertEqual(changelog.parse_commit_prefix('feat(lobby)!: update selection'),
+                         ('feat', 'lobby', 'update selection'))
+        self.assertEqual(changelog.parse_commit_prefix('fix!: replace a setting'),
+                         ('fix', '', 'replace a setting'))
+
     def test_github_commit_items_include_all_commit_types(self):
         items = [
             {
