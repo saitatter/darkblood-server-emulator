@@ -694,6 +694,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `notice: wstring` -> `result: i32 (0)`. Sets guild notice.
 - `2188 eEGS_GUILD_NOTICE_DELETE_REQ` (`0x00790000.c:3388`) -> `2189 eEGS_GUILD_NOTICE_DELETE_ACK` (`0x0074B830`):
   empty / i32 prefix -> `result: i32 (0)`. Clears guild notice.
+- `2314 GuildNameChangeReq` -> `2315 GuildNameChangeAck`: the server stores the new guild name in the selected character's guild data before acknowledging the change.
 - `2214 eEGS_GUILD_ALL_SKILL_INIT_REQ` -> `2215 eEGS_GUILD_ALL_SKILL_INIT_ACK` (`0x00752D80`):
   empty / i32 prefix -> `result: i32 (0), param: i32 (0)`. Resets guild skills.
 - `5087 eERC_LEVEL_UP_NOT` (`0x0078CCF0`) & `5086 eERC_CHANGE_EXP_NOT` (`0x007775F0`):

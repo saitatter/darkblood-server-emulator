@@ -254,6 +254,13 @@ class GuildHandlers:
         req = GuildNameChangeReq.decode(body)
         new_name = req.new_name.strip()
         self.transport.record('guild-name-change-req', body, new_name=new_name)
+        char = self.current_char()
+        if char is None or not new_name:
+            result = results.NO_EXIST_CHAR if char is None else results.INVALID_STATE
+            await self.reply(GuildNameChangeAck(result=result), correlation, note='guild name change refused')
+            return
+        char['guild_name'] = new_name
+        self.save_char()
         ack = GuildNameChangeAck(result=0, items=[], new_name=new_name)
         await self.reply(ack, correlation, note=f'guild name change ack ({new_name})')
 
