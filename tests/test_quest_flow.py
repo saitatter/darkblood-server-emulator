@@ -332,6 +332,11 @@ class QuestFlowTest(ServerTestCase):
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
 
+            from darkblood.games.entities.items import DEPOT_CONTAINER
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            stored = dict(code='Iquea0310', uid=801, container=DEPOT_CONTAINER, slot=0, count=1)
+            char['items'].insert(0, stored)
             # Start quest: hands over Iquea0310 (2037) and immediately updates QM815 (2075)
             client.send_event(2073, req, compressed=True)
             await client.expect_event(2074)
@@ -358,7 +363,7 @@ class QuestFlowTest(ServerTestCase):
             # Verify character store: quest is done and consumed offer item is gone
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertIn(q_hash, char.get('quests_done', []))
-            self.assertNotIn('Iquea0310', [it['code'] for it in char.get('items', [])])
+            self.assertEqual([it for it in char['items'] if it['code'] == 'Iquea0310'], [stored])
 
         self.run_async(self.with_server(scenario))
 

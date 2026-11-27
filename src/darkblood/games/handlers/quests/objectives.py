@@ -1,5 +1,6 @@
 """Quest objective counters: item collection (MissionType 1) and NPC missions (2113), reported with 2075."""
 from darkblood.games.dispatcher import packet_handler
+from darkblood.games.entities.items import DEPOT_CONTAINER
 from darkblood.games.game_data.client_dict import (
     quest_item_objectives,
     quest_mission_counts,
@@ -17,7 +18,8 @@ def take_quest_items(char, quest_id):
                 continue
             remaining, kept = target_val, []
             for item in char.get('items', []):
-                if item.get('code') == item_code and remaining > 0:
+                if (item.get('code') == item_code and remaining > 0
+                        and item.get('container') != DEPOT_CONTAINER):
                     count = item.get('count', 1)
                     if count <= remaining:
                         remaining -= count
@@ -45,6 +47,8 @@ class QuestObjectiveHandlers:
             return
         item_counts = {}
         for it in char.get('items', []):
+            if it.get('container') == DEPOT_CONTAINER:
+                continue
             code = it.get('code')
             cnt = it.get('count', 1)
             item_counts[code] = item_counts.get(code, 0) + cnt
