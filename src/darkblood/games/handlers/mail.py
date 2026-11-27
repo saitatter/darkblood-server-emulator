@@ -13,6 +13,7 @@ import json
 
 from darkblood.core.serialization.jser import event
 from darkblood.games.entities.items import Item
+from darkblood.games.network import results
 from darkblood.games.network.messages.mail import (
     PostDeleteAck,
     PostDeleteReq,
@@ -34,7 +35,6 @@ from darkblood.games.network.messages.mail import (
     PostSendReq,
 )
 from darkblood.player_management.characters import (
-    _inventory_bags,
     free_cells,
     next_item_uid,
 )
@@ -190,38 +190,35 @@ class MailHandlers(BaseDomainService):
             await self.reply(PostGetAppendItemAck(result=1), correlation, note='post get append fail (no char)')
             return
 
-        claimed_gold, claimed_items = self.store().claim_mail_append(req.mail_uid)
+        cells = free_cells(char)
+        claim = self.store().claim_mail_append(
+            req.mail_uid, recipient_char_id=char['id'], available_slots=len(cells),
+        )
+        if claim is None:
+            await self.reply(PostGetAppendItemAck(result=results.INVEN_FULL), correlation,
+                             note='post get append fail (inventory full)')
+            return
+
+        claimed_gold, claimed_items = claim
         if claimed_gold > 0:
             char['gold'] = int(char.get('gold', 0)) + claimed_gold
 
         new_items = []
-        if claimed_items:
-            cells = free_cells(char)
-            bags = _inventory_bags(char)
-            last_bag = bags[-1]['bag_id'] if bags else -1
-            used = {i['slot'] for i in char.get('items', []) if i.get('container') == last_bag}
-            for it in claimed_items:
-                if cells:
-                    container, slot = cells.pop(0)
-                else:
-                    container = last_bag
-                    slot = next(s for s in range(256) if s not in used)
-                if container == last_bag:
-                    used.add(slot)
-                it['uid'] = next_item_uid(char)
-                it['owner'] = char['id']
-                it['container'] = container
-                it['slot'] = slot
-                char.setdefault('items', []).append(it)
-                new_items.append(Item(
-                    code=it.get('code', ''),
-                    uid=it['uid'],
-                    owner=char['id'],
-                    container=container,
-                    slot=slot,
-                    count=it.get('count', 1),
-                    durability=it.get('durability')
-                ))
+        for it, (container, slot) in zip(claimed_items, cells):
+            it['uid'] = next_item_uid(char)
+            it['owner'] = char['id']
+            it['container'] = container
+            it['slot'] = slot
+            char.setdefault('items', []).append(it)
+            new_items.append(Item(
+                code=it.get('code', ''),
+                uid=it['uid'],
+                owner=char['id'],
+                container=container,
+                slot=slot,
+                count=it.get('count', 1),
+                durability=it.get('durability'),
+            ))
 
         self.save_char()
         ack = PostGetAppendItemAck(result=0, mail_uid=req.mail_uid, gold=claimed_gold, items=new_items)
