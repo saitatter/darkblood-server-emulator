@@ -539,6 +539,33 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_hatching_several_eggs_from_one_stack_keeps_each_pet(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('StackHatcher'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            egg_uid = 900
+            char['items'].append(dict(code='Pegg1Cash96', uid=egg_uid, container=3, slot=1, count=2))
+            for _ in range(2):
+                client.send_event(2464, PetCreateReq(pet_uid=egg_uid).encode())
+                _, body = await client.expect_event(2465)
+                self.assertEqual(struct.unpack_from('<I', body)[0], 0)
+
+            self.assertFalse(any(item['uid'] == egg_uid for item in char['items']))
+            self.assertEqual(len({pet['uid'] for pet in char['pets']}), 2)
+            self.assertEqual({pet['slot'] for pet in char['pets']}, {-1, 0})
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, selected = await client.expect_event(2007)
+            for pet in char['pets']:
+                self.assertIn(struct.pack('<q', pet['uid']), selected)
+
+        self.run_async(self.with_server(scenario))
+
     def test_mount_item_unlock_and_relog_persistence(self):
         from darkblood.core.hashing import jhash
         from darkblood.games.network.messages.inventory import UseItemReq
