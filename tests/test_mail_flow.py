@@ -34,7 +34,11 @@ class MailFlowTest(ServerTestCase):
             from darkblood.games.session import GameSession
             char1 = GameSession.store().get('OfflinePlayer', char1_id)
             char1['gold'] = 50000
-            char1['items'] = [dict(code='Iwpna0001', uid=1001, container=3, slot=0)]
+            from darkblood.games.entities.items import Item
+
+            gear = dict(code='Wlsww0001', uid=1001, container=3, slot=0,
+                        upgrade=7, quality=3, durability=25.0)
+            char1['items'] = [gear]
             GameSession.store().save()
 
             # 1. Post List (Empty initially)
@@ -77,6 +81,7 @@ class MailFlowTest(ServerTestCase):
             client.send_event(2219, PostListReq().encode())
             _, ack2220_in = await client.expect_event(2220)
             self.assertEqual(struct.unpack_from('<I', ack2220_in, 0)[0], 0)
+            self.assertIn(Item(**gear).encode(), ack2220_in)
 
             inbox = GameSession.store().get_mail_inbox(char2_id)
             self.assertEqual(len(inbox), 1)
@@ -108,6 +113,8 @@ class MailFlowTest(ServerTestCase):
             char2_after = GameSession.store().get('OfflinePlayer', char2_id)
             self.assertEqual(char2_after.get('gold', 0), char2_gold_before + 15000)
             self.assertEqual(len(char2_after.get('items', [])), char2_items_before + 1)
+            attachment = char2_after['items'][-1]
+            self.assertIn(Item(**dict(attachment, owner=char2_id)).encode(), ack2226)
 
             # 7. Delete mail
             client.send_event(2236, PostDeleteReq(mail_uids=[mail_uid]).encode())

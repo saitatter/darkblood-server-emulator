@@ -62,7 +62,9 @@ class MailHandlers(BaseDomainService):
                     container=it.get('container', -1),
                     slot=it.get('slot', 0),
                     count=it.get('count', 1),
-                    durability=it.get('durability')
+                    durability=it.get('durability'),
+                    upgrade=it.get('upgrade'),
+                    quality=it.get('quality', 0),
                 ))
         return PostEntry(
             uid=r['uid'],
@@ -220,6 +222,8 @@ class MailHandlers(BaseDomainService):
                 slot=slot,
                 count=it.get('count', 1),
                 durability=it.get('durability'),
+                upgrade=it.get('upgrade'),
+                quality=it.get('quality', 0),
             ))
 
         self.save_char()
