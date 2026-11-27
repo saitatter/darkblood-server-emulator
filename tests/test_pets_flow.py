@@ -256,7 +256,8 @@ class PetsFlowTest(ServerTestCase):
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             self.assertEqual(len(char.get('pets', [])), 0)
 
-            # 12. Item Use: PetCall egg item consumption activates pet
+            # 12. Item Use: PetCall creates a second pet alongside a survivor.
+            char['pets'] = [{'uid': 2, 'slot': 1, 'code': 'PetCall002', 'name': 'Survivor'}]
             char['items'] = [
                 {'uid': 1001, 'code': 'PetCall001', 'container': 3, 'slot': 0, 'count': 1},
                 {'uid': 1002, 'code': 'ridecall0', 'container': 3, 'slot': 1, 'count': 1},
@@ -267,8 +268,10 @@ class PetsFlowTest(ServerTestCase):
             _, ack2039_pet = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039_pet, 0)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            self.assertEqual(len(char.get('pets', [])), 1)
-            self.assertEqual(char['pets'][0]['code'], 'PetCall001')
+            self.assertEqual(len(char['pets']), 2)
+            self.assertEqual(len({pet['uid'] for pet in char['pets']}), 2)
+            self.assertEqual({pet['code']: pet['slot'] for pet in char['pets']},
+                             {'PetCall002': 1, 'PetCall001': 0})
 
             # 14. Item Use: ridecall whistle item consumption activates mount
             client.send_event(2038, struct.pack('<iqI', 0x7fffffff, 1002, 1))

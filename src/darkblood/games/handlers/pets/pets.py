@@ -444,14 +444,16 @@ class PetCoreHandlersMixin:
             return
         if code.startswith('PetCall'):
             pets = char.setdefault('pets', [])
-            new_uid = len(pets) + 1
+            new_uid = max((int(pet.get('uid', 0)) for pet in pets), default=0) + 1
+            occupied_slots = {pet.get('slot', -1) for pet in pets}
+            free_slot = next(slot for slot in range(len(pets) + 1) if slot not in occupied_slots)
             pets.append({
                 'uid': new_uid,
                 'code': code,
                 'name': 'Pet',
                 'level': 1,
                 'satiety': 100,
-                'slot': len(pets),
+                'slot': free_slot,
             })
             self.save_char()
             return
