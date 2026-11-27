@@ -2,7 +2,9 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -220,6 +222,36 @@ class ReleaseUpdaterTest(unittest.TestCase):
                 self.assertEqual(len(progress_events), 2)
                 self.assertEqual(progress_events[-1], (len(archive), len(archive)))
                 self.assertEqual((root / 'README.md').read_text(encoding='utf-8'), 'v0.2.0\n')
+
+    def test_release_notes_use_the_previous_tag_on_build_history(self):
+        import build_release
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            def git(*args, day=1):
+                subprocess.run(
+                    ['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.com',
+                     '-c', 'commit.gpgsign=false', *args],
+                    cwd=root, check=True, capture_output=True,
+                    env=dict(os.environ, GIT_COMMITTER_DATE=f'2020-01-{day:02}T12:00:00Z'),
+                )
+
+            git('init', '-q')
+            git('commit', '--allow-empty', '-qm', 'feat: original feature')
+            git('tag', 'v1.0.0')
+            git('commit', '--allow-empty', '-qm', 'fix: correct release update', day=2)
+            git('tag', 'v1.1.0')
+            git('commit', '--allow-empty', '-qm', 'feat: later feature', day=3)
+            git('tag', 'v1.2.0')
+
+            git('checkout', '--detach', 'v1.1.0')
+            notes = build_release.generate_release_notes('v1.1.0', 'release.zip', 'checksum', root=root)
+
+            self.assertIn('### Changes since `v1.0.0`', notes)
+            self.assertIn('- correct release update', notes)
+            self.assertNotIn('original feature', notes)
+            self.assertNotIn('later feature', notes)
 
     def test_build_release_zip_packages_clean_archive_and_manifest(self):
         import build_release

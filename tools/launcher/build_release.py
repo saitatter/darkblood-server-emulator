@@ -196,15 +196,15 @@ _COMMIT_RE = re.compile(r'^(feat|fix|refactor|perf|docs|test|chore|ci|build)(?:\
 
 
 def _prev_tag(version: str, root: Path) -> str:
+    """Find the closest release tag in the history of the source being packaged."""
     try:
         proc = subprocess.run(
-            ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
+            ['git', 'describe', '--tags', '--abbrev=0', '--match=v*',
+             f'--exclude={version}', 'HEAD'],
             cwd=str(root), capture_output=True, text=True, timeout=5,
         )
         if proc.returncode == 0:
-            tags = [t.strip() for t in proc.stdout.splitlines() if t.strip() and t.strip() != version]
-            if tags:
-                return tags[0]
+            return proc.stdout.strip()
     except Exception:
         pass
     return ''

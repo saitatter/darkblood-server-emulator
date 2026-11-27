@@ -1,8 +1,10 @@
-# Session handoff — 2026-11-24
+# Session handoff — 2026-11-27
 
 > Older per-session logs (2026-11-16 through 2026-11-21) were pruned to keep this handoff concise; they remain in Git history and their results are reflected in `README.md`, `docs/STATUS.md`, `docs/OPCODE_REGISTRY.md`, and `ROADMAP.md`.
 
-## Recent verified changes (2026-11-22 – 2026-11-26)
+## Recent verified changes (2026-11-22 – 2026-11-27)
+
+- **Release notes (2026-11-27)**. Rebuilding an older release uses the closest version tag reachable from the build commit and excludes the version being built. A test with three tags verifies that the middle release includes its own change even with the newer tag present.
 
 - **Field recovery, batch 6 (2026-11-27)**: `jGuild +0x29` is the member's guild grade (`player +0x234`, `JGuildManager +0x10`, read by `Lua_TryChangeGrade`); `0x0091A150` maps the other `jGuild` fields onto `JGuildManager` offsets (noted for later UI tracing). GM `2060 vecDropItem` is `vector<ItemDropEntry>` (same reader `0x00A509E0` as `5064`).
 - **Field recovery, batch 5 (2026-11-27)**: `5040`/`5041` jChatInfo typed end to end; the `+0x55` sub-struct is paint data from `JAppPagePaint::SendMsg` (`0x005FF4B0`: flag, `vector<u32>`, `vector<u8>`) and is now echoed to recipients; the old wire test fixture was one byte short. `jGuild` (`0x00A49A10`, consumed by `JGuildManager::OnGuildInfoNot` `0x0092A2A0`) and the `2158` member record (`0x00A49950`) are typed (the `raw[64]` could not match a struct with two strings); `0x0049F7F0` is the `JGuildManager` singleton. `RepurchaseItem` (`0x00A1ECA0`) types `2066 vecRePur` and `2591 vecReItem`; reopening a shop now lists this session's sales. Live checks W13-W14.
