@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
     ArenaCreateRoomAck,
     ArenaCreateRoomReq,
@@ -13,7 +14,6 @@ from darkblood.games.network.messages import (
     ArenaJoinRoomReq,
     ArenaLeaveRoomAck,
     ArenaLeaveRoomReq,
-    ArenaRoomInfo,
     ArenaSquare,
     ArenaSquareListAck,
     ArenaSquareListReq,
@@ -96,12 +96,9 @@ class ArenaRoomHandlers:
         char_uid, char_name, char_class, char_level = self._get_active_char_info()
         room = self.arena.rooms.get(req.room_id)
         if not room:
-            room = ArenaRoomInfo(
-                room_id=req.room_id or 1,
-                room_name="Colosseum Arena",
-                host_uid=char_uid,
-            )
-            self.arena.rooms[room.room_id] = room
+            await self.reply(ArenaJoinRoomAck(result=results.ROOM_NOT_EXISTS), correlation,
+                             note=f'arena join room refused (room={req.room_id} no longer exists)')
+            return
 
         member_entry = {'uid': char_uid, 'name': char_name, 'class': char_class, 'level': char_level}
         members = self.arena.room_members.setdefault(room.room_id, [])

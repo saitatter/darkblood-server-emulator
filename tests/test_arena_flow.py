@@ -176,6 +176,31 @@ class ArenaFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_joining_a_closed_room_does_not_recreate_it(self):
+        from darkblood.games.network import results
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('RoomCloser'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            room = messages.ArenaRoomInfo(room_id=23, room_name='Closing Arena')
+            client.send_event(5153, messages.ArenaCreateRoomReq(room=room).encode())
+            await client.expect_event(5154)
+            client.send_event(5148, messages.ArenaLeaveRoomReq().encode())
+            await client.expect_event(5149)
+
+            client.send_event(5145, messages.ArenaJoinRoomReq(room_id=23).encode())
+            _, joined = await client.expect_event(5146)
+            self.assertEqual(messages.ArenaJoinRoomAck.decode(joined).result, results.ROOM_NOT_EXISTS)
+            client.send_event(2306, messages.ArenaGetRoomListReq(page=0).encode())
+            _, listing = await client.expect_event(2307)
+            self.assertEqual(messages.ArenaGetRoomListAck.decode(listing).rooms, [])
+
+        self.run_async(self.with_server(scenario))
+
     def test_arena_teams_switch_and_management_flow(self):
         """End-to-end team management: create team, leave, join team, switch teams."""
         async def scenario(client):
