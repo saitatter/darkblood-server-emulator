@@ -489,6 +489,8 @@ Local live validation reached character selection (2008/2009), but Enter did
 not emit request 2006 during that run. Acceptance of the corrected 2007 and
 world entry remain unverified on this machine.
 
+Depot rentals granted by `2461` or the GM command store an absolute expiry. The character selection reply derives remaining rental time from that deadline.
+
 ### World-details trailer correction (local live verification)
 
 The end of reader `0x00A52630` consumes `bool +1C9`, `u8 +1CA`,
