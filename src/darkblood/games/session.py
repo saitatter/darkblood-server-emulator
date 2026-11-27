@@ -150,6 +150,7 @@ class GameSession:
     async def on_disconnect(self):
         self.stop_timer_loop()
         self.life.stop_fishing()
+        self.arena.leave_room()
         await self.dungeon.leave_room()
         if self.active_char_id:
             await GameWorldManager.get().remove_session_player(self)

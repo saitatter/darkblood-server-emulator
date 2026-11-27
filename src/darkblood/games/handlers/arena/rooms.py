@@ -77,6 +77,7 @@ class ArenaRoomHandlers:
             'name': char_name,
             'class': char_class,
             'level': char_level,
+            'session': self.session,
         }]
         self.arena.rooms[room.room_id] = room
         self._current_arena_room_id = room.room_id
@@ -105,6 +106,8 @@ class ArenaRoomHandlers:
         if not any(m.get('uid') == char_uid for m in members):
             members.append(member_entry)
         self._current_arena_room_id = room.room_id
+        member = next(member for member in members if member['uid'] == char_uid)
+        member['session'] = self.session
 
         self.transport.record('arena-join-room-req', body, room_id=req.room_id)
         ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid, relay=relay_address())
@@ -117,23 +120,29 @@ class ArenaRoomHandlers:
         Client handler: 0x004BB5B0.
         Leaves current match room and updates player count.
         """
-        char_uid, _, _, _ = self._get_active_char_info()
-        curr_room_id = self._current_arena_room_id
-        if curr_room_id and curr_room_id in self.arena.rooms:
-            room = self.arena.rooms[curr_room_id]
-            members = [m for m in self.arena.room_members.get(curr_room_id, [])
-                       if m.get('uid') != char_uid]
-            self.arena.room_members[curr_room_id] = members
-            if not members:
-                self.arena.rooms.pop(curr_room_id, None)
-                self.arena.room_members.pop(curr_room_id, None)
-            elif room.host_uid == char_uid:
-                room.host_uid = members[0]['uid']
-            self._current_arena_room_id = None
-
+        self.leave_room()
         self.transport.record('arena-leave-room-req', body)
         ack = ArenaLeaveRoomAck(result=0)
         await self.reply(ack, correlation, note='arena leave room ack')
+
+    def leave_room(self):
+        """Release this session's membership and hand over the room if it remains open."""
+        room_id, self._current_arena_room_id = self._current_arena_room_id, None
+        if room_id is None:
+            return
+        room = self.arena.rooms.get(room_id)
+        if room is None:
+            return
+        members = self.arena.room_members.get(room_id, [])
+        leaving = next((m for m in members if m.get('session') is self.session), None)
+        if leaving is None:
+            return
+        members.remove(leaving)
+        if not members:
+            self.arena.rooms.pop(room_id, None)
+            self.arena.room_members.pop(room_id, None)
+        elif room.host_uid == leaving['uid']:
+            room.host_uid = members[0]['uid']
 
     @packet_handler(ArenaGetInviteListReq)
     async def handle_arena_get_invite_list(self, correlation: int, body: bytes):

@@ -177,6 +177,41 @@ class ArenaFlowTest(ServerTestCase):
                 _, remaining = await guest.expect_event(2307)
                 room = next(r for r in messages.ArenaGetRoomListAck.decode(remaining).rooms if r.room_id == 10)
                 self.assertEqual(room.host_uid, guest_id)
+
+                import asyncio
+                from darkblood.games.world import GameWorldManager
+
+                async def close_connection(connection, game_session):
+                    await connection.close()
+                    async def wait_for_cleanup():
+                        while game_session._timer_task is not None:
+                            await asyncio.sleep(0.01)
+                    await asyncio.wait_for(wait_for_cleanup(), 2)
+
+                world = GameWorldManager.get()
+                previous_session = world.get_player(guest_id).session
+                reconnected = HeadlessClient(port=client.port)
+                try:
+                    await lobby_flow(reconnected)
+                    reconnected.send_event(2006, struct.pack('<iQ', 0x7fffffff, guest_id))
+                    await reconnected.expect_event(2007)
+                    reconnected.send_event(5145, messages.ArenaJoinRoomReq(room_id=10, password="secret").encode())
+                    _, rejoined = await reconnected.expect_event(5146)
+                    self.assertEqual(messages.ArenaJoinRoomAck.decode(rejoined).result, 0)
+                    current_session = world.get_player(guest_id).session
+
+                    await close_connection(guest, previous_session)
+                    client.send_event(2306, messages.ArenaGetRoomListReq().encode())
+                    _, after_reconnect = await client.expect_event(2307)
+                    rooms = messages.ArenaGetRoomListAck.decode(after_reconnect).rooms
+                    self.assertEqual([(r.room_id, r.host_uid) for r in rooms], [(10, guest_id)])
+
+                    await close_connection(reconnected, current_session)
+                    client.send_event(2306, messages.ArenaGetRoomListReq().encode())
+                    _, after_disconnect = await client.expect_event(2307)
+                    self.assertEqual(messages.ArenaGetRoomListAck.decode(after_disconnect).rooms, [])
+                finally:
+                    await reconnected.close()
             finally:
                 await guest.close()
 
