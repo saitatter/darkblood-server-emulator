@@ -83,6 +83,16 @@ class TwoClientsTest(ServerTestCase):
                 self.assertEqual(lst[4:6], b'\x17\x81')
                 self.assertEqual(struct.unpack_from('<q', lst, 7)[0], b)
 
+                from darkblood.games.network.messages import FriendListAddAck, FriendListUpdateReq
+
+                first.send_event(2133, FriendListUpdateReq(char_uid=b, comment='Old memo').encode())
+                await first.expect_event(2134)
+                first.send_event(2135, struct.pack('<q', b))
+                await first.expect_event(2136)
+                first.send_event(2139, bytes.fromhex('ffffff7f') + jser.wide_string('foxtrot'))
+                _, readded = await first.expect_event(2140)
+                self.assertEqual(FriendListAddAck.decode(readded).friend.memo, '')
+
                 first.send_event(2139, bytes.fromhex('ffffff7f') + jser.wide_string('Nobody'))
                 _, ack = await first.expect_event(2140)
                 self.assertEqual(struct.unpack_from('<i', ack)[0], 0xCE)
