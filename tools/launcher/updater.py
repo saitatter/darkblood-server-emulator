@@ -446,8 +446,18 @@ def apply_zip_archive(root: Path, zip_source, new_version: str = '',
             if rel_posix in LAUNCHER_FILES or rel_posix.startswith('tools/launcher/launcher_app/'):
                 launcher_changed = True
 
-        # Phase 3: remove orphaned files that belonged to the previous release manifest
+        # Phase 3: commit release metadata before pruning files still needed by the old version.
         prev_managed = _read_previous_manifest_files(root)
+        manifest_payload = {'schema': 1, 'version': new_version, 'files': sorted(managed_posix)}
+        metadata = {MANIFEST_FILE: json.dumps(manifest_payload, indent=2) + '\n'}
+        if new_version:
+            metadata[VERSION_FILE] = new_version + '\n'
+        for name, contents in metadata.items():
+            dest = root / name
+            backups.append((dest, dest.read_bytes() if dest.exists() else None))
+            dest.write_text(contents, encoding='utf-8')
+
+        # Phase 4: remove files that belonged only to the previous release.
         for old_rel in sorted(prev_managed - managed_posix):
             rel_path = Path(old_rel)
             if _is_protected(rel_path):
@@ -465,15 +475,6 @@ def apply_zip_archive(root: Path, zip_source, new_version: str = '',
                 except OSError:
                     pass
 
-        # Phase 4: persist new version and manifest
-        if new_version:
-            (root / VERSION_FILE).write_text(new_version + '\n', encoding='utf-8')
-        manifest_payload = {
-            'schema': 1,
-            'version': new_version,
-            'files': sorted(managed_posix),
-        }
-        (root / MANIFEST_FILE).write_text(json.dumps(manifest_payload, indent=2) + '\n', encoding='utf-8')
     except Exception as exc:
         # Roll back any files modified before the failure
         for dest, prev_data in reversed(backups):

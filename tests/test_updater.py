@@ -116,6 +116,33 @@ class ReleaseUpdaterTest(unittest.TestCase):
             self.assertEqual((root / 'assets' / 'keep.tsv').read_text(encoding='utf-8'), 'k2\n')
             self.assertEqual((root / 'user_notes.txt').read_text(encoding='utf-8'), 'keep me\n')
 
+    def test_manifest_write_failure_leaves_previous_release_intact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            old_archive = _make_zip({'release/README.md': b'old', 'release/old.txt': b'restore me'})
+            first = updater.apply_zip_archive(root, old_archive, new_version='v0.1.0')
+            self.assertTrue(first.ok, first.message)
+            manifest = root / updater.MANIFEST_FILE
+            previous_manifest = manifest.read_bytes()
+            new_archive = _make_zip({'release/README.md': b'new'})
+            write_text = Path.write_text
+
+            for marker in (updater.MANIFEST_FILE, updater.VERSION_FILE):
+                with self.subTest(marker=marker):
+                    def fail_marker(path, *args, **kwargs):
+                        if path == root / marker:
+                            raise OSError('release metadata write failed')
+                        return write_text(path, *args, **kwargs)
+
+                    with patch.object(Path, 'write_text', fail_marker):
+                        result = updater.apply_zip_archive(root, new_archive, new_version='v0.2.0')
+
+                    self.assertFalse(result.ok)
+                    self.assertEqual(updater.current_installed_version(root), 'v0.1.0')
+                    self.assertEqual(manifest.read_bytes(), previous_manifest)
+                    self.assertEqual((root / 'README.md').read_bytes(), b'old')
+                    self.assertEqual((root / 'old.txt').read_bytes(), b'restore me')
+
     def test_release_zip_deploys_prebuilt_steam_api_dll(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
