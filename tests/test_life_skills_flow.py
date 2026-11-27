@@ -186,6 +186,29 @@ class LifeSkillsFlowTest(ServerTestCase):
         self.assertEqual(handlers.cast_seconds(kairo, {'code': 'ILurN1'}), 60)  # "reduced by 0 s"
         self.assertEqual(handlers.cast_seconds(kairo, {'code': 'ILurS4'}), 30)
 
+    def test_pending_fishing_stops_when_changing_layers(self):
+        from darkblood.core.hashing import jhash
+        from darkblood.games.entities.character import layer_net_id
+
+        async def scenario(client):
+            char, _ = await enter_town(client, 'MovingAngler', level=10)
+            bait = dict(code='ILurN1', uid=7712, container=3, slot=0, count=2)
+            char['items'].append(bait)
+            request = FishingStartReq(fishing_hole_id='Fish_ACT1_N0', bait_item_id=jhash('ILurN1')).encode()
+            with patch.object(life_handlers, 'FISHING_TIME_SCALE', 0.005), \
+                 patch.object(life_handlers.LifeSkillHandlers, '_roll_catch', return_value=None):
+                client.send_event(2523, request)
+                _, start = await client.expect_event(2524)
+                self.assertEqual(FishingStartAck.decode(start).result, 0)
+                client.send_event(5030, struct.pack('<iQ?', 0x7fffffff, layer_net_id('Act1', 4), False))
+                _, moved = await client.expect_event(5031)
+                self.assertEqual(struct.unpack_from('<i', moved)[0], 0)
+                with self.assertRaises(asyncio.TimeoutError):
+                    await asyncio.wait_for(client.expect_event(2527), 0.65)
+            self.assertEqual(bait['count'], 2)
+
+        self.run_async(self.with_server(scenario))
+
     def test_fishing_refusals_and_stop(self):
         from darkblood.core.hashing import jhash
 

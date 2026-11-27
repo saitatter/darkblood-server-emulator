@@ -228,6 +228,8 @@ class SquareHandlers(BaseDomainService):
                                                         note='waypoint travel refused (not enough AR)')
                         return
                     self.save_char()
+        if layer_id != prev_layer:
+            self.session.life.stop_fishing()
         self._remember_layer(layer_id)
         world = GameWorldManager.get()
         player, previous_layer = world.change_layer(self.session, layer_id)
@@ -293,6 +295,7 @@ class SquareHandlers(BaseDomainService):
         0 continues, any other value opens an error box. The player leaves
         the town, so it is removed from the world presence list.
         """
+        self.session.life.stop_fishing()
         await self.session.dungeon.leave_room()
         if self.session.active_char_id:
             await GameWorldManager.get().remove_session_player(self.session)
@@ -308,6 +311,7 @@ class SquareHandlers(BaseDomainService):
         result: 0 leaves the channel and clears the stored square (+0xB0/+0xB4
         of state 8); other values open an error box.
         """
+        self.session.life.stop_fishing()
         await self.session.dungeon.leave_room()
         if self.session.active_char_id:
             await GameWorldManager.get().remove_session_player(self.session)
