@@ -349,6 +349,13 @@ struct MonsterCardLottoEntry
   bool rewarded
 end
 
+message 2602 MonsterCardListAck ok_only
+  ## Handler 0x00603C40 (assert: vecDeck >> mapMonCardList).
+  u32 result
+  vector<i64> deck_uids      # vecDeck (0x004AFD30)
+  map<i64,MonsterCardInfo> cards  # mapMonCardList (0x005F6540 -> 0x005DDB20)
+end
+
 message 2603 MonsterCardChangeListNot
   ## Handler 0x00607BB0 (assert: vecNewCard >> vecDelCard >> bFromRandomCard).
   vector<MonsterCardInfo> new_cards
@@ -379,6 +386,12 @@ message 2607 MonsterCardMergeAck ok_only
   i64 cur_ar
 end
 
+message 2609 MonsterCardDeckAck ok_only
+  ## Handler 0x00603F10.
+  u32 result
+  vector<i64> card_uids      # cards (0x004AFD30)
+end
+
 message 2610 MonsterCardSetCharDeckReq header?
   ## Equip monster card deck request.
   vector<i64> deck_uids
@@ -403,21 +416,26 @@ message 2614 MonsterCardReleaseAllCharAck ok_only
   MonsterCardInfo card = MonsterCardInfo()
 end
 
-message 2615 MonsterCardExtendSlotReq header?
-  ## Extend monster card inventory slot request.
-  i16 count = 1
+message 2615 MonsterCardExtendSlotReq bare
+  ## Sender 0x005FDD6B writes no fields.
 end
 
 message 2616 MonsterCardExtendSlotAck ok_only
   ## Handler 0x00604990 (assert: m_sMaxInvenCnt >> nCurAr).
   u32 result
-  i16 max_inven_cnt = 50
+  i16 max_inven_cnt = 60
   i64 cur_ar
+end
+
+message 2618 MonsterCardAlbumAck ok_only
+  ## Handler 0x006046A0 (assert: m_vecAlbum).
+  u32 result
+  vector<h32> album_ids      # m_vecAlbum (0x004D6E60)
 end
 
 message 2619 MonsterCardInsertAlbumNot
   ## Handler 0x00604850 (assert: nAlbumCardID).
-  i32 album_card_id
+  h32 album_card_id
 end
 
 message 2632 MonsterCardChangeEventCardListNot

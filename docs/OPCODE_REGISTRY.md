@@ -524,14 +524,14 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2598 | `eEGS_AVATAR_ZAM_SEPARATE_ACK` | 0x00783190 | — | `AvatarZamSeparateAck` |  |
 | 2599 | `eEGS_CITADEL_ROUND_CLEAR_REQ` | — | `social/guild.py` (`handle_citadel_round_clear`) | `CitadelRoundClearReq` | eEGS_CITADEL_ROUND_CLEAR_REQ (0x007A4D80) -> 2600 eEGS_CITADEL_ROUND_CLEAR_ACK (0x0075BF20). |
 | 2600 | `eEGS_CITADEL_ROUND_CLEAR_ACK` | 0x0075BF20 | — | `CitadelRoundClearAck` |  |
-| 2601 | `eEGS_MONSTERCARD_GET_LIST_REQ` | — | `commerce/stores.py` (`handle_monster_card_list`) | — | eEGS_MONSTERCARD_GET_LIST_REQ -> 2602. |
+| 2601 | `eEGS_MONSTERCARD_GET_LIST_REQ` | — | `pets/cards.py` (`handle_monster_card_list`) | — | Opcode 2601 (eEGS_MONSTERCARD_GET_LIST_REQ) -> 2602. |
 | 2602 | `eEGS_MONSTERCARD_GET_LIST_ACK` | — | — | `MonsterCardListAck` |  |
 | 2603 | `eEGS_MONSTERCARD_CHANGE_LIST_NOT` | — | — | `MonsterCardChangeListNot` |  |
 | 2604 | `eEGS_MONSTERCARD_INSERT_REQ` | — | `pets/cards.py` (`handle_monster_card_insert`) | `MonsterCardInsertReq` |  |
 | 2605 | `eEGS_MONSTERCARD_INSERT_ACK` | — | — | `MonsterCardInsertAck` |  |
 | 2606 | `eEGS_MONSTERCARD_MERGE_REQ` | — | `pets/cards.py` (`handle_monster_card_merge`) | `MonsterCardMergeReq` |  |
 | 2607 | `eEGS_MONSTERCARD_MERGE_ACK` | — | — | `MonsterCardMergeAck` |  |
-| 2608 | `eEGS_MONSTERCARD_GET_CHAR_DECK_REQ` | — | `commerce/stores.py` (`handle_monster_card_deck`) | — | eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609. |
+| 2608 | `eEGS_MONSTERCARD_GET_CHAR_DECK_REQ` | — | `pets/cards.py` (`handle_monster_card_deck`) | — | Opcode 2608 (eEGS_MONSTERCARD_GET_CHAR_DECK_REQ) -> 2609. |
 | 2609 | `eEGS_MONSTERCARD_GET_CHAR_DECK_ACK` | — | — | `MonsterCardDeckAck` |  |
 | 2610 | `eEGS_MONSTERCARD_SET_CHAR_DECK_REQ` | — | `pets/cards.py` (`handle_monster_card_set_char_deck`) | `MonsterCardSetCharDeckReq` |  |
 | 2611 | `eEGS_MONSTERCARD_SET_CHAR_DECK_ACK` | — | — | `MonsterCardSetCharDeckAck` |  |
@@ -539,7 +539,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2614 | `eEGS_MONSTERCARD_RELEASE_ALL_CHAR_ACK` | — | — | `MonsterCardReleaseAllCharAck` |  |
 | 2615 | `eEGS_MONSTERCARD_EXTEND_SLOT_REQ` | — | `pets/cards.py` (`handle_monster_card_extend_slot`) | `MonsterCardExtendSlotReq` |  |
 | 2616 | `eEGS_MONSTERCARD_EXTEND_SLOT_ACK` | — | — | `MonsterCardExtendSlotAck` |  |
-| 2617 | `eEGS_MONSTERCARD_GET_ALBUM_REQ` | — | `commerce/stores.py` (`handle_monster_card_album`) | — | eEGS_MONSTERCARD_GET_ALBUM_REQ -> 2618. |
+| 2617 | `eEGS_MONSTERCARD_GET_ALBUM_REQ` | — | `pets/cards.py` (`handle_monster_card_album`) | — | Opcode 2617 (eEGS_MONSTERCARD_GET_ALBUM_REQ) -> 2618. |
 | 2618 | `eEGS_MONSTERCARD_GET_ALBUM_ACK` | — | — | `MonsterCardAlbumAck` |  |
 | 2619 | `eEGS_MONSTERCARD_INSERT_ALBUM_NOT` | — | — | `MonsterCardInsertAlbumNot` |  |
 | 2620 | `eEGS_MARK_ITEM_ACTIVE_NOT` | 0x00776600 | — | `MarkItemActiveNot` |  |

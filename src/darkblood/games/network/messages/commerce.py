@@ -44,9 +44,6 @@ __all__ = [
     'DepotLoadArAck',
     'SteamInitBuyItemNot',
     'SteamFinalizeBuyItemAck',
-    'MonsterCardListAck',
-    'MonsterCardDeckAck',
-    'MonsterCardAlbumAck',
     'DepotShareExpireTimeGetAck',
     'DepotShareExpireTimeAddNot',
     'DepotSizeIncreaseNot',
@@ -507,45 +504,6 @@ class SteamFinalizeBuyItemAck(WireMessage):
     values: Vector[u32] = field(default_factory=list)  # 0x004D6E60, copied to inventory +0x38 by 0x00830300; meaning unknown
     flag: bool = False  # selects the result message text
     applied: bool = True  # refreshes inventory/cash views and shows the purchase message
-
-
-@dataclass
-class MonsterCardListAck(WireMessage):
-    """Opcode 2602: eEGS_MONSTERCARD_GET_LIST_ACK (reply).
-
-    JAppPageMonsterCard vf20 (0x0060B500) -> 0x00603C40; requested by 0x005E3620.
-    No card system on the server yet: containers are empty.
-    """
-    OPCODE: ClassVar[int] = 2602
-    result: u32 = 0
-    card_uids: Vector[u64] = field(default_factory=list)  # cards (0x004AFD30)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'card_uids',
-        Const(EmptyMap),
-    )
-
-
-@dataclass
-class MonsterCardDeckAck(WireMessage):
-    """Opcode 2609: eEGS_MONSTERCARD_GET_CHAR_DECK_ACK (reply).
-
-    0x00603F10.
-    """
-    OPCODE: ClassVar[int] = 2609
-    result: u32 = 0
-    card_uids: Vector[u64] = field(default_factory=list)  # cards (0x004AFD30)
-
-
-@dataclass
-class MonsterCardAlbumAck(WireMessage):
-    """Opcode 2618: eEGS_MONSTERCARD_GET_ALBUM_ACK (reply).
-
-    0x006046A0.
-    """
-    OPCODE: ClassVar[int] = 2618
-    result: u32 = 0
-    album_ids: Vector[u32] = field(default_factory=list)  # album (0x004D6E60)
 
 
 @dataclass

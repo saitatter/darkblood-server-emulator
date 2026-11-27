@@ -62,17 +62,20 @@ __all__ = [
     'PetChangeExpNot',
     'MonsterCardInfo',
     'MonsterCardLottoEntry',
+    'MonsterCardListAck',
     'MonsterCardChangeListNot',
     'MonsterCardInsertReq',
     'MonsterCardInsertAck',
     'MonsterCardMergeReq',
     'MonsterCardMergeAck',
+    'MonsterCardDeckAck',
     'MonsterCardSetCharDeckReq',
     'MonsterCardSetCharDeckAck',
     'MonsterCardReleaseAllCharReq',
     'MonsterCardReleaseAllCharAck',
     'MonsterCardExtendSlotReq',
     'MonsterCardExtendSlotAck',
+    'MonsterCardAlbumAck',
     'MonsterCardInsertAlbumNot',
     'MonsterCardChangeEventCardListNot',
     'MonsterCardLottoRegReq',
@@ -722,6 +725,19 @@ class MonsterCardLottoEntry(WireMessage):
 
 
 @dataclass
+class MonsterCardListAck(WireMessage):
+    """Opcode 2602: eEGS_MONSTERCARD_GET_LIST_ACK (reply).
+
+    Handler 0x00603C40 (assert: vecDeck >> mapMonCardList).
+    """
+    OPCODE: ClassVar[int] = 2602
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    deck_uids: Vector[i64] = field(default_factory=list)  # vecDeck (0x004AFD30)
+    cards: Map[i64, MonsterCardInfo] = field(default_factory=dict)  # mapMonCardList (0x005F6540 -> 0x005DDB20)
+
+
+@dataclass
 class MonsterCardChangeListNot(WireMessage):
     """Opcode 2603: eEGS_MONSTERCARD_CHANGE_LIST_NOT (reply).
 
@@ -782,6 +798,18 @@ class MonsterCardMergeAck(WireMessage):
 
 
 @dataclass
+class MonsterCardDeckAck(WireMessage):
+    """Opcode 2609: eEGS_MONSTERCARD_GET_CHAR_DECK_ACK (reply).
+
+    Handler 0x00603F10.
+    """
+    OPCODE: ClassVar[int] = 2609
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    card_uids: Vector[i64] = field(default_factory=list)  # cards (0x004AFD30)
+
+
+@dataclass
 class MonsterCardSetCharDeckReq(WireMessage):
     """Opcode 2610: eEGS_MONSTERCARD_SET_CHAR_DECK_REQ (request).
 
@@ -835,12 +863,9 @@ class MonsterCardReleaseAllCharAck(WireMessage):
 class MonsterCardExtendSlotReq(WireMessage):
     """Opcode 2615: eEGS_MONSTERCARD_EXTEND_SLOT_REQ (request).
 
-    Extend monster card inventory slot request.
+    Sender 0x005FDD6B writes no fields.
     """
     OPCODE: ClassVar[int] = 2615
-    _WIRE_HEADER: ClassVar[str] = 'header?'
-    header: i32 = REQUEST_HEADER
-    count: i16 = 1
 
 
 @dataclass
@@ -852,8 +877,20 @@ class MonsterCardExtendSlotAck(WireMessage):
     OPCODE: ClassVar[int] = 2616
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
-    max_inven_cnt: i16 = 50
+    max_inven_cnt: i16 = 60
     cur_ar: i64 = 0
+
+
+@dataclass
+class MonsterCardAlbumAck(WireMessage):
+    """Opcode 2618: eEGS_MONSTERCARD_GET_ALBUM_ACK (reply).
+
+    Handler 0x006046A0 (assert: m_vecAlbum).
+    """
+    OPCODE: ClassVar[int] = 2618
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    album_ids: Vector[h32] = field(default_factory=list)  # m_vecAlbum (0x004D6E60)
 
 
 @dataclass
@@ -863,7 +900,7 @@ class MonsterCardInsertAlbumNot(WireMessage):
     Handler 0x00604850 (assert: nAlbumCardID).
     """
     OPCODE: ClassVar[int] = 2619
-    album_card_id: i32 = 0
+    album_card_id: h32 = 0
 
 
 @dataclass

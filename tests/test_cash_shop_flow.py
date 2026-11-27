@@ -186,6 +186,18 @@ class CashShopFlowTest(ServerTestCase):
             card_code = char['monster_cards'][0]['code']
             self.assertTrue(card_code.startswith('Card'))
             self.assertEqual(struct.unpack_from('<I', card2603, 10)[0], jhash(card_code))
+            _, album2619 = await client.expect_event(2619)
+            self.assertEqual(struct.unpack('<I', album2619)[0], jhash(card_code))
+
+            # Opening Card Collection (2601 -> 2602, 2617 -> 2618) returns the collected card
+            client.send_event(2601)
+            _, list2602 = await client.expect_event(2602)
+            self.assertEqual(struct.unpack_from('<I', list2602)[0], 0)
+            self.assertIn(struct.pack('<I', jhash(card_code)), list2602)
+
+            client.send_event(2617)
+            _, album2618 = await client.expect_event(2618)
+            self.assertEqual(album2618, struct.pack('<I', 0) + b'\x10\x81' + struct.pack('<I', jhash(card_code)))
 
         self.run_async(self.with_server(scenario))
 

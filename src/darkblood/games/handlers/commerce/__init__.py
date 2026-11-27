@@ -2,7 +2,7 @@
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.handlers.commerce.cash_shop import CashShopHandlers
 from darkblood.games.handlers.commerce.stalls import StallHandlers
-from darkblood.games.handlers.commerce.stores import MONSTER_CARD_ACKS, StoreHandlers, store_record
+from darkblood.games.handlers.commerce.stores import StoreHandlers, store_record
 from darkblood.games.handlers.commerce.trade import TradeHandlers
 from darkblood.player_management.characters import free_bag_slots
 
@@ -23,7 +23,6 @@ class CommerceHandlers(
 
 __all__ = [
     "CommerceHandlers",
-    "MONSTER_CARD_ACKS",
     "free_bag_slots",
     "store_record",
 ]

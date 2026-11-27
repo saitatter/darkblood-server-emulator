@@ -24,7 +24,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:494 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:506 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (7 of 156 fields)
+## commerce (6 of 149 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -34,7 +34,6 @@
 | `StoreRecord` | `i16` | commerce.jsch:18 | +0x1A: -1 = max buy count is the item's stack size (dict +0x19E) |
 | `StoreRecord` | `raw[4]` | commerce.jsch:19 | +0x1C unknown |
 | `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:161 | meaning unknown |
-| `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:248 | 0x005F6540 |
 
 ## dungeon (25 of 284 fields)
 
@@ -176,12 +175,12 @@
 | `5051 PartyInviteNot` | `raw[74]` | party.jsch:51 |  |
 | `PartyMemberInfo` | `i32` | party.jsch:123 |  |
 
-## pets (2 of 178 fields)
+## pets (2 of 184 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `MonsterCardInfo` | `vector<?>` | pets.jsch:340 | 0x004B0BB0 card options |
-| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:480 | m_mapWinCnt (0x005F6730) |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:498 | m_mapWinCnt (0x005F6730) |
 
 ## quests (1 of 109 fields)
 

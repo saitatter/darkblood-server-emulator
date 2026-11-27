@@ -240,26 +240,6 @@ message 2714 SteamFinalizeBuyItemAck
   bool applied = true        # refreshes inventory/cash views and shows the purchase message
 end
 
-message 2602 MonsterCardListAck
-  ## JAppPageMonsterCard vf20 (0x0060B500) -> 0x00603C40; requested by 0x005E3620.
-  ## No card system on the server yet: containers are empty.
-  u32 result
-  vector<u64> card_uids      # cards (0x004AFD30)
-  map<?> _                   # 0x005F6540
-end
-
-message 2609 MonsterCardDeckAck
-  ## 0x00603F10.
-  u32 result
-  vector<u64> card_uids      # cards (0x004AFD30)
-end
-
-message 2618 MonsterCardAlbumAck
-  ## 0x006046A0.
-  u32 result
-  vector<u32> album_ids      # album (0x004D6E60)
-end
-
 message 2243 DepotShareExpireTimeGetAck ok_only
   ## Handler 0x0076C040 (assert: mapShareTime, map<i64, i64> reader 0x00765610).
   u32 result

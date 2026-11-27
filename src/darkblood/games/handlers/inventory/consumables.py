@@ -19,6 +19,7 @@ from darkblood.games.network.messages import (
     MarkTabActiveNot,
     MonsterCardChangeListNot,
     MonsterCardInfo,
+    MonsterCardInsertAlbumNot,
     RandomboxResultItemNot,
     SealItemAck,
     SealItemReq,
@@ -97,12 +98,17 @@ class ConsumableHandlersMixin:
     async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, box_kind: str):
         if box_kind == 'monster_card':
             cards = char.setdefault('monster_cards', [])
+            album = char.setdefault('monster_card_album', [])
             next_uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
             new_cards = []
+            new_album_codes = []
             granted_names = []
             owner_uid = self.char_id or 0
             for item_code, qty in contents:
                 card_code = item_code[1:] if item_code.startswith('MCard') else item_code
+                if card_code not in album:
+                    album.append(card_code)
+                    new_album_codes.append(card_code)
                 for _ in range(max(1, int(qty))):
                     uid = next_uid
                     next_uid += 1
@@ -119,6 +125,11 @@ class ConsumableHandlersMixin:
                 MonsterCardChangeListNot(new_cards=new_cards, del_cards=[], from_random_card=True),
                 note='monster card booster opened (%s -> %s)' % (box_code, ', '.join(granted_names)),
             )
+            for card_code in new_album_codes:
+                await self.send_msg(
+                    MonsterCardInsertAlbumNot(album_card_id=jhash(card_code)),
+                    note='monster card album insert (%s)' % card_code,
+                )
             return
         stored = add_reward_items(char, contents)
         self.save_char()

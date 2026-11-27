@@ -464,9 +464,19 @@ class PetsFlowTest(ServerTestCase):
             _, r = await client.expect_event(2614)
             self.assertEqual(MonsterCardReleaseAllCharAck.decode(r).result, 0)
 
-            client.send_event(2615, MonsterCardExtendSlotReq(count=1).encode())
+            # 2615 is bare; requires 500,000 AR (SlotExtendPrice) and expands 60 -> 70
+            client.send_event(2615, MonsterCardExtendSlotReq().encode())
             _, r = await client.expect_event(2616)
-            self.assertEqual(MonsterCardExtendSlotAck.decode(r).max_inven_cnt, 60)
+            self.assertEqual(MonsterCardExtendSlotAck.decode(r).result, 168)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['gold'] = 1_000_000
+            session.GameSession.store().save_char('OfflinePlayer', char_id)
+            client.send_event(2615, MonsterCardExtendSlotReq().encode())
+            _, r = await client.expect_event(2616)
+            ack2616 = MonsterCardExtendSlotAck.decode(r)
+            self.assertEqual(ack2616.result, 0)
+            self.assertEqual(ack2616.max_inven_cnt, 70)
+            self.assertEqual(ack2616.cur_ar, 500_000)
 
             client.send_event(2633, MonsterCardLottoRegReq(numbers=[1, 2, 3]).encode())
             _, r = await client.expect_event(2634)

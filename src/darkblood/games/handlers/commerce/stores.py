@@ -16,9 +16,6 @@ from darkblood.games.network.messages import (
     DragItemAck,
     DurabilityChangeAck,
     DurabilityChangeReq,
-    MonsterCardAlbumAck,
-    MonsterCardDeckAck,
-    MonsterCardListAck,
     RepurchaseItem,
     RepurchaseItemAck,
     RepurchaseItemReq,
@@ -44,8 +41,6 @@ from darkblood.player_management.characters import (
 )
 from darkblood.games.game_data import client_dict
 from darkblood.games.game_data.client_dict import item_field, item_max_durability
-
-MONSTER_CARD_ACKS = {2602: MonsterCardListAck, 2609: MonsterCardDeckAck, 2618: MonsterCardAlbumAck}
 
 # Exact reward table from roulette.lua (DictRoulette:LoadReward).
 # Tuple: (id, reward_type, value, rate, notify)
@@ -109,11 +104,6 @@ def store_record(item: str, stock: int = -1, price: int = None) -> StoreRecord:
 class StoreHandlers:
     def _shop_char(self):
         return self.current_char()
-
-
-    async def _monster_card_empty(self, correlation, opcode):
-        await self.transport.send_event(event(opcode, MONSTER_CARD_ACKS[opcode]().encode(), correlation),
-                                        note=f'monster card ack {opcode} (empty)')
 
 
     def _repurchase_list(self):
@@ -306,24 +296,6 @@ class StoreHandlers:
             correlation,
             note=f'repurchase item ack (item={req.item_uid} price={price} gold={char_gold})',
         )
-
-
-    @packet_handler(2601)
-    async def handle_monster_card_list(self, correlation, body):
-        # eEGS_MONSTERCARD_GET_LIST_REQ -> 2602.
-        await self._monster_card_empty(correlation, 2602)
-
-
-    @packet_handler(2608)
-    async def handle_monster_card_deck(self, correlation, body):
-        # eEGS_MONSTERCARD_GET_CHAR_DECK_REQ -> 2609.
-        await self._monster_card_empty(correlation, 2609)
-
-
-    @packet_handler(2617)
-    async def handle_monster_card_album(self, correlation, body):
-        # eEGS_MONSTERCARD_GET_ALBUM_REQ -> 2618.
-        await self._monster_card_empty(correlation, 2618)
 
 
     @packet_handler(2592)
