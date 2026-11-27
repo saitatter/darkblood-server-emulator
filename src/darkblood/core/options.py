@@ -79,16 +79,38 @@ PATCH_META = {
     'skip_logos':            ('hack',        'patches/skip_logos.c'),
     'skip_tutorial_always':  ('hack',        'patches/skip_tutorial_always.c'),
     'adult_content':         ('server',      'server/frontend.py'),
-    'gm_mode':               ('server',      'server/gm.py'),
+    'gm_mode':               ('server_cheat', 'server/gm.py'),
     'diagnostic_hooks':      ('diagnostic',  'patches/diagnostic_hooks.c'),
     'debug_tools':           ('diagnostic',  'patches/debug_tools.c'),
+    'life_proficiency_rate': ('multiplier',  'games/handlers/life_skills.py'),
+    'gather_respawn_time':   ('multiplier',  'games/life_targets.py'),
+}
+
+# Numeric server settings: key -> (section, default, label, description, minimum, maximum).
+# Read live by the server (no restart needed after the launcher saves them).
+NUMERIC_OPTIONS = {
+    'life_proficiency_rate': (
+        'server', 1.0, 'Life skill proficiency rate (x)',
+        'Multiplies the proficiency gained per successful gather/mining (SuccessProficiencyUp in '
+        'gathering.lua) and per used fishing proficiency item. Still capped by the skill level\'s '
+        'MaxProficiency. 1 = original table values.',
+        0.0, 1000.0,
+    ),
+    'gather_respawn_time': (
+        'server', 1.0, 'Gathering node respawn time (x)',
+        'Multiplies the RegenSecond delay of gathering/mining nodes (60 s in gathering.lua). '
+        '0.1 = respawn 10x faster, 2 = twice as slow. RegenProb and EnableRate still apply.',
+        0.01, 100.0,
+    ),
 }
 
 CATEGORIES = (
-    ('improvement', 'Improvements & QoL (Client)'),
-    ('hack',        'Hacks & Gameplay (Client)'),
-    ('server',      'Server Behaviour'),
-    ('diagnostic',  'Diagnostics & Dev Tools (Client)'),
+    ('improvement',  'Improvements & QoL (Client)'),
+    ('hack',         'Client-side Cheats & Hacks (Client hooks)'),
+    ('server_cheat', 'Server-side Cheats (Server)'),
+    ('multiplier',   'Game Multipliers (Server, applied live)'),
+    ('server',       'Server Behaviour'),
+    ('diagnostic',   'Diagnostics & Dev Tools (Client)'),
 )
 
 
@@ -164,16 +186,52 @@ def read_launcher():
     return {'account': account, 'clients': clients}
 
 
+def clamp_number(key, raw):
+    """Parse and clamp a NUMERIC_OPTIONS value; falls back to the default when invalid."""
+    _, default, _, _, lo, hi = NUMERIC_OPTIONS[key]
+    try:
+        value = float(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+    if value != value:  # NaN
+        return default
+    return max(lo, min(hi, value))
+
+
+def read_numbers():
+    """Return NUMERIC_OPTIONS values (clamped)."""
+    parser = _load_parser()
+    return {key: clamp_number(key, parser.get(section, key, fallback=str(default)))
+            for key, (section, default, _, _, _, _) in NUMERIC_OPTIONS.items()}
+
+
+_number_cache = {'stamp': None, 'values': None}
+
+
+def number(key):
+    """A NUMERIC_OPTIONS value, re-read only when the options file changes (cheap for hot paths)."""
+    try:
+        st = OPTIONS_PATH.stat()
+        stamp = (str(OPTIONS_PATH), st.st_mtime_ns, st.st_size)
+    except OSError:
+        stamp = (str(OPTIONS_PATH), None, None)
+    if _number_cache['stamp'] != stamp or _number_cache['values'] is None:
+        _number_cache['values'] = read_numbers()
+        _number_cache['stamp'] = stamp
+    return _number_cache['values'][key]
+
+
 def read_all():
-    """Return full configuration dictionary: network, launcher, and options."""
+    """Return full configuration dictionary: network, launcher, options and numbers."""
     return {
         'network': read_network(),
         'launcher': read_launcher(),
         'options': read(),
+        'numbers': read_numbers(),
     }
 
 
-def write_all(values=None, network=None, launcher=None):
+def write_all(values=None, network=None, launcher=None, numbers=None):
     """Write configuration to OPTIONS_PATH, preserving unspecified sections."""
     current = read_all()
     opts = dict(current['options'])
@@ -216,6 +274,16 @@ def write_all(values=None, network=None, launcher=None):
         if not parser.has_section(section):
             parser.add_section(section)
         parser.set(section, key, '1' if opts.get(key, default) else '0')
+
+    nums = dict(current['numbers'])
+    if numbers is not None:
+        for key in NUMERIC_OPTIONS:
+            if key in numbers:
+                nums[key] = clamp_number(key, numbers[key])
+    for key, (section, default, _, _, _, _) in NUMERIC_OPTIONS.items():
+        if not parser.has_section(section):
+            parser.add_section(section)
+        parser.set(section, key, f'{nums.get(key, default):g}')
 
     OPTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OPTIONS_PATH, 'w', encoding='utf-8') as stream:

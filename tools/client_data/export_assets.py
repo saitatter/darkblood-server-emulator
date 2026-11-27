@@ -71,6 +71,14 @@ def export_item_durabilities():
     print(f"Exported {len(lines)-1} item durability rows to {out.name}")
 
 
+def export_item_overlap():
+    rules = client_dict.item_overlap_rules()
+    lines = ['code_prefix\tmax_stack'] + [f"{prefix}\t{count}" for prefix, count in rules]
+    out = ASSETS_DIR / 'item_overlap.tsv'
+    out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    print(f"Exported {len(rules)} item overlap rows to {out.name}")
+
+
 def export_equip_index():
     data = client_dict.equip_index()
     lines = ['item_id\tgrade\tdemand_lv\tdemand_class']
@@ -340,6 +348,7 @@ def main():
     export_levelup_ap()
     export_life_water()
     export_item_durabilities()
+    export_item_overlap()
     export_equip_index()
     export_item_fields()
     export_npcs_and_stores()

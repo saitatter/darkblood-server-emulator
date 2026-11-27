@@ -1,6 +1,7 @@
 """Town GTargets and life skills: target list (5124/5125/5126), gathering (2177) and fishing (2523-2529)."""
 import asyncio
 
+from darkblood.core import options
 from darkblood.core.hashing import jhash
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import UPDATE_OWNER, Item
@@ -98,7 +99,11 @@ class LifeSkillHandlers(BaseDomainService):
         return int((char.get('skills') or {}).get(str(skill_index), 0))
 
     def _raise_proficiency(self, char, proficiency_type, amount):
-        """Add proficiency, capped by the skill's MaxProficiency; returns (changed, new value)."""
+        """Add proficiency, capped by the skill's MaxProficiency; returns (changed, new value).
+
+        `amount` is scaled by the launcher's life_proficiency_rate option (1 = table value).
+        """
+        amount = amount * options.number('life_proficiency_rate')
         values = proficiency_values_for_char(char)
         skill = PROFICIENCY_TO_LIFE_SKILL.get(proficiency_type)
         cap = max_proficiency(skill, self._skill_level(char, skill)) if skill else 0.0
@@ -138,7 +143,7 @@ class LifeSkillHandlers(BaseDomainService):
         jackpot = self.rng.random() < kairo['jackpot_prob']
         rolled = [(code, count) for code, count, prob in (kairo['jackpot_items'] if jackpot else kairo['items'])
                   if self.rng.random() < prob]
-        if len(free_cells(char)) < slots_needed(rolled):
+        if len(free_cells(char)) < slots_needed(rolled, char):
             await self.reply(ActKairoAck(result=results.INVEN_FULL, remain_gold=gold_of(char)), correlation,
                              note=f'gathering refused ({req.kairo_id}: bags full)')
             return
@@ -241,7 +246,7 @@ class LifeSkillHandlers(BaseDomainService):
         if bait is None:
             return True  # the loop reports the missing bait
         caught = self._roll_catch(kairo)
-        if caught and len(free_cells(char)) < slots_needed([caught]):
+        if caught and len(free_cells(char)) < slots_needed([caught], char):
             await self.send_to([self.session], FishingFailedNot(result=results.INVEN_FULL), note='fishing failed (bags full)')
             return False
         bait['count'] = bait.get('count', 1) - 1

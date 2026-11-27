@@ -93,7 +93,9 @@ class CashShopFlowTest(ServerTestCase):
             await client.expect_event(2007)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
             bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
-            filler = [dict(code='Ihppa0000', uid=60 + s, container=bag, slot=s) for s in range(1, 5)]
+            # Non-stackable filler (BagSize items stack to 1): the package's potions
+            # would otherwise top up a potion stack instead of needing a free cell.
+            filler = [dict(code='IbagU160', uid=60 + s, container=bag, slot=s) for s in range(1, 5)]
             char['items'] = [dict(code='CPkgTest', uid=50, container=bag, slot=0)] + filler
             session.GameSession.store().save()
 
@@ -116,7 +118,7 @@ class CashShopFlowTest(ServerTestCase):
             _, items = await client.expect_event(2037)
             self.assertEqual(items[4:6], bytes.fromhex('1082'))
             codes = sorted(i['code'] for i in char['items'])
-            self.assertEqual(codes, ['Ihppa0000'] * 4 + ['Imppa0000'])
+            self.assertEqual(codes, ['IbagU160'] * 3 + ['Ihppa0000', 'Imppa0000'])
             self.assertEqual({item['slot'] for item in char['items']}, set(range(5)))
 
         self.run_async(self.with_server(scenario))

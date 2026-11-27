@@ -157,7 +157,7 @@ class StoreHandlers:
 
         count = max(1, req.count)
         free = free_bag_slots(char)
-        if free is not None and slots_needed([(item_code, count)]) > free:
+        if free is not None and slots_needed([(item_code, count)], char) > free:
             ack = BuyItemAck(result=results.INVEN_FULL)
             await self.reply(ack, correlation, note='buy item fail (inventory full)')
             return

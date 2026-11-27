@@ -57,6 +57,23 @@ class OptionsTest(unittest.TestCase):
         self.assertEqual(cfg2['launcher'], {'account': 'Tester', 'clients': 2})
         self.assertFalse(cfg2['options']['adult_content'])
 
+    def test_numeric_options_round_trip_clamp_and_live_reads(self):
+        self.assertEqual(options.read_numbers(), {'life_proficiency_rate': 1.0, 'gather_respawn_time': 1.0})
+        self.assertEqual(options.number('life_proficiency_rate'), 1.0)
+
+        options.write_all(numbers={'life_proficiency_rate': '2.5', 'gather_respawn_time': -3})
+        text = options.OPTIONS_PATH.read_text(encoding='utf-8')
+        self.assertIn('life_proficiency_rate = 2.5', text)
+        self.assertEqual(options.number('life_proficiency_rate'), 2.5)  # cache follows the file
+        self.assertEqual(options.number('gather_respawn_time'), 0.01)  # clamped to the minimum
+
+        # Boolean-only writes keep the numbers; junk falls back to the default.
+        options.write({'adult_content': False})
+        self.assertEqual(options.read_numbers()['life_proficiency_rate'], 2.5)
+        self.assertEqual(options.clamp_number('life_proficiency_rate', 'abc'), 1.0)
+        self.assertEqual(options.clamp_number('life_proficiency_rate', 'nan'), 1.0)
+        self.assertEqual(options.clamp_number('gather_respawn_time', 1e9), 100.0)
+
     def test_network_validation(self):
         self.assertEqual(
             options.validate_network(' 10.0.0.5 ', '9400', '9401'),
@@ -73,7 +90,7 @@ class OptionsTest(unittest.TestCase):
 
     def test_every_option_has_patch_metadata(self):
         valid_cats = {cid for cid, _ in options.CATEGORIES}
-        for key in options.OPTIONS:
+        for key in list(options.OPTIONS) + list(options.NUMERIC_OPTIONS):
             self.assertIn(key, options.PATCH_META)
             cat, src = options.PATCH_META[key]
             self.assertIn(cat, valid_cats)

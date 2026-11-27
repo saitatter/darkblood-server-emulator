@@ -55,7 +55,7 @@ class CashShopHandlers:
             return 442, 'unknown product'
         rewards = [products[product] for product in product_ids]
         free = __import__("darkblood.games.handlers.commerce", fromlist=["free_bag_slots"]).free_bag_slots(char)
-        if free is not None and slots_needed(rewards) > free:
+        if free is not None and slots_needed(rewards, char) > free:
             return 67, 'inventory full'
         stored = add_reward_items(char, rewards)
         self.save_char()

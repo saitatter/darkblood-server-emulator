@@ -367,3 +367,38 @@ def equip_index():
                         int(lv.group(1)) if lv else 1, cls.group(1) if cls else ''))
     return out
 
+
+
+OVERLAP_RE = re.compile(r'\{([^{}]*)\}')
+OVERLAP_FIELD_RE = re.compile(r'(\w+) = "?([^",\n]*)"?')
+
+
+@lru_cache(maxsize=None)
+def item_overlap_rules():
+    """[(code prefix, max stack)] from DictItem:LoadOverlap, longest prefix first.
+
+    item_overlap.lua keys each rule by CodeID + SubID, the leading characters of
+    an ItemID (IMnr20N -> "I" + "Mnr", Count 1000). Count is the stack size.
+    """
+    override = _env_override('item_overlap.lua')
+    tsv = bundled_asset('item_overlap.tsv', override)
+    rules = []
+    if tsv:
+        rules = [(parts[0], int(parts[1])) for parts in tsv_rows(tsv) if len(parts) >= 2]
+    else:
+        path = override or (data_root() / 'item_overlap.lua')
+        if path.exists():
+            text = path.read_text(encoding='utf-8', errors='replace')
+            for block in OVERLAP_RE.findall(text):
+                fields = dict(OVERLAP_FIELD_RE.findall(block))
+                if 'CodeID' in fields and 'Count' in fields:
+                    rules.append((fields['CodeID'] + fields.get('SubID', ''), int(fields['Count'])))
+    return sorted(set(rules), key=lambda r: (-len(r[0]), r[0]))
+
+
+def item_stack_limit(code: str):
+    """Max stack size of an item from item_overlap.lua, or None when no rule matches."""
+    for prefix, count in item_overlap_rules():
+        if code.startswith(prefix):
+            return max(1, count)
+    return None

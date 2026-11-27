@@ -191,7 +191,7 @@ class PersonalShopManager:
                 return False, "Insufficient gold", 0, []
 
             reward = [(stall_item.code, buy_count)]
-            if len(free_cells(buyer_char)) < slots_needed(reward):
+            if len(free_cells(buyer_char)) < slots_needed(reward, buyer_char):
                 return False, "Inventory full", 0, []
 
             # Locate seller character in store to credit gold and remove item
@@ -345,7 +345,7 @@ class BrokerManager:
             char_uid = char.get('id', 1)
             if listing.seller_uid != char_uid:
                 return False, "Not the seller", []
-            if len(free_cells(char)) < slots_needed([(listing.code, listing.count)]):
+            if len(free_cells(char)) < slots_needed([(listing.code, listing.count)], char):
                 return False, "Inventory full", []
 
             # Return item to character inventory
@@ -372,7 +372,7 @@ class BrokerManager:
             if buyer_gold < total_price:
                 return False, "Insufficient gold", 0, [], 0
 
-            if len(free_cells(buyer_char)) < slots_needed([(listing.code, buy_cnt)]):
+            if len(free_cells(buyer_char)) < slots_needed([(listing.code, buy_cnt)], buyer_char):
                 return False, "Inventory full", 0, [], 0
 
             # Credit seller

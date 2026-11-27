@@ -306,7 +306,7 @@ class DungeonRewardsHandlers:
         reward_code, reward_count = loot.roll_dungeon_reward(map_code, int(char.get('char_class', 0)))
         grant = [(reward_code, reward_count)]
         free = free_bag_slots(char)
-        bag_full = free is not None and free < slots_needed(grant)
+        bag_full = free is not None and free < slots_needed(grant, char)
         spend_gold(char, cost)   # affordability checked by _reward_card_refusal
         stored_items = [] if bag_full else add_reward_items(char, grant)
         if bag_full:

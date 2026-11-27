@@ -8,7 +8,7 @@ import struct
 
 from darkblood.core.serialization.jser import WireError, read_varuint
 from darkblood.games.entities.character import Character
-from darkblood.games.game_data.client_dict import default_equipment, item_max_durability
+from darkblood.games.game_data.client_dict import default_equipment, item_max_durability, item_stack_limit
 
 
 def read_wide(data, offset):
@@ -165,9 +165,52 @@ def next_item_uid(char):
     return uid
 
 
-def slots_needed(items):
-    """Bag cells add_reward_items would use for [(code, count)]."""
-    return sum(max(1, int(n)) if item_max_durability(code) is not None else 1 for code, n in items)
+def _stack_sizes(code, count):
+    """Split ``count`` of ``code`` into new-stack amounts.
+
+    item_overlap.lua gives the stack size (item_stack_limit). Without a rule,
+    equipment (has a Durability entry) takes one cell per piece and anything
+    else is one stack, as before the overlap table was recovered.
+    """
+    limit = item_stack_limit(code)
+    if limit is None:
+        limit = 1 if item_max_durability(code) is not None else count
+    full, rest = divmod(count, limit)
+    return [limit] * full + ([rest] if rest else [])
+
+
+def _stack_plan(char, items):
+    """[(existing record or None, code, amount)]: top up stacks in the bags, then new cells."""
+    bag_ids = {b['bag_id'] for b in _inventory_bags(char)} if char else set()
+    room = {}  # id(record) -> amount still free in that stack (shared across entries)
+    plan = []
+    for code, count in items:
+        count = max(1, int(count))
+        limit = item_stack_limit(code)
+        if limit and limit > 1 and char:
+            for rec in char.get('items', []):
+                if count <= 0:
+                    break
+                if rec.get('code') != code or rec.get('container') not in bag_ids:
+                    continue
+                key = id(rec)
+                free = room.setdefault(key, limit - int(rec.get('count', 1)))
+                take = min(free, count)
+                if take > 0:
+                    room[key] -= take
+                    count -= take
+                    plan.append((rec, code, take))
+        if count > 0:
+            plan.extend((None, code, amount) for amount in _stack_sizes(code, count))
+    return plan
+
+
+def slots_needed(items, char=None):
+    """Bag cells add_reward_items would use for [(code, count)].
+
+    With ``char``, amounts that fit in its existing stacks need no new cell.
+    """
+    return sum(1 for rec, _, _ in _stack_plan(char, items) if rec is None)
 
 
 def _inventory_bags(char):
@@ -234,31 +277,34 @@ def add_reward_items(char, items):
     capacity (not shown by the client). Without an equipped bag the items go
     to container -1 (client default bag 0x00828600(-1)); their display in the
     inventory window is NOT verified yet.
+
+    Stackable items (item_overlap.lua) first top up existing stacks of the same
+    code in the bags; those records are returned too, with their new count, so
+    callers' item updates (keyed by uid) refresh the existing stack.
     """
     bags = _inventory_bags(char)
     cells = free_cells(char)
     last = bags[-1]['bag_id'] if bags else -1
     used = {i['slot'] for i in char.get('items', []) if i.get('container') == last}
     stored = []
-    for code, count in items:
-        count = max(1, int(count))
-        # Equipment (has a Durability entry) takes one slot per piece; other
-        # items are stored as one stack (Item +0 Amount). Stack limits are not
-        # recovered.
-        stacks = [1] * count if item_max_durability(code) is not None else [count]
-        for amount in stacks:
-            if cells:
-                container, slot = cells.pop(0)
-            else:
-                container = last
-                slot = next(s for s in range(256) if s not in used)
-            if container == last:
-                used.add(slot)
-            record = dict(code=code, uid=next_item_uid(char), container=container, slot=slot)
-            if amount > 1:
-                record['count'] = amount
-            char.setdefault('items', []).append(record)
-            stored.append(record)
+    for existing, code, amount in _stack_plan(char, items):
+        if existing is not None:
+            existing['count'] = int(existing.get('count', 1)) + amount
+            if not any(r is existing for r in stored):
+                stored.append(existing)
+            continue
+        if cells:
+            container, slot = cells.pop(0)
+        else:
+            container = last
+            slot = next(s for s in range(256) if s not in used)
+        if container == last:
+            used.add(slot)
+        record = dict(code=code, uid=next_item_uid(char), container=container, slot=slot)
+        if amount > 1:
+            record['count'] = amount
+        char.setdefault('items', []).append(record)
+        stored.append(record)
     return stored
 
 

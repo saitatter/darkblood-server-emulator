@@ -643,6 +643,7 @@ class DungeonFlowTest(ServerTestCase):
             self.assertNotEqual(item_hash, 0)
             self.assertGreater(len(char['items']), before_claim)
             after_claim = len(char['items'])
+            after_claim_units = sum(int(i.get('count', 1)) for i in char['items'])
 
             client.send_event(5090, card_request)
             _, ack5091 = await client.expect_event(5091)
@@ -667,7 +668,8 @@ class DungeonFlowTest(ServerTestCase):
                 _, ack5091 = await client.expect_event(5091)
                 if victory:
                     self.assertEqual(struct.unpack_from('<iq', ack5091), (0, char_id))
-                    self.assertGreater(len(char['items']), after_claim)
+                    # The card may top up an existing stack (item_overlap.lua) instead of a new cell.
+                    self.assertGreater(sum(int(i.get('count', 1)) for i in char['items']), after_claim_units)
                 else:
                     self.assertEqual(ack5091, struct.pack('<i', results.INVALID_STATE))
                     self.assertEqual(len(char['items']), after_claim)

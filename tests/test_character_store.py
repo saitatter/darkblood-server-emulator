@@ -21,6 +21,38 @@ class InventoryTest(unittest.TestCase):
         self.assertEqual([(r['container'], r['slot']) for r in stored], [(3, 1), (38, 0), (38, 1)])
         self.assertEqual(free_bag_slots(char), 3)
 
+    def test_rewards_top_up_stacks_up_to_the_overlap_count(self):
+        from darkblood.games.game_data.client_dict import item_stack_limit
+        from darkblood.player_management.characters import add_reward_items, free_cells, slots_needed
+        # item_overlap.lua: CodeID "I" + SubID "Mnr" stacks to 1000, "Rid" to 10, bags to 1.
+        self.assertEqual(item_stack_limit('IMnr20N'), 1000)
+        self.assertEqual(item_stack_limit('IRid1Cash46'), 10)
+        self.assertEqual(item_stack_limit('IbagU160'), 1)
+        self.assertIsNone(item_stack_limit('Zunknown'))
+
+        char = dict(bags=[dict(bag_id=3, code='Ibaga0004', b29=5, w2a=0)],
+                    items=[dict(code='IMnr20N', uid=1, container=3, slot=0),
+                           dict(code='IMnr20N', uid=2, container=3, slot=1, count=999),
+                           dict(code='IRid1Cash46', uid=3, container=3, slot=2, count=9),
+                           dict(code='IMnr20N', uid=4, container=1, slot=0)],  # not in a bag
+                    next_item_uid=10)
+        # A full-looking bag still accepts ore that fits in existing stacks.
+        self.assertEqual(slots_needed([('IMnr20N', 1)], char), 0)
+        self.assertEqual(slots_needed([('IMnr20N', 1)]), 1)       # without char: conservative
+        self.assertEqual(slots_needed([('IRid1Cash46', 25)], char), 3)  # 1 tops up, then 10+10+4
+
+        stored = add_reward_items(char, [('IMnr20N', 3), ('IMnr20N', 1)])
+        self.assertEqual([(r['uid'], r.get('count', 1)) for r in stored], [(1, 5)])
+        stored = add_reward_items(char, [('IMnr20N', 997)])
+        self.assertEqual([(r['uid'], r.get('count', 1)) for r in stored], [(1, 1000), (2, 1000), (10, 1)])
+        char['items'].pop()
+        self.assertEqual(len(free_cells(char)), 2)
+        self.assertEqual(char['items'][3].get('count', 1), 1)  # equipped/other containers untouched
+
+        stored = add_reward_items(char, [('IRid1Cash46', 12)])
+        self.assertEqual([(r['uid'], r.get('count', 1)) for r in stored], [(3, 10), (11, 10), (12, 1)])
+        self.assertEqual(len(free_cells(char)), 0)
+
     def test_ensure_inventory_adds_default_equipment_and_bag(self):
         char = {'id': 1, 'name': 'Thief', 'char_class': 4}
         changed = ensure_inventory(char)

@@ -10,14 +10,23 @@ nodes of one kind that are active at a time, RegenSecond as the delay before a
 depleted node can return, and RegenProb as the chance per regeneration check that
 an eligible node returns. These readings of the three fields are assumptions;
 the server-side algorithm of the original service is not known.
+
+The launcher option gather_respawn_time (options.NUMERIC_OPTIONS) multiplies
+RegenSecond, read live on every check.
 """
 import math
 import random
 import time
 
+from darkblood.core import options
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.life_skills import FISHING, GATHERING, MAKING, town_gtargets
 from darkblood.games.network.messages import TargetState
+
+
+def regen_seconds(kind) -> float:
+    """RegenSecond of a DictTarget entry scaled by the gather_respawn_time option."""
+    return kind['regen_second'] * options.number('gather_respawn_time')
 
 
 def square_of_layer(layer_id: int):
@@ -37,7 +46,7 @@ class LifeTargetState:
         self._targets = {}      # square -> {uid: DictTarget entry}
         self._active = {}       # square -> {uid: bool}
         self._depleted = {}     # (square, uid) -> time the node was gathered
-        self._next_check = {}   # (square, target id) -> next regeneration check
+        self._last_check = {}   # (square, target id) -> time of the last regeneration check
 
     def _square(self, square, now):
         if square not in self._active:
@@ -48,7 +57,7 @@ class LifeTargetState:
                 rate = targets[uids[0]]['enable_rate']
                 for uid in self.rng.sample(uids, self._quota(rate, len(uids))):
                     active[uid] = True
-                self._next_check[(square, target_id)] = now + targets[uids[0]]['regen_second']
+                self._last_check[(square, target_id)] = now
             self._active[square] = active
         return self._active[square]
 
@@ -97,12 +106,14 @@ class LifeTargetState:
             for target_id, uids in self._groups(targets).items():
                 key = (square, target_id)
                 kind = targets[uids[0]]
-                if now < self._next_check.get(key, 0):
+                delay = regen_seconds(kind)
+                # Measured from the last check, so a changed multiplier applies at once.
+                if now - self._last_check.get(key, float('-inf')) < max(1.0, delay):
                     continue
-                self._next_check[key] = now + max(1, kind['regen_second'])
+                self._last_check[key] = now
                 missing = self._quota(kind['enable_rate'], len(uids)) - sum(active[u] for u in uids)
                 eligible = [u for u in uids if not active[u]
-                            and now - self._depleted.get((square, u), 0) >= kind['regen_second']]
+                            and now - self._depleted.get((square, u), 0) >= delay]
                 self.rng.shuffle(eligible)
                 for uid in eligible:
                     if missing <= 0:

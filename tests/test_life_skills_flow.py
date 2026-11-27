@@ -71,6 +71,24 @@ class LifeTargetStateTest(unittest.TestCase):
         self.assertEqual(sum(state.is_active('Act1', uid) for uid in mines), 9)
 
 
+    def test_respawn_time_multiplier_scales_regen_second(self):
+        def first_return(multiplier):
+            rate = {'gather_respawn_time': multiplier}
+            with patch('darkblood.core.options.number', side_effect=lambda key: rate.get(key, 1.0)):
+                state = LifeTargetState(rng=random.Random(7))
+                states = {s.target_uid: s.is_active for s in state.states('Act1', now=0)}
+                node = next(uid for uid, kind in dict(town_gtargets()['Act1']).items()
+                            if kind['id'] == 'G1mscA01n0' and states[uid])
+                state.deplete('Act1', node, now=1)
+                for now in range(2, 2000):
+                    if state.regenerate(now=now):
+                        return now
+            return None
+
+        self.assertGreaterEqual(first_return(1.0), 60)   # RegenSecond 60
+        self.assertLess(first_return(0.1), 60)           # 6 s checks
+        self.assertGreaterEqual(first_return(0.1), 6)
+
 class LifeSkillsFlowTest(ServerTestCase):
     def test_town_load_lists_every_target(self):
         async def scenario(client):
@@ -109,6 +127,20 @@ class LifeSkillsFlowTest(ServerTestCase):
             client.send_event(2177, request)
             _, again = await client.expect_event(2178)
             self.assertEqual(struct.unpack_from('<i', again)[0], life_handlers.GATHERING_COLLECTED)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_life_proficiency_rate_multiplies_the_gain(self):
+        async def scenario(client):
+            char, states = await enter_town(client, 'FastMiner', level=20, skills={'9007': 1})
+            node = next(uid for uid, kind in dict(town_gtargets()['Act1']).items()
+                        if kind['id'] == 'G1mscA01n0' and states[uid])
+            rate = {'life_proficiency_rate': 3.0}
+            with patch('darkblood.core.options.number', side_effect=lambda key: rate.get(key, 1.0)):
+                client.send_event(2177, ActKairoReq(kairo_id='ge00001', param=node).encode())
+                _, body = await client.expect_event(2178)
+            self.assertEqual(struct.unpack_from('<i', body)[0], 0)
+            self.assertAlmostEqual(char['proficiencies'][0], 0.8, places=5)  # 3 x 0.2667
 
         self.run_async(self.with_server(scenario))
 

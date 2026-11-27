@@ -174,7 +174,7 @@ class ConsumableHandlersMixin:
             if count <= 0:
                 inventory = dict(char, items=[item for item in items if item is not used_item])
             free = free_bag_slots(inventory)
-            needed = slots_needed(contents)
+            needed = slots_needed(contents, inventory)
             if free is not None and needed > free:
                 await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
                                  note='use item fail (bag full: need %d, free %d)' % (needed, free))
