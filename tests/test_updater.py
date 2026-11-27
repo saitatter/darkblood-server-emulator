@@ -187,6 +187,25 @@ class ReleaseUpdaterTest(unittest.TestCase):
             self.assertEqual((root / 'research' / 'client' / 'steam_api.dll').read_bytes(), b'NEW_PREBUILT_DLL')
             self.assertEqual((root / '.version').read_text(encoding='utf-8').strip(), 'v0.1.0')
 
+    def test_release_api_uses_portable_zip_with_its_matching_checksum(self):
+        assets = [
+            {'name': 'symbols.zip', 'browser_download_url': 'https://example.invalid/symbols.zip'},
+            {'name': 'symbols.zip.sha256', 'browser_download_url': 'https://example.invalid/symbols.sha256'},
+            {'name': 'DarkBlood-Emulator-v0.2.0-win32.zip',
+             'browser_download_url': 'https://example.invalid/portable.zip', 'size': 128},
+            {'name': 'DarkBlood-Emulator-v0.2.0-win32.zip.sha256',
+             'browser_download_url': 'https://example.invalid/portable.sha256'},
+        ]
+        data = {'tag_name': 'v0.2.0', 'assets': assets}
+        checksum = 'a' * 64
+        with patch.object(updater, '_fetch_json', return_value=data), \
+             patch.object(updater, '_fetch_text', return_value=checksum) as fetch_checksum:
+            info = updater._fetch_latest_release_api()
+
+        self.assertEqual((info.zip_url, info.zip_size, info.zip_sha256),
+                         ('https://example.invalid/portable.zip', 128, checksum))
+        fetch_checksum.assert_called_once_with('https://example.invalid/portable.sha256', timeout=10)
+
     def test_release_zip_updates_locked_launcher_exe_via_rename(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()

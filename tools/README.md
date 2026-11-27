@@ -4,6 +4,9 @@ Run every script from the repository root (`python tools/<folder>/<script>.py`).
 Scripts locate the repository from their own path, so the folder depth matters
 when moving them.
 
+For releases without a manifest, the updater prefers the portable Windows ZIP
+and reads the checksum attached to that ZIP's filename.
+
 | Folder | Contents |
 | --- | --- |
 | `automation/` | Live testing and agents: `gamectl.py` (start/stop/drive the client and server), `multibox.py` (1–4 tiled clients), `mcp_server.py` (MCP stdio server, see `.mcp.json`), `headless_client.py` (scripted protocol client used by the tests), `tail_wire.py`, `capture_server.py`. |
