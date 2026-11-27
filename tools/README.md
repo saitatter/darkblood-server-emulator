@@ -20,6 +20,9 @@ When reading the release changelog from GitHub, the launcher skips commits
 with empty messages and continues to the remaining entries. The updater keeps
 the prior release's files until the new version and manifest are written.
 
+Saving launcher settings preserves extra sections and keys already present in
+`darkblood_options.ini`.
+
 Cross-folder imports add the needed folder to `sys.path` explicitly (for example
 `launcher.py` imports `automation/gamectl.py`); `tests/common.py` adds every folder.
 
