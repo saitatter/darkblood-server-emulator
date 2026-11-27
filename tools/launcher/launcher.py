@@ -76,7 +76,8 @@ from launcher_app.theme import (  # noqa: E402
     TEXT_MUTED,
     WARN_AMBER,
 )
-from launcher_app.widgets import ScrollFrame  # noqa: E402
+from launcher_app.gm_catalogs import parse_command_params  # noqa: E402
+from launcher_app.widgets import ScrollFrame, SearchableIdPicker  # noqa: E402
 
 
 class DarkBloodLauncher(tk.Tk):
@@ -578,8 +579,14 @@ class DarkBloodLauncher(tk.Tk):
         )
         self.gm_count_lbl.pack(fill='x', padx=12, pady=(0, 10))
 
+        # Dynamic interactive parameter bar (searchable ID dropdowns / choice menus / inputs)
+        self.gm_params_sep = tk.Frame(card, bg=BORDER, height=1)
+        self.gm_params_bar = tk.Frame(card, bg=BG_CARD_ALT, padx=10, pady=6)
+        self._gm_param_controls = []
+
         # Bottom execution bar
-        tk.Frame(card, bg=BORDER, height=1).pack(fill='x')
+        self._gm_exec_sep = tk.Frame(card, bg=BORDER, height=1)
+        self._gm_exec_sep.pack(fill='x')
         exec_bar = tk.Frame(card, bg=BG_CARD_ALT, padx=10, pady=8)
         exec_bar.pack(fill='x')
 
@@ -652,6 +659,7 @@ class DarkBloodLauncher(tk.Tk):
         )
         self.gm_detail_body.config(text=body)
         self._fill_gm_example()
+        self._build_gm_param_bar(c)
 
     def _fill_gm_example(self):
         c = self._gm_selected_cmd
@@ -661,6 +669,86 @@ class DarkBloodLauncher(tk.Tk):
         if ex.startswith('%'):
             ex = ex[1:].strip()
         self.gm_cmd_var.set(ex if ex else c['name'])
+
+    def _build_gm_param_bar(self, cmd: dict):
+        """Render interactive parameter controls (searchable ID pickers, dropdowns, entries) above %cmd."""
+        for child in self.gm_params_bar.winfo_children():
+            child.destroy()
+        self._gm_param_controls = []
+
+        specs = parse_command_params(cmd.get('params', ''))
+        if not specs:
+            self.gm_params_sep.pack_forget()
+            self.gm_params_bar.pack_forget()
+            return
+
+        # Seed initial parameter values from the example command line
+        ex_line = (self.gm_cmd_var.get() or '').strip()
+        ex_parts = ex_line.split()
+        ex_args = ex_parts[1:] if (ex_parts and ex_parts[0].lower() == cmd['name'].lower()) else []
+
+        tk.Label(self.gm_params_bar, text='Params:', bg=BG_CARD_ALT, fg=GOLD,
+                 font=('Segoe UI', 8, 'bold')).pack(side='left', padx=(0, 8))
+
+        for idx, spec in enumerate(specs):
+            init_val = ex_args[idx] if idx < len(ex_args) else spec.default
+            lbl_text = spec.name if spec.required else f'{spec.name} (opt)'
+            tk.Label(self.gm_params_bar, text=f'{lbl_text}:', bg=BG_CARD_ALT, fg=TEXT_DIM,
+                     font=('Segoe UI', 8)).pack(side='left', padx=(0, 4))
+
+            if spec.catalog:
+                picker = SearchableIdPicker(
+                    self.gm_params_bar,
+                    catalog=spec.catalog,
+                    initial_value=init_val,
+                    extra_choices=spec.choices,
+                    on_change=lambda _val: self._sync_gm_cmd_from_params(),
+                    bg=BG_CARD_ALT,
+                )
+                picker.pack(side='left', padx=(0, 10))
+                self._gm_param_controls.append((spec, picker.get))
+            elif spec.choices:
+                var = tk.StringVar(value=init_val if init_val in spec.choices else spec.choices[0])
+                menu = tk.OptionMenu(
+                    self.gm_params_bar, var, *spec.choices,
+                    command=lambda _v: self._sync_gm_cmd_from_params(),
+                )
+                menu.configure(
+                    bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
+                    highlightthickness=1, highlightbackground=BORDER, relief='flat', bd=0,
+                    font=('Consolas', 8), cursor='hand2',
+                )
+                menu['menu'].configure(bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white')
+                menu.pack(side='left', padx=(0, 10))
+                self._gm_param_controls.append((spec, var.get))
+            else:
+                var = tk.StringVar(value=init_val)
+                var.trace_add('write', lambda *_: self._sync_gm_cmd_from_params())
+                ent = self._make_entry(self.gm_params_bar, var, width=10)
+                ent.pack(side='left', ipady=3, padx=(0, 10))
+                ent.bind('<Return>', lambda _e: self._send_gm_command())
+                self._gm_param_controls.append((spec, var.get))
+
+        # Pack right above the bottom execution bar
+        self.gm_params_sep.pack(fill='x', before=self._gm_exec_sep)
+        self.gm_params_bar.pack(fill='x', before=self._gm_exec_sep)
+
+    def _sync_gm_cmd_from_params(self):
+        cmd = self._gm_selected_cmd
+        if not cmd or not self._gm_param_controls:
+            return
+        args = []
+        for spec, getter in self._gm_param_controls:
+            val = (getter() or '').strip()
+            if val:
+                args.append(val)
+            elif spec.required:
+                args.append('')
+        # Trim trailing empty optional arguments
+        while args and not args[-1]:
+            args.pop()
+        line = cmd['name'] + (' ' + ' '.join(args) if args else '')
+        self.gm_cmd_var.set(line)
 
     def _select_gm_target(self, char_id, label):
         self._gm_target_char_id = char_id

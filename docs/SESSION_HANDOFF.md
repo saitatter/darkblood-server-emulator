@@ -4,6 +4,9 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-27)
 
+- **Launcher GM Commands searchable ID parameter pickers (2026-11-27)**:
+  - Added `tools/launcher/launcher_app/gm_catalogs.py` (lazy-loaded parsers for all 7 `docs/gm_ids/*.md` catalogs: items + equipment, monsters, skills, quests, buffs, NPCs, mounts, plus `parse_command_params` and multi-token ID/name search) and `SearchableIdPicker` in `tools/launcher/launcher_app/widgets.py`.
+  - Wired a dynamic **Params** bar above the `%command` input in `tools/launcher/launcher.py` (`_build_gm_param_bar`): ID parameters render as searchable dropdowns showing `ID — Name`, enum parameters (`weapon | cloth`, `on | off`, etc.) as dark option menus, and scalar arguments as compact inline inputs that keep `%cmd` synced in real time. Included `docs/gm_ids/*.md` in `tools/launcher/build_release.py`. Verified with `tests/test_gm_catalogs.py` and Tk smoke test (288/288 tests).
 - **Pet dungeon Energy drain (`2479 PetConsumeSatietyNot`) & EXP level-diff rule (2026-11-27)**:
   - Verified `2479 eEGS_PET_CONSUME_SATIETY_NOT` (`0x0079F980`: `nPetUID >> sConsumeSatiety`, stores remaining satiety via `0x009524F0` and auto-unsummons when `<= 0`).
   - Summoning a pet inside a dungeon (`2468 -> 2469`) or entering a dungeon with a summoned pet (`5013`) now consumes 1 Energy immediately, and `GameSession.tick_timers` drains 1 additional Energy every 30 seconds via `2479`, auto-unsummoning at 0 (refusing summons at 0 Energy).
