@@ -4,6 +4,8 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-27)
 
+- **Integrated PRs #27-#39 (CristianVita, 2026-11-27)**: mail attachments stay in the inbox when the bags are full (#29); buyback keeps durability/upgrade/quality (#30); Fortress challenges refill per elapsed day (#31); max-level pets get no EXP notices (#32); malformed saved play options fall back to defaults (#33); bag UI order persists (#35); an empty bag stays equipped without a free cell elsewhere (#36); clears after midnight count on the new day (#37); pet depot swaps persist (#38); launcher release notes and changelog fixes (#27, #28, #34, #39). Merged on top of the field-recovery batches without conflicts; the full suite passes.
+
 - **Release notes (2026-11-27)**. Rebuilding an older release uses the closest version tag reachable from the build commit and excludes the version being built. A test with three tags verifies that the middle release includes its own change even with the newer tag present.
 
 - **Field recovery, batch 6 (2026-11-27)**: `jGuild +0x29` is the member's guild grade (`player +0x234`, `JGuildManager +0x10`, read by `Lua_TryChangeGrade`); `0x0091A150` maps the other `jGuild` fields onto `JGuildManager` offsets (noted for later UI tracing). GM `2060 vecDropItem` is `vector<ItemDropEntry>` (same reader `0x00A509E0` as `5064`).
@@ -133,7 +135,7 @@
 
 ## Verification status
 
-- **Headless suite**: **254/254** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
+- **Headless suite**: **259/259** tests pass (`python -m unittest discover -s tests -v`), plus `gen_messages.py --check`, `gen_progress.py --check`, and `gen_opcode_registry.py --check`.
 
 ## Open targets / next investigations
 
