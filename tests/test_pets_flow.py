@@ -157,20 +157,21 @@ class PetsFlowTest(ServerTestCase):
 
             char = session.GameSession.store().get('OfflinePlayer', char_id)
 
-            # 1. Monster Taming: Insert (2348 -> 2349)
+            # 1. Monster Taming: fill the empty first slot while slot 1 is occupied.
+            char['tamed_monsters'] = [{'monster_id': 502, 'slot': 1}]
             client.send_event(2348, TameingMonsterInsertReq(monster_id=501, slot=0).encode())
             _, ack2349 = await client.expect_event(2349)
             self.assertEqual(struct.unpack_from('<I', ack2349, 0)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            self.assertEqual(len(char.get('tamed_monsters', [])), 1)
-            self.assertEqual(char['tamed_monsters'][0]['monster_id'], 501)
+            self.assertEqual({m['slot']: m['monster_id'] for m in char['tamed_monsters']},
+                             {0: 501, 1: 502})
 
             # 2. Monster Taming: Delete (2350 -> 2351)
             client.send_event(2350, TameingMonsterDeleteReq(monster_id=501, slot=0).encode())
             _, ack2351 = await client.expect_event(2351)
             self.assertEqual(struct.unpack_from('<I', ack2351, 0)[0], 0)
             char = session.GameSession.store().get('OfflinePlayer', char_id)
-            self.assertEqual(len(char.get('tamed_monsters', [])), 0)
+            self.assertEqual(char['tamed_monsters'], [{'monster_id': 502, 'slot': 1}])
 
             # 3. Mounts: Get List (2434 -> 2435)
             client.send_event(2434, RidingGetListReq().encode())

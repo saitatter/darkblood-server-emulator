@@ -123,7 +123,7 @@ class PetCoreHandlersMixin:
             await self.reply(TamingMonsterInsertAck(result=results.NO_EXIST_CHAR), correlation, note='tame monster insert fail (no char)')
             return
         tamed = char.setdefault('tamed_monsters', [])
-        slot = req.slot if req.slot else len(tamed)
+        slot = req.slot
         tamed.append({'monster_id': req.monster_id, 'slot': slot})
         self.save_char()
         await self.reply(TamingMonsterInsertAck(result=0, tamed=_tamed_list(tamed)), correlation,
