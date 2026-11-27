@@ -1,5 +1,6 @@
 """Unit tests for launcher GM ID catalogs and command parameter parsing."""
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -9,9 +10,12 @@ if str(ROOT / 'tools' / 'launcher') not in sys.path:
 
 from launcher_app.gm_catalogs import (  # noqa: E402
     load_catalog,
+    load_gm_pins,
     lookup_entry,
     parse_command_params,
+    save_gm_pins,
     search_catalog,
+    suggest_pin_label,
 )
 
 
@@ -66,6 +70,25 @@ class GmCatalogsTest(unittest.TestCase):
         self.assertEqual(enum_specs[1].name, 'level')
 
         self.assertEqual(parse_command_params('—'), [])
+
+    def test_gm_pins_roundtrip_and_suggested_label(self):
+        self.assertEqual(suggest_pin_label('itemcall IbagU160 1'), "Santa's Starlight Bag")
+        self.assertEqual(suggest_pin_label('itemcall IbagU160 3'), "Santa's Starlight Bag x3")
+        self.assertEqual(suggest_pin_label('%ar 500000'), 'ar 500000')
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'gm_pins.json'
+            self.assertEqual(load_gm_pins(path), [])
+            pins = [
+                {'label': '25-Slot Bag', 'command': '%itemcall IbagU160 1'},
+                {'label': 'Card Pack x10', 'command': 'itemcall IRanCashEtc260 10'},
+            ]
+            save_gm_pins(pins, path)
+            loaded = load_gm_pins(path)
+            self.assertEqual(loaded, [
+                {'label': '25-Slot Bag', 'command': 'itemcall IbagU160 1'},
+                {'label': 'Card Pack x10', 'command': 'itemcall IRanCashEtc260 10'},
+            ])
 
 
 if __name__ == '__main__':

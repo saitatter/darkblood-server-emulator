@@ -1,6 +1,7 @@
 """Lazy-loaded searchable GM ID catalogs and command parameter parser for the launcher."""
 from dataclasses import dataclass, field
 from functools import lru_cache
+import json
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Tuple
@@ -8,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 from launcher_app.theme import ROOT
 
 GM_IDS_DIR = ROOT / 'docs' / 'gm_ids'
+GM_PINS_PATH = ROOT / 'data' / 'gm_pins.json'
 
 CATALOG_LABELS = {
     'item': 'Item',
@@ -268,3 +270,74 @@ def parse_command_params(params_str: str) -> List[ParamSpec]:
                 catalog=PARAM_TO_CATALOG.get(key),
             ))
     return specs
+
+
+def suggest_pin_label(command: str, ids_dir: Path = GM_IDS_DIR) -> str:
+    """Build a friendly default label for a pinned GM command (resolving known IDs)."""
+    cmd = (command or '').strip()
+    if cmd.startswith('%'):
+        cmd = cmd[1:].strip()
+    parts = cmd.split()
+    if not parts:
+        return ''
+    name = parts[0].lower()
+    if len(parts) >= 2:
+        arg1 = parts[1]
+        cat_for_cmd = {
+            'itemcall': 'item',
+            'itemdrop': 'item',
+            'moncall': 'monster',
+            'summon': 'monster',
+            'skill': 'skill',
+            'buff': 'buff',
+            'passivebuff': 'buff',
+            'questenable': 'quest',
+            'missionclear': 'quest',
+            'questnpc': 'npc',
+            'riding': 'mount',
+        }.get(name)
+        if cat_for_cmd:
+            entry = lookup_entry(cat_for_cmd, arg1, ids_dir=ids_dir)
+            if entry and entry.name:
+                if name in ('itemcall', 'itemdrop') and len(parts) >= 3 and parts[2].isdigit() and int(parts[2]) > 1:
+                    return f'{entry.name} x{parts[2]}'
+                return entry.name
+    return cmd
+
+
+def load_gm_pins(path: Path = GM_PINS_PATH) -> List[Dict[str, str]]:
+    """Load user-pinned GM favorite commands from data/gm_pins.json."""
+    if not path.is_file():
+        return []
+    try:
+        raw = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(raw, list):
+        return []
+    pins = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        cmd = str(item.get('command') or '').strip()
+        if cmd.startswith('%'):
+            cmd = cmd[1:].strip()
+        label = str(item.get('label') or '').strip() or cmd
+        if cmd:
+            pins.append({'label': label, 'command': cmd})
+    return pins
+
+
+def save_gm_pins(pins: List[Dict[str, str]], path: Path = GM_PINS_PATH) -> None:
+    """Persist user-pinned GM favorite commands to data/gm_pins.json."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    clean = [
+        {
+            'label': str(p.get('label') or '').strip() or str(p.get('command') or '').strip(),
+            'command': str(p.get('command') or '').strip().lstrip('%').strip(),
+        }
+        for p in pins
+        if str(p.get('command') or '').strip()
+    ]
+    path.write_text(json.dumps(clean, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
