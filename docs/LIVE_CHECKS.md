@@ -67,6 +67,8 @@ When it fails, note what the client did and keep it here.
 | W12 | League ranking (`2551`/`2472`) | Ranking pages and the season start date display. |
 | W13 | Paint message (`JAppPagePaint`, `5040 -> 5041`) | A drawing sent through chat reaches the other player (paint data is now echoed). |
 | W14 | Shop repurchase tab (`2066` vecRePur) | After selling, closing and reopening the shop shows the sold items in the Repurchase tab. |
+| W15 | Guild bank deposit/withdraw (`2179`-`2182`) | The AR display shows the player's AR after the transfer (it showed the guild bank total); a deposit without enough AR is refused with "Not enough Ar."; the guild bank never grows without paying. |
+| W16 | Failure messages | Refusals now show their real reason (item not found, not enough Ar, no bag slot, invalid name, "Can't perform in the current position") instead of "Unavailable character". |
 
 ## Basic client checklist (from ROADMAP)
 

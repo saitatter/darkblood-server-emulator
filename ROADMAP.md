@@ -90,23 +90,15 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 - [ ] Decide what to do with the invented party opcodes (2100-2107), which the client names as cheat messages and does
   not handle. (The invented 5021/5022 square notices were removed on 2026-11-26; those opcodes are the room-host pair.)
 - [ ] C# backend for `tools/codegen/gen_messages.py` that emits the same schemas as C# classes.
-- [ ] Refactor backlog (surveys 2026-11-26/27). Done: `BaseDomainService.send_to`/`find_char`, rooms
-  `_reply_and_sync`, `build_select_char_ack`, `achievements.total_info`, one quest mission table, `gold` as the only
-  AR field (the `u66` mirror was stale on most paths), 166 message imports hoisted, explicit dungeon/arena/shop
-  session state, `loader.tsv_rows`, `loot._equip_pool`, test data dirs always temporary. Open:
-  - A gold helper (`gold_of` / `spend_gold` / `add_gold`): 24 reads and 23 writes still repeat the same checks.
-  - Replace the 42 literal `result=1` failures with named `results` codes (1 is `JERI_NO_EXIST_CHAR`,
-    "Unavailable character", which the client shows for unrelated failures).
-  - Arena rooms, teams and the leaderboard live in class attributes shared by every server instance; move them
-    to the server object like `dungeon_rooms`.
-  - Split the longest handlers: `handle_finish_game` (108 lines), `handle_choice_reward_party_rank` (92),
-    `handle_quest_complete` (90), `Character.encode_world_details` (82), `handle_post_send` (72), store buy/sell (~68).
-  - Split the 500+ line modules by feature: `arena.py` (rooms, teams, league, duels), `handlers/quests.py`,
-    `inventory/items.py`, `frontend.py`, `dungeon/rooms.py`.
-  - Game data: most loaders repeat "TSV unless a Lua override exists, else parse Lua"; a small source
-    abstraction would remove the duplicated branches.
-  - Give the raw `struct.pack` replies schemas (frontend `2002`/`2009`/`2013`/`2022`/`2403`, GM `2102`/`2104`/`2106`,
-    failure-only `2007`/`2449`).
+- [x] Refactor backlog (surveys 2026-11-26/27), done 2026-11-27: `send_to`/`find_char`, `_reply_and_sync`,
+  one quest mission table, `gold` as the only AR field plus `gold_of`/`add_gold`/`spend_gold`, named result codes
+  instead of literal 1, arena state on the server (`ArenaState`), explicit session state, hoisted message imports,
+  `tsv_rows`/`bundled_asset` loaders, typed messages for every former `struct.pack` reply, the longest handlers split
+  into steps, and feature modules (`arena/` package, `dungeon/gate.py`, `inventory/consumables.py`,
+  `character_select.py`, `quest_npc.py`).
+- [ ] Remaining refactor candidates: `handlers/quests.py` (~500 lines, quest lifecycle), ~75 function-local imports
+  of handlers/world/progression (some avoid cycles), the arena ladder is still a fixed sample list, and the
+  `stores.py` loaders use a different override shape than `bundled_asset`.
 - [ ] Reduce the unmapped fields shown in the README progress table (the number that matters most for fidelity).
 
 ### C# / .NET 8 port (P10, MHServerEmu layout)
