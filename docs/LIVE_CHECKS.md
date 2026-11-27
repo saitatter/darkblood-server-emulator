@@ -44,7 +44,7 @@ When it fails, note what the client did and keep it here.
 | O2 | Subclass promotion (`2283`) learned-skill map | Promotion grants the expected auto-learned skills (map currently empty). | 2026-11-24 |
 | O3 | Life Skills screen (issue #15 item 5) | Screen opens with the expected data. | 2026-11-24 |
 | O4 | Dual Skill item (issue #15 item 6) | Using the item enables the dual skill. | 2026-11-24 |
-| O5 | Mount summoning (`ridecall`) and pet items (`PetCall`) | Mount appears; pet summons. | — |
+| O5 | Mount summoning (`ridecall`) and pet items (`PetCall`) | Mount appears and the pet summons. After dismissing the active pet, feeding it updates that pet's satiety while the depot pet stays unchanged (W5). | — |
 | O6 | Party retention across reconnect | Reconnecting keeps the party; the old connection's cleanup does not remove the new session. | 2026-11-18 |
 | O7 | Town revive / layer / floor gold / relay leave notices | As listed in `docs/STATUS.md` (multiplayer section). | — |
 | O8 | Commerce and post (P7) | Trade, mail, stalls, broker, depot flows work end to end. | — |

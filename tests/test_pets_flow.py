@@ -224,6 +224,23 @@ class PetsFlowTest(ServerTestCase):
             _, ack2481 = await client.expect_event(2481)
             self.assertEqual(struct.unpack_from('<I', ack2481, 0)[0], 0)
 
+            from darkblood.games.network.messages import PetEatCashReq
+
+            active = char['pets'][0]
+            active['satiety'] = 50
+            stored = dict(uid=887, slot=0, code='PetCall001', name='In depot', satiety=20)
+            char['pets'].insert(0, stored)
+            client.send_event(2470, PetReleaseSummonReq().encode())
+            await client.expect_event(2471)
+
+            client.send_event(2480, PetEatNormalReq(item_uid=999).encode())
+            await client.expect_event(2481)
+            self.assertEqual((active['satiety'], stored['satiety']), (80, 20))
+            client.send_event(2482, PetEatCashReq(item_uid=999).encode())
+            await client.expect_event(2483)
+            self.assertEqual((active['satiety'], stored['satiety']), (100, 20))
+            char['pets'].remove(stored)
+
             # 8. Pet Lifecycle: Change nickname (2510 -> 2511)
             client.send_event(2510, PetNickChangeReq(pet_uid=10, new_name='Kittie').encode())
             _, ack2511 = await client.expect_event(2511)

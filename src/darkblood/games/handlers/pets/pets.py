@@ -291,19 +291,25 @@ class PetCoreHandlersMixin:
         await self.reply(PetReplaceAck(result=0, pet_uid=req.pet_uid), correlation,
                          note=f'pet replace ack (uid={req.pet_uid})')
 
+    @staticmethod
+    def _pet_for_feeding(char):
+        pets = char.get('pets', [])
+        summoned = next((p for p in pets if p.get('uid') == char.get('summoned_pet')), None)
+        if summoned is not None:
+            return summoned
+        return next((p for p in pets if p.get('slot', -1) == -1), pets[0] if pets else None)
+
     @packet_handler(PetEatNormalReq)
     async def handle_pet_eat_normal(self, correlation, body):
         # eEGS_PET_EAT_NORMAL_REQ (0x0079FBA0) -> 2481 eEGS_PET_EAT_NORMAL_ACK (0x00781260)
         PetEatNormalReq.decode(body)
         char = self.current_char()
         satiety = 100
-        if char:
-            pets = char.setdefault('pets', [])
-            if pets:
-                active = next((p for p in pets if p.get('uid') == char.get('summoned_pet')), pets[0])
-                active['satiety'] = min(100, active.get('satiety', 50) + 30)
-                satiety = active['satiety']
-                self.save_char()
+        active = self._pet_for_feeding(char) if char else None
+        if active is not None:
+            active['satiety'] = min(100, active.get('satiety', 50) + 30)
+            satiety = active['satiety']
+            self.save_char()
         await self.reply(PetEatNormalAck(result=0, satiety=satiety), correlation,
                          note=f'pet eat normal ack (satiety={satiety})')
 
@@ -351,13 +357,10 @@ class PetCoreHandlersMixin:
         req = PetEatCashReq.decode(body)
         char = self.current_char()
         satiety = 100
-        if char:
-            pets = char.setdefault('pets', [])
-            if pets:
-                active = next((p for p in pets if p.get('uid') == char.get('summoned_pet')), pets[0])
-                active['satiety'] = 100
-                satiety = 100
-                self.save_char()
+        active = self._pet_for_feeding(char) if char else None
+        if active is not None:
+            active['satiety'] = 100
+            self.save_char()
         await self.reply(PetEatCashAck(result=0, items=[], satiety=satiety, is_cash_food=True),
                          correlation, note=f'pet eat cash ack (item={req.item_uid} satiety={satiety})')
 
