@@ -57,6 +57,22 @@ class OptionsTest(unittest.TestCase):
         self.assertEqual(cfg2['launcher'], {'account': 'Tester', 'clients': 2})
         self.assertFalse(cfg2['options']['adult_content'])
 
+    def test_settings_save_preserves_custom_ini_values(self):
+        import configparser
+
+        options.OPTIONS_PATH.write_text(
+            '[client]\nskip_logos = 1\ncustom_client_value = kept\n'
+            '[local_profiles]\nbackup_name = SpareProfile\n',
+            encoding='utf-8',
+        )
+        options.write({'skip_logos': False})
+
+        saved = configparser.ConfigParser()
+        saved.read(options.OPTIONS_PATH, encoding='utf-8')
+        self.assertEqual(saved.get('local_profiles', 'backup_name', fallback=None), 'SpareProfile')
+        self.assertEqual(saved.get('client', 'custom_client_value', fallback=None), 'kept')
+        self.assertFalse(saved.getboolean('client', 'skip_logos'))
+
     def test_network_validation(self):
         self.assertEqual(
             options.validate_network(' 10.0.0.5 ', '9400', '9401'),

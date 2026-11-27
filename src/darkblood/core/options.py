@@ -202,13 +202,15 @@ def write_all(values=None, network=None, launcher=None):
             cnt = LAUNCHER_DEFAULTS['clients']
         lnch['clients'] = max(1, min(4, cnt))
 
-    parser = configparser.ConfigParser()
-    parser.add_section('network')
+    parser = _load_parser()
+    if not parser.has_section('network'):
+        parser.add_section('network')
     parser.set('network', 'host', net['host'])
     parser.set('network', 'port', str(net['port']))
     parser.set('network', 'relay_port', str(net['relay_port']))
 
-    parser.add_section('launcher')
+    if not parser.has_section('launcher'):
+        parser.add_section('launcher')
     parser.set('launcher', 'account', lnch['account'])
     parser.set('launcher', 'clients', str(lnch['clients']))
 
