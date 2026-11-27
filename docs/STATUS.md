@@ -492,6 +492,10 @@ python tools\automation\headless_client.py --port 9400 --select 1   # against a 
 session key, AES envelopes, type 0x26 mode 1 with the u16 counter) and replays the
 observed lobby requests. It checks the server, not the real client's parsers.
 
+The arena room creation test uses three headless clients. Two request the same
+room ID and the third leaves its ID unset. The room list must retain all three
+rooms with their original hosts.
+
 ### Driving the game
 
 `tools/automation/gamectl.py` (CLI) and `tools/automation/mcp_server.py` (MCP stdio server, registered in `.mcp.json`) start/stop the server and client, take screenshots, send keys/clicks, skip the intro, walk to character select, and decode the wire log with opcode names:

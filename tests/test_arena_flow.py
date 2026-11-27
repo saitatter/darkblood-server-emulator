@@ -322,5 +322,47 @@ class ArenaFlowTest(ServerTestCase):
         self.run_async(self.with_server(scenario))
 
 
+    def test_arena_room_creation_with_occupied_ids(self):
+        from headless_client import HeadlessClient
+
+        async def create_room(client, name, room_id):
+            await lobby_flow(client)
+            client.send_event(2012, create_request(name))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            room = messages.ArenaRoomInfo(room_id=room_id, room_name=name)
+            client.send_event(5153, messages.ArenaCreateRoomReq(room=room).encode())
+            _, reply = await client.expect_event(5154)
+            ack = messages.ArenaCreateRoomAck.decode(reply)
+            self.assertEqual(ack.result, 0)
+            return ack.room
+
+        async def scenario(client):
+            first_room = await create_room(client, 'FirstRoom', 1)
+            second_client = HeadlessClient(port=client.port)
+            third_client = HeadlessClient(port=client.port)
+            try:
+                second_room = await create_room(second_client, 'SecondRoom', 1)
+                third_room = await create_room(third_client, 'ThirdRoom', 0)
+                self.assertEqual(first_room.room_id, 1)
+                self.assertEqual(len({first_room.room_id, second_room.room_id, third_room.room_id}), 3)
+
+                client.send_event(2306, messages.ArenaGetRoomListReq().encode())
+                _, reply = await client.expect_event(2307)
+                rooms = messages.ArenaGetRoomListAck.decode(reply).rooms
+                self.assertEqual(
+                    {room.room_id: (room.room_name, room.host_uid) for room in rooms},
+                    {room.room_id: (room.room_name, room.host_uid)
+                     for room in (first_room, second_room, third_room)},
+                )
+            finally:
+                await third_client.close()
+                await second_client.close()
+
+        self.run_async(self.with_server(scenario))
+
+
 if __name__ == '__main__':
     unittest.main()

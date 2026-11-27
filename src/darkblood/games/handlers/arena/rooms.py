@@ -66,7 +66,7 @@ class ArenaRoomHandlers:
         req = ArenaCreateRoomReq.decode(body)
         char_uid, char_name, char_class, char_level = self._get_active_char_info()
         room = req.room
-        if not room.room_id or room.room_id <= 0:
+        while room.room_id <= 0 or room.room_id in self.arena.rooms:
             room.room_id = next(self.arena.room_ids)
         if not room.room_name:
             room.room_name = f"{char_name}'s Colosseum"
