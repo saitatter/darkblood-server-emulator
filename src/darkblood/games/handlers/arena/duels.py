@@ -18,6 +18,16 @@ from darkblood.games.dispatcher import packet_handler
 class DuelHandlers:
     # 1v1 Town Duels (Opcodes 5097 - 5113)
 
+    def _duel_peer_ack(self, ack_type, uid):
+        peer = self.find_char(uid) or {}
+        return ack_type(
+            result=0,
+            target_uid=uid,
+            target_name=peer.get('name', ''),
+            char_class=int(peer.get('char_class', 0)) & 0xFF,
+            level=min(int(peer.get('level', 0)), 0xFF),
+        )
+
     @packet_handler(DuelRequestReq)
     async def handle_duel_request(self, correlation: int, body: bytes):
         """Opcode 5100 (eERC_DUEL_REQUEST_REQ) -> 5101 (eERC_DUEL_REQUEST_ACK).
@@ -27,13 +37,7 @@ class DuelHandlers:
         """
         req = DuelRequestReq.decode(body)
         self.transport.record('duel-request-req', body, target_uid=req.target_uid)
-        ack = DuelRequestAck(
-            result=0,
-            target_uid=req.target_uid,
-            target_name="Challenger",
-            char_class=1,
-            level=20
-        )
+        ack = self._duel_peer_ack(DuelRequestAck, req.target_uid)
         await self.reply(ack, correlation, note=f'duel request ack (target={req.target_uid})')
 
     @packet_handler(DuelStartReq)
@@ -84,11 +88,5 @@ class DuelHandlers:
         """
         req = DuelRefuseReq.decode(body)
         self.transport.record('duel-refuse-req', body, challenger_uid=req.challenger_uid)
-        ack = DuelRefuseAck(
-            result=0,
-            target_uid=req.challenger_uid,
-            target_name="Challenger",
-            char_class=1,
-            level=20
-        )
+        ack = self._duel_peer_ack(DuelRefuseAck, req.challenger_uid)
         await self.reply(ack, correlation, note=f'duel refuse ack (challenger={req.challenger_uid})')

@@ -20,15 +20,21 @@ class ArenaFlowTest(ServerTestCase):
             await client.expect_event(2007)
 
             # 1. 1v1 Duel Challenge (5100 -> 5101)
-            target_uid = 99998888
+            client.send_event(2012, create_request('DuelMage', char_class=3))
+            _, target = await client.expect_event(2013)
+            target_uid = struct.unpack_from('<Q', target, 10)[0]
             client.send_event(5100, messages.DuelRequestReq(target_uid=target_uid).encode())
             _, ack5101 = await client.expect_event(5101)
-            self.assertEqual(struct.unpack_from('<iq', ack5101[:12]), (0, target_uid))
+            duel = messages.DuelRequestAck.decode(ack5101)
+            self.assertEqual((duel.result, duel.target_uid, duel.target_name, duel.char_class, duel.level),
+                             (0, target_uid, 'DuelMage', 3, 1))
 
             # 2. 1v1 Duel Refusal (5112 -> 5113)
             client.send_event(5112, messages.DuelRefuseReq(challenger_uid=target_uid).encode())
             _, ack5113 = await client.expect_event(5113)
-            self.assertEqual(struct.unpack_from('<iq', ack5113[:12]), (0, target_uid))
+            refused = messages.DuelRefuseAck.decode(ack5113)
+            self.assertEqual((refused.result, refused.target_uid, refused.target_name,
+                              refused.char_class, refused.level), (0, target_uid, 'DuelMage', 3, 1))
 
             # 3. 1v1 Duel Start (5097 -> 5098 ack, then 5099 not)
             client.send_event(5097, messages.DuelStartReq(opponent_uid=target_uid).encode())
