@@ -12,7 +12,8 @@ A successful purchase sends 2037 with the granted items and 2714 to finalize
 the purchase.
 Result 24 reports an unavailable server catalog. Result 442 reports an
 unknown product ID. The product list visible in the original client comes
-from its own data.
+from its own data. Opening the last box in a stack counts the slot that will
+become free when checking whether the rewards fit.
 
 ## 1. ProudNet framing
 

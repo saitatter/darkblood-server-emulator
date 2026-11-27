@@ -124,14 +124,18 @@ class ConsumableHandlersMixin:
             return
         item_str_code = used_item.get('code', '')
         contents, random_box = self._cash_box_contents(item_str_code)
+        count = used_item.get('count', 1) - req.use_count
         if contents:
-            free = free_bag_slots(char)
-            if free is not None and slots_needed(contents) > free:
+            inventory = char
+            if count <= 0:
+                inventory = dict(char, items=[item for item in items if item is not used_item])
+            free = free_bag_slots(inventory)
+            needed = slots_needed(contents)
+            if free is not None and needed > free:
                 await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
-                                 note='use item fail (bag full: need %d, free %d)' % (slots_needed(contents), free))
+                                 note='use item fail (bag full: need %d, free %d)' % (needed, free))
                 return
         item_code = jhash(item_str_code)
-        count = used_item.get('count', 1) - req.use_count
         updated = []
         if count <= 0:
             items.remove(used_item)

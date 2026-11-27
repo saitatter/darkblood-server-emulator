@@ -105,10 +105,10 @@ class CashShopFlowTest(ServerTestCase):
             client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 999, 1))
             _, ack = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack)[0], 63)  # JERI_INVEN_01
-            for item in filler:
-                char['items'].remove(item)
+            char['items'].remove(filler[0])
             session.GameSession.store().save()
 
+            # One empty cell plus the box's own slot makes enough room.
             # Live 2038 shape: prefix + i64 uid + i32 count.
             client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 50, 1))
             _, ack = await client.expect_event(2039)
@@ -116,7 +116,8 @@ class CashShopFlowTest(ServerTestCase):
             _, items = await client.expect_event(2037)
             self.assertEqual(items[4:6], bytes.fromhex('1082'))
             codes = sorted(i['code'] for i in char['items'])
-            self.assertEqual(codes, ['Ihppa0000', 'Imppa0000'])
+            self.assertEqual(codes, ['Ihppa0000'] * 4 + ['Imppa0000'])
+            self.assertEqual({item['slot'] for item in char['items']}, set(range(5)))
 
         self.run_async(self.with_server(scenario))
 
