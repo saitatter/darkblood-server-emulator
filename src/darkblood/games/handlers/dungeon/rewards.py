@@ -245,6 +245,9 @@ class DungeonRewardsHandlers:
         rule = dungeon_entry_rule(map_code)
         if not rule or int(rule.get('clear_limit', 0)) <= 0:
             return
+
+        from darkblood.games.progression import refresh_dungeon_entry_limits
+        refresh_dungeon_entry_limits(char)
         counts = char.setdefault('daily_dun_clear_counts', {})
         counts[map_code] = int(counts.get(map_code, 0)) + 1
         notice = DailyDunClearCountUpdateNot(clear_counts={str(k): int(v) for k, v in counts.items()})
