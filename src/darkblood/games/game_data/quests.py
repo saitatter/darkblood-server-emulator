@@ -3,7 +3,7 @@ import re
 from functools import lru_cache
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.loader import (
-    ASSETS_DIR, _quest_files, _quest_override_files, data_root,
+    ASSETS_DIR, tsv_rows, _quest_files, _quest_override_files, data_root,
 )
 
 
@@ -21,8 +21,7 @@ def quests():
         tsv = ASSETS_DIR / 'quests.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 7:
                     qid, exp, gold, gp, offer, reward, select = parts[:7]
                     out[jhash(qid)] = dict(
@@ -71,8 +70,7 @@ def item_groups():
         tsv = ASSETS_DIR / 'quest_item_groups.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 4:
                     gid, item, f2, cnt = parts[:4]
                     out.setdefault(gid, []).append((item, int(f2), int(cnt)))
@@ -116,12 +114,6 @@ def quest_rewards(quest_hash, select_index=-1):
     return quest['exp'], quest['gold'], quest['gp'], items
 
 
-def _tsv_rows(name):
-    """Data rows (header skipped) of an assets TSV as lists of columns."""
-    return [line.split('\t') for line in
-            (ASSETS_DIR / name).read_text(encoding='utf-8', errors='replace').splitlines()[1:]]
-
-
 @lru_cache(maxsize=None)
 def _mission_table():
     """(missions, chains) shared by the objective tables.
@@ -134,10 +126,10 @@ def _mission_table():
     missions, chains = {}, []
     if not _quest_override_files() and (ASSETS_DIR / 'quest_missions.tsv').is_file() \
             and (ASSETS_DIR / 'quest_chains.tsv').is_file():
-        for parts in _tsv_rows('quest_missions.tsv'):
+        for parts in tsv_rows(ASSETS_DIR / 'quest_missions.tsv'):
             if len(parts) >= 4:
                 missions[parts[0]] = (parts[1], parts[2], int(parts[3]))
-        for parts in _tsv_rows('quest_chains.tsv'):
+        for parts in tsv_rows(ASSETS_DIR / 'quest_chains.tsv'):
             if len(parts) >= 3:
                 chains.append((jhash(parts[0]) & 0xFFFFFFFF, int(parts[1]), parts[2]))
         return missions, chains
@@ -248,8 +240,7 @@ def quest_promotion_classes():
         tsv = ASSETS_DIR / 'quest_promotions.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 2 and parts[0]:
                     out[jhash(parts[0]) & 0xFFFFFFFF] = int(parts[1], 0)
             return out
@@ -309,8 +300,7 @@ def quest_temp_skill_indices():
     tsv = ASSETS_DIR / 'quest_temp_skills.tsv'
     out = {}
     if tsv.is_file():
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if len(parts) >= 3 and parts[1] and parts[2]:
                 out[int(parts[1], 0) & 0xFFFFFFFF] = int(parts[2])
     return out

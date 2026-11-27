@@ -10,8 +10,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 TMP = tempfile.TemporaryDirectory()
-os.environ.setdefault('DARKBLOOD_DATA', TMP.name)
-os.environ.setdefault('DARKBLOOD_CLIENT_DATA', TMP.name)
+os.environ['DARKBLOOD_DATA'] = TMP.name  # never the real character database
+# Always a private temporary directory: tests write and delete fixture dict files
+# (e.g. quest_act1.lua) there, so they must never point at the real client data.
+os.environ['DARKBLOOD_CLIENT_DATA'] = TMP.name
 if str(ROOT / 'src') not in sys.path:
     sys.path.insert(0, str(ROOT / 'src'))
 for _sub in ('automation', 'launcher', 'codegen', 'client_data', 'reverse'):

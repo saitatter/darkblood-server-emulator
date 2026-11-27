@@ -2,7 +2,7 @@
 from functools import lru_cache
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.loader import (
-    ASSETS_DIR, ITEM_RE, NAME_RE, _entries, _env_override, data_root,
+    ASSETS_DIR, tsv_rows, ITEM_RE, NAME_RE, _entries, _env_override, data_root,
 )
 
 
@@ -16,8 +16,7 @@ def npc_stores():
     tsv = ASSETS_DIR / 'npcs.tsv'
     if tsv.is_file():
         out = {}
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if parts:
                 nid = parts[0]
                 stores = parts[1].split(',') if len(parts) > 1 and parts[1] else []
@@ -37,8 +36,7 @@ def store_items():
     tsv = ASSETS_DIR / 'stores.tsv'
     if tsv.is_file():
         out = {}
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if len(parts) >= 3:
                 out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
         return out

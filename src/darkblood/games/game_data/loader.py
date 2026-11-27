@@ -95,3 +95,7 @@ def _top_entries(section):
     """Split a dict section into its top-level `  {` ... `  },` entries."""
     return re.split(r'\n  \{\n', section)[1:]
 
+
+def tsv_rows(path):
+    """Data rows (header skipped) of a TSV file as lists of tab-separated columns."""
+    return [line.split('\t') for line in Path(path).read_text(encoding='utf-8', errors='replace').splitlines()[1:]]

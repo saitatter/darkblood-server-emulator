@@ -35,9 +35,13 @@ def _criteria_item(looting_id, char_class):
     if not m:
         return None
     lo = int(m.group(1))
-    hi = lo + 4
-    grade = 'NSRUM'.index(m.group(2))
-    kind = m.group(3)
+    pool = _equip_pool(m.group(3), lo, lo + 4, 'NSRUM'.index(m.group(2)), char_class)
+    return random.choice(pool) if pool else None
+
+
+def _equip_pool(kind, lo, hi, grade, char_class):
+    """Equipment codes of `kind` (Weapon/Armor/Accessory), grade and level lo..hi usable by the class."""
+    base_class = int(char_class) & 0x0F
 
     def fits(code):
         if kind == 'Weapon':
@@ -46,11 +50,9 @@ def _criteria_item(looting_id, char_class):
             return code[:4] in ARMOR_SLOTS
         return code[:4] in ACCESSORY_SLOTS
 
-    base_class = int(char_class) & 0x0F
-    pool = [code for code, g, lv, cls in client_dict.equip_index()
+    return [code for code, g, lv, cls in client_dict.equip_index()
             if g == grade and lo <= lv <= hi and fits(code)
             and (len(cls) <= base_class or cls[base_class] == '1')]
-    return random.choice(pool) if pool else None
 
 
 def pick_item(looting_id, char_class):
@@ -85,20 +87,8 @@ def _equip_for_prize(kind, level, grade, char_class):
     """Pick a random equipment item matching (kind, level..level+4, grade, base_class)."""
     if kind not in ('Weapon', 'Armor', 'Accessory'):
         return None
-    base_class = int(char_class) & 0x0F
-
-    def fits(code):
-        if kind == 'Weapon':
-            return code.startswith('W')
-        if kind == 'Armor':
-            return code[:4] in ARMOR_SLOTS
-        return code[:4] in ACCESSORY_SLOTS
-
-    equip = client_dict.equip_index()
     for lo, hi in ((level, level + 4), (max(1, level - 5), level + 5)):
-        pool = [code for code, g, lv, cls in equip
-                if g == grade and lo <= lv <= hi and fits(code)
-                and (len(cls) <= base_class or cls[base_class] == '1')]
+        pool = _equip_pool(kind, lo, hi, grade, char_class)
         if pool:
             return random.choice(pool)
     return None

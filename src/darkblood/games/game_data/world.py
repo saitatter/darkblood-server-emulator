@@ -4,7 +4,7 @@ import re
 from functools import lru_cache
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.loader import (
-    ASSETS_DIR, _env_override, _section, _top_entries, data_root,
+    ASSETS_DIR, tsv_rows, _env_override, _section, _top_entries, data_root,
 )
 
 
@@ -16,8 +16,7 @@ def monsters():
         tsv = ASSETS_DIR / 'monsters.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 5:
                     mid, hp, lv, exp, drop = parts[:5]
                     out[jhash(mid) & 0xFFFFFFFF] = {
@@ -122,8 +121,7 @@ def money_drops():
         tsv = ASSETS_DIR / 'money_drops.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 3:
                     out[parts[0]] = (float(parts[1]), float(parts[2]))
             return out
@@ -153,8 +151,7 @@ def dungeon_maps():
         tsv = ASSETS_DIR / 'dungeon_maps.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 4:
                     out[parts[0]] = (parts[1], int(parts[2]), parts[3])
             return out
@@ -184,8 +181,7 @@ def dungeon_map_copies():
         tsv = ASSETS_DIR / 'dungeon_maps.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('	')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 5 and parts[4]:
                     out[parts[0]] = parts[4]
             return out
@@ -221,8 +217,7 @@ def gate_dungeons():
         tsv = ASSETS_DIR / 'map_gates.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 2:
                     gid = parts[0]
                     dlist = parts[1].split(',') if parts[1] else []

@@ -342,6 +342,13 @@ class ArenaHandlers(BaseDomainService):
     # Arena Teams (Opcodes 5269 - 5275)
     # ==========================================================================
 
+    @staticmethod
+    def _team_ack(ack_cls, team):
+        """5270/5272 reply carrying the team summary."""
+        return ack_cls(result=0, team_id=team.team_id, team_type=team.team_type, score=team.score,
+                       member_count=team.member_count, team_name=team.team_name,
+                       leader_name=team.leader_name, notice=team.notice)
+
     @packet_handler(ArenaTeamCreateReq)
     async def handle_arena_team_create(self, correlation: int, body: bytes):
         """Opcode 5269 / 2452 -> 5270 / 2453.
@@ -368,16 +375,7 @@ class ArenaHandlers(BaseDomainService):
         self._current_arena_team_id = team_id
 
         self.transport.record('arena-team-create-req', body, team_name=req.team_name)
-        ack = ArenaTeamCreateAck(
-            result=0,
-            team_id=team.team_id,
-            team_type=team.team_type,
-            score=team.score,
-            member_count=team.member_count,
-            team_name=team.team_name,
-            leader_name=team.leader_name,
-            notice=team.notice,
-        )
+        ack = self._team_ack(ArenaTeamCreateAck, team)
         await self.reply(ack, correlation, note=f'arena team create ack (name={req.team_name})')
 
     @packet_handler(ArenaTeamJoinReq)
@@ -405,16 +403,7 @@ class ArenaHandlers(BaseDomainService):
         self._current_arena_team_id = team.team_id
 
         self.transport.record('arena-team-join-req', body, team_id=req.team_id)
-        ack = ArenaTeamJoinAck(
-            result=0,
-            team_id=team.team_id,
-            team_type=team.team_type,
-            score=team.score,
-            member_count=team.member_count,
-            team_name=team.team_name,
-            leader_name=team.leader_name,
-            notice=team.notice,
-        )
+        ack = self._team_ack(ArenaTeamJoinAck, team)
         await self.reply(ack, correlation, note=f'arena team join ack (team={req.team_id})')
 
     @packet_handler(ArenaTeamLeaveReq)

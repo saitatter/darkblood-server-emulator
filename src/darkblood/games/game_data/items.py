@@ -3,7 +3,7 @@ import json
 import re
 from functools import lru_cache
 from darkblood.games.game_data.loader import (
-    ASSETS_DIR, _env_override, _section, _top_entries, data_root,
+    ASSETS_DIR, tsv_rows, _env_override, _section, _top_entries, data_root,
 )
 
 
@@ -15,8 +15,7 @@ def default_equipment():
         tsv = ASSETS_DIR / 'starter_equipment.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 2:
                     out.setdefault(int(parts[0]), []).append(parts[1])
             return out
@@ -57,8 +56,7 @@ def item_int_fields():
     tsv = ASSETS_DIR / 'item_fields.tsv'
     if tsv.is_file():
         out = {}
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if len(parts) >= 4:
                 out[parts[0]] = {
                     'BuyPrice': int(parts[1]),
@@ -121,8 +119,7 @@ def item_durabilities():
     tsv = ASSETS_DIR / 'item_durabilities.tsv'
     if tsv.is_file():
         out = {}
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if len(parts) >= 2:
                 out[parts[0]] = float(int(float(parts[1])))
         return out
@@ -159,8 +156,7 @@ def life_water_prices():
     tsv = ASSETS_DIR / 'life_water.tsv'
     if tsv.is_file():
         out = {}
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if len(parts) >= 6:
                 out[int(parts[0])] = [int(x) for x in parts[1:6]]
         return out
@@ -190,8 +186,7 @@ def tutorial_rewards():
         tsv = ASSETS_DIR / 'tutorial_rewards.tsv'
         if tsv.is_file():
             out = {'complete': [], 'skip': []}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 3:
                     out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
             return out
@@ -221,8 +216,7 @@ def cash_items():
         tsv = ASSETS_DIR / 'cash_items.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 3:
                     out[parts[0]] = {'type': int(parts[1]), 'adj': parts[2]}
             return out
@@ -264,8 +258,7 @@ def cash_packages():
         tsv = ASSETS_DIR / 'cash_packages.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 3:
                     out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
             return out
@@ -357,8 +350,7 @@ def equip_index():
     tsv = ASSETS_DIR / 'equip_index.tsv'
     if tsv.is_file():
         out = []
-        for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
+        for parts in tsv_rows(tsv):
             if len(parts) >= 4:
                 out.append((parts[0], int(parts[1]), int(parts[2]), parts[3]))
         return out

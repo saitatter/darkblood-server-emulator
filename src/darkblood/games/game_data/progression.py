@@ -2,7 +2,7 @@
 import re
 from functools import lru_cache
 from darkblood.games.game_data.loader import (
-    ASSETS_DIR, _env_override, _section, _top_entries, data_root,
+    ASSETS_DIR, tsv_rows, _env_override, _section, _top_entries, data_root,
 )
 
 
@@ -25,8 +25,7 @@ def char_level_stats():
         tsv = ASSETS_DIR / 'char_stats.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 5:
                     cls_id, lv, hp, mp, upexp = parts[:5]
                     out[(int(cls_id), int(lv))] = {
@@ -84,8 +83,7 @@ def level_up_ap():
         tsv = ASSETS_DIR / 'levelup_ap.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 2:
                     out[int(parts[0])] = int(parts[1])
             return out
@@ -106,8 +104,7 @@ def skill_costs():
         tsv = ASSETS_DIR / 'skills.tsv'
         if tsv.is_file():
             out = {}
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 4:
                     out[(int(parts[0]), int(parts[1]))] = (int(parts[2]), int(parts[3]))
             return out
@@ -156,8 +153,7 @@ def achievement_table():
         tsv = ASSETS_DIR / 'achievements.tsv'
         if tsv.is_file():
             out = []
-            for line in tsv.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
+            for parts in tsv_rows(tsv):
                 if len(parts) >= 5:
                     out.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3]), int(parts[4])))
             return out
