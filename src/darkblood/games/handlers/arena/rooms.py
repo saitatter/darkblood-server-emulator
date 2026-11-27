@@ -131,6 +131,8 @@ class ArenaRoomHandlers:
             if not members:
                 self.arena.rooms.pop(curr_room_id, None)
                 self.arena.room_members.pop(curr_room_id, None)
+            elif room.host_uid == char_uid:
+                room.host_uid = members[0]['uid']
             self._current_arena_room_id = None
 
         self.transport.record('arena-leave-room-req', body)
