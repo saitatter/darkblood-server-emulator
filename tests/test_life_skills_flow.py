@@ -178,6 +178,14 @@ class LifeSkillsFlowTest(ServerTestCase):
             _, capped = await client.expect_event(2529)
             self.assertEqual(FishingProficiencyNot.decode(capped).proficiency, 200.0)
 
+            from darkblood.games.network import results
+            shrimp = next(item for item in char['items'] if item['uid'] == 7801)
+            client.send_event(2038, UseItemReq(item_uid=shrimp['uid'], use_count=1).encode())
+            _, refused = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', refused)[0], results.INVALID_STATE)
+            self.assertEqual(shrimp['count'], 1)
+            self.assertIn(shrimp, char['items'])
+
         self.run_async(self.with_server(scenario))
 
     def test_cast_time_is_max_time_minus_the_bait_reduction(self):

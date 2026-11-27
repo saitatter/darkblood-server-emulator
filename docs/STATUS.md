@@ -1,5 +1,8 @@
 # Research status and handoff
 
+- **Fishing proficiency items (headless)**. Red Shrimp and other proficiency
+  items stay in the bag once Fishing has reached the cap for its learned level.
+
 - **2026-11-23:** Fixed `2697 LearnSkillListReq` freeze/crash on large skill
   batches (Issue #15 item 1): zlib-decompressed `2697` bodies omit `0x7FFFFFFF`
   (`header` -> `header?`), and `_charge_skills` now tracks running per-skill

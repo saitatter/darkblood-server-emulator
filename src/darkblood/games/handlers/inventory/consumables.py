@@ -163,6 +163,10 @@ class ConsumableHandlersMixin:
                              note='use item fail (not found)')
             return
         item_str_code = used_item.get('code', '')
+        if self.session.life.fishing_proficiency_item_at_cap(char, item_str_code):
+            await self.reply(UseItemAck(result=results.INVALID_STATE), correlation,
+                             note='fishing proficiency item refused (already at cap)')
+            return
         if item_str_code == 'IAMk1R190' and int(char.get('mark_bonus_cnt', 0)) >= 3:
             await self.reply(UseItemAck(result=results.INVALID_STATE), correlation,
                              note='rune agreement refused (all bonus slots unlocked)')
