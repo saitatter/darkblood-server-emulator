@@ -1,7 +1,6 @@
 """Arena: Arena channels (2304/2305) and room management (2306/2307, 5145-5154)."""
 from __future__ import annotations
 
-from itertools import count
 
 from darkblood.games.network.messages import (
     ArenaCreateRoomAck,

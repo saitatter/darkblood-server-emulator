@@ -6,7 +6,25 @@ import unittest
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.core.serialization.jser import varuint
+from darkblood.games.handlers.arena.league import league_ladder
 from darkblood.games.network import messages
+from darkblood.games.session import GameSession
+
+
+class LeagueLadderTest(unittest.TestCase):
+    def test_placement_and_order(self):
+        def char(cid, rating, wins, losses=0, draws=0):
+            return dict(id=cid, name=f'C{cid}', level=30, char_class=2, league_arena=dict(
+                rating=rating, win_count=wins, lose_count=losses, draw_count=draws))
+        ladder = league_ladder([
+            char(1, 1500, 5, 4),           # 9 games: still in placement
+            char(2, 1500, 10),             # ties on rating: more wins first
+            char(3, 1500, 7, 3),
+            char(4, 1800, 3, 6, 1),
+            dict(id=5, name='NoRecord'),   # never played
+        ])
+        self.assertEqual([(e.rank, e.char_uid) for e in ladder], [(1, 4), (2, 2), (3, 3)])
+        self.assertEqual((ladder[0].char_class, ladder[0].char_level, ladder[0].draws), (2, 30, 1))
 
 
 class ArenaFlowTest(ServerTestCase):
@@ -82,10 +100,10 @@ class ArenaFlowTest(ServerTestCase):
             _, ack2551 = await client.expect_event(2551)
             self.assertEqual(struct.unpack_from('<i', ack2551[:4])[0], 0)
 
-            # 12. League Season Arena Player Rank (2552 -> 2553)
+            # 12. League Season Arena Player Rank (2552 -> 2553): a new character is in placement
             client.send_event(2552, messages.LeagueSeasonArenaGetMyRankReq(season_id=1).encode())
             _, ack2553 = await client.expect_event(2553)
-            self.assertEqual(struct.unpack_from('<ii', ack2553), (0, 1))
+            self.assertEqual(struct.unpack_from('<ii', ack2553), (0, -1))
 
         self.run_async(self.with_server(scenario))
 
@@ -188,26 +206,38 @@ class ArenaFlowTest(ServerTestCase):
             client.send_event(2012, create_request('RankChallenger'))
             _, created = await client.expect_event(2013)
             char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2012, create_request('RankLeader'))
+            _, created2 = await client.expect_event(2013)
+            leader_id = struct.unpack_from('<Q', created2, 10)[0]
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
 
-            # 1. Query Season 1 Leaderboard (2550 -> 2551)
+            # Two stored characters past placement; the ladder is built from them.
+            store = GameSession.store()
+            store.get('OfflinePlayer', leader_id)['league_arena'] = dict(
+                rating=1700, win_count=12, lose_count=3, draw_count=0, win_streak=4)
+            store.get('OfflinePlayer', char_id)['league_arena'] = dict(
+                rating=1450, win_count=6, lose_count=4, draw_count=1)
+            store.save()
+
+            # 1. Query the ladder (2550 -> 2551): page index echoed, ordered by rating
             client.send_event(2550, messages.LeagueSeasonArenaGetRankReq(season_id=1).encode())
             _, ack2551 = await client.expect_event(2551)
             rank_ack = messages.LeagueSeasonArenaGetRankAck.decode(ack2551)
             self.assertEqual(rank_ack.result, 0)
             self.assertEqual(rank_ack.season_id, 1)
-            self.assertGreaterEqual(len(rank_ack.ranks), 5)
-            self.assertEqual(rank_ack.ranks[0].rank, 1)
-            self.assertEqual(rank_ack.ranks[0].char_name, "BloodLord")
-            self.assertGreaterEqual(rank_ack.ranks[0].score, 2000)
+            self.assertEqual([(e.rank, e.char_name) for e in rank_ack.ranks],
+                             [(1, 'RankLeader'), (2, 'RankChallenger')])
+            leader = rank_ack.ranks[0]
+            self.assertEqual((leader.char_uid, leader.server_id, leader.wins, leader.losses,
+                              leader.rating, leader.win_streak), (leader_id, 1, 12, 3, 1700, 4))
 
             # 2. Query Player's Personal Rank (2552 -> 2553)
             client.send_event(2552, messages.LeagueSeasonArenaGetMyRankReq(season_id=1).encode())
             _, ack2553 = await client.expect_event(2553)
             my_rank_ack = messages.LeagueSeasonArenaGetMyRankAck.decode(ack2553)
             self.assertEqual(my_rank_ack.result, 0)
-            self.assertGreaterEqual(my_rank_ack.my_rank, 1)
+            self.assertEqual(my_rank_ack.my_rank, 2)
 
             # 3. Arena Square List (2304 -> 2305)
             client.send_event(2304, messages.ArenaSquareListReq(server_key=1).encode())

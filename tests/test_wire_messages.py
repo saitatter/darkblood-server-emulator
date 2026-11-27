@@ -971,8 +971,8 @@ class WireMessagesTest(unittest.TestCase):
         req_rank = messages.LeagueSeasonArenaGetRankReq.decode(struct.pack('<i', 2026))
         self.assertEqual(req_rank.season_id, 2026)
 
-        entry1 = messages.LeagueRankEntry(rank=1, char_uid=101, char_name="GladiatorOne", score=2400)
-        entry2 = messages.LeagueRankEntry(rank=2, char_uid=102, char_name="GladiatorTwo", score=2300)
+        entry1 = messages.LeagueRankEntry(rank=1, char_uid=101, char_name="GladiatorOne", rating=2400, win_streak=3)
+        entry2 = messages.LeagueRankEntry(rank=2, char_uid=102, char_name="GladiatorTwo", rating=2300)
         ack_rank = messages.LeagueSeasonArenaGetRankAck(result=0, season_id=2026, ranks=[entry1, entry2]).encode()
         self.assertEqual(struct.unpack_from('<i', ack_rank[:4]), (0,))
 
@@ -982,6 +982,10 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(len(dec_rank.ranks), 2)
         self.assertEqual(dec_rank.ranks[0].char_name, "GladiatorOne")
         self.assertEqual(dec_rank.ranks[1].char_name, "GladiatorTwo")
+        self.assertEqual((dec_rank.ranks[0].rating, dec_rank.ranks[0].win_streak), (2400, 3))
+        # 0x00A4A120 reads 66 bytes per entry: u32 u64 wstr(len+UTF-16) u32 u8 u8 u32*5.
+        name = 'GladiatorOne'.encode('utf-16le')
+        self.assertEqual(len(entry1.encode()), 4 + 8 + 1 + len(name) + 4 + 1 + 1 + 4 * 5)
 
         req_my_rank = messages.LeagueSeasonArenaGetMyRankReq.decode(struct.pack('<i', 2026))
         self.assertEqual(req_my_rank.season_id, 2026)

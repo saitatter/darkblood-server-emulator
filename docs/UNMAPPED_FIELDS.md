@@ -18,11 +18,11 @@
 | `5149 ArenaLeaveRoomAck` | `raw[14]` | arena.jsch:190 |  |
 | `ArenaTeamInfo` | `map<?>` | arena.jsch:217 |  |
 | `5275 ArenaTeamLeaveAck` | `raw[14]` | arena.jsch:259 |  |
-| `2537 LeagueSeasonCharAwardNot` | `map<?>` | arena.jsch:302 | awards (0x007682A0) |
-| `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:307 | guild awards (0x007682A0) |
-| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:440 | mapSubCharInfo (0x004BA530 -> i64 key, 0x00A55C50: character details, wstr, skills/quickslot/item/bag containers), not recovered |
-| `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:490 | mapSlotInfo (0x004AA240) |
-| `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:502 | m_mapSlotInfo (0x004AA240) |
+| `2537 LeagueSeasonCharAwardNot` | `map<?>` | arena.jsch:306 | awards (0x007682A0) |
+| `2538 LeagueSeasonGuildAwardNot` | `map<?>` | arena.jsch:311 | guild awards (0x007682A0) |
+| `5173 ArenaStartGameAck` | `map<?>` | arena.jsch:444 | mapSubCharInfo (0x004BA530 -> i64 key, 0x00A55C50: character details, wstr, skills/quickslot/item/bag containers), not recovered |
+| `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:494 | mapSlotInfo (0x004AA240) |
+| `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:506 | m_mapSlotInfo (0x004AA240) |
 
 ## commerce (7 of 156 fields)
 

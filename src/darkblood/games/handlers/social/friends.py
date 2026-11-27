@@ -39,7 +39,6 @@ from darkblood.games.network.messages import (
     GuildSkillEntry,
     KeyboardSetCustomKeyAck,
     KeyboardSetCustomKeyReq,
-    LeagueArenaCharInfo,
     RequestCharInfoAck,
     RequestCharInfoByNickReq,
     RequestCharInfoReq,
@@ -53,6 +52,7 @@ from darkblood.games.network.messages import (
     TitleChangeReq,
     WatchEventSeenAck,
 )
+from darkblood.games.handlers.arena.league import league_arena_info
 from darkblood.games.world import GameWorldManager, SQUARE_UID_MASK, square_uid
 from darkblood.games import achievements
 from darkblood.games.entities.character import Character
@@ -345,23 +345,7 @@ class FriendsHandlers:
             )
             for gs in target.get('guild_skills', [])
         ]
-        la = target.get('league_arena', {}) or {}
-        league_arena = LeagueArenaCharInfo(
-            rating=int(la.get('rating', 1300)),
-            rating_float=float(la.get('rating_float', 1300.0)),
-            season_stat_exp=int(la.get('season_stat_exp', 0)),
-            used_league_point=int(la.get('used_league_point', 0)),
-            daily_league_point=int(la.get('daily_league_point', 0)),
-            daily_league_point_bonus=int(la.get('daily_league_point_bonus', 0)),
-            total_league_point=int(la.get('total_league_point', 0)),
-            stat_reset_count=int(la.get('stat_reset_count', 0)),
-            rank=int(la.get('rank', -1)),
-            win_count=int(la.get('win_count', 0)),
-            lose_count=int(la.get('lose_count', 0)),
-            draw_count=int(la.get('draw_count', 0)),
-            win_streak=int(la.get('win_streak', 0)),
-            season_stats={int(k): int(v) for k, v in (la.get('season_stats') or {}).items()},
-        )
+        league_arena = league_arena_info(target)
         raw_prof = list(target.get('proficiencies', []))
         proficiencies = [float(raw_prof[i]) if i < len(raw_prof) else 0.0 for i in range(10)]
         return RequestCharInfoAck(

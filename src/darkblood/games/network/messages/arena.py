@@ -558,18 +558,21 @@ class ArenaTeamLeaveAck(WireMessage):
 
 @dataclass
 class LeagueRankEntry(WireMessage):
-    """Ladder entry, 0x00475AA0 -> 0x00A4A120."""
+    """Ladder entry, 0x00475AA0 -> 0x00A4A120 (66 bytes). Row renderer 0x00492EF0 draws
+    "name (server name)", class, level, UI_3078 "%d wins", rating and UI_ARN_030
+    "%d Consecutive Wins"; +0x32/+0x36 are not read there (order as LeagueArenaCharInfo).
+    """
     rank: u32 = 1
-    char_uid: u64 = 10001
-    char_name: wstr = 'Gladiator'
-    score: u32 = 1500
-    char_class: u8 = 1
-    char_level: u8 = 50
-    wins: u32 = 10
-    losses: u32 = 2
-    draws: u32 = 0
-    rating: u32 = 1500
-    tier: u32 = 1
+    char_uid: u64 = 0
+    char_name: wstr = ''
+    server_id: u32 = 1  # +0x28 looked up in the server list (AppPage 0xB, 0x00627DE0); unknown ids show GAME_434 "Other server"
+    char_class: u8 = 0  # +0x2C
+    char_level: u8 = 1  # +0x2D
+    wins: u32 = 0  # +0x2E UI_3078 "%d wins"
+    losses: u32 = 0  # +0x32 not drawn by the row
+    draws: u32 = 0  # +0x36 not drawn by the row
+    rating: u32 = 1300  # +0x3A drawn as a number (0x00AEA7C0)
+    win_streak: u32 = 0  # +0x3E UI_ARN_030 "%d Consecutive Wins"
 
 
 @dataclass
@@ -607,11 +610,13 @@ class LeagueSeasonArenaGetMyRankReq(WireMessage):
 class LeagueSeasonArenaGetMyRankAck(WireMessage):
     """Opcode 2553: eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_ACK (reply).
 
-    Table case in 0x0049D180 -> 0x00492A10.
+    Table case in 0x0049D180 -> 0x00492A10: shown only when the player's win+lose+draw
+    (JUser +0x2A4/+0x2A8/+0x2AC) exceeds 9; a negative rank shows UI_2933 "Not ranked",
+    otherwise UI_2364 "%d place".
     """
     OPCODE: ClassVar[int] = 2553
     result: u32 = 0
-    my_rank: i32 = 1
+    my_rank: i32 = -1
 
 
 @dataclass

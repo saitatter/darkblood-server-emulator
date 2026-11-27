@@ -69,6 +69,8 @@ When it fails, note what the client did and keep it here.
 | W14 | Shop repurchase tab (`2066` vecRePur) | After selling, closing and reopening the shop shows the sold items in the Repurchase tab. |
 | W15 | Guild bank deposit/withdraw (`2179`-`2182`) | The AR display shows the player's AR after the transfer (it showed the guild bank total); a deposit without enough AR is refused with "Not enough Ar."; the guild bank never grows without paying. |
 | W16 | Failure messages | Refusals now show their real reason (item not found, not enough Ar, no bag slot, invalid name, "Can't perform in the current position") instead of "Unavailable character". |
+| W17 | League ladder (`2551`/`2553`) | The ladder lists the stored characters past placement (10+ games) as "name (Offline)", with wins, rating and "N Consecutive Wins"; a character in placement shows "Not ranked" (`-1`). Set `league_arena` win/lose counts on a character to see a row. |
+| W18 | Stall notices (`5254`/`5250`/`5255`) | A second player on the same town layer sees the stall open, change and close (notices now go to the seller's square and layer instead of square 1). |
 
 ## Basic client checklist (from ROADMAP)
 

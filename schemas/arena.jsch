@@ -260,18 +260,20 @@ message 5275 ArenaTeamLeaveAck
 end
 
 struct LeagueRankEntry
-  ## Ladder entry, 0x00475AA0 -> 0x00A4A120.
+  ## Ladder entry, 0x00475AA0 -> 0x00A4A120 (66 bytes). Row renderer 0x00492EF0 draws
+  ## "name (server name)", class, level, UI_3078 "%d wins", rating and UI_ARN_030
+  ## "%d Consecutive Wins"; +0x32/+0x36 are not read there (order as LeagueArenaCharInfo).
   u32 rank = 1
-  u64 char_uid = 10001
-  wstr char_name = 'Gladiator'
-  u32 score = 1500
-  u8 char_class = 1
-  u8 char_level = 50
-  u32 wins = 10
-  u32 losses = 2
-  u32 draws
-  u32 rating = 1500
-  u32 tier = 1
+  u64 char_uid
+  wstr char_name
+  u32 server_id = 1          # +0x28 looked up in the server list (AppPage 0xB, 0x00627DE0); unknown ids show GAME_434 "Other server"
+  u8 char_class              # +0x2C
+  u8 char_level = 1          # +0x2D
+  u32 wins                   # +0x2E UI_3078 "%d wins"
+  u32 losses                 # +0x32 not drawn by the row
+  u32 draws                  # +0x36 not drawn by the row
+  u32 rating = 1300          # +0x3A drawn as a number (0x00AEA7C0)
+  u32 win_streak             # +0x3E UI_ARN_030 "%d Consecutive Wins"
 end
 
 message 2550 LeagueSeasonArenaGetRankReq header?
@@ -291,9 +293,11 @@ message 2552 LeagueSeasonArenaGetMyRankReq header?
 end
 
 message 2553 LeagueSeasonArenaGetMyRankAck
-  ## Table case in 0x0049D180 -> 0x00492A10.
+  ## Table case in 0x0049D180 -> 0x00492A10: shown only when the player's win+lose+draw
+  ## (JUser +0x2A4/+0x2A8/+0x2AC) exceeds 9; a negative rank shows UI_2933 "Not ranked",
+  ## otherwise UI_2364 "%d place".
   u32 result
-  i32 my_rank = 1
+  i32 my_rank = -1
 end
 
 message 2537 LeagueSeasonCharAwardNot
