@@ -42,6 +42,7 @@ from darkblood.player_management.characters import (
 )
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+from darkblood.games.world import GameWorldManager
 
 
 class MailHandlers(BaseDomainService):
@@ -159,7 +160,6 @@ class MailHandlers(BaseDomainService):
 
         # Notify recipient if online
         try:
-            from darkblood.games.world import GameWorldManager
             rec_id = recipient_char['id']
             if rec_id in GameWorldManager.get().players:
                 player = GameWorldManager.get().players[rec_id]

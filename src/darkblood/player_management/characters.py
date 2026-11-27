@@ -8,6 +8,7 @@ import struct
 
 from darkblood.core.serialization.jser import WireError, read_varuint
 from darkblood.games.entities.character import Character
+from darkblood.games.game_data.client_dict import default_equipment, item_max_durability
 
 
 def read_wide(data, offset):
@@ -56,7 +57,6 @@ def ensure_inventory(char):
     initial 5-cell Ibaga0004 bag in UI slot 0. Returns True if the record changed.
     """
     changed = False
-    from darkblood.games.game_data.client_dict import default_equipment
     job = int(char.get('char_class', 0))
 
     if 'bags' not in char:
@@ -83,7 +83,7 @@ def ensure_inventory(char):
             char['items'].append(record)
         changed = True
 
-    from darkblood.games.handlers.skills import ensure_base_life_skills
+    from darkblood.games.handlers.skills import ensure_base_life_skills  # import cycle: handlers.skills imports player_management
     if ensure_base_life_skills(char):
         changed = True
 
@@ -167,7 +167,6 @@ def next_item_uid(char):
 
 def slots_needed(items):
     """Bag cells add_reward_items would use for [(code, count)]."""
-    from darkblood.games.game_data.client_dict import item_max_durability
     return sum(max(1, int(n)) if item_max_durability(code) is not None else 1 for code, n in items)
 
 
@@ -240,7 +239,6 @@ def add_reward_items(char, items):
     cells = free_cells(char)
     last = bags[-1]['bag_id'] if bags else -1
     used = {i['slot'] for i in char.get('items', []) if i.get('container') == last}
-    from darkblood.games.game_data.client_dict import item_max_durability
     stored = []
     for code, count in items:
         count = max(1, int(count))

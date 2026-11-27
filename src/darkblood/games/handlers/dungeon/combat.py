@@ -27,6 +27,8 @@ from darkblood.games.network.messages.dungeon import (
     TreasureFindAck,
     TreasureFindReq,
 )
+from darkblood.games.handlers.commerce.stores import add_roulette_points
+from darkblood.games.handlers.pets.pets import grant_pet_exp
 
 # The daily-claim sender refuses when owned or received coins reach 3.
 DAILY_REBIRTH_COINS = 3
@@ -116,8 +118,6 @@ class DungeonCombatHandlers:
         mon_target = info['id'] if info else msg.monster_id
         members = self._run_members()
         # Every member of the run gets the kill's EXP, score, roulette points and quest progress.
-        from darkblood.games.handlers.commerce.stores import add_roulette_points
-        from darkblood.games.handlers.pets.pets import grant_pet_exp
         for member, char in members:
             run = member.dungeon
             run.dungeon_kill_count = getattr(run, 'dungeon_kill_count', 0) + 1

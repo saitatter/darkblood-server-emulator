@@ -7,6 +7,7 @@ from darkblood.games.network.messages import (
     DungeonHistory,
     SelectDungeonAck,
 )
+from darkblood.games.game_data.client_dict import gate_dungeons, dungeon_map_copies, dungeon_maps
 
 
 class DungeonGateHandlers:
@@ -61,7 +62,6 @@ class DungeonGateHandlers:
         return sorted(ids)
 
     def _select_dungeon_ack(self, gate, char):
-        from darkblood.games.game_data.client_dict import gate_dungeons
         return SelectDungeonAck(gate_id=gate,
                                 dun_history=self._dungeon_history(char, set(gate_dungeons().get(gate, []))),
                                 quest_ids=self._active_quest_ids(char))
@@ -77,7 +77,6 @@ class DungeonGateHandlers:
         or e.g. Act1_G1_A15 at level 35-37 although Difficult is 2) and do not
         advance the dungeon's difficulty.
         """
-        from darkblood.games.game_data.client_dict import dungeon_map_copies, dungeon_maps
         map_code = dungeon_map_copies().get(map_code, map_code)
         info = dungeon_maps().get(map_code)
         if info is None or info[2]:

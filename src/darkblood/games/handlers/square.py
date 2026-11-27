@@ -1,8 +1,9 @@
 """Town (square) play: tutorial, layers, NPCs, waypoints."""
+import json
 import struct
 
-from darkblood.core.serialization.jser import event
-from darkblood.games.entities.character import layer_net_id
+from darkblood.core.serialization.jser import event, strip_prefix
+from darkblood.games.entities.character import layer_net_id, SQUARE_IDS
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network.messages import (
     BackToSquareAck,
@@ -36,7 +37,13 @@ TUTORIAL_QUEST_ID = 0x34c58e7c
 
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
-from darkblood.player_management.characters import gold_of
+from darkblood.player_management.characters import gold_of, add_reward_items
+from darkblood.core.hashing import jhash
+from darkblood.games.game_data.world import waypoint_info, portal_cost
+from darkblood.games.world import square_uid, GameWorldManager
+from darkblood.games.progression import refresh_stress, stress_changed_not
+from darkblood import REPO_ROOT
+from darkblood.games.game_data.client_dict import tutorial_rewards
 
 _GTARGETS_CACHE = None
 
@@ -45,9 +52,6 @@ def _gtargets_for_layer(layer_id: int) -> list:
     """Return enabled TargetState entries for the town square of `layer_id`."""
     global _GTARGETS_CACHE
     if _GTARGETS_CACHE is None:
-        import json
-        from darkblood import REPO_ROOT
-        from darkblood.core.hashing import jhash
         _GTARGETS_CACHE = {}
         path = REPO_ROOT / 'assets' / 'gtargets.json'
         if path.is_file():
@@ -84,8 +88,6 @@ class SquareHandlers(BaseDomainService):
         granted = 0
         if char:
             if not char.get('tutorial_cleared'):
-                from darkblood.games.game_data.client_dict import tutorial_rewards
-                from darkblood.player_management.characters import add_reward_items
                 rewards = tutorial_rewards()['complete' if completed else 'skip']
                 granted = len(add_reward_items(char, rewards))
             char['tutorial_cleared'] = True
@@ -113,7 +115,6 @@ class SquareHandlers(BaseDomainService):
         Updates active tutorial quest Q0882S01 objective kill counters and
         broadcasts opcode 2075 (eEGS_QUEST_UPDATE_NOT) to advance quest status.
         """
-        from darkblood.core.serialization.jser import strip_prefix
         body = strip_prefix(body)
         if len(body) < 4:
             return
@@ -206,7 +207,6 @@ class SquareHandlers(BaseDomainService):
 
     async def _sync_passive_stress(self):
         """Apply passive town stress recovery (1/min) and daily reset, notifying client on change."""
-        from darkblood.games.progression import refresh_stress, stress_changed_not
         char = self.current_char()
         if char is not None and refresh_stress(char):
             self.save_char()
@@ -240,14 +240,11 @@ class SquareHandlers(BaseDomainService):
         targets = _gtargets_for_layer(self._town_layer())
         await self.reply(GTargetListAck(result=0, targets=targets), correlation, note=f'gtarget list ack ({len(targets)})')
         # Sent once the town has loaded: show the players already there.
-        from darkblood.games.world import GameWorldManager
         await GameWorldManager.get().player_ready(self.session)
 
     @packet_handler(5030)
     async def handle_join_layer(self, correlation: int, body: bytes):
         """Opcode 5030 changes the town layer; positions travel via the relay."""
-        from darkblood.games.game_data.world import portal_cost, waypoint_info
-        from darkblood.games.world import GameWorldManager
 
         layer_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         use_waypoint = bool(body[12]) if len(body) >= 13 else False
@@ -328,7 +325,6 @@ class SquareHandlers(BaseDomainService):
         """
         await self.session.dungeon.leave_room()
         if self.session.active_char_id:
-            from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
         await self.reply(LeaveLayerAck(), correlation,
                          note='leave layer ack')
@@ -344,7 +340,6 @@ class SquareHandlers(BaseDomainService):
         """
         await self.session.dungeon.leave_room()
         if self.session.active_char_id:
-            from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
         await self.reply(LeaveSquareAck(), correlation,
                          note='leave square ack')
@@ -371,14 +366,11 @@ class SquareHandlers(BaseDomainService):
 
 def _is_town_layer(layer_id: int) -> bool:
     """High dword must be a loaded SquareID hash (CanEnter 0x006FA540)."""
-    from darkblood.games.entities.character import SQUARE_IDS
-    from darkblood.core.hashing import jhash
     return (layer_id >> 32) in {jhash(sq) for sq in SQUARE_IDS}
 
 
 def waypoint_data(layer_id: int):
     """Build WaypointData (0x00A49700) for a town layer from assets/waypoints.json."""
-    from darkblood.games.game_data.world import waypoint_info
     info = waypoint_info(layer_id)
     if info is not None:
         return WaypointData(
@@ -399,8 +391,6 @@ def waypoint_data(layer_id: int):
 
 def _waypoint_label(layer_id: int) -> str:
     """Human-readable label for a town waypoint (high dword = jhash(SquareID), low dword = layer)."""
-    from darkblood.games.entities.character import SQUARE_IDS
-    from darkblood.core.hashing import jhash
     sq_hash = layer_id >> 32
     layer_idx = layer_id & 0xFFFFFFFF
     names = {
@@ -416,5 +406,4 @@ def _waypoint_label(layer_id: int) -> str:
 
 
 def _wire_square_uid(square_id: int) -> int:
-    from darkblood.games.world import square_uid
     return square_uid(square_id)

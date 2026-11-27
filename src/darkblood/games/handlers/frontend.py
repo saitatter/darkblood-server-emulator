@@ -69,7 +69,6 @@ def welcome(account=DEFAULT_ACCOUNT, account_uid=1):
     # Flag tuple: (nAccountID, nAuthLevel, bFlag1, m_bAdultUser, bFlag3, nReserved)
     # m_bAdultUser=True unlocks the Blood Effect in client options (JNetUserMgr+0x4C / 0x00577860).
     # nAuthLevel=1 unlocks the native GM console (JAppPageCheat / 0x004EF790).
-    from darkblood.core import options
     auth_level = 1 if options.get('gm_mode') else 0
     body += struct.pack('<II???Q', 0, auth_level, False, options.get('adult_content'), False, 0)
     body += b'\x17' + varuint(0)
@@ -82,6 +81,10 @@ def welcome(account=DEFAULT_ACCOUNT, account_uid=1):
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 
+from darkblood.core import options
+from darkblood.games.world import GameWorldManager
+from darkblood.player_management.characters import encode_character, parse_create_request
+from darkblood.games.progression import active_penalty_notice, refresh_character_timers
 
 class FrontendHandlers(BaseDomainService):
     """Server/channel lists, character list, creation and selection."""
@@ -137,7 +140,6 @@ class FrontendHandlers(BaseDomainService):
         await self.reply(JoinSquareAck(result=0, square_id=square_id), correlation, note='join square ack')
         # eERC_SQUARE_CHANGE_RELAY_ADDRESS_NOT (5134)
         await self.send_msg(RelayAddressNot(port=RELAY_PORT), note='relay address not')
-        from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         previous = world.get_player(self.session.active_char_id)
         if previous and previous.session is self.session and previous.square_id != square_id:
@@ -160,7 +162,6 @@ class FrontendHandlers(BaseDomainService):
         await self._send_character_list(correlation)
 
     async def _send_character_list(self, correlation: int):
-        from darkblood.player_management.characters import encode_character
         chars = self.store().characters(self.account)
         ack = struct.pack('<I', 0) + b'\x10' + varuint(len(chars))
         for char in chars:
@@ -191,13 +192,11 @@ class FrontendHandlers(BaseDomainService):
             await self.reply(SelectCharacterAck(result=results.NO_EXIST_CHAR), correlation,
                              note='select char fail (no character)')
             return
-        from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         if self.session.active_char_id != char_id:
             await self.session.dungeon.leave_room()
             await world.remove_session_player(self.session)
         self.session.active_char_id = char_id
-        from darkblood.games.progression import active_penalty_notice, refresh_character_timers
         dirty = refresh_character_timers(char)
         if ensure_base_life_skills(char):
             dirty = True
@@ -233,7 +232,6 @@ class FrontendHandlers(BaseDomainService):
         Validates unique name and custom sliders, creates character record, and assigns
         starter weapon and class armor set.
         """
-        from darkblood.player_management.characters import encode_character, parse_create_request
         request = parse_create_request(body)
         self.transport.record('create-character', body, **{k: str(v) for k, v in request.items()})
         char = self.store().create(self.account, request)

@@ -9,6 +9,7 @@ from darkblood.games.network.messages import (
     UseSpeakerItemAck,
     UseSpeakerItemReq,
 )
+from darkblood.games.world import GameWorldManager
 
 
 class ChatHandlers:
@@ -47,7 +48,6 @@ class ChatHandlers:
 
     def _chat_recipients(self, channel, target):
         """Sessions other than the sender that should see a chat line."""
-        from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         me = self.session
         if channel == 2:

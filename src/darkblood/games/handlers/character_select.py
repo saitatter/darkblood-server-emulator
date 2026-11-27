@@ -14,6 +14,9 @@ from darkblood.games.network.messages import (
     QuickSlot,
     SelectCharacterAck,
 )
+from darkblood.core.hashing import jhash
+from darkblood.games.handlers.pets import build_ridings_map
+from darkblood.games.handlers.square import waypoint_data
 
 
 def build_char_details(char):
@@ -141,7 +144,6 @@ def _build_pet_depot_slots(char: dict) -> list:
 
 def _build_pets_map(char: dict) -> dict:
     """Build {pet_uid: PetInfo} for 2007 SelectCharacterAck (0x00A1E8C0 -> 0x00A52CF0)."""
-    from darkblood.core.hashing import jhash
     out = {}
     for p in char.get('pets') or []:
         if not isinstance(p, dict) or 'uid' not in p:
@@ -163,13 +165,11 @@ def _build_pets_map(char: dict) -> dict:
 
 def _build_ridings_map(char: dict) -> dict:
     """Build {jhash(ride_code): RidingInfo} for 2007 SelectCharacterAck (0x0076ABA0)."""
-    from darkblood.games.handlers.pets import build_ridings_map
     return build_ridings_map(char)
 
 
 def _build_waypoints_map(char: dict) -> dict:
     """Build {layer_net_id: WaypointData} for 2007 SelectCharacterAck (0x00A3EA00)."""
-    from darkblood.games.handlers.square import waypoint_data
     out = {}
     for raw_lid in char.get('waypoints', []):
         lid = int(raw_lid)

@@ -53,6 +53,11 @@ from darkblood.games.network.messages import (
     TitleChangeReq,
     WatchEventSeenAck,
 )
+from darkblood.games.world import GameWorldManager, SQUARE_UID_MASK, square_uid
+from darkblood.games import achievements
+from darkblood.games.entities.character import Character
+from darkblood.games.entities.items import Item
+from darkblood.games.handlers.skills import learned_skill_map
 
 
 class FriendsHandlers:
@@ -67,13 +72,11 @@ class FriendsHandlers:
         await self.reply(ack, correlation, note='friend list ack (%d)' % len(friends))
         # Live, 2131 follows 2006 by ~2 s, right before the relay JoinGroup:
         # the earliest point where a town peer sent by 5027 is displayed.
-        from darkblood.games.world import GameWorldManager
         await GameWorldManager.get().player_ready(self.session)
 
 
     def _friend_entry(self, uid):
         """FriendEntry for a character of any account, or None."""
-        from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         owner = self.current_char() or {}
         memo = (owner.get('friend_memos') or {}).get(str(uid), '')
@@ -131,7 +134,6 @@ class FriendsHandlers:
     async def handle_get_invite_list(self, correlation, body):
         # eEGS_GET_INVITELIST_REQ (Find user) -> 2025 eEGS_GET_INVITELIST_ACK
         # (0x006A2E10): the other online players that match the search.
-        from darkblood.games.world import SQUARE_UID_MASK, GameWorldManager, square_uid
         try:
             req = GetInviteListReq.decode(body)
         except (WireError, struct.error):
@@ -245,7 +247,6 @@ class FriendsHandlers:
     @packet_handler(2327)
     async def handle_achieve_get_list(self, correlation, body):
         # eEGS_ACHIEVE_GET_LIST_REQ -> 2328 eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
-        from darkblood.games import achievements
         char = self.current_char() or {}
         divisions, completed = achievements.total_info(char)
         ack = AchieveGetListAck(divisions=divisions, completed=completed,
@@ -257,7 +258,6 @@ class FriendsHandlers:
     async def handle_achieve_update(self, correlation, body):
         # eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0): vector of u32 achievement
         # hashes completed client-side -> 2445 (u32 result, 0x0074B830), then 2330.
-        from darkblood.games import achievements
         self.transport.record('achieve-update', body)
         char = self.current_char()
         completed = []
@@ -279,7 +279,6 @@ class FriendsHandlers:
     async def handle_achieve_div_update(self, correlation, body):
         # eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447
         # (0x0074B830 reads only the u32 result), then 2330 for completions.
-        from darkblood.games import achievements
         self.transport.record('achieve-div-update', body)
         char = self.current_char()
         completed = []
@@ -326,9 +325,6 @@ class FriendsHandlers:
 
 
     def _build_char_info_ack(self, target, is_other=True):
-        from darkblood.games.entities.character import Character
-        from darkblood.games.entities.items import Item
-        from darkblood.games.handlers.skills import learned_skill_map
         if target is None:
             return RequestCharInfoAck(result=0xCE)
         equipped = [Item.from_dict(it) for it in target.get('items', []) if it.get('container', 0) == 0]
@@ -394,7 +390,6 @@ class FriendsHandlers:
     @packet_handler(6028)
     async def handle_request_item_info(self, correlation, body):
         # eERT_REQUEST_ITEM_INFO_REQ -> 6029 eERT_REQUEST_ITEM_INFO_ACK (0x00766C20).
-        from darkblood.games.entities.items import Item
         req = RequestItemInfoReq.decode(body)
         target_id = self.char_id_from_uid(req.target_char_uid)
         target = self.find_char(req.target_char_uid)

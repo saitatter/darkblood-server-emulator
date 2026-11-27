@@ -36,13 +36,14 @@ from darkblood.games.network.messages import (
 )
 from darkblood.games.stalls import BrokerManager, PersonalShopManager
 from darkblood.player_management.characters import gold_of
+from darkblood.games.game_data import client_dict
+from darkblood.games.world import GameWorldManager
 
 
 class StallHandlers:
     async def _broadcast_square(self, evt_data: bytes):
         """Broadcast an event to all players in the square."""
         try:
-            from darkblood.games.world import GameWorldManager
             world = GameWorldManager.get()
             await world.broadcast_to_square(1, evt_data, exclude_char_id=self.char_id)
         except Exception:
@@ -250,7 +251,6 @@ class StallHandlers:
     async def handle_broker_price(self, correlation, body):
         # eEGS_BROKER_PRICE_REQ -> 2273 eEGS_BROKER_PRICE_ACK
         req = BrokerPriceReq.decode(body)
-        from darkblood.games.game_data import client_dict
         # Lookup code if any
         item_code = ''
         for s_items in client_dict.store_items().values():

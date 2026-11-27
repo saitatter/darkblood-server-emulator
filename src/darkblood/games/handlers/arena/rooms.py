@@ -20,6 +20,7 @@ from darkblood.games.network.messages import (
     ArenaSquareListReq,
 )
 from darkblood.games.dispatcher import packet_handler
+from darkblood.core.network.proudnet import relay_address
 
 
 class ArenaRoomHandlers:
@@ -110,7 +111,6 @@ class ArenaRoomHandlers:
         self._current_arena_room_id = room.room_id
 
         self.transport.record('arena-join-room-req', body, room_id=req.room_id)
-        from darkblood.core.network.proudnet import relay_address
         ack = ArenaJoinRoomAck(result=0, room=room, host_uid=room.host_uid, relay=relay_address())
         await self.reply(ack, correlation, note=f'arena join room ack (room={room.room_id})')
 

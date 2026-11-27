@@ -27,6 +27,9 @@ from darkblood.games.network.messages import (
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.player_management.characters import gold_of
+from darkblood.games.game_data.client_dict import skill_learn_cost
+from darkblood.core.hashing import jhash
+from darkblood.games.progression import total_ap
 
 # Life skills (gathering.lua, making.lua, fishing.lua): skill NameIndex <-> ProficiencyType (0..9).
 # Client 0x00A5F610 marks ProficiencyTypes 7, 8, 9 (BaseSupply=1) as always-present base tabs;
@@ -116,7 +119,6 @@ class SkillHandlers(BaseDomainService):
         """Deduct the SP/AR (skill.lua DemandPoint/DemandAr) for raising each
         (skill index, level) from its stored level. False, and nothing
         charged, when the character cannot pay."""
-        from darkblood.games.game_data.client_dict import skill_learn_cost
         running = {str(k): int(v) for k, v in char.get('skills', {}).items()}
         sp = ar = 0
         for sidx, lvl in wanted:  # (index, level) pairs; 2697 sends one entry per level step
@@ -232,7 +234,6 @@ class SkillHandlers(BaseDomainService):
     @packet_handler(UseLearnSkillItemReq)
     async def handle_use_learn_skill_item(self, correlation, body):
         # eEGS_USE_LEARN_SKILL_ITEM_REQ -> 2112 eEGS_USE_LEARN_SKILL_ITEM_ACK (0x0078BCD0).
-        from darkblood.core.hashing import jhash
         req = UseLearnSkillItemReq.decode(body)
         self.transport.record('use-learn-skill-item-req', body, item_uid=req.item_uid, skill_id=req.skill_id)
         char = self.current_char()
@@ -397,7 +398,6 @@ class SkillHandlers(BaseDomainService):
             char['quickslots'] = dict(target.get('quickslots', {}))
             char['sp'] = int(target.get('sp', char.get('sp', 0)))
         else:
-            from darkblood.games.progression import total_ap
             char['skills'] = dict(life_skills)
             char['quickslots'] = {}
             char['sp'] = total_ap(char)

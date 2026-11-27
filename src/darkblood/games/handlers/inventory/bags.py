@@ -18,7 +18,8 @@ from darkblood.games.network.messages import (
     SwitchQuickslotAck,
     SwitchQuickslotReq,
 )
-from darkblood.player_management.characters import add_reward_items, free_cells
+from darkblood.player_management.characters import add_reward_items, free_cells, UI_BAG_SLOTS
+from darkblood.games.game_data.client_dict import item_field
 
 
 class BagHandlersMixin:
@@ -27,7 +28,6 @@ class BagHandlersMixin:
     @packet_handler(OpenBagReq)
     async def handle_open_bag(self, correlation, body):
         """Opcode 2026 (eEGS_OPEN_BAG_REQ) -> 2027 (eEGS_OPEN_BAG_ACK): equip a bag item into a free UI slot."""
-        from darkblood.games.game_data.client_dict import item_field
         req = OpenBagReq.decode(body)
         char = self.current_char()
         items = char.get('items', []) if char else []
@@ -78,7 +78,6 @@ class BagHandlersMixin:
     @packet_handler(SwitchBagReq)
     async def handle_switch_bag(self, correlation, body):
         """Opcode 2030 (eEGS_SWITCH_BAG_REQ) -> 2031 (eEGS_SWITCH_BAG_ACK): swap two equipped bag slots."""
-        from darkblood.player_management.characters import UI_BAG_SLOTS
 
         req = SwitchBagReq.decode(body)
         char = self.current_char()

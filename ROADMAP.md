@@ -96,9 +96,11 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
   `tsv_rows`/`bundled_asset` loaders, typed messages for every former `struct.pack` reply, the longest handlers split
   into steps, and feature modules (`arena/` package, `dungeon/gate.py`, `inventory/consumables.py`,
   `character_select.py`, `quest_npc.py`).
-- [ ] Remaining refactor candidates: `handlers/quests.py` (~500 lines, quest lifecycle), ~75 function-local imports
-  of handlers/world/progression (some avoid cycles), the arena ladder is still a fixed sample list, and the
-  `stores.py` loaders use a different override shape than `bundled_asset`.
+- [x] Function-local imports hoisted to module level (2026-11-27): 105 of 108 moved; the 3 left break real cycles
+  and are commented (`entities/character.py`, `world.py`, `player_management/characters.py`).
+- [ ] Remaining refactor candidates: `handlers/quests.py` (~500 lines, quest lifecycle), the arena ladder is still a
+  fixed sample list, the `stores.py` loaders use a different override shape than `bundled_asset`, and the
+  `try/except Exception: pass` around online notifications (`mail.py`, `commerce/stalls.py`, `frontend.py`) hides errors.
 - [ ] Reduce the unmapped fields shown in the README progress table (the number that matters most for fidelity).
 
 ### C# / .NET 8 port (P10, MHServerEmu layout)

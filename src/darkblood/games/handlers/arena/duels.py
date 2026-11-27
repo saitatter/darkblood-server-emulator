@@ -13,6 +13,8 @@ from darkblood.games.network.messages import (
     DuelStartReq,
 )
 from darkblood.games.dispatcher import packet_handler
+from darkblood.core.network.proudnet import relay_address
+from darkblood.games.handlers.skills import learned_skill_map, proficiency_values_for_char
 
 
 class DuelHandlers:
@@ -45,8 +47,6 @@ class DuelHandlers:
         """
         req = DuelStartReq.decode(body)
         self.transport.record('duel-start-req', body, opponent_uid=req.opponent_uid)
-        from darkblood.core.network.proudnet import relay_address
-        from darkblood.games.handlers.skills import learned_skill_map, proficiency_values_for_char
         me = self.current_char() or {}
         opponent = self.find_char(req.opponent_uid) or {}
         ack = DuelStartAck(

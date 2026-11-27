@@ -38,7 +38,11 @@ from darkblood.player_management.characters import (
     gold_of,
     spend_gold,
     slots_needed,
+    next_item_uid,
 )
+from darkblood.games.game_data.world import dungeon_entry_rule
+from darkblood.games.progression import refresh_dungeon_entry_limits
+from darkblood.games.handlers.commerce.stores import add_roulette_points
 
 # DictDungeonReward:LoadDungeonReward Exp_Reward bonus rates per rank (0=D..6=SSS).
 _RANK_EXP_BONUS = {0: 0.065, 1: 0.07, 2: 0.075, 3: 0.10, 4: 0.13, 5: 0.17, 6: 0.20}
@@ -178,7 +182,6 @@ class DungeonRewardsHandlers:
             self.store().save_chars([(member.account, member.char_id) for member, _ in members])
         party_rank = _party_rank(party_scores, total_monster_hp, member_ranks, fallback_rank)
 
-        from darkblood.games.game_data.world import dungeon_entry_rule
         rule = dungeon_entry_rule(map_code)
         include_rewards = bool(req.is_clear or (rule and rule.get('is_citadel')))
         ack = FinishGameAck(
@@ -234,7 +237,6 @@ class DungeonRewardsHandlers:
         if bonus_exp > 0:
             await member.quests.grant_exp(char, bonus_exp)
         if is_clear:
-            from darkblood.games.handlers.commerce.stores import add_roulette_points
             new_pts = add_roulette_points(char, 1)
             await self.send_to([member], RoulettePointInsertNot(roulette_points=new_pts),
                                f'roulette point not (clear, pts={new_pts:.1f})')
@@ -246,12 +248,10 @@ class DungeonRewardsHandlers:
         """Clear-limited dungeons (rule clear_limit > 0) count today's clears and push
         the whole map with 2443 (handler 0x0079D0A0 -> 0x00964A00, the map 2007 fills at
         +0x3DD). Daily reset: progression.refresh_dungeon_entry_limits."""
-        from darkblood.games.game_data.world import dungeon_entry_rule
         rule = dungeon_entry_rule(map_code)
         if not rule or int(rule.get('clear_limit', 0)) <= 0:
             return
 
-        from darkblood.games.progression import refresh_dungeon_entry_limits
         refresh_dungeon_entry_limits(char)
         counts = char.setdefault('daily_dun_clear_counts', {})
         counts[map_code] = int(counts.get(map_code, 0)) + 1
@@ -356,7 +356,6 @@ class DungeonRewardsHandlers:
 
     def _mail_reward(self, char_id, char, code, count):
         """Send a chest reward that does not fit in the bags to the character's mailbox."""
-        from darkblood.player_management.characters import next_item_uid
         self.store().send_mail(
             sender_char_id=0, sender_name='System', recipient_char_id=char_id, title='Dungeon Reward',
             content='', gold=0, extra=0, items=[{'code': code, 'uid': next_item_uid(char), 'count': count}],

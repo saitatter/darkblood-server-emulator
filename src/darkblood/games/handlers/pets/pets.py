@@ -51,6 +51,8 @@ from darkblood.games.network.messages import (
     TamedMonster,
 )
 from darkblood.player_management.characters import gold_of
+from darkblood.games.game_data.client_dict import char_level_stat
+from darkblood.games.progression import MAX_LEVEL
 
 
 async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
@@ -68,8 +70,6 @@ async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
     if pet is None:
         return False
 
-    from darkblood.games.game_data.client_dict import char_level_stat
-    from darkblood.games.progression import MAX_LEVEL
 
     level = max(1, int(pet.get('level', 1)))
     if level >= MAX_LEVEL:

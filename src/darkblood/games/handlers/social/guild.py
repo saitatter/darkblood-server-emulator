@@ -69,6 +69,7 @@ from darkblood.games.network.messages import (
 )
 from darkblood.games.network import results
 from darkblood.player_management.characters import add_gold, gold_of, spend_gold
+from darkblood.games.world import GameWorldManager
 
 
 class GuildHandlers:
@@ -114,7 +115,6 @@ class GuildHandlers:
     async def handle_guild_invite(self, correlation, body):
         # eEGS_GUILD_INVITE_REQ -> 2161 eEGS_GUILD_INVITE_ACK (0x00759870)
         # + 6015 eERT_GUILD_INVITE_REQ (0x00759AB0) delivered to online invitee.
-        from darkblood.games.world import GameWorldManager
         req = GuildInviteReq.decode(body)
         self.transport.record('guild-invite-req', body, target=req.char_name)
         char = self.current_char()
@@ -300,7 +300,6 @@ class GuildHandlers:
     @packet_handler(2175)
     async def handle_guild_person_expulsion(self, correlation, body):
         # eEGS_GUILD_PERSON_EXPULSION_REQ (0x007940D0) -> 2176 eEGS_GUILD_PERSON_EXPULSION_ACK (0x0074B830).
-        from darkblood.games.world import GameWorldManager
         req = GuildPersonExpulsionReq.decode(body)
         self.transport.record('guild-person-expulsion-req', body, member_uids=req.member_uids)
         world = GameWorldManager.get()
@@ -392,7 +391,6 @@ class GuildHandlers:
     @packet_handler(2218)
     async def handle_refuse_guild_invite(self, correlation, body):
         # eEGS_REFUSE_GUILD_INVITE_NOT (0x00795000) -> forwards 6019 to online inviter.
-        from darkblood.games.world import GameWorldManager
         req = RefuseGuildInviteNot.decode(body)
         char = self.current_char()
         my_nick = char.get('name', '') if char else ''

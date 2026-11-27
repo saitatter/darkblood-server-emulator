@@ -6,8 +6,15 @@ from dataclasses import dataclass, field
 from itertools import count
 
 from darkblood.core.network.proudnet import (
-    FAST_KEY_BITS, ProtocolError, RELAY_PORT, SQUARE_UID_MASK,
-    frame, read_scalar, relay_address, scalar,
+    FAST_KEY_BITS,
+    ProtocolError,
+    RELAY_PORT,
+    SQUARE_UID_MASK,
+    frame,
+    read_scalar,
+    relay_address,
+    scalar,
+    blob,
 )
 from darkblood.core.serialization.jser import varuint
 
@@ -62,7 +69,6 @@ P2P_GROUP_MEMBER_LEAVE = 0xF61E
 
 
 def p2p_member_join(group_host_id, member_host_id, aes_key, fast_key, event_id=0):
-    from darkblood.core.network.proudnet import blob
     return (b'\x01' + struct.pack('<Hii', P2P_GROUP_MEMBER_JOIN, group_host_id, member_host_id)
             + blob(b'') + struct.pack('<I', event_id) + blob(aes_key) + blob(fast_key)
             + struct.pack('<I', 0) + b'\x00' * 16 + struct.pack('<?I', False, 0))

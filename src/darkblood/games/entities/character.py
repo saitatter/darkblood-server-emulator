@@ -65,7 +65,6 @@ class CharacterClass(IntEnum):
 
 def delete_seconds_left(delete_time: int) -> int:
     """Seconds until a pending deletion completes (never negative)."""
-    import time
     return max(0, int(delete_time) - int(time.time()))
 
 
@@ -160,7 +159,7 @@ class Character:
     @classmethod
     def from_dict(cls, data: dict) -> 'Character':
         """Instantiate a Character from storage JSON dictionary."""
-        from darkblood.games.progression import total_ap
+        from darkblood.games.progression import total_ap  # import cycle: progression -> network.messages -> lobby -> this module
         visuals = CharacterVisuals(
             face=data.get('face', 0),
             hair=data.get('hair', 0),

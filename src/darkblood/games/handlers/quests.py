@@ -1,9 +1,19 @@
 """Quest start/complete, failure, abandon, and tutorial quest handlers."""
 import struct
 
-from darkblood.core.serialization.jser import WireError, event, read_varuint
+from darkblood.core.serialization.jser import WireError, event, read_varuint, strip_prefix
 from darkblood.games.entities.items import Item, UPDATE_OWNER
-from darkblood.games.game_data.client_dict import char_level_stat
+from darkblood.games.game_data.client_dict import (
+    char_level_stat,
+    quest_item_objectives,
+    quest_temp_skill_index,
+    item_groups,
+    quests,
+    quest_mission_counts,
+    quest_rewards,
+    quest_promotion_class,
+    quest_mission_objectives,
+)
 from darkblood.games.missions.quests import ActiveQuest
 from darkblood.games.network.messages import (
     ChangeExpNot,
@@ -70,12 +80,13 @@ def _to_i32(val: int) -> int:
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.handlers.quest_npc import QuestNpcHandlers
-from darkblood.player_management.characters import gold_of
+from darkblood.player_management.characters import gold_of, add_reward_items
+from darkblood.games.handlers.commerce.stores import add_roulette_points, contribute_roulette_jackpot
+from darkblood.games.entities.character import mark_base_count
 
 
 def _take_quest_items(char, quest_id):
     """Remove the items a collection quest asked for (MissionType 1 targets) from the bags."""
-    from darkblood.games.game_data.client_dict import quest_item_objectives
     for item_code, q_list in quest_item_objectives().items():
         for target_qid, _, target_val in q_list:
             if target_qid != quest_id:
@@ -107,7 +118,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         tempSkill jhashes into numeric skill indices, grants them at level 1,
         and echoes QuestSpecialInfo(action_type=1) so the HUD TempSkillSet activates.
         """
-        from darkblood.games.game_data.client_dict import quest_temp_skill_index
         quest_id, target_class, skill_hashes = _parse_quest_start_body(body)
         char = self.store().get(self.account, self.char_id)
         is_new = bool(char) and str(quest_id) not in char.get('quests_active', {})
@@ -167,8 +177,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         2074's own item vector (reader 0x4B9210) is not recovered, so the items
         go out as an unsolicited 2037 like floor pick-ups.
         """
-        from darkblood.games.game_data.client_dict import item_groups, quests
-        from darkblood.player_management.characters import add_reward_items
         group = (quests().get(quest_id) or {}).get('offer')
         offered = [(code, count) for code, _, count in item_groups().get(group or '', [])]
         if not offered:
@@ -189,7 +197,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
             char = self.current_char()
         if not char:
             return
-        from darkblood.games.game_data.client_dict import quest_item_objectives, quest_mission_counts
         active = char.get('quests_active', {})
         if not active:
             return
@@ -235,7 +242,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
             return quests[str(quest_id)].uid
         uid = max([0] + [q.uid for q in quests.values()]) + 1
         tracked = sum(q.tracked for q in quests.values()) < 5  # 0x00A60960
-        from darkblood.games.game_data.client_dict import quest_mission_counts
         num_missions = quest_mission_counts().get(quest_id, 2 if quest_id == 0x34c58e7c else 0)
         counters = [0] * num_missions
         active[str(quest_id)] = dict(uid=uid, tracked=tracked, counters=counters)
@@ -268,7 +274,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
             await self.send_msg(level_not,
                                 note=f'level up not (level={level_not.new_level})')
         if level_notifications and level >= 30:
-            from darkblood.games.entities.character import mark_base_count
             new_base = max(int(char.get('mark_base_cnt', 0)), mark_base_count(level))
             if not char.get('mark_active') or new_base > int(char.get('mark_base_cnt', 0)):
                 char['mark_active'] = True
@@ -297,7 +302,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
             quest_id, select = struct.unpack_from('<Ii', body, offset + length)
         except (WireError, struct.error):
             pass
-        from darkblood.games.game_data.client_dict import quest_rewards
         exp, gold, gp, items = quest_rewards(quest_id, select)
         char = self.store().get(self.account, self.char_id) or {}
         already = quest_id in char.get('quests_done', [])
@@ -312,7 +316,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
             char['gold'] = total
             await self.grant_exp(char, exp)
             _take_quest_items(char, quest_id)
-            from darkblood.player_management.characters import add_reward_items
             reward_items = [] if already else add_reward_items(char, items)
             self.save_char()
         else:
@@ -329,7 +332,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
 
     async def _quest_roulette_points(self, char, gold):
         """A first completion adds 2 roulette points and feeds the quest gold to the jackpot."""
-        from darkblood.games.handlers.commerce.stores import add_roulette_points, contribute_roulette_jackpot
         new_pts = add_roulette_points(char, 2)
         if gold > 0:
             contribute_roulette_jackpot(gold)
@@ -339,7 +341,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
 
     async def _promote_after_quest(self, char, quest_id):
         """Final class-promotion quests switch the class, reset skills and refund AP (2283)."""
-        from darkblood.games.game_data.client_dict import quest_promotion_class
         promo_class = quest_promotion_class(quest_id)
         cur_class = int(char.get('char_class', 0))
         if promo_class is None or (cur_class & 0x0F) != (promo_class & 0x0F) or cur_class == promo_class:
@@ -389,8 +390,6 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         case 0x00659F00 -> 0x006481E0) reads only u32 result. Progress is
         reported like kill counters: 2075 with (quest, objective, count).
         """
-        from darkblood.games.game_data.client_dict import quest_mission_objectives
-        from darkblood.core.serialization.jser import strip_prefix
         mission = ''
         try:
             data = strip_prefix(body)

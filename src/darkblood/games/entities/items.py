@@ -7,6 +7,7 @@ from typing import ClassVar
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import to_i32 as _i32
 from darkblood.core.serialization.wire import *  # noqa: F403
+from darkblood.games.game_data.client_dict import item_max_durability
 
 
 EQUIPPED = 1  # item container id treated as "worn" by 0x008354D0
@@ -72,7 +73,6 @@ class Item(WireMessage):
     )
 
     def current_durability(self) -> float:
-        from darkblood.games.game_data.client_dict import item_max_durability
         maximum = item_max_durability(self.code)
         max_cap = float(int(maximum)) if maximum is not None else None
         if self.durability is not None:

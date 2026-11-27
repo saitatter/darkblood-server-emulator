@@ -1,4 +1,6 @@
 """NPC store catalog, buying, selling, buyback, beauty shop, roulette and durability."""
+import time
+import random
 import struct
 
 from darkblood.games.network import results
@@ -38,7 +40,10 @@ from darkblood.player_management.characters import (
     gold_of,
     spend_gold,
     slots_needed,
+    next_item_uid,
 )
+from darkblood.games.game_data import client_dict
+from darkblood.games.game_data.client_dict import item_field, item_max_durability
 
 MONSTER_CARD_ACKS = {2602: MonsterCardListAck, 2609: MonsterCardDeckAck, 2618: MonsterCardAlbumAck}
 
@@ -96,7 +101,6 @@ def store_record(item: str, stock: int = -1, price: int = None) -> StoreRecord:
 
     The stock is clamped to i16 (storelist.lua -1 = unlimited)."""
     if price is None:
-        from darkblood.games.game_data.client_dict import item_field
         price = item_field(item, 'BuyPrice', 0)
     return StoreRecord(item_hash=jhash(item), price=price & 0xFFFFFFFF,
                        stock=max(-0x8000, min(0x7FFF, stock)))
@@ -122,7 +126,6 @@ class StoreHandlers:
         # eEGS_GET_STORE_INFO_REQ (i32, u32 npc id; observed when talking to a
         # shop NPC) -> eEGS_GET_STORE_INFO_ACK 2066: empty store.
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
-        from darkblood.games.game_data import client_dict
         npc, items = client_dict.items_for_npc(npc_id)
         ack = StoreInfoAck(npc_id=npc_id, records=[store_record(i, c) for i, c in items],
                            repurchase=self._repurchase_list())
@@ -140,7 +143,6 @@ class StoreHandlers:
             await self.reply(ack, correlation, note='buy item fail (no char)')
             return
 
-        from darkblood.games.game_data import client_dict
         item_code = None
         item_stock = -1
         req_hash = req.item_id & 0xFFFFFFFF
@@ -234,14 +236,11 @@ class StoreHandlers:
             target['count'] = curr - del_cnt
             updated_item = Item(owner=UPDATE_OWNER, **target)
 
-        from darkblood.games.game_data.client_dict import item_field
         earned = item_field(target.get('code', ''), 'SellPrice', 0) * del_cnt
         char_gold = gold_of(char) + earned
         char['gold'] = char_gold
         self.save_char()
 
-        import time
-        from darkblood.player_management.characters import next_item_uid
         repurchase_uid = sold_record['uid'] if curr <= del_cnt else next_item_uid(char)
         sold_record['uid'] = repurchase_uid
         repurchase_map = self._repurchase_items
@@ -356,7 +355,6 @@ class StoreHandlers:
     @packet_handler(DurabilityChangeReq)
     async def handle_durability_change(self, correlation, body):
         # eEGS_DURABILITY_CHANGE_REQ (0x00792AC0) -> 2144 eEGS_DURABILITY_CHANGE_ACK (0x00774AE0).
-        from darkblood.games.game_data.client_dict import item_max_durability
         req = DurabilityChangeReq.decode(body)
         self.transport.record('durability-change-req', body, count=len(req.durabilities))
         char = self.current_char()
@@ -408,7 +406,6 @@ class StoreHandlers:
     async def handle_roulette_roll_dice(self, correlation, body):
         # eEGS_ROULETTE_ROLL_DICE_REQ -> 2387 eEGS_ROULETTE_ROLL_DICE_ACK (0x0062C850).
         global _ROULETTE_JACKPOT_AR
-        import random
 
         char = self.current_char()
         weights = [entry[3] for entry in ROULETTE_REWARDS]

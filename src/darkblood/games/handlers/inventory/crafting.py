@@ -1,4 +1,5 @@
 """Upgrading, durability repair, enchanting, avatar/zam, smelting and mark handlers."""
+import math
 from darkblood.games.network import results
 from darkblood.core.hashing import jhash
 from darkblood.games.dispatcher import packet_handler
@@ -43,6 +44,7 @@ from darkblood.games.network.messages import (
     RareAvatarChangeLookReq,
 )
 from darkblood.player_management.characters import gold_of
+from darkblood.games.game_data.client_dict import item_field, item_max_durability
 
 
 class CraftingHandlersMixin:
@@ -66,8 +68,6 @@ class CraftingHandlersMixin:
           missing = max(0, max_dur - ceil(cur_dur))
           cost    = missing * *(short *)(item_dict + 0xC2)  (RepairPrice)
         """
-        import math
-        from darkblood.games.game_data.client_dict import item_field, item_max_durability
         req = DurabilityRepairReq.decode(body)
         self.transport.record('durability-repair-req', body, count=len(req.repair_items))
         char = self.current_char()
@@ -111,7 +111,6 @@ class CraftingHandlersMixin:
     @packet_handler(DurabilityRepairByItemReq)
     async def handle_durability_repair_by_item(self, correlation, body):
         """Opcode 2154 (eEGS_DURABILITY_REPAIR_BY_ITEM_REQ) -> 2146: repair equipment using a repair kit item."""
-        from darkblood.games.game_data.client_dict import item_max_durability
         req = DurabilityRepairByItemReq.decode(body)
         self.transport.record('durability-repair-by-item-req', body,
                               count=len(req.repair_items), kit=req.repair_item_uid)

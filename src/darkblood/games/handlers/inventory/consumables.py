@@ -37,6 +37,9 @@ from darkblood.player_management.characters import (
     gold_of,
     slots_needed,
 )
+from darkblood.games.game_data import client_dict
+from darkblood.games.progression import clear_dungeon_penalty, life_water_cost, add_ap
+from darkblood.games.entities.character import mark_base_count
 
 # Dual Skill Activation Order items (Type=54 in item_cash.lua / item_disposable.lua): ItemID -> AdjValue (days).
 DUAL_SKILL_ITEM_DAYS = {
@@ -50,7 +53,6 @@ class ConsumableHandlersMixin:
     async def _apply_special_consumable(self, char: dict, item_str_code: str, item_code: int, use_count: int):
         """Apply side effects of special consumable items (Book of AP, Dual Skill, Agreement of Rune, Pets/Mounts)."""
         if item_str_code == 'Ispaa0001':
-            from darkblood.games.progression import add_ap
             add_ap(char, max(1, use_count))
             self.save_char()
             await self.send_msg(
@@ -76,7 +78,6 @@ class ConsumableHandlersMixin:
                 note=f'dual skill active not (+{add_days}d, remain={remain_sec}s, idx={cur_idx})',
             )
         elif item_str_code == 'IAMk1R190':
-            from darkblood.games.entities.character import mark_base_count
             char['mark_active'] = True
             base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(char.get('level', 1)), 3)
             bonus_cnt = min(3, int(char.get('mark_bonus_cnt', 0)) + max(1, int(use_count)))
@@ -180,7 +181,6 @@ class ConsumableHandlersMixin:
         else:
             dye_item['count'] = count
             update = Item(owner=UPDATE_OWNER, **dye_item)
-        from darkblood.games.game_data import client_dict
         stain = client_dict.cash_items().get(dye_item.get('code', ''), {}).get('type')
         slot = {2: 'hair_dye', 3: 'skin_dye'}.get(stain)
         if slot and req.target_uid == -1:
@@ -191,7 +191,6 @@ class ConsumableHandlersMixin:
                              dye_item.get('code'), req.target_uid, req.dye.color))
 
     def _cash_box_contents(self, code):
-        from darkblood.games.game_data import client_dict
         info = client_dict.cash_items().get(code)
         if not info or not info['adj']:
             return [], False
@@ -210,7 +209,6 @@ class ConsumableHandlersMixin:
     @packet_handler(BuyLifeWaterReq)
     async def handle_buy_life_water(self, correlation, body):
         """Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): cure dungeon penalty for AR."""
-        from darkblood.games.progression import clear_dungeon_penalty, life_water_cost
         req = BuyLifeWaterReq.decode(body)
         self.transport.record('buy-life-water-req', body, flag=req.flag)
         char = self.current_char()

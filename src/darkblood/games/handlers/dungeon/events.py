@@ -130,7 +130,6 @@ class DungeonEventsHandlers:
 
     @packet_handler(2539)
     async def handle_clear_rank_history_info(self, correlation, body):
-        import time
         req = ClearRankHistoryInfoReq.decode(body)
         await self.reply(
             ClearRankHistoryInfoAck(result=0, start_time=int(time.time()), cur_page=req.page,

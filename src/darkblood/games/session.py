@@ -14,6 +14,15 @@ from darkblood.games.handlers.quests import QuestHandlers
 from darkblood.games.handlers.skills import SkillHandlers
 from darkblood.games.handlers.social import SocialHandlers
 from darkblood.games.handlers.square import SquareHandlers
+from darkblood.games.progression import (
+    refresh_depot_timers,
+    refresh_dungeon_penalty,
+    refresh_stress,
+    stress_changed_not,
+    refresh_character_timers,
+)
+from darkblood.games.world import GameWorldManager
+from darkblood.player_management.store import SqliteCharacterStore
 
 
 CONTROLLERS = (
@@ -70,12 +79,6 @@ class GameSession:
         char = self.current_char()
         if char is None:
             return
-        from darkblood.games.progression import (
-            refresh_depot_timers,
-            refresh_dungeon_penalty,
-            refresh_stress,
-            stress_changed_not,
-        )
         dirty = False
         # Passive stress recovery (-1/min) ticks while outside a dungeon.
         if not getattr(self.dungeon, 'in_dungeon', False):
@@ -140,7 +143,6 @@ class GameSession:
         self.stop_timer_loop()
         await self.dungeon.leave_room()
         if self.active_char_id:
-            from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self)
 
     async def on_user_message(self, data):
@@ -161,8 +163,6 @@ class GameSession:
     @classmethod
     def store(cls):
         if cls._store is None:
-            from darkblood.games.progression import refresh_character_timers
-            from darkblood.player_management.store import SqliteCharacterStore
             cls._store = SqliteCharacterStore(timer_refresher=refresh_character_timers)
         return cls._store
 

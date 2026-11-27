@@ -38,6 +38,9 @@ from darkblood.games.network.messages import (
     TeachingSummonRequestAck,
     TeachingSummonRequestReq,
 )
+from darkblood.games.world import PartyManager, GameWorldManager, square_uid
+from darkblood.games.entities.character import layer_net_id
+from darkblood.games.handlers.dungeon import DungeonRoom, relay_address
 
 
 class PartyHandlers:
@@ -101,7 +104,6 @@ class PartyHandlers:
     async def _invite_to_party(self, ack_opcode, correlation, target_id, target_name):
         """Shared invite path for 2100, 5049 and 5092 (target by id or name)."""
         target_id = self.char_id_from_uid(target_id)
-        from darkblood.games.world import PartyManager
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         char_name = char.get('name', 'Leader') if char else 'Leader'
@@ -138,7 +140,6 @@ class PartyHandlers:
 
 
     async def _send_party_invite_notice(self, char_id, char_name, target_id):
-        from darkblood.games.world import GameWorldManager, square_uid
 
         world = GameWorldManager.get()
         target = world.get_player(target_id)
@@ -164,7 +165,6 @@ class PartyHandlers:
     @packet_handler(2102)
     async def handle_party_join(self, correlation, body):
         """Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK)."""
-        from darkblood.games.world import PartyManager
         req = PartyJoinReq.decode(body)
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
@@ -191,7 +191,6 @@ class PartyHandlers:
     @packet_handler(5054)
     async def handle_party_accept_invite(self, correlation, body):
         """Opcode 5054 (eERC_ACCEPT_INVITE_REQ) -> 5055 (eERC_ACCEPT_INVITE_ACK)."""
-        from darkblood.games.world import PartyManager
         req = PartyAcceptInviteReq.decode(body)
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
@@ -200,7 +199,6 @@ class PartyHandlers:
         level = char.get('level', 1) if char else 1
 
         host_id = self.char_id_from_uid(req.host_uid)
-        from darkblood.games.world import GameWorldManager
         host = GameWorldManager.get().get_player(host_id)
         host_room = getattr(getattr(getattr(host, 'session', None), 'dungeon', None), 'room', None)
         if host_room is not None and self.session.dungeon.room is not host_room:
@@ -223,7 +221,6 @@ class PartyHandlers:
             # Real client has no handlers for 5055/5056; its party IS a DungeonRoom.
             # If the host had no room yet, create one on the host (5002) and join it (5004 + 5035).
             if host and host.session and getattr(host.session, 'dungeon', None) and host.session.dungeon.room is None:
-                from darkblood.games.handlers.dungeon import DungeonRoom, relay_address
                 server = host.session.transport.server
                 host_char = host.session.dungeon.current_char() or host.char_data
                 info = RoomInfo(room_id=next(server.room_ids), name=f"{host_char.get('name', 'Party')}'s Party",
@@ -241,7 +238,6 @@ class PartyHandlers:
     @packet_handler(2104)
     async def handle_party_leave(self, correlation, body):
         """Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK)."""
-        from darkblood.games.world import PartyManager
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
         pm = PartyManager.get()
@@ -253,7 +249,6 @@ class PartyHandlers:
     @packet_handler(2106)
     async def handle_party_kick(self, correlation, body):
         """Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK)."""
-        from darkblood.games.world import GameWorldManager, PartyManager
         req = PartyKickReq.decode(body)
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
@@ -347,8 +342,6 @@ class PartyHandlers:
     @packet_handler(6032)
     async def handle_teaching_summon_request(self, correlation, body):
         # eERT_TEACHING_SUMMON_REQUEST_REQ (0x007A6240) -> 6033 eERT_TEACHING_SUMMON_REQUEST_ACK (0x0075CA40).
-        from darkblood.games.entities.character import layer_net_id
-        from darkblood.games.world import GameWorldManager
         req = TeachingSummonRequestReq.decode(body)
         char = self.current_char()
         my_name = char.get('name', '') if char else ''

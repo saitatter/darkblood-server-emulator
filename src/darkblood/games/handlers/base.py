@@ -1,5 +1,6 @@
 """Shared access to the owning game session."""
 from darkblood.core.serialization.jser import event
+from darkblood.core.network.proudnet import SQUARE_UID_MASK
 
 
 class BaseDomainService:
@@ -32,7 +33,6 @@ class BaseDomainService:
         client sends e.g. 0x07C0000000000001 for character 1. Live 2026-11-21:
         the unmasked lookup found no player, so no 5051 reached the invitee.
         """
-        from darkblood.core.network.proudnet import SQUARE_UID_MASK
         return int(uid) & SQUARE_UID_MASK if uid and uid > 0 else int(uid or 0)
 
     def find_char(self, uid):

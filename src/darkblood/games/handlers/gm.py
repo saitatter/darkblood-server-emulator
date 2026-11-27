@@ -104,6 +104,7 @@ from darkblood.games.network.messages import (
     RebirthCoinChangeNot,
     StressChangedNot,
 )
+from darkblood.games.handlers.skills import learned_skill_map
 
 
 class GmHandlers(BaseDomainService):
@@ -156,7 +157,6 @@ class GmHandlers(BaseDomainService):
         if char is not None:
             apply_learn_skill(char, req.skill_id, req.skill_level)
             self.save_char()
-        from darkblood.games.handlers.skills import learned_skill_map
         skills = learned_skill_map(char.get('skills', {}) if char else {})
         await self.reply(CheatLearnSkillAck(result=0, skills=[s for i, s in skills.items() if i == req.skill_id]),
                          correlation,

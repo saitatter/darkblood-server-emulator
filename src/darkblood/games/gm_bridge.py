@@ -54,6 +54,7 @@ from darkblood.games.network.messages.system import RebirthCoinChangeNot
 from darkblood.games.progression import level_up_not
 from darkblood.games.world import GameWorldManager
 from darkblood.player_management.characters import gold_of
+from darkblood.games.handlers.skills import learned_skill_map
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +286,6 @@ async def _cmd_incdepot(ctx: _BridgeCtx, _args: List[str]) -> dict:
 async def _cmd_skill(ctx: _BridgeCtx, args: List[str]) -> dict:
     if len(args) < 2:
         return {'ok': False, 'message': 'Usage: skill <skill_index> <level>'}
-    from darkblood.games.handlers.skills import learned_skill_map
     sidx, slv = apply_learn_skill(ctx.char, int(args[0]), int(args[1]))
     ctx.save()
     ack = LearnSkillListAck(

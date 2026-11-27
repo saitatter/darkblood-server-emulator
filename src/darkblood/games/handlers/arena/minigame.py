@@ -1,6 +1,7 @@
 """Arena: Rock-paper-scissors minigame (GBB, 2715-2720)."""
 from __future__ import annotations
 
+import random
 from darkblood.games.network.messages import (
     GbbChallengeAck,
     GbbChallengeReq,
@@ -21,7 +22,6 @@ class GbbHandlers:
     @packet_handler(2717)
     async def handle_gbb_challenge(self, correlation: int, body: bytes):
         """Opcode 2717 (eEGS_GBB_CHALLENGE_REQ, 0x007A8300) -> 2718."""
-        import random
         req = GbbChallengeReq.decode(body)
         server_choice = random.randint(0, 2)
         if req.choice == server_choice:

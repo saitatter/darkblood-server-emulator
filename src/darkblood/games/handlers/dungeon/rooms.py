@@ -1,6 +1,6 @@
 """Dungeon room creation, joining, leaving, host promotion, gate selection and map code."""
 import struct
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from darkblood.core.network.proudnet import relay_address
 from darkblood.core.serialization.jser import WireError, event, strip_prefix
@@ -35,6 +35,9 @@ from darkblood.games.network.messages import (
     TrainingJoinRoomAck,
     TrainingLeaveRoomAck,
 )
+from darkblood.games.world import square_uid
+from darkblood.games.handlers.square import _wire_square_uid
+from darkblood.games.progression import apply_dungeon_penalty
 
 
 @dataclass
@@ -103,7 +106,6 @@ class DungeonRoomHandlers:
 
 
     def _member_info(self, session, record):
-        from darkblood.games.world import square_uid
         return RoomMemberInfo(
             square_uid=square_uid(getattr(session, 'square_id', 1) or 1),
             char_uid=int(record.get('id', 0)),
@@ -317,7 +319,6 @@ class DungeonRoomHandlers:
         when +0x30 == 8 (0x0062E422). 1 and 2 show "PLAY" (live), anything else
         "FULL".
         """
-        from dataclasses import replace
         state = 1 if room.started else (8 if len(room.members) < room.info.max_users else 0)
         return replace(room.info, cur_users=len(room.members), state=state)
 
@@ -342,7 +343,6 @@ class DungeonRoomHandlers:
         ack = LeaveRoomAck(result=0)
         await self.reply(ack, correlation, note='leave room ack')
         if was_in_dungeon:
-            from darkblood.games.handlers.square import _wire_square_uid
             back_ack = BackToSquareAck(
                 square_uid=_wire_square_uid(self.session.square_id),
                 layer_net_id=self.session.square._town_layer(),
@@ -353,7 +353,6 @@ class DungeonRoomHandlers:
             if not was_cleared:
                 char = self.current_char()
                 if char is not None:
-                    from darkblood.games.progression import apply_dungeon_penalty
                     pen = apply_dungeon_penalty(char, penalty_type=0)
                     self.save_char()
                     await self.transport.send_event(
@@ -382,7 +381,6 @@ class DungeonRoomHandlers:
         # eERC_TRAINING_LEAVE_ROOM_REQ (0x007990D0) -> 5239 eERC_TRAINING_LEAVE_ROOM_ACK (0x0074B830).
         # 0x0074B830 only reads result and returns 1 without transitioning back to town;
         # follow with 5046 BackToSquareAck (like 5005 dungeon exit) to return to town.
-        from darkblood.games.handlers.square import _wire_square_uid
         await self.reply(TrainingLeaveRoomAck(result=0), correlation, note='training leave room ack')
         back_ack = BackToSquareAck(
             square_uid=_wire_square_uid(self.session.square_id),

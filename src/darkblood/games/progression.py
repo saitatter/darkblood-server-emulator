@@ -1,6 +1,12 @@
 """Character level, ability point, and stress (fatigue) accounting."""
+import datetime
 import time
-from darkblood.games.game_data.client_dict import char_level_stat, level_up_ap, skill_learn_cost
+from darkblood.games.game_data.client_dict import (
+    char_level_stat,
+    level_up_ap,
+    skill_learn_cost,
+    life_water_prices,
+)
 from darkblood.games.network.messages import (
     ChangeDungeonPenaltyNot,
     LevelUpNot,
@@ -262,7 +268,6 @@ def clear_dungeon_penalty(char, penalty_type: int = 0):
 
 def life_water_cost(char, penalty_type: int = 0, now=None) -> int:
     """Compute AR cost to clear an active dungeon penalty from DictDunPenalty:LoadLifeWater."""
-    from darkblood.games.game_data.client_dict import life_water_prices
     now = time.time() if now is None else float(now)
     refresh_dungeon_penalty(char, penalty_type=penalty_type, now=now)
     k_cnt, k_start, _ = _penalty_keys(penalty_type)
@@ -310,7 +315,6 @@ def refresh_dungeon_entry_limits(char, now=None) -> bool:
     UI_3408: "Charged a challenge opportunity daily. Challenge opportunity is initialized
     at every Monday. Consumes each time to enter Dungeons in the Fortress."
     """
-    import datetime
     now = time.time() if now is None else float(now)
     today = datetime.datetime.fromtimestamp(now).date()
     today_str = today.isoformat()
