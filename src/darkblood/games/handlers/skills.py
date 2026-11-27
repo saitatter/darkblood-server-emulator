@@ -144,6 +144,7 @@ class SkillHandlers(BaseDomainService):
         char = self.current_char()
         remain_sp = remain_gold = 0
         if char:
+            learned_profs = None
             pf = LIFE_SKILL_TO_PROFICIENCY.get(int(req.skill_index))
             if pf is not None and pf not in BASE_SUPPLY_PROFICIENCIES:
                 learned_profs = learned_proficiencies_for_char(char)
@@ -153,10 +154,11 @@ class SkillHandlers(BaseDomainService):
                     return
                 if pf not in learned_profs:
                     learned_profs.append(pf)
-                char['learned_proficiencies'] = learned_profs
             if not self._charge_skills(char, [(req.skill_index, req.level)]):
                 await self.reply(LearnSkillAck(result=results.INVALID_STATE), correlation, note='learn skill fail (not enough SP/AR)')
                 return
+            if learned_profs is not None:
+                char['learned_proficiencies'] = learned_profs
             char.setdefault('skills', {})[str(req.skill_index)] = req.level
             self.save_char()
             remain_gold = gold_of(char)

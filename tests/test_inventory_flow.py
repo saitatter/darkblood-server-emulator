@@ -884,6 +884,15 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(ack2007[5:6], varuint(10))
             self.assertEqual(struct.unpack_from('<10f', ack2007, 6), (0.0,) * 10)
 
+            from unittest.mock import patch
+
+            with patch('darkblood.games.game_data.client_dict.skill_learn_cost', return_value=(25, 0)):
+                client.send_event(2050, LearnSkillReq(skill_index=9007, level=1).encode())
+                _, refused = await client.expect_event(2051)
+                self.assertNotEqual(struct.unpack_from('<i', refused)[0], 0)
+            self.assertEqual(char.get('learned_proficiencies', []), [])
+            self.assertNotIn('9007', char['skills'])
+
             # Learn Mining (9007 -> prof 0) and Gathering (9008 -> prof 1)
             for sid in (9007, 9008):
                 client.send_event(2050, LearnSkillReq(skill_index=sid, level=1).encode())
