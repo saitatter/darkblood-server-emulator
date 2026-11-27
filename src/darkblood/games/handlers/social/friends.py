@@ -212,10 +212,15 @@ class FriendsHandlers:
         req = CharNickChangeReq.decode(body)
         new_name = req.new_name.strip()
         self.transport.record('char-nick-change-req', body, new_name=new_name)
-        char = self.store().get(self.account, self.char_id) 
-        if char and new_name:
-            char['name'] = new_name
-            self.save_char()
+        char = self.current_char()
+        if not char or not new_name:
+            result = results.NICK_INVALID if char else results.NO_EXIST_CHAR
+            await self.reply(CharNickChangeAck(result=result), correlation, note='char nick change refused')
+            return
+        if not self.store().rename_character(self.account, char, new_name):
+            await self.reply(CharNickChangeAck(result=results.NICK_ALREADY_EXISTS), correlation,
+                             note='char nick change refused (name already taken)')
+            return
         ack = CharNickChangeAck(result=0, items=[], new_name=new_name)
         await self.reply(ack, correlation, note=f'char nick change ack ({new_name})')
 

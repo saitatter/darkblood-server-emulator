@@ -700,6 +700,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   Triggered when EXP overflows `UPExp` from `charstat.lua`. Emits level up (new_level, max_hp, max_mp) and 5086 exp details, granting 3 SP per level.
 - `2139 eEGS_FRIEND_LIST_ADD_REQ` (`0x00790000.c:1595`) -> `2140 eEGS_FRIEND_LIST_ADD_ACK` (`0x007591A0`):
   `char_name: wstring` -> `result: i32` (0xCE player offline / not found).
+- `2310 CharNickChangeReq` -> `2311 CharNickChangeAck`: an occupied nickname returns `NICK_ALREADY_EXISTS` and preserves the current name.
 - `2135 eEGS_FRIEND_LIST_DELETE_REQ` (`0x00790000.c:1824`) -> `2136 eEGS_FRIEND_LIST_DELETE_ACK` (`0x00759560`):
   `char_uid: i64` -> `result: i32, char_uid: i64`.
 - `2221 eEGS_POST_SEND_REQ` (`0x00795D70`) -> `2222 eEGS_POST_SEND_ACK` (`0x00795F40`):
