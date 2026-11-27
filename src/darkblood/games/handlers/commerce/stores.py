@@ -1,6 +1,7 @@
 """NPC store catalog, buying, selling, buyback, beauty shop, roulette and durability."""
 import struct
 
+from darkblood.games.network import results
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event, strip_prefix
 from darkblood.games.dispatcher import packet_handler
@@ -131,12 +132,11 @@ class StoreHandlers:
     @packet_handler(BuyItemReq)
     async def handle_buy_item(self, correlation, body):
         # eEGS_BUY_ITEM_REQ (0x0078F720) -> 2068 eEGS_BUY_ITEM_ACK (0x0077E2F0).
-        from darkblood.games.network import results
         req = BuyItemReq.decode(body)
         self.transport.record('buy-item-req', body, store_id=req.store_id, item_id=req.item_id, count=req.count)
         char = self.current_char()
         if not char:
-            ack = BuyItemAck(result=1)
+            ack = BuyItemAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='buy item fail (no char)')
             return
 
@@ -192,7 +192,7 @@ class StoreHandlers:
             )
             await self.reply(ack, correlation, note=f'buy item ack (code={item_code} count={count} gold={char_gold})')
         else:
-            ack = BuyItemAck(result=1)
+            ack = BuyItemAck(result=results.NOT_ENOUGH_AR)
             await self.reply(ack, correlation, note='buy item fail (insufficient gold)')
 
 
@@ -203,14 +203,14 @@ class StoreHandlers:
         self.transport.record('sell-item-req', body, npc_id=req.npc_id, item_uid=req.item_uid, count=req.count)
         char = self.current_char()
         if not char:
-            ack = SellItemAck(result=1)
+            ack = SellItemAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='sell item fail (no char)')
             return
 
         items = char.get('items', [])
         target = next((i for i in items if i.get('uid') == req.item_uid), None)
         if not target:
-            ack = SellItemAck(result=1)
+            ack = SellItemAck(result=results.INVEN_ITEM_NOT_FOUND)
             await self.reply(ack, correlation, note='sell item fail (not found)')
             return
 
@@ -265,22 +265,21 @@ class StoreHandlers:
     @packet_handler(RepurchaseItemReq)
     async def handle_repurchase_item(self, correlation, body):
         # eEGS_REPURCHASE_ITEM_REQ (0x0078F8A0) -> 2072 eEGS_REPURCHASE_ITEM_ACK (0x0077EC30 -> 0x0059F7F0).
-        from darkblood.games.network import results
         req = RepurchaseItemReq.decode(body)
         self.transport.record('repurchase-item-req', body, item_uid=req.item_uid)
         char = self.current_char()
         if not char:
-            await self.reply(RepurchaseItemAck(result=1), correlation, note='repurchase fail (no char)')
+            await self.reply(RepurchaseItemAck(result=results.NO_EXIST_CHAR), correlation, note='repurchase fail (no char)')
             return
         repurchase_map = self._repurchase_items
         entry = repurchase_map.get(req.item_uid)
         if not entry:
-            await self.reply(RepurchaseItemAck(result=1), correlation, note=f'repurchase fail (unknown {req.item_uid})')
+            await self.reply(RepurchaseItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation, note=f'repurchase fail (unknown {req.item_uid})')
             return
         sold_record, price, _sold_at = entry
         char_gold = gold_of(char)
         if char_gold < price:
-            await self.reply(RepurchaseItemAck(result=1), correlation,
+            await self.reply(RepurchaseItemAck(result=results.NOT_ENOUGH_AR), correlation,
                              note=f'repurchase fail (need {price} AR, have {char_gold})')
             return
         if free_bag_slots(char) < 1:

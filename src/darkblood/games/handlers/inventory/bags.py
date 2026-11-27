@@ -38,7 +38,9 @@ class BagHandlersMixin:
         free = [s for s in range(5) if s not in used]
         if not item or not size or not free:
             reason = 'no item' if not item else 'not a bag' if not size else 'no free slot'
-            await self.reply(OpenBagAck(result=1), correlation,
+            result = (results.INVEN_ITEM_NOT_FOUND if not item else results.INVALID_STATE if not size
+                      else results.INVEN_NO_BAG_SPACE)
+            await self.reply(OpenBagAck(result=result), correlation,
                              note=f'open bag fail ({reason}, uid={req.item_uid})')
             return
         record = dict(bag_id=req.item_uid, code=item['code'], b28=0, b29=size, w2a=free[0])
@@ -58,7 +60,7 @@ class BagHandlersMixin:
         bag = next((b for b in bags if b.get('bag_id') == req.bag_id), None)
         items = char.get('items', []) if char else []
         if not bag or any(i.get('container') == req.bag_id for i in items):
-            await self.reply(CloseBagAck(result=1), correlation, note=f'close bag fail (bag_id={req.bag_id})')
+            await self.reply(CloseBagAck(result=results.INVALID_STATE), correlation, note=f'close bag fail (bag_id={req.bag_id})')
             return
         if not any(container != req.bag_id for container, _ in free_cells(char)):
             await self.reply(CloseBagAck(result=results.INVEN_FULL), correlation,

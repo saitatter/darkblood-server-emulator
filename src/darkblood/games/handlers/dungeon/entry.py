@@ -1,6 +1,7 @@
 """Dungeon entry validation, Citadel/daily limit enforcement, stress cost, and start-game fan-out."""
 import random
 
+from darkblood.games.network import results
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
@@ -32,7 +33,7 @@ class DungeonEntryHandlers:
                 raise WireError('Missing or invalid dungeon map code')
         except (WireError, UnicodeDecodeError):
             # The success path assumes the map code resolves to a client property.
-            ack = StartGameAck(result=1)
+            ack = StartGameAck(result=results.INVALID_STATE)
         else:
             participants = [self.session]
             if self.room is not None and self.room.host is self.session and self.room.info.name != '_singleplay':

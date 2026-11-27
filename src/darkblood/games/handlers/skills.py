@@ -146,14 +146,14 @@ class SkillHandlers(BaseDomainService):
             if pf is not None and pf not in BASE_SUPPLY_PROFICIENCIES:
                 learned_profs = learned_proficiencies_for_char(char)
                 if pf not in learned_profs and len(learned_profs) >= MAX_CHOSEN_PROFICIENCIES:
-                    await self.reply(LearnSkillAck(result=1), correlation,
+                    await self.reply(LearnSkillAck(result=results.INVALID_STATE), correlation,
                                      note=f'learn life skill fail (already has {len(learned_profs)} proficiencies)')
                     return
                 if pf not in learned_profs:
                     learned_profs.append(pf)
                 char['learned_proficiencies'] = learned_profs
             if not self._charge_skills(char, [(req.skill_index, req.level)]):
-                await self.reply(LearnSkillAck(result=1), correlation, note='learn skill fail (not enough SP/AR)')
+                await self.reply(LearnSkillAck(result=results.INVALID_STATE), correlation, note='learn skill fail (not enough SP/AR)')
                 return
             char.setdefault('skills', {})[str(req.skill_index)] = req.level
             self.save_char()
@@ -172,7 +172,7 @@ class SkillHandlers(BaseDomainService):
         learned_skills = {}
         if char:
             if not self._charge_skills(char, [(s.skill_index, s.level) for s in req.skills]):
-                await self.reply(LearnSkillListAck(result=1), correlation, note='learn skill list fail (not enough SP/AR)')
+                await self.reply(LearnSkillListAck(result=results.INVALID_STATE), correlation, note='learn skill list fail (not enough SP/AR)')
                 return
             skills = char.setdefault('skills', {})
             for s in req.skills:

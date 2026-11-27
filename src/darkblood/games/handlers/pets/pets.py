@@ -2,6 +2,7 @@
 import struct
 import time
 
+from darkblood.games.network import results
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
@@ -119,7 +120,7 @@ class PetCoreHandlersMixin:
         req = TameingMonsterInsertReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(TamingMonsterInsertAck(result=1), correlation, note='tame monster insert fail (no char)')
+            await self.reply(TamingMonsterInsertAck(result=results.NO_EXIST_CHAR), correlation, note='tame monster insert fail (no char)')
             return
         tamed = char.setdefault('tamed_monsters', [])
         slot = req.slot if req.slot else len(tamed)
@@ -134,7 +135,7 @@ class PetCoreHandlersMixin:
         req = TameingMonsterDeleteReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(TamingMonsterDeleteAck(result=1), correlation, note='tame monster delete fail (no char)')
+            await self.reply(TamingMonsterDeleteAck(result=results.NO_EXIST_CHAR), correlation, note='tame monster delete fail (no char)')
             return
         tamed = char.setdefault('tamed_monsters', [])
         for m in list(tamed):
@@ -154,7 +155,7 @@ class PetCoreHandlersMixin:
         req = PetCreateReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(PetCreateAck(result=1), correlation, note='pet create fail (no char)')
+            await self.reply(PetCreateAck(result=results.NO_EXIST_CHAR), correlation, note='pet create fail (no char)')
             return
         items = char.get('items', [])
         egg = next((i for i in items if i.get('uid') == req.pet_uid), None)
@@ -217,7 +218,7 @@ class PetCoreHandlersMixin:
         req = PetDeleteReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(PetDeleteAck(result=1), correlation, note='pet delete fail (no char)')
+            await self.reply(PetDeleteAck(result=results.NO_EXIST_CHAR), correlation, note='pet delete fail (no char)')
             return
         pets = char.setdefault('pets', [])
         target = next((p for p in pets if p.get('uid') == req.pet_uid), None)
@@ -237,7 +238,7 @@ class PetCoreHandlersMixin:
         PetSummonReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(PetSummonAck(result=1), correlation, note='pet summon fail (no char)')
+            await self.reply(PetSummonAck(result=results.NO_EXIST_CHAR), correlation, note='pet summon fail (no char)')
             return
         pets = char.get('pets', [])
         active = next((p for p in pets if p.get('slot', -1) == -1), pets[0] if pets else None)

@@ -379,7 +379,7 @@ elements), followed by i64, u32, u8, u32, u16, J-wstring, a `0x10` vector
 through `0x0076E600`, bool, and u16. The field meanings still need confirmation.
 
 `0x007880A0` reads the result first and skips the success fields when it is
-nonzero. The emulator sends result 1 for an empty or malformed 5013 map code.
+nonzero. The emulator sends result 12 (`JERI_INVALID_STATE`) for an empty or malformed 5013 map code.
 Valid single-player replies retain the existing map code and empty collections.
 The headless test checks both replies. Live verification of the error remains open.
 

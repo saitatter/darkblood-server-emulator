@@ -1,4 +1,5 @@
 """Personal shops (town stalls) and Broker (Auction House) handlers."""
+from darkblood.games.network import results
 from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
@@ -54,7 +55,7 @@ class StallHandlers:
         req = PersonalShopOpenReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = PersonalShopOpenAck(result=1)
+            ack = PersonalShopOpenAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='personal shop open fail (no char)')
             return
 
@@ -76,7 +77,7 @@ class StallHandlers:
             notif = event(5254, PersonalShopStartNot(seller_uid=char_uid, title=stall.title).encode())
             await self._broadcast_square(notif)
         else:
-            ack = PersonalShopOpenAck(result=1)
+            ack = PersonalShopOpenAck(result=results.INVALID_STATE)
             await self.reply(ack, correlation, note=f'personal shop open fail ({msg})')
 
 
@@ -86,7 +87,7 @@ class StallHandlers:
         req = PersonalShopBuyReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = PersonalShopBuyAck(result=1)
+            ack = PersonalShopBuyAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='personal shop buy fail (no char)')
             return
 
@@ -114,7 +115,7 @@ class StallHandlers:
                 ).encode())
                 await self._broadcast_square(notif)
         else:
-            ack = PersonalShopBuyAck(result=1)
+            ack = PersonalShopBuyAck(result=results.INVALID_STATE)
             await self.reply(ack, correlation, note=f'personal shop buy fail ({msg})')
 
 
@@ -179,7 +180,7 @@ class StallHandlers:
         req = BrokerRegistItemReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerRegistItemAck(result=1)
+            ack = BrokerRegistItemAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='broker regist item fail (no char)')
             return
 
@@ -210,7 +211,7 @@ class StallHandlers:
         req = BrokerBuyItemReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerBuyItemAck(result=1)
+            ack = BrokerBuyItemAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='broker buy item fail (no char)')
             return
 
@@ -232,7 +233,7 @@ class StallHandlers:
         req = BrokerCancelReq.decode(body)
         char = self.current_char()
         if not char:
-            ack = BrokerCancelAck(result=1)
+            ack = BrokerCancelAck(result=results.NO_EXIST_CHAR)
             await self.reply(ack, correlation, note='broker cancel fail (no char)')
             return
 

@@ -24,7 +24,7 @@ class DungeonFlowTest(ServerTestCase):
                 client.send_event(5013, payload, correlation=42)
                 correlation, error = await client.expect_event(5014)
                 self.assertEqual(correlation, 42)
-                self.assertEqual(error, bytes.fromhex('01000000'))
+                self.assertEqual(error, bytes.fromhex('0c000000'))  # JERI_INVALID_STATE
 
             client.send_event(5013, prefix + map_code, correlation=43)
             correlation, success = await client.expect_event(5014)

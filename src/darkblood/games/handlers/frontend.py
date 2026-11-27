@@ -3,6 +3,7 @@ import datetime
 import struct
 import time
 
+from darkblood.games.network import results
 from darkblood.core.network.proudnet import RELAY_PORT
 from darkblood.core.serialization.jser import event, varuint, wide_string
 from darkblood.games.entities.character import Character, delete_seconds_left
@@ -483,7 +484,8 @@ class FrontendHandlers(BaseDomainService):
         new_nick = req.new_nick.strip()
         char = self.store().get(self.account, req.char_uid)
         if not char or not new_nick:
-            await self.reply(CharNickChangeByIntegrateAck(result=1), correlation,
+            result = results.NO_EXIST_CHAR if not char else results.NICK_INVALID
+            await self.reply(CharNickChangeByIntegrateAck(result=result), correlation,
                              note='char nick change by integrate fail')
             return
         char['name'] = new_nick

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import struct
 
+from darkblood.games.network import results
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.character import Character
@@ -111,7 +112,7 @@ class GmHandlers(BaseDomainService):
         req = CheatLevelUpReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(CheatLevelUpAck(result=1), correlation, note='cheat lv fail (no char)')
+            await self.reply(CheatLevelUpAck(result=results.NO_EXIST_CHAR), correlation, note='cheat lv fail (no char)')
             return
         target, mark_base = apply_level_up(char, req.target_level)
         self.save_char()
@@ -293,7 +294,7 @@ class GmHandlers(BaseDomainService):
         req = CheatItemCallReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(CheatItemCallAck(result=1), correlation, note='cheat itemcall fail (no char)')
+            await self.reply(CheatItemCallAck(result=results.NO_EXIST_CHAR), correlation, note='cheat itemcall fail (no char)')
             return
         code = resolve_item_code_by_hash(req.item_id)
         granted = []

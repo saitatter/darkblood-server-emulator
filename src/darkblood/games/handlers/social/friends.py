@@ -1,6 +1,7 @@
 """Friends, block list, character/item inspection, achievements and system notices."""
 import struct
 
+from darkblood.games.network import results
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
@@ -392,7 +393,6 @@ class FriendsHandlers:
     async def handle_request_item_info(self, correlation, body):
         # eERT_REQUEST_ITEM_INFO_REQ -> 6029 eERT_REQUEST_ITEM_INFO_ACK (0x00766C20).
         from darkblood.games.entities.items import Item
-        from darkblood.games.network import results
         req = RequestItemInfoReq.decode(body)
         target_id = self.char_id_from_uid(req.target_char_uid)
         target = self.find_char(req.target_char_uid)
@@ -476,11 +476,11 @@ class FriendsHandlers:
         self.transport.record('banish-user-req', body, target_uid=target_id)
         room = getattr(getattr(self.session, 'dungeon', None), 'room', None)
         if room is None or room.host is not self.session:
-            await self.reply(BanishUserAck(result=1), correlation, note='banish user fail (not host)')
+            await self.reply(BanishUserAck(result=results.INVALID_STATE), correlation, note='banish user fail (not host)')
             return
         kicked = next((m for m in list(room.members) if m.active_char_id == target_id and m is not self.session), None)
         if kicked is None:
-            await self.reply(BanishUserAck(result=1), correlation, note=f'banish user fail ({target_id} not in room)')
+            await self.reply(BanishUserAck(result=results.INVALID_STATE), correlation, note=f'banish user fail ({target_id} not in room)')
             return
         recipients = list(room.members)
         room.members.remove(kicked)

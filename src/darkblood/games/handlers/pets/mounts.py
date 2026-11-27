@@ -3,6 +3,7 @@ import json
 import time
 
 from darkblood import REPO_ROOT
+from darkblood.games.network import results
 from darkblood.core.hashing import jhash
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
@@ -92,7 +93,7 @@ class MountHandlersMixin:
         req = RidingRideObjectReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(RidingRideObjectAck(result=1), correlation, note='riding ride object fail (no char)')
+            await self.reply(RidingRideObjectAck(result=results.NO_EXIST_CHAR), correlation, note='riding ride object fail (no char)')
             return
         current_mount = char.get('mounted_ride_id', 0)
         new_state = 0 if current_mount == req.ride_object_id else req.ride_object_id

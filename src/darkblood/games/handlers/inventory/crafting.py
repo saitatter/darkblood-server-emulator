@@ -1,4 +1,5 @@
 """Upgrading, durability repair, enchanting, avatar/zam, smelting and mark handlers."""
+from darkblood.games.network import results
 from darkblood.core.hashing import jhash
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
@@ -53,7 +54,8 @@ class CraftingHandlersMixin:
         req = ItemUpgradeReq.decode(body)
         self.transport.record('item-upgrade-req', body, target=req.target_uid,
                               catalyst=req.catalyst_uid, protect=req.protect_uid)
-        await self.reply(ItemUpgradeAck(result=1), correlation, note=f'item upgrade ack (target={req.target_uid})')
+        # Upgrading is not implemented yet: every request is refused.
+        await self.reply(ItemUpgradeAck(result=results.INVALID_STATE), correlation, note=f'item upgrade ack (target={req.target_uid})')
 
     @packet_handler(DurabilityRepairReq)
     async def handle_durability_repair(self, correlation, body):

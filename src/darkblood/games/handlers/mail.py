@@ -189,7 +189,7 @@ class MailHandlers(BaseDomainService):
         self.transport.record('post-get-append-item-req', body, mail_uid=req.mail_uid)
         char = self.current_char()
         if not char:
-            await self.reply(PostGetAppendItemAck(result=1), correlation, note='post get append fail (no char)')
+            await self.reply(PostGetAppendItemAck(result=results.NO_EXIST_CHAR), correlation, note='post get append fail (no char)')
             return
 
         cells = free_cells(char)
@@ -251,7 +251,7 @@ class MailHandlers(BaseDomainService):
         self.transport.record('post-get-append-ar-req', body, mail_uid=req.mail_uid)
         char = self.current_char()
         if not char:
-            await self.reply(PostGetAppendArAck(result=1), correlation, note='post get append ar fail (no char)')
+            await self.reply(PostGetAppendArAck(result=results.NO_EXIST_CHAR), correlation, note='post get append ar fail (no char)')
             return
         claimed_gold = self.store().claim_mail_gold(req.mail_uid)
         if claimed_gold > 0:

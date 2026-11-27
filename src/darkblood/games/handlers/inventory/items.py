@@ -107,18 +107,18 @@ class ItemHandlersMixin:
         req = DragItemReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(DragItemAck(result=1), correlation, note='drag item fail (no char)')
+            await self.reply(DragItemAck(result=results.NO_EXIST_CHAR), correlation, note='drag item fail (no char)')
             return
         account_chars = {int(c['id']): c for c in self.store().characters(self.account) if 'id' in c}
         src_char, dragged = self._locate_dragged_item(char, account_chars, req.item_uid)
         if not dragged:
-            await self.reply(DragItemAck(result=1), correlation, note='drag item fail (not found)')
+            await self.reply(DragItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation, note='drag item fail (not found)')
             return
 
         old_container, old_slot = dragged.get('container'), dragged.get('slot')
         dest_char, dest_container = self._resolve_drag_destination(char, account_chars, req.to_container)
         if dest_container == EQUIPPED and not fits_equip_slot(dragged.get('code', ''), req.to_slot):
-            await self.reply(DragItemAck(result=1), correlation,
+            await self.reply(DragItemAck(result=results.INVALID_STATE), correlation,
                              note='drag item fail (item does not fit equip slot %d)' % req.to_slot)
             return
 
@@ -137,7 +137,7 @@ class ItemHandlersMixin:
             return
         if target:
             if old_container == EQUIPPED and not fits_equip_slot(target.get('code', ''), old_slot):
-                await self.reply(DragItemAck(result=1), correlation,
+                await self.reply(DragItemAck(result=results.INVALID_STATE), correlation,
                                  note='drag item fail (displaced item does not fit equip slot %d)' % old_slot)
                 return
             if src_char is not dest_char:
@@ -233,7 +233,7 @@ class ItemHandlersMixin:
         req = UseItemReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(UseItemAck(result=1), correlation, note='use item fail (no char)')
+            await self.reply(UseItemAck(result=results.NO_EXIST_CHAR), correlation, note='use item fail (no char)')
             return
         items = char.get('items', [])
         used_item = next((i for i in items if i.get('uid') == req.item_uid), None)
@@ -332,7 +332,7 @@ class ItemHandlersMixin:
         req = EquipItemReq.decode(body)
         char = self.current_char()
         if not char:
-            await self.reply(EquipItemAck(result=1), correlation, note='equip item fail (no char)')
+            await self.reply(EquipItemAck(result=results.NO_EXIST_CHAR), correlation, note='equip item fail (no char)')
             return
         items = char.get('items', [])
         target_item = next((i for i in items if i.get('uid') == req.item_uid), None)
@@ -369,7 +369,7 @@ class ItemHandlersMixin:
                 free = [s for s in fitting if s not in taken]
                 target_slot = (free or fitting or [None])[0]
             if target_slot is None or not fits_equip_slot(code, target_slot):
-                await self.reply(EquipItemAck(result=1), correlation,
+                await self.reply(EquipItemAck(result=results.INVALID_STATE), correlation,
                                  note='equip item fail (%s does not fit slot %s)' % (code, target_slot))
                 return
             previous_equipped = next(

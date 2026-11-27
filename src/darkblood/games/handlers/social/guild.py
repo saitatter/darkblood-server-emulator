@@ -79,7 +79,7 @@ class GuildHandlers:
         self.transport.record('guild-create-req', body, name=req.guild_name)
         char = self.current_char()
         if char is None:
-            await self.reply(GuildCreateAck(result=1), correlation, note='guild create fail (no character)')
+            await self.reply(GuildCreateAck(result=results.NO_EXIST_CHAR), correlation, note='guild create fail (no character)')
             return
         char['guild_name'] = req.guild_name
         gold = gold_of(char)

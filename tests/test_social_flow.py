@@ -366,7 +366,7 @@ class SocialFlowTest(ServerTestCase):
 
             client.send_event(5007, BanishUserReq(target_uid=char2_id).encode())
             _, r = await client.expect_event(5008)
-            self.assertEqual(BanishUserAck.decode(r).result, 1)  # not in a room
+            self.assertEqual(BanishUserAck.decode(r).result, 12)  # not in a room: JERI_INVALID_STATE
 
             client.send_event(6018, RequestCharInfoByNickReq(target_nick='BlockTarget', my_char_uid=char1_id).encode())
             _, r = await client.expect_event(6012)
