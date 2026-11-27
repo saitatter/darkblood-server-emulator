@@ -96,7 +96,7 @@ class CraftingHandlersMixin:
                 total_cost += missing * repair_price
             repaired[int(item_uid)] = target_dur
         if total_cost > gold:
-            await self.reply(DurabilityRepairAck(result=1, remain_gold=gold), correlation,
+            await self.reply(DurabilityRepairAck(result=results.NOT_ENOUGH_AR), correlation,
                              note=f'durability repair refused (need {total_cost} AR, have {gold})')
             return
         for item_uid, target_dur in repaired.items():

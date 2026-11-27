@@ -358,6 +358,16 @@ class InventoryFlowTest(ServerTestCase):
             parsed2144_broken = DurabilityChangeAck.decode(ack2144_broken)
             self.assertEqual((parsed2144_broken.result, parsed2144_broken.changed_item_uids), (0, [item_uid]))
             self.assertAlmostEqual(target_item['durability'], 0.0, places=3)
+            # Refusing a repair should report the currency problem and leave durability alone.
+            from darkblood.games.network import results
+
+            char['gold'] = 0
+            client.send_event(2145, DurabilityRepairReq(repair_items={item_uid: 0.0}).encode())
+            _, refused_repair = await client.expect_event(2146)
+            self.assertEqual(refused_repair, struct.pack('<i', results.NOT_ENOUGH_AR))
+            self.assertEqual((char['gold'], target_item['durability']), (0, 0.0))
+            char['gold'] = 5000
+
             # 2145 repair with AR -> restores integer max durability and deducts exact RepairPrice * missing
             from darkblood.games.game_data.client_dict import item_field, item_max_durability
             client.send_event(2145, DurabilityRepairReq(repair_items={item_uid: 0.0}).encode())
