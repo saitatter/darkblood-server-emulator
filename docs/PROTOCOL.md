@@ -847,7 +847,7 @@ opened. The card entries arrive together in `2603`.
 - `5260 eERC_SECOND_PASS_AUTH_REQ` -> `5261 eERC_SECOND_PASS_AUTH_ACK` (`0x0075B080`):
   raw PIN blob -> `result: i32 (0)`.
 - `6011 eERT_REQUEST_CHAR_INFO_REQ` -> `6012 eERT_REQUEST_CHAR_INFO_ACK` (`0x00790FA0`):
-  `char_uid: i64` -> `result: i32 (0), flag: bool, tag 0x1E summary, 2x tag 0x10 item vectors`.
+  `char_uid: i64` -> `result: i32 (0), flag: bool, tag 0x1E summary, 2x tag 0x10 item vectors`. The equipment list contains worn items with their saved stats.
 - `6028 eERT_REQUEST_ITEM_INFO_REQ` -> `6029 eERT_REQUEST_ITEM_INFO_ACK` (`0x00766C20`):
   `item_uid: i64` -> `result: i32 (0), item_uid: i64, tag 0x1E item struct`.
 - `2250 eEGS_DIVIDE_ITEM_REQ` -> `2251 eEGS_DIVIDE_ITEM_ACK` (`0x0077F570`):

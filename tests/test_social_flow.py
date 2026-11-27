@@ -291,6 +291,30 @@ class SocialFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_char_info_shows_worn_items(self):
+        from darkblood.games.entities.items import EQUIPPED, Item
+        from darkblood.games.session import GameSession
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('InspectGear'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = GameSession.store().get('OfflinePlayer', char_id)
+            armor = dict(code='Abodk0002', uid=740, container=EQUIPPED, slot=0, upgrade=2)
+            carried = dict(code='Abodk0002', uid=741, container=3, slot=0)
+            char['items'] = [armor, carried]
+
+            client.send_event(6011, RequestCharInfoReq(is_other=True, char_uid=char_id).encode())
+            _, response = await client.expect_event(6012)
+            self.assertEqual(struct.unpack_from('<i', response)[0], 0)
+            self.assertIn(Item(owner=char_id, **armor).encode(), response)
+            self.assertNotIn(Item(owner=char_id, **carried).encode(), response)
+
+        self.run_async(self.with_server(scenario))
+
     def test_extended_social_party_guild_opcodes(self):
         """Test newly recovered Social, Party/Teaching/Guide, and Guild opcodes."""
         from darkblood.games.network.messages.social import (
