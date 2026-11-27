@@ -22,6 +22,9 @@ struct layouts were recovered from it, and other builds are not supported.
 
 Launch and configure the emulator using **`DarkBloodLauncher.exe`** (standalone release ZIP, no Python required) or `python tools/launcher/launcher.py` (from source). The launcher verifies the client binary, probes game/relay server latency, starts/stops the local server, rebuilds and deploys the modular `steam_api.dll` hook, and launches 1–4 clients in a 2×2 grid with automatic multibox mutex release.
 
+If the latest available release is older than the installed version, the
+updater skips the download and the launcher keeps showing the installed version.
+
 ### News & Server
 
 Shows the installed release's changelog and uses the bundled `RELEASE_NOTES.md`
