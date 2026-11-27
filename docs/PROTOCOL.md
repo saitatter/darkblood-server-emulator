@@ -961,6 +961,9 @@ Element tag `0x1E` preceding each mail record:
 13. `tag 0x10 vector<Item>` (+0x7C): attached items serialized via standard Item struct `0x00A53F50`
 
 ### Post List Request & Ack (2219 → 2220)
+
+The inbox preview and attachment claim reply include equipment durability,
+upgrade level and quality.
 - **Request 2219**: `i32 dummy` (observed `ffffff7f 00`).
 - **Ack 2220 (`0x007AEF70`)**:
   - `u32 result` (0 = success)
