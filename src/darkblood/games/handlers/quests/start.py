@@ -28,7 +28,7 @@ class QuestStartHandlers:
         if is_new:
             group = (quests().get(quest_id) or {}).get('offer')
             offered = [(code, count) for code, _, count in item_groups().get(group or '', [])]
-            if offered and len(free_cells(char)) < slots_needed(offered):
+            if offered and len(free_cells(char)) < slots_needed(offered, char):
                 await self.reply(QuestStartAck(result=results.INVEN_FULL, quest_id=quest_id), correlation,
                                  note=f'quest start refused ({quest_id:08x}, bags full)')
                 return

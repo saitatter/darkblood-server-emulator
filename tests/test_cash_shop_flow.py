@@ -242,13 +242,14 @@ class CashShopFlowTest(ServerTestCase):
         from darkblood.games.network.messages import UseItemReq
 
         async def scenario(client):
+            client.account = 'BoosterStackBook'  # the card book is per account
             await lobby_flow(client)
             client.send_event(2012, create_request('BoosterStack'))
             _, created = await client.expect_event(2013)
             char_id = struct.unpack_from('<Q', created, 10)[0]
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
-            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char = session.GameSession.store().get(client.account, char_id)
             pack = dict(code='IRanCashEtc260', uid=301, container=3, slot=0, count=3)
             char['items'] = [pack]
 
@@ -258,7 +259,8 @@ class CashShopFlowTest(ServerTestCase):
             _, granted = await client.expect_event(2603)
             self.assertEqual(granted[:2], b'\x10\x82')
             self.assertEqual(pack['count'], 1)
-            self.assertEqual(len({card['uid'] for card in char['monster_cards']}), 2)
+            book = session.GameSession.store().account_data(client.account)
+            self.assertEqual(len({card['uid'] for card in book['monster_cards']}), 2)
 
         self.run_async(self.with_server(scenario))
 

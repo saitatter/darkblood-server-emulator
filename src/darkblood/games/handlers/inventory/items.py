@@ -141,6 +141,8 @@ class ItemHandlersMixin:
                 note='drag item ack (merge uid=%d into uid=%d: +%d, %d left)' % (
                     req.item_uid, target['uid'], moved, left),
             )
+            if (old_container == DEPOT_CONTAINER) != (dest_container == DEPOT_CONTAINER):
+                await self.session.quests.check_quest_item_objectives(char)
             return
         if target:
             if old_container == EQUIPPED and not fits_equip_slot(target.get('code', ''), old_slot):
