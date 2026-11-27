@@ -358,6 +358,22 @@ class QuestFlowTest(ServerTestCase):
             q_signed = q_hash - (1 << 32) if q_hash >= 1 << 31 else q_hash
             self.assertEqual(struct.unpack_from('<iii', not2075, 2), (q_signed, 1, 1))
 
+            import asyncio
+
+            carried = next(item for item in char['items']
+                           if item['code'] == 'Iquea0310' and item is not stored)
+            carried['uid'] = 998811
+            bag_cell = (carried['container'], carried['slot'])
+            for destination, slot, expected_count in ((DEPOT_CONTAINER, 11, 0), (*bag_cell, 1)):
+                client.send_event(2036, struct.pack('<qqi', carried['uid'], destination, slot))
+                _, drag = await client.expect_event(2037)
+                self.assertEqual(struct.unpack_from('<i', drag)[0], 0)
+                try:
+                    _, changed = await asyncio.wait_for(client.expect_event(2075), 0.75)
+                except asyncio.TimeoutError:
+                    self.fail('Quest counter was not refreshed after moving a collection item')
+                self.assertEqual(struct.unpack_from('<iii', changed, 2), (q_signed, 1, expected_count))
+
             # Talk to NPC Lloyd: sends 2113 for QM807 -> updates objective 0
             mission_str = 'QM807'.encode('utf-16le')
             body_2113 = struct.pack('<i', 0x7fffffff) + jser.varuint(len(mission_str)) + mission_str
