@@ -441,10 +441,19 @@ class InventoryFlowTest(ServerTestCase):
             target_item['durability'] = 1.0
             gold_before = char['gold']
             client.send_event(2154, DurabilityRepairByItemReq(repair_items={item_uid: 1.0}, repair_item_uid=999999).encode())
+            _, refused_kit = await client.expect_event(2146)
+            self.assertEqual(DurabilityRepairAck.decode(refused_kit).result, results.INVEN_ITEM_NOT_FOUND)
+            self.assertEqual(target_item['durability'], 1.0)
+            self.assertEqual(char['gold'], gold_before)
+
+            kit = dict(uid=779, code='IDur1R338', container=3, slot=0, count=1)
+            char['items'].append(kit)
+            client.send_event(2154, DurabilityRepairByItemReq(repair_items={item_uid: 1.0}, repair_item_uid=779).encode())
             _, ack2146_kit = await client.expect_event(2146)
             parsed2146_kit = DurabilityRepairAck.decode(ack2146_kit)
             self.assertEqual((parsed2146_kit.result, parsed2146_kit.remain_gold), (0, gold_before))
             self.assertGreater(target_item['durability'], 1.0)
+            self.assertNotIn(kit, char['items'])
 
             # 47. Extended skills sweep: 2152 show cooltime, 2302/2303 readjust quality,
             #     2384/2385 init proficiency, 2579/2580 dual skill switch, plus 2577/2578/2280 encodings.
