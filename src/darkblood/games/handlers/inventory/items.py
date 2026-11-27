@@ -21,7 +21,7 @@ from darkblood.games.network.messages import (
     EquipItemAck,
     EquipItemReq,
 )
-from darkblood.player_management.characters import DEFAULT_BAG_CAPACITY, INVENTORY_BAG_CONTAINER, fits_equip_slot
+from darkblood.player_management.characters import fits_equip_slot, free_cells
 
 
 class ItemHandlersMixin:
@@ -149,15 +149,12 @@ class ItemHandlersMixin:
         old_container, old_slot = target_item.get('container'), target_item.get('slot')
 
         if old_container == EQUIPPED:
-            bag_id = INVENTORY_BAG_CONTAINER
-            bag = next((b for b in char.get('bags', []) if b.get('bag_id') not in (EQUIPPED, 2)), None)
-            if bag:
-                bag_id = bag.get('bag_id', INVENTORY_BAG_CONTAINER)
-            used_slots = {i.get('slot') for i in items if i.get('container') == bag_id}
-            capacity = bag.get('b29', DEFAULT_BAG_CAPACITY) if bag else DEFAULT_BAG_CAPACITY
-            free_slot = next((s for s in range(capacity) if s not in used_slots), None)
-            if free_slot is None:
-                free_slot = max(used_slots, default=-1) + 1
+            free_cell = next(iter(free_cells(char)), None)
+            if free_cell is None:
+                await self.reply(EquipItemAck(result=results.INVEN_FULL), correlation,
+                                 note='unequip item fail (bags full)')
+                return
+            bag_id, free_slot = free_cell
             target_item['container'], target_item['slot'] = bag_id, free_slot
             self.save_char()
             wire_items = [
