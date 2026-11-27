@@ -81,6 +81,16 @@ class InventoryFlowTest(ServerTestCase):
             self.assertEqual(struct.unpack_from('<i', ack2043_unequip)[0], 0)
             self.assertEqual(char['items'][0]['container'], 3)
 
+            from darkblood.games.network.messages import AssignQuickslotReq
+
+            client.send_event(2044, AssignQuickslotReq(slot_type=0, slot_num=5, ref_id=101, ref_uid=-1).encode())
+            await client.expect_event(2045)
+            self.assertIn('0:5', char['quickslots'])
+            client.send_event(2044, AssignQuickslotReq(slot_type=0, slot_num=5, ref_id=-1, ref_uid=-1).encode())
+            _, cleared = await client.expect_event(2045)
+            self.assertEqual(struct.unpack_from('<i', cleared)[0], 0)
+            self.assertNotIn('0:5', char['quickslots'])
+
             # 3. Use item (2038 -> 2039)
             client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 1, 1))
             _, ack2039 = await client.expect_event(2039)
