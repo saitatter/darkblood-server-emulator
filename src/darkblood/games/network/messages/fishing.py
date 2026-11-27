@@ -26,15 +26,19 @@ __all__ = [
 class FishingStartReq(WireMessage):
     """Opcode 2523: eEGS_FISHING_START_REQ (request).
 
-    Sender 0x007A1FF0 (struct writer 0x00A1EE20).
+    Sender 0x007A1FF0 (struct writer 0x00A1EE20), called from the fishing page
+    start 0x005421C0 with the target's id string (+8 of the page's target, e.g.
+    "Fish_ACT1_N0") and the ItemID of the page's slots 4 and 5. Before sending, the
+    page refuses outside a town (UI_2950), without the hole's license (UI_2952) and
+    with a full inventory (UI_227).
     """
     OPCODE: ClassVar[int] = 2523
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    fishing_hole_id: wstr = ''
-    rod_item_id: i32 = 0
-    bait_item_id: i32 = 0
-    param: i32 = 0
+    fishing_hole_id: wstr = ''  # live: "Fish_ACT1_N0"
+    hole_hash: h32 = 0  # live: jhash(fishing_hole_id)
+    bait_item_id: h32 = 0  # live: jhash("ILurN1") from the page's Bait slot (Type 45 items)
+    boost_item_id: i32 = -1  # live: -1 with the optional Boost slot empty (assumed: the Boost item's ItemID)
 
 
 @dataclass
@@ -72,10 +76,12 @@ class FishingStopAck(WireMessage):
 class FishingResultNot(WireMessage):
     """Opcode 2527: eEGS_FISHING_RESULT_NOT (reply).
 
-    Handler 0x00782020 (assert: vecItemOut >> bLicenseTime).
+    Handler 0x00782020 (assert: vecItemOut >> bLicenseTime). Both fields are read
+    whatever the result (not ok_only), so a miss still carries the bait update. result 0 plays the catch
+    motion 0x41; nonzero plays 0x40 and shows JERI_FISHING_05 "You didn't catch anything."
+    The items go to the fishing page (0x00542570).
     """
     OPCODE: ClassVar[int] = 2527
-    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
     license_time: bool = False

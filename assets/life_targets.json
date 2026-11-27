@@ -1,0 +1,2269 @@
+{
+ "targets": [
+  {
+   "kind": "fishing",
+   "id": "Fish_ACT1_N0",
+   "resource_num": 743,
+   "resource_idx": 0,
+   "always_show": true,
+   "demand_lv": 10,
+   "req_skill": 9009,
+   "req_skill_lv": 1,
+   "req_proficiency": 0.0,
+   "req_item": "",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "fishing",
+   "id": "Fish_ACT1_S1",
+   "resource_num": 775,
+   "resource_idx": 0,
+   "always_show": true,
+   "demand_lv": 20,
+   "req_skill": 9009,
+   "req_skill_lv": 1,
+   "req_proficiency": 200.0,
+   "req_item": "ILicR5",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "fishing",
+   "id": "Fish_ACT2_N2",
+   "resource_num": 743,
+   "resource_idx": 1,
+   "always_show": true,
+   "demand_lv": 20,
+   "req_skill": 9009,
+   "req_skill_lv": 1,
+   "req_proficiency": 200.0,
+   "req_item": "",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "fishing",
+   "id": "Fish_ACT2_S3",
+   "resource_num": 775,
+   "resource_idx": 1,
+   "always_show": true,
+   "demand_lv": 30,
+   "req_skill": 9009,
+   "req_skill_lv": 2,
+   "req_proficiency": 500.0,
+   "req_item": "ILicR6",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "fishing",
+   "id": "Fish_ACT4_N4",
+   "resource_num": 743,
+   "resource_idx": 2,
+   "always_show": true,
+   "demand_lv": 40,
+   "req_skill": 9009,
+   "req_skill_lv": 3,
+   "req_proficiency": 500.0,
+   "req_item": "",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "fishing",
+   "id": "Fish_ACT4_S5",
+   "resource_num": 775,
+   "resource_idx": 2,
+   "always_show": true,
+   "demand_lv": 40,
+   "req_skill": 9009,
+   "req_skill_lv": 3,
+   "req_proficiency": 1000.0,
+   "req_item": "ILicR7",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "gathering",
+   "id": "G1mscA01n0",
+   "resource_num": 252,
+   "resource_idx": 0,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9007,
+   "req_skill_lv": 1,
+   "req_proficiency": 0.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G1mscA01n1",
+   "resource_num": 251,
+   "resource_idx": 0,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9007,
+   "req_skill_lv": 2,
+   "req_proficiency": 200.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G1mscA01n2",
+   "resource_num": 253,
+   "resource_idx": 0,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9007,
+   "req_skill_lv": 3,
+   "req_proficiency": 400.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G1mscA01n3",
+   "resource_num": 254,
+   "resource_idx": 0,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9007,
+   "req_skill_lv": 4,
+   "req_proficiency": 600.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G19ReedAA01n0",
+   "resource_num": 255,
+   "resource_idx": 0,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 1,
+   "req_proficiency": 0.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G19ReedAA01n1",
+   "resource_num": 255,
+   "resource_idx": 1,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 2,
+   "req_proficiency": 200.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G19ReedAA01n2",
+   "resource_num": 255,
+   "resource_idx": 2,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 3,
+   "req_proficiency": 400.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G19ReedAA01n3",
+   "resource_num": 255,
+   "resource_idx": 3,
+   "always_show": false,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 4,
+   "req_proficiency": 600.0,
+   "req_item": "",
+   "enable_rate": 0.1,
+   "regen_second": 60,
+   "regen_prob": 0.2
+  },
+  {
+   "kind": "gathering",
+   "id": "G1barA01n0",
+   "resource_num": 256,
+   "resource_idx": 0,
+   "always_show": true,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 1,
+   "req_proficiency": 0.0,
+   "req_item": "",
+   "enable_rate": 0.35,
+   "regen_second": 60,
+   "regen_prob": 0.7
+  },
+  {
+   "kind": "gathering",
+   "id": "G1barA01n1",
+   "resource_num": 256,
+   "resource_idx": 1,
+   "always_show": true,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 2,
+   "req_proficiency": 200.0,
+   "req_item": "",
+   "enable_rate": 0.35,
+   "regen_second": 60,
+   "regen_prob": 0.7
+  },
+  {
+   "kind": "gathering",
+   "id": "G1barA01n2",
+   "resource_num": 256,
+   "resource_idx": 2,
+   "always_show": true,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 3,
+   "req_proficiency": 400.0,
+   "req_item": "",
+   "enable_rate": 0.35,
+   "regen_second": 60,
+   "regen_prob": 0.7
+  },
+  {
+   "kind": "gathering",
+   "id": "G1barA01n3",
+   "resource_num": 256,
+   "resource_idx": 3,
+   "always_show": true,
+   "demand_lv": 0,
+   "req_skill": 9008,
+   "req_skill_lv": 4,
+   "req_proficiency": 600.0,
+   "req_item": "",
+   "enable_rate": 0.35,
+   "regen_second": 60,
+   "regen_prob": 0.7
+  },
+  {
+   "kind": "making",
+   "id": "ma2700",
+   "resource_num": 270,
+   "resource_idx": 0,
+   "always_show": true,
+   "demand_lv": 0,
+   "req_skill": 0,
+   "req_skill_lv": 0,
+   "req_proficiency": 0.0,
+   "req_item": "",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  },
+  {
+   "kind": "making",
+   "id": "ma2710",
+   "resource_num": 271,
+   "resource_idx": 0,
+   "always_show": true,
+   "demand_lv": 0,
+   "req_skill": 0,
+   "req_skill_lv": 0,
+   "req_proficiency": 0.0,
+   "req_item": "",
+   "enable_rate": 1.0,
+   "regen_second": 0,
+   "regen_prob": 1.0
+  }
+ ],
+ "gathering": [
+  {
+   "id": "ge00001",
+   "target": "G1mscA01n0",
+   "proficiency_type": 0,
+   "proficiency_up": 0.2666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IMnr20N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IMnr20N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00002",
+   "target": "G1mscA01n1",
+   "proficiency_type": 0,
+   "proficiency_up": 0.1333333333,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IMnr30N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IMnr30N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00003",
+   "target": "G1mscA01n2",
+   "proficiency_type": 0,
+   "proficiency_up": 0.06666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IMnr40N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IMnr40N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00004",
+   "target": "G1mscA01n3",
+   "proficiency_type": 0,
+   "proficiency_up": 0.06666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IMnr50N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IMnr50N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00006",
+   "target": "G19ReedAA01n0",
+   "proficiency_type": 1,
+   "proficiency_up": 0.2666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IPnt20N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IPnt20N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00007",
+   "target": "G19ReedAA01n1",
+   "proficiency_type": 1,
+   "proficiency_up": 0.1333333333,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IPnt30N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IPnt30N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00008",
+   "target": "G19ReedAA01n2",
+   "proficiency_type": 1,
+   "proficiency_up": 0.06666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IPnt40N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IPnt40N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00009",
+   "target": "G19ReedAA01n3",
+   "proficiency_type": 1,
+   "proficiency_up": 0.06666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "IPnt50N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "IPnt50N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00016",
+   "target": "G1barA01n0",
+   "proficiency_type": 1,
+   "proficiency_up": 0.2666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "ILqd20N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "ILqd20N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00017",
+   "target": "G1barA01n1",
+   "proficiency_type": 1,
+   "proficiency_up": 0.1333333333,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "ILqd30N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "ILqd30N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00018",
+   "target": "G1barA01n2",
+   "proficiency_type": 1,
+   "proficiency_up": 0.06666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "ILqd40N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "ILqd40N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  },
+  {
+   "id": "ge00019",
+   "target": "G1barA01n3",
+   "proficiency_type": 1,
+   "proficiency_up": 0.06666666667,
+   "jackpot_prob": 0.02,
+   "items": [
+    [
+     "ILqd50N",
+     1,
+     1.0
+    ]
+   ],
+   "jackpot_items": [
+    [
+     "ILqd50N",
+     10,
+     1.0
+    ]
+   ],
+   "req_items": []
+  }
+ ],
+ "fishing": [
+  {
+   "id": "fish0001",
+   "target": "Fish_ACT1_N0",
+   "proficiency_type": 9,
+   "max_time": 60,
+   "groups": [
+    [
+     "ItemGroup1",
+     0.6
+    ],
+    [
+     "ItemGroup4",
+     0.1563
+    ],
+    [
+     "ItemGroup7",
+     0.1293
+    ],
+    [
+     "ItemGroup10",
+     0.0144
+    ]
+   ]
+  },
+  {
+   "id": "fish0002",
+   "target": "Fish_ACT1_S1",
+   "proficiency_type": 9,
+   "max_time": 60,
+   "groups": [
+    [
+     "ItemGroup1",
+     0.6
+    ],
+    [
+     "ItemGroup4",
+     0.1563
+    ],
+    [
+     "ItemGroup7",
+     0.1293
+    ],
+    [
+     "ItemGroup13",
+     0.0052
+    ],
+    [
+     "ItemGroup16",
+     0.0092
+    ]
+   ]
+  },
+  {
+   "id": "fish0003",
+   "target": "Fish_ACT2_N2",
+   "proficiency_type": 9,
+   "max_time": 60,
+   "groups": [
+    [
+     "ItemGroup2",
+     0.6
+    ],
+    [
+     "ItemGroup5",
+     0.1563
+    ],
+    [
+     "ItemGroup8",
+     0.1293
+    ],
+    [
+     "ItemGroup11",
+     0.0144
+    ]
+   ]
+  },
+  {
+   "id": "fish0004",
+   "target": "Fish_ACT2_S3",
+   "proficiency_type": 9,
+   "max_time": 60,
+   "groups": [
+    [
+     "ItemGroup2",
+     0.6
+    ],
+    [
+     "ItemGroup5",
+     0.1563
+    ],
+    [
+     "ItemGroup8",
+     0.1293
+    ],
+    [
+     "ItemGroup14",
+     0.0052
+    ],
+    [
+     "ItemGroup17",
+     0.0092
+    ]
+   ]
+  },
+  {
+   "id": "fish0005",
+   "target": "Fish_ACT4_N4",
+   "proficiency_type": 9,
+   "max_time": 60,
+   "groups": [
+    [
+     "ItemGroup3",
+     0.6
+    ],
+    [
+     "ItemGroup6",
+     0.1563
+    ],
+    [
+     "ItemGroup9",
+     0.1293
+    ],
+    [
+     "ItemGroup12",
+     0.0144
+    ]
+   ]
+  },
+  {
+   "id": "fish0006",
+   "target": "Fish_ACT4_S5",
+   "proficiency_type": 9,
+   "max_time": 60,
+   "groups": [
+    [
+     "ItemGroup3",
+     0.6
+    ],
+    [
+     "ItemGroup6",
+     0.1563
+    ],
+    [
+     "ItemGroup9",
+     0.1293
+    ],
+    [
+     "ItemGroup15",
+     0.0052
+    ],
+    [
+     "ItemGroup18",
+     0.0092
+    ]
+   ]
+  }
+ ],
+ "fish_groups": {
+  "ItemGroup1": [
+   [
+    "INfiN8",
+    1,
+    0.35
+   ],
+   [
+    "INfiN9",
+    1,
+    0.3
+   ],
+   [
+    "INfiN10",
+    1,
+    0.2
+   ],
+   [
+    "INfiN11",
+    1,
+    0.15
+   ]
+  ],
+  "ItemGroup2": [
+   [
+    "INfiN12",
+    1,
+    0.35
+   ],
+   [
+    "INfiN13",
+    1,
+    0.3
+   ],
+   [
+    "INfiN14",
+    1,
+    0.2
+   ],
+   [
+    "INfiN15",
+    1,
+    0.15
+   ]
+  ],
+  "ItemGroup3": [
+   [
+    "INfiN16",
+    1,
+    0.35
+   ],
+   [
+    "INfiN17",
+    1,
+    0.3
+   ],
+   [
+    "INfiN18",
+    1,
+    0.2
+   ],
+   [
+    "INfiN19",
+    1,
+    0.15
+   ]
+  ],
+  "ItemGroup4": [
+   [
+    "ISfiS20",
+    1,
+    0.5333312
+   ],
+   [
+    "ISfiS21",
+    1,
+    0.2666688
+   ],
+   [
+    "ISfiS22",
+    1,
+    0.1333312
+   ],
+   [
+    "ISfiS23",
+    1,
+    0.0666688
+   ]
+  ],
+  "ItemGroup5": [
+   [
+    "ISfiS24",
+    1,
+    0.5333312
+   ],
+   [
+    "ISfiS25",
+    1,
+    0.2666688
+   ],
+   [
+    "ISfiS26",
+    1,
+    0.1333312
+   ],
+   [
+    "ISfiS27",
+    1,
+    0.0666688
+   ]
+  ],
+  "ItemGroup6": [
+   [
+    "ISfiS28",
+    1,
+    0.5333312
+   ],
+   [
+    "ISfiS29",
+    1,
+    0.2666688
+   ],
+   [
+    "ISfiS30",
+    1,
+    0.1333312
+   ],
+   [
+    "ISfiS31",
+    1,
+    0.0666688
+   ]
+  ],
+  "ItemGroup7": [
+   [
+    "IFloS37",
+    1,
+    0.5714318859
+   ],
+   [
+    "IFloS35",
+    1,
+    0.2857120761
+   ],
+   [
+    "IFloS36",
+    1,
+    0.142856038
+   ]
+  ],
+  "ItemGroup8": [
+   [
+    "IFloS40",
+    1,
+    0.5714318859
+   ],
+   [
+    "IFloS38",
+    1,
+    0.2857120761
+   ],
+   [
+    "IFloS39",
+    1,
+    0.142856038
+   ]
+  ],
+  "ItemGroup9": [
+   [
+    "IFloS43",
+    1,
+    0.5714318859
+   ],
+   [
+    "IFloS41",
+    1,
+    0.2857120761
+   ],
+   [
+    "IFloS42",
+    1,
+    0.142856038
+   ]
+  ],
+  "ItemGroup10": [
+   [
+    "ILicR5",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup11": [
+   [
+    "ILicR6",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup12": [
+   [
+    "ILicR7",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup13": [
+   [
+    "IhppR48",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup14": [
+   [
+    "IhppR49",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup15": [
+   [
+    "IhppR50",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup16": [
+   [
+    "IFloR44",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup17": [
+   [
+    "IFloR45",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup18": [
+   [
+    "IFloR46",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup19": [
+   [
+    "ISfiS20",
+    1,
+    0.2918281942
+   ],
+   [
+    "ISfiS21",
+    1,
+    0.1459158481
+   ],
+   [
+    "ISfiS22",
+    1,
+    0.07295617307
+   ],
+   [
+    "ISfiS23",
+    1,
+    0.03647983751
+   ],
+   [
+    "IFloS37",
+    1,
+    0.2587557563
+   ],
+   [
+    "IFloS35",
+    1,
+    0.1293761272
+   ],
+   [
+    "IFloS36",
+    1,
+    0.0646880636
+   ]
+  ],
+  "ItemGroup20": [
+   [
+    "ISfiS24",
+    1,
+    0.2918281942
+   ],
+   [
+    "ISfiS25",
+    1,
+    0.1459158481
+   ],
+   [
+    "ISfiS26",
+    1,
+    0.07295617307
+   ],
+   [
+    "ISfiS27",
+    1,
+    0.03647983751
+   ],
+   [
+    "IFloS40",
+    1,
+    0.2587557563
+   ],
+   [
+    "IFloS38",
+    1,
+    0.1293761272
+   ],
+   [
+    "IFloS39",
+    1,
+    0.0646880636
+   ]
+  ],
+  "ItemGroup21": [
+   [
+    "ISfiS28",
+    1,
+    0.2918281942
+   ],
+   [
+    "ISfiS29",
+    1,
+    0.1459158481
+   ],
+   [
+    "ISfiS30",
+    1,
+    0.07295617307
+   ],
+   [
+    "ISfiS31",
+    1,
+    0.03647983751
+   ],
+   [
+    "IFloS43",
+    1,
+    0.2587557563
+   ],
+   [
+    "IFloS41",
+    1,
+    0.1293761272
+   ],
+   [
+    "IFloS42",
+    1,
+    0.0646880636
+   ]
+  ],
+  "ItemGroup22": [
+   [
+    "ISfiS20",
+    1,
+    0.2777775926
+   ],
+   [
+    "ISfiS21",
+    1,
+    0.138890463
+   ],
+   [
+    "ISfiS22",
+    1,
+    0.06944356481
+   ],
+   [
+    "ISfiS23",
+    1,
+    0.03472344908
+   ],
+   [
+    "IhppR48",
+    1,
+    0.01736005787
+   ],
+   [
+    "IFloS37",
+    1,
+    0.2462974877
+   ],
+   [
+    "IFloS35",
+    1,
+    0.1231470772
+   ],
+   [
+    "IFloS36",
+    1,
+    0.06157353858
+   ],
+   [
+    "IFloR44",
+    1,
+    0.03078676929
+   ]
+  ],
+  "ItemGroup23": [
+   [
+    "ISfiS24",
+    1,
+    0.2777775926
+   ],
+   [
+    "ISfiS25",
+    1,
+    0.138890463
+   ],
+   [
+    "ISfiS26",
+    1,
+    0.06944356481
+   ],
+   [
+    "ISfiS27",
+    1,
+    0.03472344908
+   ],
+   [
+    "IhppR49",
+    1,
+    0.01736005787
+   ],
+   [
+    "IFloS40",
+    1,
+    0.2462974877
+   ],
+   [
+    "IFloS38",
+    1,
+    0.1231470772
+   ],
+   [
+    "IFloS39",
+    1,
+    0.06157353858
+   ],
+   [
+    "IFloR45",
+    1,
+    0.03078676929
+   ]
+  ],
+  "ItemGroup24": [
+   [
+    "ISfiS28",
+    1,
+    0.2777775926
+   ],
+   [
+    "ISfiS29",
+    1,
+    0.138890463
+   ],
+   [
+    "ISfiS30",
+    1,
+    0.06944356481
+   ],
+   [
+    "ISfiS31",
+    1,
+    0.03472344908
+   ],
+   [
+    "IhppR50",
+    1,
+    0.01736005787
+   ],
+   [
+    "IFloS43",
+    1,
+    0.2462974877
+   ],
+   [
+    "IFloS41",
+    1,
+    0.1231470772
+   ],
+   [
+    "IFloS42",
+    1,
+    0.06157353858
+   ],
+   [
+    "IFloR46",
+    1,
+    0.03078676929
+   ]
+  ],
+  "ItemGroup25": [
+   [
+    "Iupga0001",
+    1,
+    0.375
+   ],
+   [
+    "Iupga0001",
+    5,
+    0.075
+   ],
+   [
+    "Iupga0001",
+    10,
+    0.035
+   ],
+   [
+    "Iupga0001",
+    20,
+    0.015
+   ],
+   [
+    "Iupga0007",
+    1,
+    0.375
+   ],
+   [
+    "Iupga0007",
+    5,
+    0.075
+   ],
+   [
+    "Iupga0007",
+    10,
+    0.035
+   ],
+   [
+    "Iupga0007",
+    20,
+    0.015
+   ]
+  ],
+  "ItemGroup26": [
+   [
+    "IMnra0020",
+    1,
+    0.6
+   ],
+   [
+    "IMnra0020",
+    3,
+    0.3
+   ],
+   [
+    "IMnra0020",
+    5,
+    0.1
+   ]
+  ],
+  "ItemGroup27": [
+   [
+    "IRid1RCHK",
+    1,
+    -1.0
+   ],
+   [
+    "IRid1M150",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup28": [
+   [
+    "IRid1RCHK",
+    1,
+    -1.0
+   ],
+   [
+    "IRid1M150",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup29": [
+   [
+    "IRid1RCHK",
+    1,
+    -1.0
+   ],
+   [
+    "IRid1M150",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup30": [
+   [
+    "IRid1RCHK",
+    1,
+    0.45
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.45
+   ],
+   [
+    "IRid1MC",
+    1,
+    0.1
+   ]
+  ],
+  "ItemGroup31": [
+   [
+    "IRid1RCHK",
+    1,
+    0.45
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.45
+   ],
+   [
+    "IRid1MC",
+    1,
+    0.1
+   ]
+  ],
+  "ItemGroup32": [
+   [
+    "IRid1RCHK",
+    1,
+    0.45
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.45
+   ],
+   [
+    "IRid1MC",
+    1,
+    0.1
+   ]
+  ],
+  "ItemGroup33": [
+   [
+    "IRanAEtc150R248",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup34": [
+   [
+    "IMaia0007",
+    1,
+    0.15
+   ],
+   [
+    "IMaia0007",
+    3,
+    0.03
+   ],
+   [
+    "IMaia0007",
+    5,
+    0.014
+   ],
+   [
+    "IMaia0007",
+    10,
+    0.006
+   ],
+   [
+    "IMaia0012",
+    1,
+    0.15
+   ],
+   [
+    "IMaia0012",
+    3,
+    0.03
+   ],
+   [
+    "IMaia0012",
+    5,
+    0.014
+   ],
+   [
+    "IMaia0012",
+    10,
+    0.006
+   ],
+   [
+    "IMaia0017",
+    1,
+    0.15
+   ],
+   [
+    "IMaia0017",
+    3,
+    0.03
+   ],
+   [
+    "IMaia0017",
+    5,
+    0.014
+   ],
+   [
+    "IMaia0017",
+    10,
+    0.006
+   ],
+   [
+    "ISuba0002",
+    1,
+    0.15
+   ],
+   [
+    "ISuba0002",
+    3,
+    0.03
+   ],
+   [
+    "ISuba0002",
+    5,
+    0.014
+   ],
+   [
+    "ISuba0002",
+    10,
+    0.006
+   ],
+   [
+    "ISuba0007",
+    1,
+    0.15
+   ],
+   [
+    "ISuba0007",
+    3,
+    0.03
+   ],
+   [
+    "ISuba0007",
+    5,
+    0.014
+   ],
+   [
+    "ISuba0007",
+    10,
+    0.006
+   ]
+  ],
+  "ItemGroup35": [
+   [
+    "IBeaR151",
+    1,
+    -1.0
+   ],
+   [
+    "IBeaR152",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup36": [
+   [
+    "IAup1SCHK",
+    1,
+    0.75
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.25
+   ]
+  ],
+  "ItemGroup37": [
+   [
+    "IArka0002",
+    1,
+    0.75
+   ],
+   [
+    "IArka0002",
+    3,
+    0.15
+   ],
+   [
+    "IArka0002",
+    5,
+    0.07
+   ],
+   [
+    "IArka0002",
+    10,
+    0.03
+   ]
+  ],
+  "ItemGroup38": [
+   [
+    "IAup1SCHK",
+    1,
+    0.6
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.2
+   ],
+   [
+    "IAup1UCHK",
+    1,
+    0.15
+   ],
+   [
+    "IWup1UCHK",
+    1,
+    0.05
+   ]
+  ],
+  "ItemGroup39": [
+   [
+    "IBeaR151",
+    1,
+    0.2
+   ],
+   [
+    "IBeaR152",
+    1,
+    0.2
+   ],
+   [
+    "IRanAEtc150R248",
+    1,
+    0.6
+   ]
+  ],
+  "ItemGroup40": [
+   [
+    "IRid1RCHK",
+    1,
+    0.2857142857
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.2857142857
+   ],
+   [
+    "IAup1SCHK",
+    1,
+    0.3214285714
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.1071428571
+   ]
+  ],
+  "ItemGroup41": [
+   [
+    "IRid1RCHK",
+    1,
+    0.2857142857
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.2857142857
+   ],
+   [
+    "IAup1SCHK",
+    1,
+    0.3214285714
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.1071428571
+   ]
+  ],
+  "ItemGroup42": [
+   [
+    "IRid1RCHK",
+    1,
+    0.2857142857
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.2857142857
+   ],
+   [
+    "IAup1SCHK",
+    1,
+    0.3214285714
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.1071428571
+   ]
+  ],
+  "ItemGroup43": [
+   [
+    "IRid1RCHK",
+    1,
+    0.2571428571
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.2571428571
+   ],
+   [
+    "IRid1MC",
+    1,
+    0.05714285714
+   ],
+   [
+    "IAup1SCHK",
+    1,
+    0.2571428571
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.08571428571
+   ],
+   [
+    "IAup1UCHK",
+    1,
+    0.06428571429
+   ],
+   [
+    "IWup1UCHK",
+    1,
+    0.02142857143
+   ]
+  ],
+  "ItemGroup44": [
+   [
+    "IRid1RCHK",
+    1,
+    0.2571428571
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.2571428571
+   ],
+   [
+    "IRid1MC",
+    1,
+    0.05714285714
+   ],
+   [
+    "IAup1SCHK",
+    1,
+    0.2571428571
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.08571428571
+   ],
+   [
+    "IAup1UCHK",
+    1,
+    0.06428571429
+   ],
+   [
+    "IWup1UCHK",
+    1,
+    0.02142857143
+   ]
+  ],
+  "ItemGroup45": [
+   [
+    "IRid1RCHK",
+    1,
+    0.2571428571
+   ],
+   [
+    "IRid1M150",
+    1,
+    0.2571428571
+   ],
+   [
+    "IRid1MC",
+    1,
+    0.05714285714
+   ],
+   [
+    "IAup1SCHK",
+    1,
+    0.2571428571
+   ],
+   [
+    "IWup1SCHK",
+    1,
+    0.08571428571
+   ],
+   [
+    "IAup1UCHK",
+    1,
+    0.06428571429
+   ],
+   [
+    "IWup1UCHK",
+    1,
+    0.02142857143
+   ]
+  ],
+  "ItemGroup46": [
+   [
+    "ChelH1N840",
+    1,
+    -1.0
+   ],
+   [
+    "ChelH1N841",
+    1,
+    -1.0
+   ],
+   [
+    "ChelW1N846",
+    1,
+    -1.0
+   ],
+   [
+    "ChelW1N847",
+    1,
+    -1.0
+   ],
+   [
+    "ChelK1N852",
+    1,
+    -1.0
+   ],
+   [
+    "ChelK1N853",
+    1,
+    -1.0
+   ],
+   [
+    "ChelM1N858",
+    1,
+    -1.0
+   ],
+   [
+    "ChelM1N859",
+    1,
+    -1.0
+   ],
+   [
+    "CcloH1N870",
+    1,
+    -1.0
+   ],
+   [
+    "CcloH1N871",
+    1,
+    -1.0
+   ],
+   [
+    "CcloW1N876",
+    1,
+    -1.0
+   ],
+   [
+    "CcloW1N877",
+    1,
+    -1.0
+   ],
+   [
+    "CcloK1N882",
+    1,
+    -1.0
+   ],
+   [
+    "CcloK1N883",
+    1,
+    -1.0
+   ],
+   [
+    "CcloM1N888",
+    1,
+    -1.0
+   ],
+   [
+    "CcloM1N889",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup47": [
+   [
+    "ChelH1N836",
+    1,
+    -1.0
+   ],
+   [
+    "ChelH1N838",
+    1,
+    -1.0
+   ],
+   [
+    "ChelW1N842",
+    1,
+    -1.0
+   ],
+   [
+    "ChelW1N844",
+    1,
+    -1.0
+   ],
+   [
+    "ChelK1N848",
+    1,
+    -1.0
+   ],
+   [
+    "ChelK1N850",
+    1,
+    -1.0
+   ],
+   [
+    "ChelM1N854",
+    1,
+    -1.0
+   ],
+   [
+    "ChelM1N856",
+    1,
+    -1.0
+   ],
+   [
+    "CcloH1N866",
+    1,
+    -1.0
+   ],
+   [
+    "CcloH1N868",
+    1,
+    -1.0
+   ],
+   [
+    "CcloW1N872",
+    1,
+    -1.0
+   ],
+   [
+    "CcloW1N874",
+    1,
+    -1.0
+   ],
+   [
+    "CcloK1N878",
+    1,
+    -1.0
+   ],
+   [
+    "CcloK1N880",
+    1,
+    -1.0
+   ],
+   [
+    "CcloM1N884",
+    1,
+    -1.0
+   ],
+   [
+    "CcloM1N886",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup48": [
+   [
+    "ChelH1N837",
+    1,
+    -1.0
+   ],
+   [
+    "ChelH1N839",
+    1,
+    -1.0
+   ],
+   [
+    "ChelW1N843",
+    1,
+    -1.0
+   ],
+   [
+    "ChelW1N845",
+    1,
+    -1.0
+   ],
+   [
+    "ChelK1N849",
+    1,
+    -1.0
+   ],
+   [
+    "ChelK1N851",
+    1,
+    -1.0
+   ],
+   [
+    "ChelM1N855",
+    1,
+    -1.0
+   ],
+   [
+    "ChelM1N857",
+    1,
+    -1.0
+   ],
+   [
+    "CcloH1N867",
+    1,
+    -1.0
+   ],
+   [
+    "CcloH1N869",
+    1,
+    -1.0
+   ],
+   [
+    "CcloW1N873",
+    1,
+    -1.0
+   ],
+   [
+    "CcloW1N875",
+    1,
+    -1.0
+   ],
+   [
+    "CcloK1N879",
+    1,
+    -1.0
+   ],
+   [
+    "CcloK1N881",
+    1,
+    -1.0
+   ],
+   [
+    "CcloM1N885",
+    1,
+    -1.0
+   ],
+   [
+    "CcloM1N887",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup49": [
+   [
+    "ChelT1N864",
+    1,
+    -1.0
+   ],
+   [
+    "ChelT1N865",
+    1,
+    -1.0
+   ],
+   [
+    "CcloT1N894",
+    1,
+    -1.0
+   ],
+   [
+    "CcloT1N895",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup50": [
+   [
+    "ChelT1N860",
+    1,
+    -1.0
+   ],
+   [
+    "ChelT1N862",
+    1,
+    -1.0
+   ],
+   [
+    "CcloT1N890",
+    1,
+    -1.0
+   ],
+   [
+    "CcloT1N892",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup51": [
+   [
+    "ChelT1N861",
+    1,
+    -1.0
+   ],
+   [
+    "ChelT1N863",
+    1,
+    -1.0
+   ],
+   [
+    "CcloT1N891",
+    1,
+    -1.0
+   ],
+   [
+    "CcloT1N893",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup52": [
+   [
+    "ChelF1N900",
+    1,
+    -1.0
+   ],
+   [
+    "ChelF1N901",
+    1,
+    -1.0
+   ],
+   [
+    "CcloF1N906",
+    1,
+    -1.0
+   ],
+   [
+    "CcloF1N907",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup53": [
+   [
+    "ChelF1N896",
+    1,
+    -1.0
+   ],
+   [
+    "ChelF1N898",
+    1,
+    -1.0
+   ],
+   [
+    "CcloF1N902",
+    1,
+    -1.0
+   ],
+   [
+    "CcloF1N904",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup54": [
+   [
+    "ChelF1N897",
+    1,
+    -1.0
+   ],
+   [
+    "ChelF1N899",
+    1,
+    -1.0
+   ],
+   [
+    "CcloF1N903",
+    1,
+    -1.0
+   ],
+   [
+    "CcloF1N905",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup67": [
+   [
+    "ChelWH1N1145",
+    1,
+    -1.0
+   ],
+   [
+    "ChelWH1N1146",
+    1,
+    -1.0
+   ],
+   [
+    "CcloWH1N1155",
+    1,
+    -1.0
+   ],
+   [
+    "CcloWH1N1156",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup68": [
+   [
+    "ChelWH1N1141",
+    1,
+    -1.0
+   ],
+   [
+    "CcloWH1N1151",
+    1,
+    -1.0
+   ],
+   [
+    "ChelWH1N1143",
+    1,
+    -1.0
+   ],
+   [
+    "CcloWH1N1153",
+    1,
+    -1.0
+   ]
+  ],
+  "ItemGroup69": [
+   [
+    "ChelWH1N1142",
+    1,
+    -1.0
+   ],
+   [
+    "CcloWH1N1152",
+    1,
+    -1.0
+   ],
+   [
+    "ChelWH1N1144",
+    1,
+    -1.0
+   ],
+   [
+    "CcloWH1N1154",
+    1,
+    -1.0
+   ]
+  ]
+ },
+ "skills": [
+  {
+   "skill": 9009,
+   "level": 1,
+   "max_proficiency": 200.0,
+   "proficiency_type": 9
+  },
+  {
+   "skill": 9009,
+   "level": 2,
+   "max_proficiency": 500.0,
+   "proficiency_type": 9
+  },
+  {
+   "skill": 9009,
+   "level": 3,
+   "max_proficiency": 1000.0,
+   "proficiency_type": 9
+  },
+  {
+   "skill": 9009,
+   "level": 4,
+   "max_proficiency": 1500.0,
+   "proficiency_type": 9
+  },
+  {
+   "skill": 9007,
+   "level": 1,
+   "max_proficiency": 200.0,
+   "proficiency_type": 0
+  },
+  {
+   "skill": 9007,
+   "level": 2,
+   "max_proficiency": 400.0,
+   "proficiency_type": 0
+  },
+  {
+   "skill": 9007,
+   "level": 3,
+   "max_proficiency": 600.0,
+   "proficiency_type": 0
+  },
+  {
+   "skill": 9007,
+   "level": 4,
+   "max_proficiency": 800.0,
+   "proficiency_type": 0
+  },
+  {
+   "skill": 9008,
+   "level": 1,
+   "max_proficiency": 200.0,
+   "proficiency_type": 1
+  },
+  {
+   "skill": 9008,
+   "level": 2,
+   "max_proficiency": 400.0,
+   "proficiency_type": 1
+  },
+  {
+   "skill": 9008,
+   "level": 3,
+   "max_proficiency": 600.0,
+   "proficiency_type": 1
+  },
+  {
+   "skill": 9008,
+   "level": 4,
+   "max_proficiency": 800.0,
+   "proficiency_type": 1
+  }
+ ],
+ "baits": {
+  "ILurN1": 0,
+  "ILurS2": 10,
+  "ILurS3": 20,
+  "ILurS4": 30
+ }
+}

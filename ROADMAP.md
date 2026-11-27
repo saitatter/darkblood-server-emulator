@@ -42,6 +42,8 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
 
 ### Gameplay (P3)
 - [x] Attendance calendar (CRONOS 2289-2300), native GM cheat opcodes, fishing (9/9), guild domain sweep.
+- [x] Fishing cast loop from DictKairo:LoadFishing (live-verified 2026-11-27); town GTargets from the maps.
+- [ ] Live-check gathering nodes and `2177` (W19); fishing boost items (`AddGroup`) and licenses (`2541`/`2542`).
 - [x] Constructor defaults in the 2007 details (24-byte options block) and non-zero `nAuthLevel` in 5020 (`gm_mode`).
 - [ ] Live-check the random-box success notification (`2196`) and confirm the expected learned-skill map after subclass promotion.
 - [ ] Monster AI aggro and damage calculation from the client property tables.

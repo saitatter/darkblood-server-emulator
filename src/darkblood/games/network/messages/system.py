@@ -45,6 +45,7 @@ __all__ = [
     'SecondPassAuthAck',
     'TargetState',
     'GTargetListAck',
+    'ChangeGTargetNot',
     'UpdateCharInfoNot',
     'CloseConnectionNot',
     'StressChangedNot',
@@ -477,6 +478,18 @@ class GTargetListAck(WireMessage):
     Dispatcher 0x00874550 -> 0x00873490 (schema from tools/codegen/extract_schemas.py).
     """
     OPCODE: ClassVar[int] = 5125
+    result: u32 = 0
+    targets: Vector[TargetState] = field(default_factory=list)
+
+
+@dataclass
+class ChangeGTargetNot(WireMessage):
+    """Opcode 5126: eERC_CHANGE_GTARGET_NOT (reply).
+
+    Dispatcher 0x00874550 -> 0x00873620: same reader as 5125 (result via 0x00A1EA20,
+    then "jEvt.Read() >> vecTargetState"), applied by 0x0085E150 -> JGTarget::Update.
+    """
+    OPCODE: ClassVar[int] = 5126
     result: u32 = 0
     targets: Vector[TargetState] = field(default_factory=list)
 

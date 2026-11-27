@@ -79,9 +79,9 @@ class QuestSpecialInfo(WireMessage):
 class KairoResult(WireMessage):
     """Reader 0x00A55AD0, shared by 2178 (ActKairoAck) and 2497 (NpcMakingKairoAck)."""
     kairo_id: wstr = ''  # DictKairo key (0x0098B860)
-    great_success: bool = False  # +0x1C
-    special_effect: bool = False  # +0x1D
-    rate: f32 = 0.0  # +0x1E
+    proficiency_changed: bool = False  # +0x1C: 2178 (0x0080BC30) then sets +0x1E as the Kairo's ProficiencyType value
+    jackpot: bool = False  # +0x1D: gathering only, effect + UI_2830 "Your Collection Jackpot has been triggered."
+    proficiency: f32 = 0.0  # +0x1E: new proficiency value (applied when +0x1C is set)
     notices: Vector[Extern[AddedItemNotice, 'encode', False]] = field(default_factory=list)  # +0x22 (0x007738C0, 12-byte item notices)
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # +0x32 (0x004B94C0, inventory delta)
 

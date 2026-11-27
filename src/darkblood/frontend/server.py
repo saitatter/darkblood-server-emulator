@@ -23,6 +23,7 @@ from darkblood.core.network.proudnet import (
 )
 from darkblood.frontend.relay import RELAY_RMI, RELIABLE_RELAY1, UNRELIABLE_RELAY1, RelayGroups
 from darkblood.games.handlers.arena import ArenaState
+from darkblood.games.life_targets import LifeTargetState
 from darkblood.games.session import GameSession
 from darkblood.games.world import GameWorldManager
 
@@ -213,6 +214,7 @@ class BootstrapServer:
         self.dungeon_rooms = {}
         self.room_ids = count(1)
         self.arena = ArenaState()
+        self.life_targets = LifeTargetState()
         self.log_path = Path(log_path) if log_path else ROOT / 'logs' / 'wire.jsonl'
         self._log_stream = None
         self._log_queue = None

@@ -5,11 +5,15 @@ domain fishing Dark Blood protocol wire messages - Fishing domain.
 extern Item from darkblood.games.entities.items
 
 message 2523 FishingStartReq header?
-  ## Sender 0x007A1FF0 (struct writer 0x00A1EE20).
-  wstr fishing_hole_id
-  i32 rod_item_id
-  i32 bait_item_id
-  i32 param
+  ## Sender 0x007A1FF0 (struct writer 0x00A1EE20), called from the fishing page
+  ## start 0x005421C0 with the target's id string (+8 of the page's target, e.g.
+  ## "Fish_ACT1_N0") and the ItemID of the page's slots 4 and 5. Before sending, the
+  ## page refuses outside a town (UI_2950), without the hole's license (UI_2952) and
+  ## with a full inventory (UI_227).
+  wstr fishing_hole_id       # live: "Fish_ACT1_N0"
+  h32 hole_hash              # live: jhash(fishing_hole_id)
+  h32 bait_item_id           # live: jhash("ILurN1") from the page's Bait slot (Type 45 items)
+  i32 boost_item_id = -1     # live: -1 with the optional Boost slot empty (assumed: the Boost item's ItemID)
 end
 
 message 2524 FishingStartAck
@@ -26,8 +30,11 @@ message 2526 FishingStopAck
   i32 result
 end
 
-message 2527 FishingResultNot ok_only
-  ## Handler 0x00782020 (assert: vecItemOut >> bLicenseTime).
+message 2527 FishingResultNot
+  ## Handler 0x00782020 (assert: vecItemOut >> bLicenseTime). Both fields are read
+  ## whatever the result (not ok_only), so a miss still carries the bait update. result 0 plays the catch
+  ## motion 0x41; nonzero plays 0x40 and shows JERI_FISHING_05 "You didn't catch anything."
+  ## The items go to the fishing page (0x00542570).
   i32 result
   vector<Item> items
   bool license_time

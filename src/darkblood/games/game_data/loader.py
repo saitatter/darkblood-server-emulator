@@ -101,6 +101,62 @@ def tsv_rows(path):
     return [line.split('\t') for line in Path(path).read_text(encoding='utf-8', errors='replace').splitlines()[1:]]
 
 
+_LUA_TOKEN = re.compile(r'\s*(?:(\{|\}|=|,)|"((?:[^"\\]|\\.)*)"|([-+]?[0-9][0-9.eE+-]*)|([A-Za-z_]\w*))')
+
+
+def lua_table(text, loader):
+    """The table literal passed to `assert(<loader>({ ... }), ...)`, as Python lists/dicts.
+
+    A table whose entries are all `key = value` becomes a dict, one with only
+    positional entries a list (strings, numbers and nested tables). Returns []
+    when the section is missing.
+    """
+    start = text.find(loader + '({')
+    if start == -1:
+        return []
+    pos = start + len(loader) + 1
+
+    def token():
+        nonlocal pos
+        m = _LUA_TOKEN.match(text, pos)
+        if not m:
+            raise ValueError(f'{loader}: unexpected Lua at {text[pos:pos + 40]!r}')
+        pos = m.end()
+        return m
+
+    def value(m):
+        if m.group(1) == '{':
+            return table()
+        if m.group(2) is not None:
+            return m.group(2)
+        if m.group(3) is not None:
+            num = m.group(3)
+            return float(num) if any(c in num for c in '.eE') else int(num)
+        return m.group(4)
+
+    def table():
+        nonlocal pos
+        keyed, items = {}, []
+        while True:
+            m = token()
+            if m.group(1) == '}':
+                return keyed if keyed and not items else items
+            if m.group(1) == ',':
+                continue
+            if m.group(4) is not None:
+                after = _LUA_TOKEN.match(text, pos)
+                if after and after.group(1) == '=':
+                    pos = after.end()
+                    keyed[m.group(4)] = value(token())
+                    continue
+            items.append(value(m))
+
+    first = token()
+    if first.group(1) != '{':
+        return []
+    return table()
+
+
 def bundled_asset(name, override=None):
     """assets/<name> when it should be used: it exists and no client-data override replaces it."""
     if override:

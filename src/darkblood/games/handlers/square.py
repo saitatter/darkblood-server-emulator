@@ -1,5 +1,4 @@
 """Town (square) play: tutorial, layers, NPCs, waypoints."""
-import json
 import struct
 
 from darkblood.core.serialization.jser import event, strip_prefix
@@ -10,16 +9,11 @@ from darkblood.games.network.messages import (
     BackToSquareAck,
     ClearTutorialAck,
     EnterMaptoolAck,
-    FishingStartAck,
-    FishingStartReq,
-    FishingStopAck,
-    GTargetListAck,
     LeaveLayerAck,
     LeaveSquareAck,
     NpcFirstMeetAck,
     QuestObjective,
     QuestUpdateNot,
-    TargetState,
     WaypointData,
     WaypointInsertAck,
 )
@@ -43,28 +37,7 @@ from darkblood.core.hashing import jhash
 from darkblood.games.game_data.world import waypoint_info, portal_cost
 from darkblood.games.world import square_uid, GameWorldManager
 from darkblood.games.progression import refresh_stress, stress_changed_not
-from darkblood import REPO_ROOT
 from darkblood.games.game_data.client_dict import tutorial_rewards
-
-_GTARGETS_CACHE = None
-
-
-def _gtargets_for_layer(layer_id: int) -> list:
-    """Return enabled TargetState entries for the town square of `layer_id`."""
-    global _GTARGETS_CACHE
-    if _GTARGETS_CACHE is None:
-        _GTARGETS_CACHE = {}
-        path = REPO_ROOT / 'assets' / 'gtargets.json'
-        if path.is_file():
-            data = json.loads(path.read_text(encoding='utf-8'))
-            for square_name, uids in data.items():
-                _GTARGETS_CACHE[jhash(square_name) & 0xFFFFFFFF] = [
-                    TargetState(target_uid=int(uid), is_active=True, is_jackpot=False)
-                    for uid in uids
-                ]
-    sq_hash = (int(layer_id) >> 32) & 0xFFFFFFFF
-    return list(_GTARGETS_CACHE.get(sq_hash, ()))
-
 
 class SquareHandlers(BaseDomainService):
     """Town (square) play: tutorial, layers, NPCs, waypoints."""
@@ -230,19 +203,6 @@ class SquareHandlers(BaseDomainService):
         char = self.current_char()
         return gold_of(char)
 
-    @packet_handler(5124)
-    async def handle_get_gtarget_list(self, correlation: int, body: bytes):
-        """Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK).
-
-        Client handler: 0x00873490 -> 0x0085E150 -> 0x007F8CD0.
-        Enables 3D interactive town GTargets (furnace ma2700, potion station ma2710,
-        gathering nodes) on the current town square.
-        """
-        targets = _gtargets_for_layer(self._town_layer())
-        await self.reply(GTargetListAck(result=0, targets=targets), correlation, note=f'gtarget list ack ({len(targets)})')
-        # Sent once the town has loaded: show the players already there.
-        await GameWorldManager.get().player_ready(self.session)
-
     @packet_handler(5030)
     async def handle_join_layer(self, correlation: int, body: bytes):
         """Opcode 5030 changes the town layer; positions travel via the relay."""
@@ -353,25 +313,6 @@ class SquareHandlers(BaseDomainService):
             await GameWorldManager.get().remove_session_player(self.session)
         await self.reply(LeaveSquareAck(), correlation,
                          note='leave square ack')
-
-    # =========================================================================
-    # Fishing System Handlers (2523-2526)
-    # =========================================================================
-
-    @packet_handler(2523)
-    async def handle_fishing_start(self, correlation: int, body: bytes):
-        """Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0)."""
-        req = FishingStartReq.decode(body)
-        self.transport.record('fishing-start-req', body, hole=req.fishing_hole_id,
-                              rod=req.rod_item_id, bait=req.bait_item_id)
-        await self.reply(FishingStartAck(result=0), correlation,
-                         note=f'fishing start ack ({req.fishing_hole_id})')
-
-    @packet_handler(2525)
-    async def handle_fishing_stop(self, correlation: int, body: bytes):
-        """Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0)."""
-        self.transport.record('fishing-stop-req', body)
-        await self.reply(FishingStopAck(result=0), correlation, note='fishing stop ack')
 
 
 def _is_town_layer(layer_id: int) -> bool:

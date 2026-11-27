@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / 'src'))
 
 from darkblood.games.game_data import client_dict
+from darkblood.games.game_data import life_skills
 
 ASSETS_DIR = REPO_ROOT / 'assets'
 
@@ -288,6 +289,14 @@ def export_tutorial_rewards():
     print(f"Exported {len(lines)-1} tutorial reward rows to {out.name}")
 
 
+def export_life_targets():
+    """DictTarget fishing/gathering/making targets, their Kairo yields and fishing catch groups."""
+    data = life_skills._from_lua()
+    (ASSETS_DIR / 'life_targets.json').write_text(json.dumps(data, indent=1), encoding='utf-8')
+    print(f"Exported {len(data['targets'])} life-skill targets, {len(data['gathering'])} gathering and "
+          f"{len(data['fishing'])} fishing entries to life_targets.json")
+
+
 def export_cash_and_random_boxes():
     items = client_dict.cash_items()
     lines = ['item_id\ttype\tadj']
@@ -345,6 +354,7 @@ def main():
     export_cash_and_random_boxes()
     export_looting()
     export_dungeon_rewards()
+    export_life_targets()
     print("\nAll assets exported successfully!")
 
 

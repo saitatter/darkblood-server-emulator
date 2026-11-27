@@ -4,7 +4,7 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 833  
+**Tracked opcodes**: 834  
 **Client handlers mapped**: 298  
 **Server handlers**: 365  
 
@@ -463,9 +463,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2520 | `eEGS_KEEP_COOLTIME_DELETE_NOT` | 0x00771FD0 | — | `KeepCooltimeDeleteNot` |  |
 | 2521 | `eEGS_KEEP_COOLTIME_CLEAR_NOT` | 0x007641C0 | — | `KeepCooltimeClearNot` |  |
 | 2522 | `eEGS_CHEAT_ACHIEVE_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_achieve_complete`) | `CheatAchieveCompleteReq` |  |
-| 2523 | `eEGS_FISHING_START_REQ` | — | `square.py` (`handle_fishing_start`) | `FishingStartReq` | Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0). |
+| 2523 | `eEGS_FISHING_START_REQ` | — | `life_skills.py` (`handle_fishing_start`) | `FishingStartReq` | Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0), then a cast loop. |
 | 2524 | `eEGS_FISHING_START_ACK` | 0x0075B0B0 | — | `FishingStartAck` |  |
-| 2525 | `eEGS_FISHING_STOP_REQ` | — | `square.py` (`handle_fishing_stop`) | `FishingStopReq` | Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0). |
+| 2525 | `eEGS_FISHING_STOP_REQ` | — | `life_skills.py` (`handle_fishing_stop`) | `FishingStopReq` | Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0): cancel the pending cast. |
 | 2526 | `eEGS_FISHING_STOP_ACK` | 0x0075B1C0 | — | `FishingStopAck` |  |
 | 2527 | `eEGS_FISHING_RESULT_NOT` | 0x00782020 | — | `FishingResultNot` |  |
 | 2528 | `eEGS_FISHING_FAILED_NOT` | 0x00776310 | — | `FishingFailedNot` |  |
@@ -741,8 +741,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5121 | `eERC_GUILD_CREATE_PROPOSAL_REQ` | — | `social/guild.py` (`handle_guild_create_proposal`) | `GuildCreateProposalReq` | eERC_GUILD_CREATE_PROPOSAL_REQ (0x00790000.c:2514) -> 5122 eERC_GUILD_CREATE_PROPOSAL_ACK (0x00759750). |
 | 5122 | `eERC_GUILD_CREATE_PROPOSAL_ACK` | 0x00759750 | — | `GuildCreateProposalAck` |  |
 | 5123 | `eERC_GUILD_CREATE_COMPLETE_NOT` | 0x00759E10 | — | `GuildCreateCompleteNot` |  |
-| 5124 | `eERC_GTARGET_LIST_REQ` | — | `square.py` (`handle_get_gtarget_list`) | — | Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK). |
+| 5124 | `eERC_GTARGET_LIST_REQ` | — | `life_skills.py` (`handle_get_gtarget_list`) | — | Opcode 5124 (eERC_GTARGET_LIST_REQ) -> 5125 (eERC_GTARGET_LIST_ACK). |
 | 5125 | `eERC_GTARGET_LIST_ACK` | — | — | `GTargetListAck` |  |
+| 5126 | `eERC_CHANGE_GTARGET_NOT` | — | — | `ChangeGTargetNot` |  |
 | 5127 | `eERC_CURRENT_GUILD_SKILL_NOT` | 0x00794CE0 | — | `CurrentGuildSkillNot` |  |
 | 5128 | `eERC_IMPLIED_JOIN_LAYER_REQ` | — | `frontend.py` (`handle_implied_join_layer`) | `ImpliedJoinLayerReq` | Opcode 5128 (eERC_IMPLIED_JOIN_LAYER_REQ, 0x00797480) -> 5031 JoinLayerAck. |
 | 5129 | `eERC_CHEAT_SUMMON_REQUEST_NOT` | — | `gm.py` (`handle_cheat_summon_request`) | `CheatSummonRequestNot` |  |

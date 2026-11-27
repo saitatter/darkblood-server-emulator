@@ -326,10 +326,10 @@ class PetsFlowTest(ServerTestCase):
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
 
-            # Fishing (2523-2526)
-            client.send_event(2523, FishingStartReq(fishing_hole_id='Act1_Fish01', rod_item_id=1, bait_item_id=2).encode())
+            # Fishing (2523-2526): an unknown hole is refused (casts: tests/test_life_skills_flow.py)
+            client.send_event(2523, FishingStartReq(fishing_hole_id='Act1_Fish01', bait_item_id=2).encode())
             _, r = await client.expect_event(2524)
-            self.assertEqual(FishingStartAck.decode(r).result, 0)
+            self.assertEqual(FishingStartAck.decode(r).result, 12)  # INVALID_STATE
 
             client.send_event(2525, FishingStopReq().encode())
             _, r = await client.expect_event(2526)

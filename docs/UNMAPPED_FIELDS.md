@@ -228,7 +228,7 @@
 | `5243 PersonalShopBuyAck` | `u32` | stalls.jsch:76 | 4 bytes (0x00B35560) |
 | `2269 BrokerBuyItemAck` | `raw[24]` | stalls.jsch:164 |  |
 
-## system (5 of 82 fields)
+## system (5 of 84 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

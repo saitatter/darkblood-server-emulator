@@ -13,6 +13,7 @@ from darkblood.games.network.messages import (
     QuestItemDropReq,
 )
 from darkblood.games.dispatcher import packet_handler
+from darkblood.games.game_data.life_skills import gathering_kairo
 from darkblood.player_management.characters import gold_of
 
 
@@ -22,6 +23,9 @@ class QuestNpcHandlers:
         """Opcode 2177 (eEGS_ACT_KAIRO_REQ) -> 2178 (eEGS_ACT_KAIRO_ACK): execute Kairo box/action."""
         req = ActKairoReq.decode(body)
         self.transport.record('act-kairo-req', body, kairo_id=req.kairo_id, param=req.param)
+        if req.kairo_id in gathering_kairo():
+            await self.session.life.handle_gathering(correlation, req)
+            return
         char = self.current_char()
         gold = gold_of(char)
         await self.reply(

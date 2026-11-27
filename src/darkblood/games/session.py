@@ -8,6 +8,7 @@ from darkblood.games.handlers.dungeon import DungeonHandlers
 from darkblood.games.handlers.frontend import DEFAULT_ACCOUNT, FrontendHandlers, account_from_auth, welcome
 from darkblood.games.handlers.gm import GmHandlers
 from darkblood.games.handlers.inventory import InventoryHandlers
+from darkblood.games.handlers.life_skills import LifeSkillHandlers
 from darkblood.games.handlers.mail import MailHandlers
 from darkblood.games.handlers.pets import PetHandlers
 from darkblood.games.handlers.quests import QuestHandlers
@@ -30,6 +31,7 @@ CONTROLLERS = (
     ('social', SocialHandlers),
     ('mail', MailHandlers),
     ('square', SquareHandlers),
+    ('life', LifeSkillHandlers),
     ('commerce', CommerceHandlers),
     ('inventory', InventoryHandlers),
     ('skills', SkillHandlers),
@@ -102,6 +104,8 @@ class GameSession:
             dirty = True
         if dirty:
             self.store().save_char(self.account, self.active_char_id)
+        # Server-wide gathering node regeneration (5126); any ticking session advances it.
+        await self.life.tick_regeneration(now)
 
     async def _run_timer_loop(self, interval: float):
         try:
@@ -141,6 +145,7 @@ class GameSession:
 
     async def on_disconnect(self):
         self.stop_timer_loop()
+        self.life.stop_fishing()
         await self.dungeon.leave_room()
         if self.active_char_id:
             await GameWorldManager.get().remove_session_player(self)

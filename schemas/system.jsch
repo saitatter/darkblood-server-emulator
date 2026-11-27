@@ -233,6 +233,13 @@ message 5125 GTargetListAck
   vector<TargetState> targets
 end
 
+message 5126 ChangeGTargetNot
+  ## Dispatcher 0x00874550 -> 0x00873620: same reader as 5125 (result via 0x00A1EA20,
+  ## then "jEvt.Read() >> vecTargetState"), applied by 0x0085E150 -> JGTarget::Update.
+  u32 result
+  vector<TargetState> targets
+end
+
 message 5096 UpdateCharInfoNot
   ## Handler 0x0078C990. Sent by the world manager as character details
   ## (0x00A52630) followed by the guild name.
