@@ -101,8 +101,12 @@ def status():
                 window=bool(find_window(client)) if _alive(client, 'DarkBlood.exe') else False)
 
 
-def start(server_only=False, client_only=False):
-    """Start the emulator server and the test client."""
+def start(server_only=False, client_only=False, data_dir=None):
+    """Start the emulator server and the test client.
+
+    `data_dir` runs the server on another character database (DARKBLOOD_DATA),
+    e.g. a scratch store with prepared test characters, leaving data/ untouched.
+    """
     state = _load_state()
     current = status()
     if client_only:
@@ -128,7 +132,11 @@ def start(server_only=False, client_only=False):
             if getattr(sys, 'frozen', False)
             else [sys.executable, '-u', str(ROOT / 'run_server.py')]
         )
-        server = subprocess.Popen(server_cmd,
+        server_env = dict(os.environ)
+        if data_dir:
+            server_env['DARKBLOOD_DATA'] = str(Path(data_dir).resolve())
+            state['data_dir'] = server_env['DARKBLOOD_DATA']
+        server = subprocess.Popen(server_cmd, env=server_env,
                                   cwd=str(ROOT), stdout=log, stderr=subprocess.STDOUT,
                                   creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS)
         state['server_pid'] = server.pid
@@ -554,6 +562,7 @@ def main(argv=None):
     p_start = sub.add_parser('start')
     p_start.add_argument('--client-only', action='store_true', help='Only start DarkBlood.exe')
     p_start.add_argument('--server-only', action='store_true', help='Only start the server')
+    p_start.add_argument('--data-dir', help='Character database folder for the server (DARKBLOOD_DATA)')
     sub.add_parser('stop')
     sub.add_parser('status')
     shot = sub.add_parser('screenshot')
@@ -576,7 +585,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.command == 'start':
-            result = start(client_only=args.client_only, server_only=args.server_only)
+            result = start(client_only=args.client_only, server_only=args.server_only, data_dir=args.data_dir)
         elif args.command == 'stop':
             result = stop()
         elif args.command == 'status':

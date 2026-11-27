@@ -1,8 +1,10 @@
 """MCP (Model Context Protocol) stdio server for driving and inspecting Dark Blood sessions.
 
 Exposes tools/automation/gamectl.py, tools/automation/multibox.py, darkblood.core.options, client hook
-build/deploy, opcode lookup, and headless tests to MCP clients. Standard library
-only; newline-delimited JSON-RPC 2.0.
+build/deploy, opcode lookup, headless tests and generator checks, scratch test characters
+(tools/automation/test_data.py), the client shim's breakpoint tracer, and client look-ups
+(tools/reverse/client_inspect.py: strings, UI texts, callers, decompiles) to MCP clients.
+Newline-delimited JSON-RPC 2.0; the client look-ups need pefile/capstone and Ghidra.
 
 Register (already done in this repo's .mcp.json):
     {"mcpServers": {"darkblood": {"command": "python", "args": ["tools/automation/mcp_server.py"]}}}
@@ -19,9 +21,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'tools' / 'automation'))
 sys.path.insert(0, str(ROOT / 'tools' / 'codegen'))
+sys.path.insert(0, str(ROOT / 'tools' / 'reverse'))
+sys.path.insert(0, str(ROOT / 'tools' / 'client_data'))
 
 import gamectl  # noqa: E402
 import multibox  # noqa: E402
+import test_data  # noqa: E402
 from darkblood.core import options  # noqa: E402
 
 PROTOCOL = '2024-11-05'
@@ -42,11 +47,23 @@ def _bool(description):
 TOOLS = {
     # Single-client & server lifecycle
     'game_start': (
-        'Start the local emulator server (127.0.0.1:9400/9401) and optionally the Dark Blood test client.',
-        {'server_only': _bool('Start only the emulator server without launching a client window (default false)')},
+        'Start the local emulator server (127.0.0.1:9400/9401) and/or the Dark Blood test client.',
+        {
+            'server_only': _bool('Start only the emulator server without launching a client window (default false)'),
+            'client_only': _bool('Start only the client against an already running server (default false)'),
+            'data_dir': _str('Character database folder for the server (DARKBLOOD_DATA), e.g. a scratch store '
+                             'made with test_character_create; default: data/'),
+        },
         [],
     ),
-    'game_stop': ('Stop only the server/client processes started by game_start.', {}, []),
+    'game_stop': (
+        'Stop only the server/client processes started by game_start.',
+        {
+            'client_only': _bool('Stop only the client (default false)'),
+            'server_only': _bool('Stop only the server (default false)'),
+        },
+        [],
+    ),
     'game_status': ('Process and window status of the current gamectl session.', {}, []),
 
     # Multibox lifecycle
@@ -169,6 +186,62 @@ TOOLS = {
         {'target': _str('Optional test path or dotted module; omit to run full suite')},
         [],
     ),
+    'codegen_check': (
+        'Run the generator --check modes (gen_messages, gen_progress as in CI; extract_gtargets when the '
+        'client maps are present) and report which outputs are stale.',
+        {}, [],
+    ),
+
+    # Live-test data
+    'test_character_create': (
+        'Create a character in a scratch character database (never data/) for a live test. Create it before '
+        'game_start(data_dir=...): the server caches the store.',
+        {
+            'data_dir': _str('Scratch database folder (created if missing)'),
+            'name': _str('Character name'),
+            'account': _str('Account (default OfflinePlayer, the launcher default)'),
+            'char_class': _num('Class id (default 1)'),
+            'level': _num('Level (default 1)'),
+            'gold': _num('AR (default 0)'),
+            'skills': {'type': 'object', 'description': 'skill index -> level, e.g. {"9007": 1} (Mining)'},
+            'items': {'type': 'array', 'items': {'type': 'array'},
+                      'description': '[[ItemID, count], ...] added to the bags, e.g. [["ILurN1", 5]]'},
+            'layer': _str('Spawn town layer as Square:index, e.g. "Act1:4" (waypoint act1_02)'),
+        },
+        ['data_dir', 'name'],
+    ),
+
+    # Client analysis
+    'client_breakpoints': (
+        'Read or replace research/client/bp.txt, the shim INT3 tracer (read when the client starts; hits go to '
+        'the hook log as [BP] lines). Lines: "<hex VA> [max=N] [reg+off] [reg+off.N] [@reg+off+off2]".',
+        {
+            'lines': {'type': 'array', 'items': {'type': 'string'}, 'description': 'New breakpoint lines'},
+            'clear': _bool('Delete bp.txt (default false)'),
+        },
+        [],
+    ),
+    'client_strings': (
+        'Read ASCII/UTF-16 strings at virtual addresses of the client (static fixture).',
+        {'addresses': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Hex VAs, e.g. ["0xC95B88"]'}},
+        ['addresses'],
+    ),
+    'client_text': (
+        'Look up localized client texts (UI_*, JERI_*, GAME_*, Item_*, ...) in localization_st/*.dat.',
+        {'keys': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Keys, e.g. ["UI_2933"]'}},
+        ['keys'],
+    ),
+    'client_callers': (
+        'Find direct call sites of client functions and the functions that contain them.',
+        {'addresses': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Hex VAs of callees'}},
+        ['addresses'],
+    ),
+    'client_decompile': (
+        'Focused Ghidra decompile (tools/reverse/decomp.ps1) of client functions; pass function start '
+        'addresses (client_callers reports them). Slow (about a minute per call).',
+        {'addresses': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Hex VAs of function starts'}},
+        ['addresses'],
+    ),
 }
 
 
@@ -251,11 +324,45 @@ def _run_tests(target=None):
     }
 
 
+def _check_generators():
+    import extract_gtargets
+    checks = [
+        ('gen_messages', [sys.executable, 'tools/codegen/gen_messages.py', '--check']),
+        ('gen_progress', [sys.executable, 'tools/codegen/gen_progress.py', '--check']),
+    ]
+    if extract_gtargets.DEFAULT_MAPS.is_dir():
+        checks.append(('extract_gtargets', [sys.executable, 'tools/client_data/extract_gtargets.py', '--check']))
+    results = {}
+    for label, cmd in checks:
+        proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True)
+        results[label] = {'ok': proc.returncode == 0, 'output': (proc.stdout + proc.stderr).strip()}
+    return results
+
+
+def _breakpoints(lines=None, clear=False):
+    path = gamectl.LAB / 'bp.txt'
+    if clear:
+        if path.exists():
+            path.unlink()
+    elif lines is not None:
+        path.write_text('\n'.join(lines) + '\n', encoding='ascii')
+    return {'path': str(path), 'lines': path.read_text(encoding='ascii').splitlines() if path.exists() else [],
+            'note': 'bp.txt is read when the client starts: restart it (game_stop client_only, game_start '
+                    'client_only) and read hits with game_hook_log.'}
+
+
+def _addresses(values):
+    return [int(str(v), 16) for v in values]
+
+
 def call_tool(name, args):
     if name == 'game_start':
-        return gamectl.start(server_only=bool(args.get('server_only', False)))
+        return gamectl.start(server_only=bool(args.get('server_only', False)),
+                             client_only=bool(args.get('client_only', False)),
+                             data_dir=args.get('data_dir') or None)
     if name == 'game_stop':
-        return gamectl.stop()
+        return gamectl.stop(client_only=bool(args.get('client_only', False)),
+                            server_only=bool(args.get('server_only', False)))
     if name == 'game_status':
         return gamectl.status()
     if name == 'multibox_start':
@@ -333,6 +440,29 @@ def call_tool(name, args):
         return _opcode_lookup(args['query'])
     if name == 'run_headless_tests':
         return _run_tests(args.get('target'))
+    if name == 'codegen_check':
+        return _check_generators()
+    if name == 'test_character_create':
+        layer = None
+        if args.get('layer'):
+            square, _, idx = str(args['layer']).partition(':')
+            layer = (square, int(idx or 0))
+        return test_data.create_character(
+            args['data_dir'], args['name'], account=args.get('account', 'OfflinePlayer'),
+            char_class=args.get('char_class', 1), level=args.get('level', 1), gold=args.get('gold', 0),
+            skills=args.get('skills') or {}, items=[tuple(i) for i in args.get('items') or []], layer=layer)
+    if name == 'client_breakpoints':
+        return _breakpoints(args.get('lines'), bool(args.get('clear')))
+    if name in ('client_strings', 'client_text', 'client_callers', 'client_decompile'):
+        import client_inspect
+        if name == 'client_text':
+            return client_inspect.ui_text([str(k) for k in args['keys']])
+        addresses = _addresses(args['addresses'])
+        if name == 'client_strings':
+            return client_inspect.strings(addresses)
+        if name == 'client_callers':
+            return client_inspect.callers(addresses)
+        return client_inspect.decompile(addresses)
     raise KeyError(name)
 
 
@@ -349,7 +479,7 @@ def handle(request):
     if method == 'initialize':
         return {'protocolVersion': params.get('protocolVersion', PROTOCOL),
                 'capabilities': {'tools': {}},
-                'serverInfo': {'name': 'darkblood-emulator', 'version': '0.2.0'}}
+                'serverInfo': {'name': 'darkblood-emulator', 'version': '0.3.0'}}
     if method == 'ping':
         return {}
     if method == 'tools/list':
@@ -360,7 +490,7 @@ def handle(request):
         name = params.get('name')
         try:
             return {'content': content(call_tool(name, params.get('arguments') or {}))}
-        except (gamectl.GameError, ValueError) as exc:
+        except (gamectl.GameError, ValueError, RuntimeError) as exc:
             return {'content': [{'type': 'text', 'text': 'error: %s' % exc}], 'isError': True}
         except Exception:  # report tool failures to the client instead of dying
             return {'content': [{'type': 'text', 'text': traceback.format_exc()}], 'isError': True}

@@ -519,6 +519,15 @@ python tools\automation\gamectl.py stop
 
 `gamectl` stops only processes it started (`logs/session.json`) and refuses to start if port 9400 is busy.
 
+Live tests on throwaway characters keep `data/` untouched:
+
+```powershell
+python tools\automation\test_data.py $env:TEMP\db_test --name LifeTester --level 15 --skill 9007=1 --item ILurN1=5 --layer Act1:4
+python tools\automation\gamectl.py start --data-dir $env:TEMP\db_test
+```
+
+`test_data.py` refuses the real `data/` folder; create characters before starting the server (it caches the store). The MCP server exposes the same as `test_character_create` and `game_start(data_dir=...)`, plus `client_breakpoints` (`bp.txt`), `client_strings` / `client_text` / `client_callers` / `client_decompile` (`tools/reverse/client_inspect.py`) and `codegen_check`.
+
 ### Shim diagnostics
 
 - `research/client/bp.txt`: in-process INT3 tracer. Lines are `<hex VA> [max=N] [expr ...]`, with `reg+off` (dword), `reg+off.N` (bytes) and `@reg+off+off2` (dereference). It logs registers and restores the byte, single-steps and re-arms. No debugger is attached.

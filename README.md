@@ -392,7 +392,7 @@ python tools\automation\gamectl.py events         # Tail decoded protocol events
 python tools\automation\gamectl.py stop           # Stop processes
 ```
 
-*An MCP stdio server is available via `.mcp.json` (`tools/automation/mcp_server.py`) exposing automated gameplay, screenshot, and inspection tools.*
+*An MCP stdio server is available via `.mcp.json` (`tools/automation/mcp_server.py`) exposing automated gameplay, screenshot, and inspection tools, plus scratch test characters (`test_character_create`, `game_start data_dir`), the shim breakpoint tracer (`client_breakpoints`), client look-ups (`client_strings`, `client_text`, `client_callers`, `client_decompile`) and `codegen_check`.*
 
 ### 5. 3D Model Viewer & Extractor
 Browse, animate and export the client's meshes from the private extracted data workspace (`tools/client_data/build_client_data.py` output):
