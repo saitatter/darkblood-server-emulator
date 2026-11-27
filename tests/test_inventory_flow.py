@@ -764,6 +764,37 @@ class SkillCostTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_repurchase_list_stays_with_the_selected_character(self):
+        from darkblood.games.entities.items import Item
+        from darkblood.games.network.messages import SellItemReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            char_ids = []
+            for name in ('SaleOwner', 'SaleSibling'):
+                client.send_event(2012, create_request(name))
+                _, created = await client.expect_event(2013)
+                char_ids.append(struct.unpack_from('<Q', created, 10)[0])
+
+            first, second = char_ids
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, first))
+            await client.expect_event(2007)
+            item = dict(code='Ihppa0000', uid=5000, count=1, container=3, slot=0)
+            char = session.GameSession.store().get('OfflinePlayer', first)
+            char['items'].append(item)
+            client.send_event(2069, SellItemReq(npc_id=1, item_uid=5000, count=1).encode())
+            await client.expect_event(2070)
+
+            wire_item = Item(owner=0, **item).encode()
+            for char_id, visible in ((first, True), (second, False), (first, True)):
+                client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+                await client.expect_event(2007)
+                client.send_event(2065, struct.pack('<iI', 0x7fffffff, 1))
+                _, shop = await client.expect_event(2066)
+                self.assertEqual(wire_item in shop, visible)
+
+        self.run_async(self.with_server(scenario))
+
     def test_delete_item_refreshes_quickslots_and_clears_uid_bound_slot(self):
         """2040 -> 2041 sends an empty 2037 to refresh UI 7 (Quickslot) and clears UID-bound quickslots on full delete."""
         from darkblood.core.hashing import jhash
