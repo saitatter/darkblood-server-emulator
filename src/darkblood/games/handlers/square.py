@@ -5,6 +5,7 @@ import struct
 from darkblood.core.serialization.jser import event, strip_prefix
 from darkblood.games.entities.character import layer_net_id, SQUARE_IDS
 from darkblood.games.entities.items import Item, UPDATE_OWNER
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
     BackToSquareAck,
     ClearTutorialAck,
@@ -37,7 +38,7 @@ TUTORIAL_QUEST_ID = 0x34c58e7c
 
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
-from darkblood.player_management.characters import gold_of, add_reward_items
+from darkblood.player_management.characters import add_reward_items, gold_of, spend_gold
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.world import waypoint_info, portal_cost
 from darkblood.games.world import square_uid, GameWorldManager
@@ -256,7 +257,16 @@ class SquareHandlers(BaseDomainService):
             if char is not None and src_wp and dst_wp and src_wp['id'] != dst_wp['id']:
                 cost = portal_cost(src_wp['id'], dst_wp['id'], char.get('level', 1))
                 if cost > 0:
-                    char['gold'] = max(0, gold_of(char) - cost)
+                    if not spend_gold(char, cost):
+                        refused = BackToSquareAck(
+                            result=results.NOT_ENOUGH_AR,
+                            square_uid=_wire_square_uid(self.session.square_id),
+                            layer_net_id=prev_layer,
+                            cur_ar=gold_of(char),
+                        )
+                        await self.transport.send_event(event(5031, refused.encode(), correlation),
+                                                        note='waypoint travel refused (not enough AR)')
+                        return
                     self.save_char()
         self._remember_layer(layer_id)
         world = GameWorldManager.get()

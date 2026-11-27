@@ -242,7 +242,19 @@ class WorldFlowTest(ServerTestCase):
 
             # Teleport from Act1 layer 0 -> Act1 layer 4 with use_waypoint=True
             expected_cost = portal_cost('act1_01', 'act1_02', char.get('level', 1))
+            from darkblood.games.network import results
+
             self.assertGreater(expected_cost, 0)
+            char['gold'] = expected_cost - 1
+            client.send_event(5030, struct.pack('<iQ?', 0x7fffffff, wp4, True))
+            _, refusal = await client.expect_event(5031)
+            refused = BackToSquareAck.decode(refusal)
+            self.assertEqual(refused.result, results.NOT_ENOUGH_AR)
+            self.assertEqual(refused.layer_net_id, wp0)
+            self.assertEqual(char.get('join_layer_net_id', wp0), wp0)
+            self.assertEqual(char['gold'], expected_cost - 1)
+
+            char['gold'] = 5000
             client.send_event(5030, struct.pack('<iQ?', 0x7fffffff, wp4, True))
             _, tp_raw = await client.expect_event(5031)
             tp = BackToSquareAck.decode(tp_raw)
