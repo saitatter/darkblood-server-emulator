@@ -34,6 +34,9 @@ development checkout. This tab also shows server settings (`host`, `port`,
 
 ![Dark Blood Custom Launcher — News & Server](docs/images/launcher_news_server.png)
 
+The self-updater checks the downloaded byte count when the release or server
+reports a size. A download with a different size leaves the current installation intact.
+
 ### Patches & Hacks
 Configure individual modular client hooks (`client_hook/patches/*.c`) and server-side toggles (borderless fullscreen, auto-reconnect to lobby on disconnect, 100 ms town peer sync, skip logos/tutorial, adult blood effect, native GM console, and diagnostics) without editing INI files by hand.
 
