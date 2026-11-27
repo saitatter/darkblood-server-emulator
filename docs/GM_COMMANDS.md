@@ -17,7 +17,7 @@ Regenerated from extracted client data via `python tools/codegen/gen_gm_referenc
 
 | Catalog | Contents | Used By Commands |
 | :--- | :--- | :--- |
-| [Item IDs (Bags, Consumables, Cash, Boxes, Avatars & Misc)](gm_ids/items.md) | 4,238 items (incl. 11 inventory bags) | `itemcall`, `itemdrop` |
+| [Item IDs (Bags, Consumables, Cash, Boxes, Avatars, Materials & Misc)](gm_ids/items.md) | 4,534 items (incl. 11 inventory bags, 53 crafting materials) | `itemcall`, `itemdrop` |
 | [Equipment Item IDs (Lv 1–57)](gm_ids/items_equipment.md) | Weapons, armor & accessories by level tier | `itemcall`, `itemdrop` |
 | [Monster IDs](gm_ids/monsters.md) | 3,749 monsters with level & grade | `moncall`, `summon`, `aiatk`, `aifool`, `aicaution`, `ainormal`, `questdropinfo`, `buff`, `passivebuff` |
 | [Skill IDs](gm_ids/skills.md) | 509 skills with numeric `NameIndex` | `skill`, `petevolution` |

@@ -32,6 +32,24 @@ PARAM_TO_CATALOG = {
     'mount_id': 'mount',
 }
 
+EQUIPMENT_GROUP = 'Equipment'
+EQUIPMENT_KINDS = ('Weapons', 'Armor', 'Shields', 'Accessories')
+_ACCESSORY_PREFIXES = ('Aear', 'Anec', 'Arin')
+
+
+def equipment_kind(item_id: str) -> str:
+    """Slot group of an equipment ID (W* weapons; A* armor, Ashi shields, Aear/Anec/Arin accessories)."""
+    if item_id.startswith('W'):
+        return 'Weapons'
+    if item_id.startswith('Ashi'):
+        return 'Shields'
+    if item_id.startswith(_ACCESSORY_PREFIXES):
+        return 'Accessories'
+    if item_id.startswith('A'):
+        return 'Armor'
+    return ''
+
+
 _ROW_RE = re.compile(r'^\|\s*`([^`]+)`\s*\|\s*(.+?)\s*\|$')
 _PARAM_TOKEN_RE = re.compile(r'(<[^>]+>|\[[^\]]+\])')
 
@@ -42,6 +60,8 @@ class CatalogEntry:
     name: str
     extra: str = ''
     search_key: str = ''
+    category: str = ''  # the `## section` the entry came from, e.g. 'Equipment (Lv 1–15)'
+    kind: str = ''      # equipment slot group from the ID prefix: Weapons, Armor, Shields, Accessories
 
     def display(self) -> str:
         if self.extra:
@@ -114,6 +134,9 @@ def _parse_markdown_table(
                 val = cols[c_idx]
                 if val and val not in ('—', '-'):
                     extras.append(val)
+        kind = equipment_kind(item_id) if section.startswith(EQUIPMENT_GROUP) else ''
+        if kind:
+            extras.insert(1 if include_section and section else 0, kind)
         extra = ', '.join(extras)
         seen.add(item_id)
         entries.append(CatalogEntry(
@@ -121,6 +144,8 @@ def _parse_markdown_table(
             name=name,
             extra=extra,
             search_key=f'{item_id} {name} {extra}'.lower(),
+            category=section,
+            kind=kind,
         ))
     return entries
 
@@ -176,17 +201,80 @@ def lookup_entry(catalog_name: str, item_id: str, ids_dir: Path = GM_IDS_DIR) ->
     return _catalog_index(catalog_name, ids_dir).get(item_id.strip().lower())
 
 
+def _split_section(section: str) -> Tuple[str, str]:
+    """'Equipment (Lv 1–15)' -> ('Equipment', 'Lv 1–15'); other sections have no sub-part."""
+    m = re.match(r'^(.*?)\s*\((.+)\)$', section)
+    if m and m.group(1) == EQUIPMENT_GROUP:
+        return m.group(1), m.group(2)
+    return section, ''
+
+
+def catalog_categories(catalog_name: str, ids_dir: Path = GM_IDS_DIR) -> List[Tuple[str, object]]:
+    """Category menu tree for a catalog, in catalog order.
+
+    Each node is (label, filter) or (label, [child nodes]); filters are
+    'section:<name>', 'group:<name>' or 'kind:<name>' strings for search_catalog.
+    Catalogs with fewer than two sections return an empty list.
+    """
+    groups: Dict[str, List[str]] = {}
+    for e in load_catalog(catalog_name, ids_dir):
+        if not e.category:
+            continue
+        group, _sub = _split_section(e.category)
+        subs = groups.setdefault(group, [])
+        if e.category not in subs:
+            subs.append(e.category)
+    if len(groups) < 2 and not any(len(v) > 1 for v in groups.values()):
+        return []
+    tree: List[Tuple[str, object]] = []
+    for group, sections in groups.items():
+        if len(sections) == 1 and _split_section(sections[0])[1] == '':
+            tree.append((group.replace(' (Quick Reference)', ''), f'section:{sections[0]}'))
+            continue
+        children: List[Tuple[str, object]] = [(f'All {group.lower()}', f'group:{group}')]
+        children += [(_split_section(sec)[1] or sec, f'section:{sec}') for sec in sections]
+        if group == EQUIPMENT_GROUP:
+            children.append(('', None))  # separator
+            children += [(kind, f'kind:{kind}') for kind in EQUIPMENT_KINDS]
+        tree.append((group, children))
+    return tree
+
+
+def category_label(category: Optional[str]) -> str:
+    """Short text for a filter string ('section:Equipment (Lv 1–15)' -> 'Equipment (Lv 1–15)')."""
+    if not category:
+        return 'All'
+    return category.split(':', 1)[1].replace(' (Quick Reference)', '')
+
+
+def _in_category(entry: CatalogEntry, category: Optional[str]) -> bool:
+    if not category:
+        return True
+    key, _, value = category.partition(':')
+    if key == 'section':
+        return entry.category == value
+    if key == 'group':
+        return _split_section(entry.category)[0] == value
+    if key == 'kind':
+        return entry.kind == value
+    return True
+
+
 def search_catalog(
     catalog_name: str,
     query: str,
     limit: int = 120,
     ids_dir: Path = GM_IDS_DIR,
+    category: Optional[str] = None,
 ) -> Tuple[List[CatalogEntry], int]:
     """Filter catalog entries by multi-token substring match on ID, name and extra info.
 
+    `category` is a filter from catalog_categories (None = everything).
     Returns (top_matches, total_match_count).
     """
     entries = load_catalog(catalog_name, ids_dir)
+    if category:
+        entries = tuple(e for e in entries if _in_category(e, category))
     q = (query or '').strip().lower()
     if not q:
         return list(entries[:limit]), len(entries)

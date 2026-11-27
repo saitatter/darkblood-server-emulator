@@ -9,6 +9,7 @@ if str(ROOT / 'tools' / 'launcher') not in sys.path:
     sys.path.insert(0, str(ROOT / 'tools' / 'launcher'))
 
 from launcher_app.gm_catalogs import (  # noqa: E402
+    catalog_categories,
     load_catalog,
     load_gm_pins,
     lookup_entry,
@@ -48,6 +49,30 @@ class GmCatalogsTest(unittest.TestCase):
         eq = lookup_entry('item', 'AbelF10N')
         self.assertIsNotNone(eq)
         self.assertTrue(eq.name)
+
+    def test_crafting_materials_and_fishing_items_are_listed(self):
+        # making.lua / fishing.lua define gathered ore and caught fish (DictItem:LoadItem).
+        ore = lookup_entry('item', 'IMnr20N')
+        self.assertIsNotNone(ore)
+        self.assertEqual(ore.category, 'Crafting Materials')
+        self.assertIsNotNone(lookup_entry('item', 'ILurN1'))
+
+    def test_item_category_menu_filters_sections_and_equipment_kinds(self):
+        tree = dict(catalog_categories('item'))
+        self.assertEqual(tree['Crafting Materials'], 'section:Crafting Materials')
+        equipment = [label for label, _ in tree['Equipment']]
+        self.assertIn('Weapons', equipment)
+        self.assertIn('Lv 1–15', equipment)
+
+        materials, total = search_catalog('item', '', limit=500, category='section:Crafting Materials')
+        self.assertEqual(total, len(materials))
+        self.assertTrue(all(m.category == 'Crafting Materials' for m in materials))
+        weapons, _ = search_catalog('item', '', limit=50, category='kind:Weapons')
+        self.assertTrue(weapons and all(m.id.startswith('W') for m in weapons))
+        _, all_equipment = search_catalog('item', '', category='group:Equipment')
+        _, low_level = search_catalog('item', '', category='section:Equipment (Lv 1–15)')
+        self.assertGreater(all_equipment, low_level)
+        self.assertEqual(catalog_categories('monster'), [])
 
     def test_parse_command_params_identifies_catalogs_and_choices(self):
         specs = parse_command_params('<item_id> [count=1] [expire_min]')

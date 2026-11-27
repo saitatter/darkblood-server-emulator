@@ -59,7 +59,9 @@ def iter_section_entries(lua_path: Path, section_name: str):
         stripped = line.strip()
         if not in_section:
             if f'{section_name}({{' in line:
-                in_section = True
+                # An empty table on one line (`LoadItem({})`) has no entries;
+                # entering it would swallow the next section's entries.
+                in_section = f'{section_name}({{}})' not in line
                 depth = 1
             continue
         if stripped.startswith('})'):
@@ -122,6 +124,10 @@ def generate_items(dict_dir: Path, strings: dict):
         ('monstercard.lua', 'Monster Cards'),
         ('item_quest.lua', 'Quest Items'),
         ('item_moneysetting.lua', 'Currency Items'),
+        ('making.lua', 'Crafting Materials'),
+        ('fishing.lua', 'Fishing (Fish, Bait & Permits)'),
+        ('arena.lua', 'Arena Items'),
+        ('mark.lua', 'Skill Runes'),
     ]
     equip_files = [
         ('item_equip1_15lv.lua', 'Equipment (Lv 1–15)'),

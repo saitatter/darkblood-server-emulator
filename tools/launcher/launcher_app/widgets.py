@@ -13,7 +13,9 @@ from launcher_app.theme import (
     TEXT_MAIN,
     TEXT_MUTED,
 )
-from launcher_app.gm_catalogs import CATALOG_LABELS, lookup_entry, search_catalog
+from launcher_app.gm_catalogs import (
+    CATALOG_LABELS, catalog_categories, category_label, lookup_entry, search_catalog,
+)
 
 
 class ScrollFrame(tk.Frame):
@@ -82,6 +84,7 @@ class SearchableIdPicker(tk.Frame):
         self._value = (initial_value or '').strip()
         self._popup = None
         self._matches = []
+        self._category = None  # filter from catalog_categories; kept between openings
 
         self._btn = tk.Label(
             self,
@@ -178,6 +181,47 @@ class SearchableIdPicker(tk.Frame):
         close_lbl.pack(side='right')
         close_lbl.bind('<Button-1>', self._close_popup)
 
+        # Category menu (cascading for grouped sections such as Equipment)
+        tree = catalog_categories(self.catalog)
+        cat_btn = None
+        if tree:
+            cat_row = tk.Frame(inner, bg=BG_CARD, padx=8, pady=3)
+            cat_row.pack(fill='x')
+            tk.Label(cat_row, text='Category:', bg=BG_CARD, fg=TEXT_MUTED,
+                     font=('Segoe UI', 8)).pack(side='left', padx=(0, 4))
+            cat_btn = tk.Menubutton(
+                cat_row, text=f'{category_label(self._category)}  ▾', bg=BG_CARD_ALT, fg=TEXT_MAIN,
+                activebackground=ACCENT, activeforeground='white', relief='flat', bd=0,
+                font=('Segoe UI', 8, 'bold'), padx=8, pady=2, cursor='hand2',
+                highlightbackground=BORDER, highlightthickness=1,
+            )
+            cat_btn.pack(side='left')
+            menu_opts = dict(tearoff=0, bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT,
+                             activeforeground='white', bd=0, font=('Segoe UI', 9))
+            root_menu = tk.Menu(cat_btn, **menu_opts)
+
+            def choose(category):
+                self._category = category
+                cat_btn.configure(text=f'{category_label(category)}  ▾')
+                refresh()
+                entry.focus_set()
+
+            def fill(menu, nodes):
+                for label, node in nodes:
+                    if node is None:
+                        menu.add_separator()
+                    elif isinstance(node, list):
+                        sub = tk.Menu(menu, **menu_opts)
+                        fill(sub, node)
+                        menu.add_cascade(label=label, menu=sub)
+                    else:
+                        menu.add_command(label=label, command=lambda c=node: choose(c))
+
+            root_menu.add_command(label='All', command=lambda: choose(None))
+            root_menu.add_separator()
+            fill(root_menu, tree)
+            cat_btn.configure(menu=root_menu)
+
         # Optional quick choice buttons (e.g. 'off' for %riding)
         if self.extra_choices:
             quick = tk.Frame(inner, bg=BG_CARD, padx=8, pady=3)
@@ -211,7 +255,8 @@ class SearchableIdPicker(tk.Frame):
         count_lbl.pack(fill='x')
 
         def refresh(*_args):
-            matches, total = search_catalog(self.catalog, search_var.get(), limit=150)
+            matches, total = search_catalog(self.catalog, search_var.get(), limit=150,
+                                            category=self._category)
             self._matches = matches
             lb.delete(0, 'end')
             for m in matches:
@@ -220,7 +265,8 @@ class SearchableIdPicker(tk.Frame):
                 lb.selection_set(0)
             shown = len(matches)
             suffix = f' (showing first {shown})' if total > shown else ''
-            count_lbl.config(text=f'{total:,} {cat_lbl.lower()}(s){suffix}  •  Enter or click to select')
+            where = f' in {category_label(self._category)}' if self._category else ''
+            count_lbl.config(text=f'{total:,} {cat_lbl.lower()}(s){where}{suffix}  •  Enter or click to select')
 
         def pick_selected(_event=None):
             sel = lb.curselection()
@@ -261,6 +307,8 @@ class SearchableIdPicker(tk.Frame):
         if focused is None:
             self._close_popup()
             return
+        if focused.winfo_class() == 'Menu':
+            return  # the category menu is open over the popup
         if focused.winfo_toplevel() is not self._popup:
             self._close_popup()
 
