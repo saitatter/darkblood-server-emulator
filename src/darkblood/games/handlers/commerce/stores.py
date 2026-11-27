@@ -117,9 +117,10 @@ class StoreHandlers:
 
 
     def _repurchase_list(self):
-        """Items sold this session, as RepurchaseItem entries (2066 vecRePur)."""
+        """Items sold by the selected character as RepurchaseItem entries (2066 vecRePur)."""
+        sold = self._repurchase_items_by_character.get(self.char_id, {})
         return [RepurchaseItem(item=Item(owner=0, **record), price=price, sell_time=sold_at)
-                for record, price, sold_at in self._repurchase_items.values()]
+                for record, price, sold_at in sold.values()]
 
     @packet_handler(2065)
     async def handle_get_store_info(self, correlation, body):
@@ -243,7 +244,7 @@ class StoreHandlers:
 
         repurchase_uid = sold_record['uid'] if curr <= del_cnt else next_item_uid(char)
         sold_record['uid'] = repurchase_uid
-        repurchase_map = self._repurchase_items
+        repurchase_map = self._repurchase_items_by_character.setdefault(char['id'], {})
         sold_at = int(time.time())
         repurchase_map[repurchase_uid] = (sold_record, earned, sold_at)
 
@@ -270,7 +271,7 @@ class StoreHandlers:
         if not char:
             await self.reply(RepurchaseItemAck(result=results.NO_EXIST_CHAR), correlation, note='repurchase fail (no char)')
             return
-        repurchase_map = self._repurchase_items
+        repurchase_map = self._repurchase_items_by_character.get(char['id'], {})
         entry = repurchase_map.get(req.item_uid)
         if not entry:
             await self.reply(RepurchaseItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation, note=f'repurchase fail (unknown {req.item_uid})')
