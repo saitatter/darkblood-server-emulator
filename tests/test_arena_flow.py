@@ -388,10 +388,19 @@ class ArenaFlowTest(ServerTestCase):
             _, r = await client.expect_event(5287)
             self.assertEqual(ArenaTeamChangeHostAck.decode(r).new_host_uid, 99)
 
+            client.send_event(5269, messages.ArenaTeamCreateReq(team_name='Challengers', team_type=1).encode())
+            _, created_team = await client.expect_event(5270)
+            team_id = messages.ArenaTeamCreateAck.decode(created_team).team_id
+
             client.send_event(5301, ArenaChangeTeamInfoReq(team_type=2, team_name='Titans').encode())
             _, r = await client.expect_event(5302)
             ack = ArenaChangeTeamInfoAck.decode(r)
             self.assertEqual((ack.result, ack.team_type, ack.team_name), (0, 2, 'Titans'))
+
+            client.send_event(5271, messages.ArenaTeamJoinReq(team_id=team_id).encode())
+            _, joined_team = await client.expect_event(5272)
+            team = messages.ArenaTeamJoinAck.decode(joined_team)
+            self.assertEqual((team.result, team.team_type, team.team_name), (0, 2, 'Titans'))
 
             client.send_event(2556, LeagueSeasonArenaCharStatUpdateReq(season_stat={'STR': 5}).encode())
             _, r = await client.expect_event(2557)

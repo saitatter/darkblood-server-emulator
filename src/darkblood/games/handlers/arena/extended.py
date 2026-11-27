@@ -26,6 +26,7 @@ from darkblood.games.network.messages import (
     LeagueSeasonArenaCharStatUpdateReq,
 )
 from darkblood.games.dispatcher import packet_handler
+from darkblood.games.network import results
 from darkblood.player_management.characters import gold_of
 
 
@@ -98,7 +99,16 @@ class ArenaExtendedHandlers:
     @packet_handler(5301)
     async def handle_arena_change_team_info(self, correlation: int, body: bytes):
         req = ArenaChangeTeamInfoReq.decode(body)
-        await self.reply(ArenaChangeTeamInfoAck(result=0, team_type=req.team_type, team_name=req.team_name),
+        team = self.arena.teams.get(self._current_arena_team_id)
+        char_uid, _, _, _ = self._get_active_char_info()
+        if team is None or not char_uid or team.leader_uid != char_uid:
+            await self.reply(ArenaChangeTeamInfoAck(result=results.INVALID_STATE), correlation,
+                             note='arena change team info refused')
+            return
+
+        team.team_type = req.team_type
+        team.team_name = req.team_name
+        await self.reply(ArenaChangeTeamInfoAck(result=0, team_type=team.team_type, team_name=team.team_name),
                          correlation, note=f'arena change team info ack ({req.team_name})')
 
     @packet_handler(2556)

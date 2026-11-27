@@ -72,6 +72,9 @@ When it fails, note what the client did and keep it here.
 | W17 | League ladder (`2551`/`2553`) | The ladder lists the stored characters past placement (10+ games) as "name (Offline)", with wins, rating and "N Consecutive Wins"; a character in placement shows "Not ranked" (`-1`). Set `league_arena` win/lose counts on a character to see a row. |
 | W18 | Stall notices (`5254`/`5250`/`5255`) | A second player on the same town layer sees the stall open, change and close (notices now go to the seller's square and layer instead of square 1). |
 
+After a team leader changes the arena team name and type (`5301`), joining that
+team (`5271`) shows the updated values.
+
 ## Basic client checklist (from ROADMAP)
 
 - [ ] Store: buying decrements gold and adds the bag icon; selling removes it.
