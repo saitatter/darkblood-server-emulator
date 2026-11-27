@@ -5,7 +5,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from darkblood.games.entities.items import Item, UPDATE_OWNER
-from darkblood.player_management.characters import add_gold, add_reward_items, gold_of
+from darkblood.player_management.characters import add_gold, add_reward_items, free_cells, gold_of, slots_needed
 from darkblood.games.network.messages import (
     BrokerProduct,
     StallItem,
@@ -193,6 +193,10 @@ class PersonalShopManager:
             if buyer_gold < total_cost:
                 return False, "Insufficient gold", 0, []
 
+            reward = [(stall_item.code, buy_count)]
+            if len(free_cells(buyer_char)) < slots_needed(reward):
+                return False, "Inventory full", 0, []
+
             # Locate seller character in store to credit gold and remove item
             seller_char = _find_char_by_id(store, seller_uid)
 
@@ -207,8 +211,7 @@ class PersonalShopManager:
             seller_char['gold'] = seller_gold
 
             # 3. Transfer item to buyer
-            item_code = stall_item.code
-            new_buyer_items = add_reward_items(buyer_char, [(item_code, buy_count)])
+            new_buyer_items = add_reward_items(buyer_char, reward)
 
             # 4. Remove/decrement item from seller's inventory
             seller_items = seller_char.get('items', [])
