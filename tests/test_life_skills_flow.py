@@ -3,7 +3,7 @@ import asyncio
 import random
 import struct
 import unittest
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games.entities.items import UPDATE_OWNER, Item
@@ -18,6 +18,7 @@ from darkblood.games.network.messages import (
     FishingStartReq,
     FishingStopReq,
     GTargetListAck,
+    NpcMakingKairoReq,
 )
 from darkblood.games.session import GameSession
 
@@ -141,6 +142,131 @@ class LifeSkillsFlowTest(ServerTestCase):
                 _, body = await client.expect_event(2178)
             self.assertEqual(struct.unpack_from('<i', body)[0], 0)
             self.assertAlmostEqual(char['proficiencies'][0], 0.8, places=5)  # 3 x 0.2667
+
+        self.run_async(self.with_server(scenario))
+
+    def _crafter(self, char, gold=100000, proficiency=None, items=()):
+        bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
+        char['gold'] = gold
+        if proficiency:
+            profs = [0.0] * 10
+            for ptype, value in proficiency.items():
+                profs[ptype] = value
+            char['proficiencies'] = profs
+        char['items'] = [dict(code=code, uid=100 + n, container=bag, slot=n, **({'count': count} if count > 1 else {}))
+                         for n, (code, count) in enumerate(items)]
+        GameSession.store().save()
+        return bag
+
+    def test_crafting_consumes_materials_and_ar_and_yields_the_recipe_item(self):
+        """2177 with a DictKairo:LoadMaking id (sender 0x00727551) -> 2178, Kairo kind 1."""
+        async def scenario(client):
+            char, _ = await enter_town(client, 'Smith', level=20, skills={'9000': 1, '10032': 1})
+            materials = [('IMai20N', 5), ('IMaia0007', 3), ('ISuba0002', 3), ('IGema0000', 2)]
+            self._crafter(char, proficiency={2: 50.0}, items=materials[:3])
+
+            client.send_event(2177, ActKairoReq(kairo_id='Wmake33_Info').encode())
+            _, body = await client.expect_event(2178)
+            self.assertEqual(struct.unpack_from('<i', body)[0], 12)   # IGema0000 missing
+            self.assertEqual(char['gold'], 100000)
+
+            bag = self._crafter(char, proficiency={2: 50.0}, items=materials)
+            client.send_event(2177, ActKairoReq(kairo_id='Wmake33_Info').encode())
+            _, body = await client.expect_event(2178)
+            self.assertEqual(struct.unpack_from('<i', body)[0], 0)
+            kairo_id = 'Wmake33_Info'.encode('utf-16le')
+            flags_at = body.index(kairo_id) + len(kairo_id)
+            success, _jackpot, proficiency = struct.unpack_from('<??f', body, flags_at)
+            self.assertTrue(success)                                   # +0x1C: GAME_299 crafted
+            self.assertAlmostEqual(proficiency, 51.395, places=3)
+            self.assertEqual(char['gold'], 100000 - 12900)
+            self.assertEqual(sorted((i['code'], i.get('count', 1)) for i in char['items']),
+                             [('IMai20N', 1), ('Wlsww0052', 1)])
+            # A used-up stack is sent with count 0 (deleted cell).
+            self.assertIn(Item(owner=UPDATE_OWNER, code='IGema0000', uid=103, container=bag,
+                               slot=3, count=0).encode(), body)
+
+            # AR below BuyPrice, and proficiency below ReqProficiency, are refused.
+            self._crafter(char, gold=100, proficiency={2: 50.0}, items=materials)
+            client.send_event(2177, ActKairoReq(kairo_id='Wmake33_Info').encode())
+            _, body = await client.expect_event(2178)
+            self.assertEqual(struct.unpack_from('<i', body)[0], 168)  # NOT_ENOUGH_AR
+            self._crafter(char, proficiency={2: 10.0}, items=materials)
+            client.send_event(2177, ActKairoReq(kairo_id='Wmake33_Info').encode())
+            _, body = await client.expect_event(2178)
+            self.assertEqual(struct.unpack_from('<i', body)[0], 12)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_failed_craft_gives_a_fail_item_and_fail_proficiency(self):
+        class Rolls:
+            def __init__(self, values):
+                self.values = list(values)
+
+            def random(self):
+                return self.values.pop(0)
+
+        async def scenario(client):
+            char, _ = await enter_town(client, 'Alchemist', level=20, skills={'9003': 1, '16000': 1})
+            self._crafter(char, proficiency={5: 20.0}, items=[('IMai20Na', 1), ('ILqd20N', 2)])
+            # SuccessRate 0.9: 0.95 fails; FailIN has five 0.2 weights, 0.5 picks the third.
+            with patch.object(life_handlers.LifeSkillHandlers, 'rng', new_callable=PropertyMock,
+                              return_value=Rolls([0.95, 0.5])):
+                client.send_event(2496, NpcMakingKairoReq(kairo_id='Pmake1_Info').encode())
+                _, body = await client.expect_event(2497)
+            self.assertEqual(struct.unpack_from('<i', body)[0], 0)
+            kairo_id = 'Pmake1_Info'.encode('utf-16le')
+            success, _, _ = struct.unpack_from('<??f', body, body.index(kairo_id) + len(kairo_id))
+            self.assertFalse(success)                                  # GAME_300 "Failed ... acquired %s"
+            self.assertEqual([i['code'] for i in char['items']], ['IpotS240'])
+            self.assertAlmostEqual(char['proficiencies'][5], 20.125, places=4)
+            _, note = await client.expect_event(2529)
+            msg = FishingProficiencyNot.decode(note)
+            self.assertEqual(msg.proficiency_type, 5)
+            self.assertAlmostEqual(msg.proficiency, 20.125, places=3)
+
+        self.run_async(self.with_server(scenario))
+
+    def test_profession_and_recipe_learning_follow_the_dict_requirements(self):
+        from darkblood.games.network.messages import LearnSkillReq
+
+        async def scenario(client):
+            char, _ = await enter_town(client, 'Apprentice', level=20, skills={'9000': 1})
+            char['gold'] = 10 ** 9
+            char['proficiencies'] = [0.0, 0.0, 150.0] + [0.0] * 7
+
+            # Weapon Making level 2: DemandLv 30, DemandProficiency 200.
+            client.send_event(2050, LearnSkillReq(skill_index=9000, level=2).encode())
+            _, ack = await client.expect_event(2051)
+            self.assertNotEqual(struct.unpack_from('<i', ack)[0], 0)
+            char['level'] = 30
+            client.send_event(2050, LearnSkillReq(skill_index=9000, level=2).encode())
+            _, ack = await client.expect_event(2051)
+            self.assertNotEqual(struct.unpack_from('<i', ack)[0], 0)   # 150 < 200
+            char['proficiencies'][2] = 200.0
+            client.send_event(2050, LearnSkillReq(skill_index=9000, level=2).encode())
+            _, ack = await client.expect_event(2051)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+
+            # Recipe Wmake33 (10032) needs Weapon Making level 1 (DemandSkill spnw19301).
+            del char['skills']['9000']
+            client.send_event(2050, LearnSkillReq(skill_index=10032, level=1).encode())
+            _, ack = await client.expect_event(2051)
+            self.assertNotEqual(struct.unpack_from('<i', ack)[0], 0)
+            char['skills']['9000'] = 1
+            client.send_event(2050, LearnSkillReq(skill_index=10032, level=1).encode())
+            _, ack = await client.expect_event(2051)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            self.assertEqual(char['skills']['10032'], 1)
+
+            # 2384 resetting Weapon Making (proficiency 2) drops the profession and its recipes.
+            from darkblood.games.network.messages import InitProficiencyReq
+            client.send_event(2384, InitProficiencyReq(item_uid=0, pf_index=2).encode())
+            _, ack = await client.expect_event(2385)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            self.assertNotIn('9000', char['skills'])
+            self.assertNotIn('10032', char['skills'])
+            self.assertEqual(char['proficiencies'][2], 0.0)
 
         self.run_async(self.with_server(scenario))
 

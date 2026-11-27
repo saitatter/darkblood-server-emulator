@@ -1,4 +1,4 @@
-"""Town GTargets and life skills: target list (5124/5125/5126), gathering (2177) and fishing (2523-2529)."""
+"""Town GTargets and life skills: target list (5124/5125/5126), gathering and crafting (2177/2496) and fishing (2523-2529)."""
 import asyncio
 
 from darkblood.core import options
@@ -12,6 +12,7 @@ from darkblood.games.game_data.life_skills import (
     fish_group,
     fishing_kairo,
     gathering_kairo,
+    making_kairo,
     max_proficiency,
     target_kinds,
 )
@@ -33,7 +34,15 @@ from darkblood.games.network.messages import (
     KairoResult,
 )
 from darkblood.games.world import GameWorldManager
-from darkblood.player_management.characters import add_reward_items, free_cells, gold_of, slots_needed
+from darkblood.player_management.characters import (
+    add_gold,
+    add_reward_items,
+    bag_item_count,
+    free_cells,
+    gold_of,
+    slots_needed,
+    take_bag_items,
+)
 
 GATHERING_COLLECTED = 5      # JERI_GATHERING_00 "This item has been collected by another player."
 FISHING_NEED_BAIT = 417      # JERI_FISHING_04 "You need more bait."
@@ -165,6 +174,90 @@ class LifeSkillHandlers(BaseDomainService):
         if depleted is not None:
             await self.broadcast_targets(square, [depleted])
 
+    # ----------------------------------------------------------------- crafting
+
+    def _pick(self, entries):
+        """One (code, count) from [(code, count, weight)] by weight (ItemIN/FailIN sum to 1), or None."""
+        entries = [(code, count, prob) for code, count, prob in entries if prob > 0]
+        total = sum(prob for _, _, prob in entries)
+        if not entries or total <= 0:
+            return None
+        roll = self.rng.random() * total
+        for code, count, prob in entries:
+            roll -= prob
+            if roll < 0:
+                return code, count
+        return entries[-1][0], entries[-1][1]
+
+    def making_refusal(self, char, recipe):
+        """Result code and note when `recipe` cannot be crafted now, else None."""
+        if char is None:
+            return results.NO_EXIST_CHAR, 'no char'
+        if self._skill_level(char, recipe['req_skill']) < recipe['req_skill_lv']:
+            return results.INVALID_STATE, f'recipe skill {recipe["req_skill"]} not learned'
+        if proficiency_values_for_char(char)[recipe['proficiency_type']] < recipe['req_proficiency']:
+            return results.INVALID_STATE, f'proficiency below {recipe["req_proficiency"]:g}'
+        if gold_of(char) < recipe['buy_price']:
+            return results.NOT_ENOUGH_AR, f'needs {recipe["buy_price"]} AR'
+        missing = [code for code, count in recipe['req_items'] if bag_item_count(char, code) < count]
+        if missing:
+            return results.INVALID_STATE, f'missing materials {missing}'
+        return None
+
+    async def handle_making(self, correlation, kairo_id, ack_cls):
+        """Craft one DictKairo:LoadMaking recipe: 2177 -> 2178 (station) or 2496 -> 2497 (NPC).
+
+        Client (static, 0x0080BC30 / 0x005C60C0, Kairo kind 1): KairoResult +0x1C set =
+        success ("Congrats! You've successfully crafted %s!" per notice, GAME_299) and
+        the new proficiency at +0x1E is applied; +0x1C clear = failure ("Failed to make
+        item and acquired %s!", GAME_300, or GAME_365 "all materials have disappeared"
+        without notices). Materials and BuyPrice are consumed either way; ItemIN and
+        FailIN weights each sum to 1, so one entry is rolled. Failure proficiency
+        (FailProficiencyUp) is sent with 2529, whose handler 0x00776400 calls the same
+        JProficiencyMgr setter 0x0073A730 for any proficiency type.
+        """
+        recipe = making_kairo()[kairo_id]
+        char = self.current_char()
+        refusal = self.making_refusal(char, recipe)
+        if refusal is not None:
+            code, why = refusal
+            await self.reply(ack_cls(result=code, remain_gold=gold_of(char)), correlation,
+                             note=f'making refused ({kairo_id}: {why})')
+            return
+        success = self.rng.random() < recipe['success_rate']
+        product = self._pick(recipe['items'] if success else recipe['fail_items'])
+        produced = [product] if product else []
+        freed = sum(1 for code, count in recipe['req_items']
+                    if bag_item_count(char, code) == count)  # stacks used up free their cells (upper bound)
+        if len(free_cells(char)) + freed < slots_needed(produced, char):
+            await self.reply(ack_cls(result=results.INVEN_FULL, remain_gold=gold_of(char)), correlation,
+                             note=f'making refused ({kairo_id}: bags full)')
+            return
+        updates = []
+        for code, count in recipe['req_items']:
+            updates += take_bag_items(char, code, count)
+        add_gold(char, -recipe['buy_price'])
+        stored = add_reward_items(char, produced)
+        changed, proficiency = self._raise_proficiency(
+            char, recipe['proficiency_type'], recipe['success_up'] if success else recipe['fail_up'])
+        self.save_char()
+        by_uid = {u['uid']: u for u in updates}
+        by_uid.update({s['uid']: s for s in stored})   # a product may land in a just-emptied cell
+        result = KairoResult(
+            kairo_id=kairo_id,
+            proficiency_changed=success,
+            proficiency=proficiency,
+            notices=[AddedItemNotice(item_id=jhash(code), count=count) for code, count in produced],
+            items=[Item(owner=UPDATE_OWNER, **item) for item in by_uid.values()],
+        )
+        await self.reply(ack_cls(result=0, kairo=result, remain_gold=gold_of(char)), correlation,
+                         note=f'making ack ({kairo_id} success={success} product={product} '
+                              f'proficiency={proficiency:.2f})')
+        if changed and not success:
+            await self.send_msg(FishingProficiencyNot(result=0, proficiency=proficiency,
+                                                      proficiency_type=recipe['proficiency_type']),
+                                note=f'making fail proficiency not ({kairo_id}: {proficiency:.2f})')
+
     # ------------------------------------------------------------------ fishing
 
     def _find_item(self, char, item_id):
@@ -202,6 +295,14 @@ class LifeSkillHandlers(BaseDomainService):
         if int(char.get('level', 1)) < hole['demand_lv']:
             await self.reply(FishingStartAck(result=results.INVALID_STATE), correlation,
                              note=f'fishing start refused (level below {hole["demand_lv"]})')
+            return
+        # DictTarget:LoadFishing ReqSkillIdx/ReqSkillLv/ReqProficiency (e.g. Fish_ACT1_S1:
+        # Fishing lv1 + 200). The special holes' ReqItemID permits (Type 47) are checked
+        # by the client page (UI_2952); the server has no license state yet.
+        if (self._skill_level(char, hole['req_skill']) < hole['req_skill_lv']
+                or proficiency_values_for_char(char)[FISHING_PROFICIENCY] < hole['req_proficiency']):
+            await self.reply(FishingStartAck(result=results.INVALID_STATE), correlation,
+                             note=f'fishing start refused ({req.fishing_hole_id}: skill/proficiency too low)')
             return
         if self._bait(char, req.bait_item_id) is None:
             await self.reply(FishingStartAck(result=FISHING_NEED_BAIT), correlation,

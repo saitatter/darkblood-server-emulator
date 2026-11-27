@@ -104,14 +104,30 @@ def tsv_rows(path):
 _LUA_TOKEN = re.compile(r'\s*(?:(\{|\}|=|,)|"((?:[^"\\]|\\.)*)"|([-+]?[0-9][0-9.eE+-]*)|([A-Za-z_]\w*))')
 
 
-def lua_table(text, loader):
+def lua_tables(text, loader):
+    """Entries of every `assert(<loader>({ ... }))` section, concatenated in file order.
+
+    Dict files such as making.lua split one loader over several sections
+    (9 x DictKairo:LoadMaking); lua_table reads only the first.
+    """
+    out, start = [], 0
+    while True:
+        start = text.find(loader + '({', start)
+        if start == -1:
+            return out
+        section = lua_table(text, loader, start)
+        out.extend(section if isinstance(section, list) else [section])
+        start += len(loader)
+
+
+def lua_table(text, loader, start=None):
     """The table literal passed to `assert(<loader>({ ... }), ...)`, as Python lists/dicts.
 
     A table whose entries are all `key = value` becomes a dict, one with only
     positional entries a list (strings, numbers and nested tables). Returns []
-    when the section is missing.
+    when the section is missing. `start` selects a later section (lua_tables).
     """
-    start = text.find(loader + '({')
+    start = text.find(loader + '({') if start is None else start
     if start == -1:
         return []
     pos = start + len(loader) + 1

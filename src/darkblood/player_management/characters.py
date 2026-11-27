@@ -326,3 +326,41 @@ def spend_gold(char, amount):
         return False
     char['gold'] = gold_of(char) - amount
     return True
+
+
+def bag_item_count(char, code):
+    """Total amount of `code` over the stacks in the character's inventory bags."""
+    bag_ids = {b['bag_id'] for b in _inventory_bags(char)}
+    return sum(int(i.get('count', 1)) for i in char.get('items', [])
+               if i.get('code') == code and i.get('container') in bag_ids)
+
+
+def take_bag_items(char, code, amount):
+    """Remove `amount` of `code` from the inventory bags (smallest stacks first).
+
+    Returns the touched records with their new count; a fully used stack is
+    removed from char['items'] and returned with count 0, the form the client
+    treats as a deleted cell (fishing baits, 2527). Callers check
+    bag_item_count first.
+    """
+    bag_ids = {b['bag_id'] for b in _inventory_bags(char)}
+    stacks = sorted((i for i in char.get('items', []) if i.get('code') == code and i.get('container') in bag_ids),
+                    key=lambda i: int(i.get('count', 1)))
+    touched = []
+    for rec in stacks:
+        if amount <= 0:
+            break
+        have = int(rec.get('count', 1))
+        take = min(have, amount)
+        amount -= take
+        left = have - take
+        if left:
+            if left > 1:
+                rec['count'] = left
+            else:
+                rec.pop('count', None)
+            touched.append(dict(rec))
+        else:
+            char['items'].remove(rec)
+            touched.append(dict(rec, count=0))
+    return touched

@@ -13,7 +13,7 @@ from darkblood.games.network.messages import (
     QuestItemDropReq,
 )
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.game_data.life_skills import gathering_kairo
+from darkblood.games.game_data.life_skills import gathering_kairo, making_kairo
 from darkblood.player_management.characters import gold_of
 
 
@@ -25,6 +25,9 @@ class QuestNpcHandlers:
         self.transport.record('act-kairo-req', body, kairo_id=req.kairo_id, param=req.param)
         if req.kairo_id in gathering_kairo():
             await self.session.life.handle_gathering(correlation, req)
+            return
+        if req.kairo_id in making_kairo():
+            await self.session.life.handle_making(correlation, req.kairo_id, ActKairoAck)
             return
         char = self.current_char()
         gold = gold_of(char)
@@ -38,6 +41,9 @@ class QuestNpcHandlers:
         """Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting."""
         req = NpcMakingKairoReq.decode(body)
         self.transport.record('npc-making-kairo-req', body, kairo_id=req.kairo_id)
+        if req.kairo_id in making_kairo():
+            await self.session.life.handle_making(correlation, req.kairo_id, NpcMakingKairoAck)
+            return
         char = self.current_char()
         gold = gold_of(char)
         await self.reply(

@@ -23,6 +23,7 @@ from darkblood.games.game_data.loader import (
     bundled_asset,
     data_root,
     lua_table,
+    lua_tables,
     tsv_rows,
 )
 
@@ -45,7 +46,7 @@ def _from_lua() -> dict:
     for kind, text, loader in ((FISHING, fishing, 'DictTarget:LoadFishing'),
                                (GATHERING, gathering, 'DictTarget:LoadGathering'),
                                (MAKING, making, 'DictTarget:LoadMaking')):
-        for t in lua_table(text, loader):
+        for t in lua_tables(text, loader):
             targets.append(dict(
                 kind=kind, id=t['ID'], resource_num=int(t['ResourceNum']), resource_idx=int(t['ResourceIdx']),
                 always_show=bool(t.get('AlwaysShow', 1)), demand_lv=int(t.get('DemandLv', 0)),
@@ -60,23 +61,44 @@ def _from_lua() -> dict:
         items=[[code, int(count), float(prob)] for code, count, prob in k.get('ItemIN', [])],
         jackpot_items=[[code, int(count), float(prob)] for code, count, prob in k.get('ItemAddIN', [])],
         req_items=list(k.get('ReqItem', [])),
-    ) for k in lua_table(gathering, 'DictKairo:LoadGathering')]
+    ) for k in lua_tables(gathering, 'DictKairo:LoadGathering')]
     fishing_kairo = [dict(
         id=k['ID'], target=k['TargetID'], proficiency_type=int(k['ProficiencyType']),
         max_time=int(k.get('MaxTime', 60)),
         groups=[[gid, float(prob)] for gid, prob in k.get('ItemGroup', [])],
-    ) for k in lua_table(fishing, 'DictKairo:LoadFishing')]
+    ) for k in lua_tables(fishing, 'DictKairo:LoadFishing')]
     fish_groups = {g['GroupID']: [[code, int(count), float(prob)] for code, count, prob in g.get('ResultItem', [])]
-                   for g in lua_table(fishing, 'DictRandomBox:LoadRandomBoxGroup')}
-    skills = [dict(skill=int(s['NameIndex']), level=int(s['Lv']), max_proficiency=float(s['MaxProficiency']),
-                   proficiency_type=int(s['ProficiencyType']))
-              for s in lua_table(fishing, 'DictSkill:LoadSkill') + lua_table(gathering, 'DictSkill:LoadSkill')]
-    fishing_items = lua_table(fishing, 'DictItem:LoadItem')
+                   for g in lua_tables(fishing, 'DictRandomBox:LoadRandomBoxGroup')}
+    all_skills = (lua_tables(fishing, 'DictSkill:LoadSkill') + lua_tables(gathering, 'DictSkill:LoadSkill')
+                  + lua_tables(making, 'DictSkill:LoadSkill'))
+    # Profession levels (Type "p": 9000-9009): proficiency cap and learning requirements.
+    skills = [dict(skill=int(s['NameIndex']), level=int(s['Lv']), max_proficiency=float(s.get('MaxProficiency', 0)),
+                   proficiency_type=int(s['ProficiencyType']), id=s.get('ID', ''),
+                   demand_lv=int(s.get('DemandLv', 0)), demand_proficiency=float(s.get('DemandProficiency', 0)))
+              for s in all_skills if 'ProficiencyType' in s]
+    # Recipe skills (Type "m", e.g. 10032 "Wmake33"): learned with AR, need a profession level.
+    recipes = [dict(skill=int(s['NameIndex']), level=int(s['Lv']), id=s.get('ID', ''),
+                    demand_lv=int(s.get('DemandLv', 0)), demand_skill=list(s.get('DemandSkill', [])))
+               for s in all_skills if s.get('Type') == 'm']
+    # DictKairo:LoadMaking (9 sections): one crafting recipe each, sent as 2177/2496 by
+    # JAppPageMakingKairo 0x00727140 (kairo +0xAC BuyPrice is checked against AR first).
+    making_kairo = [dict(
+        id=k['ID'], target=k.get('TargetID', ''), proficiency_type=int(k['ProficiencyType']),
+        req_skill=int(k.get('ReqSkillNameIdx', 0)), req_skill_lv=int(k.get('ReqSkillLv', 0)),
+        req_proficiency=float(k.get('ReqProficiency', 0)), buy_price=int(k.get('BuyPrice', 0)),
+        success_rate=float(k.get('SuccessRate', 1)),
+        success_up=float(k.get('SuccessProficiencyUp', 0)), fail_up=float(k.get('FailProficiencyUp', 0)),
+        req_items=[[code, int(count)] for code, count in k.get('ReqItem', [])],
+        items=[[code, int(count), float(prob)] for code, count, prob in k.get('ItemIN', [])],
+        fail_items=[[code, int(count), float(prob)] for code, count, prob in k.get('FailIN', [])],
+    ) for k in lua_tables(making, 'DictKairo:LoadMaking')]
+    fishing_items = lua_tables(fishing, 'DictItem:LoadItem')
     baits = {i['ItemID']: int(i.get('AdjValue', 0)) for i in fishing_items if i.get('Type') == BAIT_ITEM_TYPE}
     proficiency_items = {i['ItemID']: int(i.get('AdjValue', 0)) for i in fishing_items
                          if i.get('Type') == PROFICIENCY_ITEM_TYPE}
-    return dict(targets=targets, gathering=gathering_kairo, fishing=fishing_kairo,
-                fish_groups=fish_groups, skills=skills, baits=baits, proficiency_items=proficiency_items)
+    return dict(targets=targets, gathering=gathering_kairo, fishing=fishing_kairo, making=making_kairo,
+                fish_groups=fish_groups, skills=skills, recipes=recipes, baits=baits,
+                proficiency_items=proficiency_items)
 
 
 @lru_cache(maxsize=None)
@@ -99,6 +121,30 @@ def target_kinds() -> dict:
 def gathering_kairo() -> dict:
     """Gathering Kairo id (ge000NN) -> yield entry."""
     return {k['id']: k for k in life_data()['gathering']}
+
+
+@lru_cache(maxsize=None)
+def making_kairo() -> dict:
+    """Crafting Kairo id (e.g. Wmake33_Info) -> recipe entry (DictKairo:LoadMaking)."""
+    return {k['id']: k for k in life_data().get('making', [])}
+
+
+@lru_cache(maxsize=None)
+def life_skill_levels() -> dict:
+    """(profession skill NameIndex, level) -> profession level entry (cap and requirements)."""
+    return {(s['skill'], s['level']): s for s in life_data()['skills']}
+
+
+@lru_cache(maxsize=None)
+def recipe_skills() -> dict:
+    """(recipe skill NameIndex, level) -> recipe skill entry (DemandLv, DemandSkill ids)."""
+    return {(r['skill'], r['level']): r for r in life_data().get('recipes', [])}
+
+
+@lru_cache(maxsize=None)
+def skill_level_by_id() -> dict:
+    """Profession skill ID (e.g. spnw19301) -> (NameIndex, level), for DemandSkill."""
+    return {s['id']: (s['skill'], s['level']) for s in life_data()['skills'] if s.get('id')}
 
 
 @lru_cache(maxsize=None)

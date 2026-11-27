@@ -28,6 +28,7 @@ from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.player_management.characters import gold_of
 from darkblood.games.game_data.client_dict import skill_learn_cost
+from darkblood.games.game_data.life_skills import life_skill_levels, recipe_skills, skill_level_by_id
 from darkblood.core.hashing import jhash
 from darkblood.games.progression import total_ap
 
@@ -137,6 +138,37 @@ class SkillHandlers(BaseDomainService):
             char['gold'] = gold - ar
         return True
 
+    @staticmethod
+    def life_skill_refusal(char, skill_index, level):
+        """Why `char` may not learn profession/recipe skill `skill_index` up to `level`, or None.
+
+        Profession levels (Type "p", 9000-9009) need DemandLv and DemandProficiency of
+        their ProficiencyType; recipes (Type "m", e.g. 10032) need DemandLv and every
+        DemandSkill profession level (gathering.lua, fishing.lua, making.lua). Combat
+        skills have no entry here and are not checked.
+        """
+        skills = {str(k): int(v) for k, v in (char.get('skills') or {}).items()}
+        cur = skills.get(str(int(skill_index)), 0)
+        char_level = int(char.get('level', 1))
+        profs = proficiency_values_for_char(char)
+        for lv in range(cur + 1, int(level) + 1):
+            prof = life_skill_levels().get((int(skill_index), lv))
+            if prof is not None:
+                if char_level < prof['demand_lv']:
+                    return f'character level {char_level} < {prof["demand_lv"]}'
+                if profs[prof['proficiency_type']] < prof['demand_proficiency']:
+                    return (f'proficiency {profs[prof["proficiency_type"]]:.2f} < '
+                            f'{prof["demand_proficiency"]:g}')
+            recipe = recipe_skills().get((int(skill_index), lv))
+            if recipe is not None:
+                if char_level < recipe['demand_lv']:
+                    return f'character level {char_level} < {recipe["demand_lv"]}'
+                for skill_id in recipe['demand_skill']:
+                    need = skill_level_by_id().get(skill_id)
+                    if need and skills.get(str(need[0]), 0) < need[1]:
+                        return f'needs profession {need[0]} level {need[1]} ({skill_id})'
+        return None
+
     @packet_handler(LearnSkillReq)
     async def handle_learn_skill(self, correlation, body):
         # eEGS_LEARN_SKILL_REQ (0x00780000.c:9504) -> 2051 eEGS_LEARN_SKILL_ACK (0x0078DBE0).
@@ -144,6 +176,11 @@ class SkillHandlers(BaseDomainService):
         char = self.current_char()
         remain_sp = remain_gold = 0
         if char:
+            refusal = self.life_skill_refusal(char, req.skill_index, req.level)
+            if refusal:
+                await self.reply(LearnSkillAck(result=results.INVALID_STATE), correlation,
+                                 note=f'learn skill fail ({req.skill_index} lv{req.level}: {refusal})')
+                return
             learned_profs = None
             pf = LIFE_SKILL_TO_PROFICIENCY.get(int(req.skill_index))
             if pf is not None and pf not in BASE_SUPPLY_PROFICIENCIES:
@@ -175,6 +212,12 @@ class SkillHandlers(BaseDomainService):
         remain_sp = remain_gold = 0
         learned_skills = {}
         if char:
+            refusal = next((f'{s.skill_index} lv{s.level}: {why}' for s in req.skills
+                            for why in [self.life_skill_refusal(char, s.skill_index, s.level)] if why), None)
+            if refusal:
+                await self.reply(LearnSkillListAck(result=results.INVALID_STATE), correlation,
+                                 note=f'learn skill list fail ({refusal})')
+                return
             if not self._charge_skills(char, [(s.skill_index, s.level) for s in req.skills]):
                 await self.reply(LearnSkillListAck(result=results.INVALID_STATE), correlation, note='learn skill list fail (not enough SP/AR)')
                 return
@@ -354,7 +397,14 @@ class SkillHandlers(BaseDomainService):
             char['learned_proficiencies'] = learned_profs
             sid = PROFICIENCY_TO_LIFE_SKILL.get(pf)
             if sid is not None:
-                char.get('skills', {}).pop(str(sid), None)
+                skills = char.get('skills', {})
+                skills.pop(str(sid), None)
+                # Recipes learned through this profession (DemandSkill) go with it, so a
+                # ReqProficiency 0 recipe cannot be crafted without the profession.
+                # Inferred from the learning rule; the original server's reset is not known.
+                for (recipe, _lv), entry in recipe_skills().items():
+                    if any(skill_level_by_id().get(d, (None,))[0] == sid for d in entry['demand_skill']):
+                        skills.pop(str(recipe), None)
         self.save_char()
         skills_map = learned_skill_map(
             char.get('skills', {}),

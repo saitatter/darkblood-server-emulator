@@ -973,6 +973,13 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(char.get('learned_proficiencies', []), [])
             self.assertNotIn('9007', char['skills'])
 
+            # gathering.lua: Mining/Gathering level 1 need character level 20 (DemandLv).
+            client.send_event(2050, LearnSkillReq(skill_index=9007, level=1).encode())
+            _, too_low = await client.expect_event(2051)
+            self.assertNotEqual(struct.unpack_from('<i', too_low)[0], 0)
+            self.assertNotIn('9007', char['skills'])
+            char['level'] = 20
+
             # Learn Mining (9007 -> prof 0) and Gathering (9008 -> prof 1)
             for sid in (9007, 9008):
                 client.send_event(2050, LearnSkillReq(skill_index=sid, level=1).encode())
