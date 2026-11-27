@@ -374,6 +374,13 @@ class LifeSkillHandlers(BaseDomainService):
                            note=f'fishing result ({kairo["target"]}: {caught})')
         return True
 
+    def fishing_proficiency_item_at_cap(self, char, code):
+        if not fishing_proficiency_gain(code):
+            return False
+        skill = PROFICIENCY_TO_LIFE_SKILL[FISHING_PROFICIENCY]
+        cap = max_proficiency(skill, self._skill_level(char, skill))
+        return proficiency_values_for_char(char)[FISHING_PROFICIENCY] >= cap
+
     async def use_fishing_proficiency_item(self, char, code, use_count):
         """Type 46 items: "Increases the proficiency of the fisher by N when used" (AdjValue).
 
