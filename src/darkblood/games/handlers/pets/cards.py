@@ -174,11 +174,15 @@ class MonsterCardHandlersMixin:
     async def handle_monster_card_release_all_char(self, correlation, body):
         req = MonsterCardReleaseAllCharReq.decode(body)
         char = self.current_char()
+        released = MonsterCardInfo(card_uid=req.card_uid)
         if char is not None:
             char['monster_card_deck'] = []
+            record = next((c for c in char.get('monster_cards', []) if c['uid'] == req.card_uid), None)
+            if record is not None:
+                released = _card_info_from_record(record, self.char_id or 0)
             self.save_char()
         await self.reply(
-            MonsterCardReleaseAllCharAck(result=0, deck_uids=[], card=MonsterCardInfo(card_uid=req.card_uid)),
+            MonsterCardReleaseAllCharAck(result=0, deck_uids=[], card=released),
             correlation, note='monster card release all ack',
         )
 

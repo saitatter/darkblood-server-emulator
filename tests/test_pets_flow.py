@@ -460,9 +460,17 @@ class PetsFlowTest(ServerTestCase):
             _, r = await client.expect_event(2611)
             self.assertEqual(MonsterCardSetCharDeckAck.decode(r).deck_uids, [1, 2, 3])
 
+            from darkblood.core.hashing import jhash
+
+            card_owner = session.GameSession.store().get('OfflinePlayer', char_id)
+            card_owner['monster_cards'] = [dict(uid=1, code='Card001', level=3)]
             client.send_event(2613, MonsterCardReleaseAllCharReq(card_uid=1).encode())
             _, r = await client.expect_event(2614)
-            self.assertEqual(MonsterCardReleaseAllCharAck.decode(r).result, 0)
+            released = MonsterCardReleaseAllCharAck.decode(r)
+            self.assertEqual((released.result, released.deck_uids), (0, []))
+            self.assertEqual((released.card.card_uid, released.card.card_id, released.card.level),
+                             (1, jhash('Card001'), 3))
+            self.assertEqual(card_owner['monster_cards'], [dict(uid=1, code='Card001', level=3)])
 
             # 2615 is bare; requires 500,000 AR (SlotExtendPrice) and expands 60 -> 70
             client.send_event(2615, MonsterCardExtendSlotReq().encode())
