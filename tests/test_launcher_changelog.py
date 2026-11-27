@@ -69,6 +69,30 @@ class LauncherChangelogTest(unittest.TestCase):
             'fix: keep later entries',
         ])
 
+    def test_changelog_ignores_tags_from_another_branch(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            def git(*args, date='2000-01-01T00:00:00+00:00'):
+                env = dict(os.environ, GIT_AUTHOR_DATE=date, GIT_COMMITTER_DATE=date)
+                subprocess.run(['git', '-c', 'user.name=Dev', '-c', 'user.email=dev@example.invalid',
+                                *args], cwd=root, env=env, check=True, capture_output=True)
+
+            git('init', '-b', 'main')
+            git('commit', '--allow-empty', '-m', 'First release')
+            git('tag', 'v0.1.0')
+            git('commit', '--allow-empty', '-m', 'Current release', date='2001-01-01T00:00:00+00:00')
+            git('tag', 'v0.2.0')
+            git('switch', '-c', 'other')
+            git('commit', '--allow-empty', '-m', 'Other release', date='2002-01-01T00:00:00+00:00')
+            git('tag', 'v0.3.0')
+            git('switch', 'main')
+
+            with patch.object(changelog, 'ROOT', root):
+                self.assertEqual(changelog._current_release_tags(0), ('v0.2.0', 'v0.1.0'))
+
     def test_fetch_recent_commits_git_includes_all_types(self):
         fake_stdout = '\n'.join([
             '1111111aaaaaaa\x1f1111111\x1f2026-11-24\x1fDev\x1fandrei.voicu133@gmail.com\x1ffeat(ui): add tab',
