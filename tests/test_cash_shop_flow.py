@@ -121,39 +121,106 @@ class CashShopFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
-    def test_full_card_collection_keeps_unopened_items(self):
+    def test_full_card_book_keeps_unopened_items(self):
         from darkblood.games.network import results
         from darkblood.games.network.messages import MonsterCardInsertReq, UseItemReq
 
         async def scenario(client):
+            client.account = 'FullCardBook'
             await lobby_flow(client)
             client.send_event(2012, create_request('FullCardBinder'))
             _, created = await client.expect_event(2013)
             char_id = struct.unpack_from('<Q', created, 10)[0]
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
-            char = session.GameSession.store().get('OfflinePlayer', char_id)
-            char['monster_cards'] = [dict(uid=uid, code='Card001') for uid in range(1, 61)]
+
+            store = session.GameSession.store()
+            char = store.get(client.account, char_id)
+            book = store.account_data(client.account)
+            book['monster_card_max_slots'] = 70
+            cards = [dict(uid=uid, code='Card001', level=1, owner_uid=0) for uid in range(1, 71)]
+            book['monster_cards'] = cards
             card = dict(uid=81, code='MCard001', container=3, slot=0, count=1)
             booster = dict(uid=82, code='IRanCashEtc260', container=3, slot=1, count=1)
             char['items'] = [card, booster]
+            insert_request = MonsterCardInsertReq(item_uid=81).encode()
 
-            client.send_event(2604, MonsterCardInsertReq(item_uid=81).encode())
+            client.send_event(2604, insert_request)
             _, insert = await client.expect_event(2605)
             self.assertEqual(struct.unpack_from('<i', insert)[0], results.INVEN_FULL)
             client.send_event(2038, UseItemReq(item_uid=82, use_count=1).encode())
-            _, use = await client.expect_event(2039)
-            self.assertEqual(struct.unpack_from('<i', use)[0], results.INVEN_FULL)
-            self.assertEqual(len(char['monster_cards']), 60)
+            _, use_ack = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', use_ack)[0], results.INVEN_FULL)
+            self.assertEqual(len(cards), 70)
             self.assertEqual(char['items'], [card, booster])
 
-            char['monster_cards'].pop()
-            client.send_event(2604, MonsterCardInsertReq(item_uid=81).encode())
+            cards.pop()
+            client.send_event(2604, insert_request)
             _, inserted = await client.expect_event(2605)
             self.assertEqual(struct.unpack_from('<i', inserted)[0], 0)
             await client.expect_event(2603)
-            self.assertEqual(len(char['monster_cards']), 60)
+            self.assertEqual(len(cards), 70)
             self.assertEqual(char['items'], [booster])
+
+        self.run_async(self.with_server(scenario))
+
+    def test_same_account_boosters_compete_for_the_last_card_slot(self):
+        import asyncio
+
+        from darkblood.games.handlers.inventory import InventoryHandlers
+        from darkblood.games.network import results
+        from darkblood.games.network.messages import UseItemReq
+        from headless_client import HeadlessClient
+
+        async def select_character(client, name):
+            await lobby_flow(client)
+            client.send_event(2012, create_request(name))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            return char_id
+
+        async def scenario(first):
+            first.account = 'SharedCardBook'
+            second = HeadlessClient(port=first.port, account=first.account)
+            resume_first = asyncio.Event()
+            ack_ready = asyncio.Event()
+            original_reply = InventoryHandlers.reply
+            try:
+                first_id = await select_character(first, 'FirstBooster')
+                second_id = await select_character(second, 'SecondBooster')
+                store = session.GameSession.store()
+                book = store.account_data(first.account)
+                cards = [dict(uid=uid, code='Card001', level=1, owner_uid=0) for uid in range(1, 60)]
+                book['monster_cards'] = cards
+                first_char, second_char = (store.get(first.account, cid) for cid in (first_id, second_id))
+                for char in (first_char, second_char):
+                    char['items'] = [dict(uid=82, code='IRanCashEtc260', container=3, slot=0, count=1)]
+                request = UseItemReq(item_uid=82, use_count=1).encode()
+
+                async def pause_first_reply(handler, message, *args, **kwargs):
+                    if handler.char_id == first_id and message.OPCODE == 2039 and message.result == 0:
+                        ack_ready.set()
+                        await resume_first.wait()
+                    await original_reply(handler, message, *args, **kwargs)
+
+                with patch.object(InventoryHandlers, 'reply', pause_first_reply):
+                    first.send_event(2038, request)
+                    await asyncio.wait_for(ack_ready.wait(), 2)
+                    second.send_event(2038, request)
+                    _, second_ack = await second.expect_event(2039)
+                    self.assertEqual(struct.unpack_from('<i', second_ack)[0], results.INVEN_FULL)
+                    self.assertEqual(second_char['items'][0]['count'], 1)
+                    resume_first.set()
+                    _, first_ack = await first.expect_event(2039)
+                    self.assertEqual(struct.unpack_from('<i', first_ack)[0], 0)
+                    await first.expect_event(2603)
+                self.assertEqual(len(cards), 60)
+                self.assertEqual(first_char['items'], [])
+            finally:
+                resume_first.set()
+                await second.close()
 
         self.run_async(self.with_server(scenario))
 
@@ -218,8 +285,9 @@ class CashShopFlowTest(ServerTestCase):
             self.assertEqual(card2603[:2], b'\x10\x81')
             self.assertEqual(card2603[-3:], b'\x10\x80\x01')
             self.assertEqual(len(char['items']), 0)
-            self.assertEqual(len(char['monster_cards']), 1)
-            card_code = char['monster_cards'][0]['code']
+            acct = session.GameSession.store().account_data('OfflinePlayer')
+            self.assertEqual(len(acct['monster_cards']), 1)
+            card_code = acct['monster_cards'][0]['code']
             self.assertTrue(card_code.startswith('Card'))
             self.assertEqual(struct.unpack_from('<I', card2603, 10)[0], jhash(card_code))
             _, album2619 = await client.expect_event(2619)
@@ -234,6 +302,22 @@ class CashShopFlowTest(ServerTestCase):
             client.send_event(2617)
             _, album2618 = await client.expect_event(2618)
             self.assertEqual(album2618, struct.pack('<I', 0) + b'\x10\x81' + struct.pack('<I', jhash(card_code)))
+
+            # Card Book is shared across characters on the same account
+            client.send_event(2012, create_request('AltReader', char_class=2))
+            _, created_alt = await client.expect_event(2013)
+            alt_id = struct.unpack_from('<Q', created_alt, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, alt_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            client.send_event(2601)
+            _, alt_list2602 = await client.expect_event(2602)
+            self.assertIn(struct.pack('<I', jhash(card_code)), alt_list2602)
+
+            client.send_event(2617)
+            _, alt_album2618 = await client.expect_event(2618)
+            self.assertEqual(alt_album2618, struct.pack('<I', 0) + b'\x10\x81' + struct.pack('<I', jhash(card_code)))
 
         self.run_async(self.with_server(scenario))
 

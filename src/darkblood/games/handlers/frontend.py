@@ -202,7 +202,11 @@ class FrontendHandlers(BaseDomainService):
             dirty = True
         if dirty:
             self.save_char()
-        ack = build_select_char_ack(char, account_chars=self.store().characters(self.account))
+        ack = build_select_char_ack(
+            char,
+            account_chars=self.store().characters(self.account),
+            account_data=self.store().account_data(self.account),
+        )
         await self.transport.send_event(event(2007, ack, correlation),
                                         note='select char ack (%d)' % char_id)
         done = [int(q) for q in char.get('quests_done', [])]

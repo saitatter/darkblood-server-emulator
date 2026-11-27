@@ -150,7 +150,7 @@ message 2007 SelectCharacterAck ok_only
   u64 _
   map<?> _                   # +0x303 0x00A1E900: map + vector -> AppPage(0x2A).0x0058DFB0
   vector<?> _
-  u16 _                      # +0x4AB -> AppPage(0x93).0x005DE1B0
+  u16 monster_card_add_slots  # +0x4AB -> AppPage(0x93).0x005DE1B0: BaseSlotCount(60) + this
   vector<u32> u32_vec_c      # 0x004DA660
   map<u32,set<u32>> buff_map_b  # 0x005F9150 -> 0x005F6640
   i16 citadel_play_count     # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)

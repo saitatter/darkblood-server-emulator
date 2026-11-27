@@ -76,7 +76,13 @@ from launcher_app.theme import (  # noqa: E402
     TEXT_MUTED,
     WARN_AMBER,
 )
-from launcher_app.widgets import ScrollFrame  # noqa: E402
+from launcher_app.gm_catalogs import (  # noqa: E402
+    load_gm_pins,
+    parse_command_params,
+    save_gm_pins,
+    suggest_pin_label,
+)
+from launcher_app.widgets import ScrollFrame, SearchableIdPicker  # noqa: E402
 
 
 class DarkBloodLauncher(tk.Tk):
@@ -465,6 +471,7 @@ class DarkBloodLauncher(tk.Tk):
     def _build_gm_page(self):
         """Build the searchable GM Commands console & live execution tab (visible when gm_mode=1)."""
         self._gm_commands = parse_gm_commands_doc()
+        self._gm_pins = load_gm_pins()
         self._gm_players = []
         self._gm_clients = []
         self._gm_target_char_id = None
@@ -524,8 +531,13 @@ class DarkBloodLauncher(tk.Tk):
         tk.Label(hdr, text='Target:', bg=BG_CARD_ALT, fg=TEXT_DIM,
                  font=('Segoe UI', 8, 'bold')).pack(side='right', padx=(8, 2))
 
+        # Pinned favorite commands bar (auto-hidden when empty)
+        self.gm_pins_sep = tk.Frame(card, bg=BORDER, height=1)
+        self.gm_pins_bar = tk.Frame(card, bg=BG_CARD_ALT, padx=10, pady=5)
+
         # Main split: Left = command list, Right = command details
-        split = tk.Frame(card, bg=BG_CARD)
+        self._gm_split = tk.Frame(card, bg=BG_CARD)
+        split = self._gm_split
         split.pack(fill='both', expand=True, padx=8, pady=(8, 6))
 
         list_wrap = tk.Frame(split, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
@@ -578,8 +590,14 @@ class DarkBloodLauncher(tk.Tk):
         )
         self.gm_count_lbl.pack(fill='x', padx=12, pady=(0, 10))
 
+        # Dynamic interactive parameter bar (searchable ID dropdowns / choice menus / inputs)
+        self.gm_params_sep = tk.Frame(card, bg=BORDER, height=1)
+        self.gm_params_bar = tk.Frame(card, bg=BG_CARD_ALT, padx=10, pady=6)
+        self._gm_param_controls = []
+
         # Bottom execution bar
-        tk.Frame(card, bg=BORDER, height=1).pack(fill='x')
+        self._gm_exec_sep = tk.Frame(card, bg=BORDER, height=1)
+        self._gm_exec_sep.pack(fill='x')
         exec_bar = tk.Frame(card, bg=BG_CARD_ALT, padx=10, pady=8)
         exec_bar.pack(fill='x')
 
@@ -590,6 +608,10 @@ class DarkBloodLauncher(tk.Tk):
         cmd_entry.pack(side='left', fill='x', expand=True, ipady=4, padx=(0, 8))
         cmd_entry.bind('<Return>', lambda e: self._send_gm_command())
 
+        self._make_btn(
+            exec_bar, '★ Pin', self._prompt_pin_gm_command,
+            bg=BG_CARD, hover=BORDER, fg=GOLD, font=('Segoe UI', 8, 'bold'), padx=10, pady=5,
+        ).pack(side='left', padx=(0, 6))
         self._make_btn(
             exec_bar, 'Copy %cmd', self._copy_gm_command,
             bg=BG_CARD, hover=BORDER, fg=TEXT_DIM, font=('Segoe UI', 8, 'bold'), padx=10, pady=5,
@@ -607,6 +629,7 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_result_lbl.pack(fill='x')
 
         self._gm_filtered = []
+        self._render_gm_pins()
         self._render_gm_list()
 
     def _render_gm_list(self):
@@ -652,6 +675,7 @@ class DarkBloodLauncher(tk.Tk):
         )
         self.gm_detail_body.config(text=body)
         self._fill_gm_example()
+        self._build_gm_param_bar(c)
 
     def _fill_gm_example(self):
         c = self._gm_selected_cmd
@@ -661,6 +685,220 @@ class DarkBloodLauncher(tk.Tk):
         if ex.startswith('%'):
             ex = ex[1:].strip()
         self.gm_cmd_var.set(ex if ex else c['name'])
+
+    def _build_gm_param_bar(self, cmd: dict):
+        """Render interactive parameter controls (searchable ID pickers, dropdowns, entries) above %cmd."""
+        for child in self.gm_params_bar.winfo_children():
+            child.destroy()
+        self._gm_param_controls = []
+
+        specs = parse_command_params(cmd.get('params', ''))
+        if not specs:
+            self.gm_params_sep.pack_forget()
+            self.gm_params_bar.pack_forget()
+            return
+
+        # Seed initial parameter values from the example command line
+        ex_line = (self.gm_cmd_var.get() or '').strip()
+        ex_parts = ex_line.split()
+        ex_args = ex_parts[1:] if (ex_parts and ex_parts[0].lower() == cmd['name'].lower()) else []
+
+        tk.Label(self.gm_params_bar, text='Params:', bg=BG_CARD_ALT, fg=GOLD,
+                 font=('Segoe UI', 8, 'bold')).pack(side='left', padx=(0, 8))
+
+        for idx, spec in enumerate(specs):
+            init_val = ex_args[idx] if idx < len(ex_args) else spec.default
+            lbl_text = spec.name if spec.required else f'{spec.name} (opt)'
+            tk.Label(self.gm_params_bar, text=f'{lbl_text}:', bg=BG_CARD_ALT, fg=TEXT_DIM,
+                     font=('Segoe UI', 8)).pack(side='left', padx=(0, 4))
+
+            if spec.catalog:
+                picker = SearchableIdPicker(
+                    self.gm_params_bar,
+                    catalog=spec.catalog,
+                    initial_value=init_val,
+                    extra_choices=spec.choices,
+                    on_change=lambda _val: self._sync_gm_cmd_from_params(),
+                    bg=BG_CARD_ALT,
+                )
+                picker.pack(side='left', padx=(0, 10))
+                self._gm_param_controls.append((spec, picker.get))
+            elif spec.choices:
+                var = tk.StringVar(value=init_val if init_val in spec.choices else spec.choices[0])
+                menu = tk.OptionMenu(
+                    self.gm_params_bar, var, *spec.choices,
+                    command=lambda _v: self._sync_gm_cmd_from_params(),
+                )
+                menu.configure(
+                    bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
+                    highlightthickness=1, highlightbackground=BORDER, relief='flat', bd=0,
+                    font=('Consolas', 8), cursor='hand2',
+                )
+                menu['menu'].configure(bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white')
+                menu.pack(side='left', padx=(0, 10))
+                self._gm_param_controls.append((spec, var.get))
+            else:
+                var = tk.StringVar(value=init_val)
+                var.trace_add('write', lambda *_: self._sync_gm_cmd_from_params())
+                ent = self._make_entry(self.gm_params_bar, var, width=10)
+                ent.pack(side='left', ipady=3, padx=(0, 10))
+                ent.bind('<Return>', lambda _e: self._send_gm_command())
+                self._gm_param_controls.append((spec, var.get))
+
+        # Pack right above the bottom execution bar
+        self.gm_params_sep.pack(fill='x', before=self._gm_exec_sep)
+        self.gm_params_bar.pack(fill='x', before=self._gm_exec_sep)
+
+    def _sync_gm_cmd_from_params(self):
+        cmd = self._gm_selected_cmd
+        if not cmd or not self._gm_param_controls:
+            return
+        args = []
+        for spec, getter in self._gm_param_controls:
+            val = (getter() or '').strip()
+            if val:
+                args.append(val)
+            elif spec.required:
+                args.append('')
+        # Trim trailing empty optional arguments
+        while args and not args[-1]:
+            args.pop()
+        line = cmd['name'] + (' ' + ' '.join(args) if args else '')
+        self.gm_cmd_var.set(line)
+
+    def _render_gm_pins(self):
+        """Render the pinned favorite GM commands bar (wrapped rows of 1-click pills)."""
+        for child in self.gm_pins_bar.winfo_children():
+            child.destroy()
+        if not self._gm_pins:
+            self.gm_pins_sep.pack_forget()
+            self.gm_pins_bar.pack_forget()
+            return
+
+        row = tk.Frame(self.gm_pins_bar, bg=BG_CARD_ALT)
+        row.pack(fill='x', pady=1)
+        tk.Label(row, text='★ PINNED:', bg=BG_CARD_ALT, fg=GOLD,
+                 font=('Segoe UI', 8, 'bold')).pack(side='left', padx=(0, 6))
+        row_chars = 10
+
+        for idx, pin in enumerate(self._gm_pins):
+            lbl = pin['label']
+            cmd_txt = pin['command']
+            pill_chars = len(lbl) + 6
+            if row_chars + pill_chars > 96 and row_chars > 10:
+                row = tk.Frame(self.gm_pins_bar, bg=BG_CARD_ALT)
+                row.pack(fill='x', pady=2)
+                row_chars = 0
+            row_chars += pill_chars
+
+            pill = tk.Frame(row, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+            pill.pack(side='left', padx=(0, 6), pady=1)
+
+            run_lbl = tk.Label(
+                pill, text=f'▶ {lbl}', bg=BG_CARD, fg=TEXT_MAIN,
+                font=('Segoe UI', 8, 'bold'), padx=7, pady=2, cursor='hand2',
+            )
+            run_lbl.pack(side='left')
+            run_lbl.bind('<Button-1>', lambda _e, c=cmd_txt: self._run_pinned_gm(c))
+            run_lbl.bind('<Button-3>', lambda _e, c=cmd_txt, l=lbl: self._load_pinned_gm(c, l))
+            run_lbl.bind('<Enter>', lambda _e, w=run_lbl, p=pill, c=cmd_txt: (
+                w.configure(bg=ACCENT, fg='white'),
+                p.configure(highlightbackground=ACCENT),
+                self.gm_result_lbl.config(text=f'Pinned: %{c}  (Left-click: Run  •  Right-click: Load into input)', fg=TEXT_DIM),
+            ))
+            run_lbl.bind('<Leave>', lambda _e, w=run_lbl, p=pill: (
+                w.configure(bg=BG_CARD, fg=TEXT_MAIN),
+                p.configure(highlightbackground=BORDER),
+            ))
+
+            del_lbl = tk.Label(
+                pill, text='✕', bg=BG_CARD, fg=TEXT_MUTED,
+                font=('Segoe UI', 7, 'bold'), padx=5, pady=2, cursor='hand2',
+            )
+            del_lbl.pack(side='left')
+            del_lbl.bind('<Button-1>', lambda _e, i=idx: self._unpin_gm_command(i))
+            del_lbl.bind('<Enter>', lambda _e, w=del_lbl: w.configure(fg=ERR_RED))
+            del_lbl.bind('<Leave>', lambda _e, w=del_lbl: w.configure(fg=TEXT_MUTED))
+
+        self.gm_pins_sep.pack(fill='x', before=self._gm_split)
+        self.gm_pins_bar.pack(fill='x', before=self._gm_split)
+
+    def _run_pinned_gm(self, command: str):
+        self.gm_cmd_var.set(command)
+        self._send_gm_command()
+
+    def _load_pinned_gm(self, command: str, label: str):
+        self.gm_cmd_var.set(command)
+        self.gm_result_lbl.config(text=f'Loaded pinned "{label}" (%{command}).', fg=LINK_BLUE)
+
+    def _unpin_gm_command(self, index: int):
+        if 0 <= index < len(self._gm_pins):
+            removed = self._gm_pins.pop(index)
+            save_gm_pins(self._gm_pins)
+            self._render_gm_pins()
+            self.gm_result_lbl.config(text=f'Unpinned "{removed["label"]}".', fg=TEXT_MUTED)
+
+    def _add_gm_pin(self, label: str, command: str):
+        cmd = (command or '').strip().lstrip('%').strip()
+        if not cmd:
+            return
+        lbl = (label or '').strip() or suggest_pin_label(cmd) or cmd
+        self._gm_pins.append({'label': lbl, 'command': cmd})
+        save_gm_pins(self._gm_pins)
+        self._render_gm_pins()
+        self.gm_result_lbl.config(text=f'★ Pinned "{lbl}" (%{cmd}).', fg=GOLD)
+
+    def _prompt_pin_gm_command(self):
+        cmd = (self.gm_cmd_var.get() or '').strip().lstrip('%').strip()
+        if not cmd:
+            self.gm_result_lbl.config(text='Enter or select a GM command first before pinning.', fg=WARN_AMBER)
+            return
+
+        dlg = tk.Toplevel(self)
+        dlg.title('Pin GM Command')
+        dlg.configure(bg=BG_CARD)
+        dlg.resizable(False, False)
+        dlg.transient(self)
+        dlg.grab_set()
+
+        w, h = 420, 165
+        self.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - w) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - h) // 2
+        dlg.geometry(f'{w}x{h}+{max(20, x)}+{max(20, y)}')
+
+        body = tk.Frame(dlg, bg=BG_CARD, padx=16, pady=12)
+        body.pack(fill='both', expand=True)
+
+        tk.Label(body, text='PIN FAVORITE GM COMMAND', bg=BG_CARD, fg=GOLD,
+                 font=('Segoe UI', 9, 'bold'), anchor='w').pack(fill='x', pady=(0, 4))
+        tk.Label(body, text=f'Command:  %{cmd}', bg=BG_CARD, fg=TEXT_DIM,
+                 font=('Consolas', 8), anchor='w').pack(fill='x', pady=(0, 10))
+
+        row = tk.Frame(body, bg=BG_CARD)
+        row.pack(fill='x', pady=(0, 12))
+        tk.Label(row, text='Custom label:', bg=BG_CARD, fg=TEXT_MAIN,
+                 font=('Segoe UI', 9)).pack(side='left', padx=(0, 8))
+        label_var = tk.StringVar(value=suggest_pin_label(cmd))
+        ent = self._make_entry(row, label_var, width=28)
+        ent.pack(side='left', fill='x', expand=True, ipady=3)
+        ent.select_range(0, 'end')
+
+        btns = tk.Frame(body, bg=BG_CARD)
+        btns.pack(fill='x')
+
+        def confirm(_e=None):
+            self._add_gm_pin(label_var.get(), cmd)
+            dlg.destroy()
+
+        self._make_btn(btns, '★ Save Pin', confirm, bg=ACCENT, hover=ACCENT_HOVER, fg='white',
+                       font=('Segoe UI', 8, 'bold'), padx=14, pady=5).pack(side='right')
+        self._make_btn(btns, 'Cancel', dlg.destroy, bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
+                       font=('Segoe UI', 8, 'bold'), padx=12, pady=5).pack(side='right', padx=(0, 8))
+
+        ent.bind('<Return>', confirm)
+        dlg.bind('<Escape>', lambda _e: dlg.destroy())
+        ent.focus_set()
 
     def _select_gm_target(self, char_id, label):
         self._gm_target_char_id = char_id

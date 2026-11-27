@@ -82,14 +82,18 @@ class GameSession:
         if char is None:
             return
         dirty = False
-        # Passive stress recovery (-1/min) ticks while outside a dungeon.
+        # Passive stress recovery (-1/min) ticks while outside a dungeon;
+        # summoned pet Energy drains by 1 every 30s while inside a dungeon.
         if not getattr(self.dungeon, 'in_dungeon', False):
+            self.pets.pet_energy_last_tick = None
             if refresh_stress(char, now=now):
                 dirty = True
                 await self.transport.send_event(
                     event(2023, stress_changed_not(char).encode()),
                     note=f"stress timer tick ({char['stress']})",
                 )
+        elif await self.pets.tick_dungeon_energy(char, now=now):
+            dirty = True
         # Dungeon leave (0) and wipeout (1) penalty recovery steps & expiration.
         for ptype in (0, 1):
             p_changed, notice = refresh_dungeon_penalty(char, penalty_type=ptype, now=now)

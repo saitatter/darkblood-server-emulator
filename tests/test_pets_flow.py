@@ -744,10 +744,71 @@ class PetsFlowTest(ServerTestCase):
         from darkblood.games.progression import MAX_LEVEL
 
         pet = char['pets'][0]
+        char['level'] = MAX_LEVEL
         pet.update(level=MAX_LEVEL, exp=0)
         self.assertFalse(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
         self.assertEqual((pet['level'], pet['exp']), (MAX_LEVEL, 0))
         self.assertEqual(len(sent), 2)
+
+        # Level difference >= 20 blocks pet EXP; diff 19 allows it
+        char['level'] = 21
+        pet.update(level=1, exp=0)
+        self.assertFalse(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
+        self.assertEqual(pet['exp'], 0)
+
+        char['level'] = 20
+        self.assertTrue(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
+        self.assertEqual(pet['exp'], 50)
+
+        # Premium cash food doubles gained pet EXP (+100%)
+        pet['is_cash_food'] = True
+        self.assertTrue(self.run_async(grant_pet_exp(_FakeSession(), char, 20)))
+        self.assertEqual(pet['exp'], 90)
+
+    def test_pet_dungeon_energy_drain_and_auto_unsummon(self):
+        """Summoned pet loses 1 Energy on dungeon entry and 1 every 30s via 2479, unsummoning at 0."""
+        from darkblood.games.handlers.pets.pets import PET_DUNGEON_ENERGY_INTERVAL, PetCoreHandlersMixin, consume_pet_energy
+
+        sent = []
+
+        class _FakeTransport:
+            async def send_event(self, payload, note=''):
+                sent.append((payload, note))
+
+        class _FakePets(PetCoreHandlersMixin):
+            def __init__(self, session):
+                self.session = session
+                self.pet_energy_last_tick = None
+
+        class _FakeSession:
+            def __init__(self):
+                self.transport = _FakeTransport()
+                self.pets = _FakePets(self)
+
+        sess = _FakeSession()
+        char = {
+            'id': 7,
+            'summoned_pet': 42,
+            'pets': [{'uid': 42, 'code': 'PetCall001', 'level': 1, 'exp': 0, 'satiety': 3, 'name': 'Pup'}],
+        }
+        # Entry consumes 1 Energy (3 -> 2)
+        self.assertTrue(self.run_async(consume_pet_energy(sess, char, 1)))
+        self.assertEqual(char['pets'][0]['satiety'], 2)
+        self.assertEqual(char['summoned_pet'], 42)
+        self.assertIn('pet consume satiety not', sent[-1][1])
+
+        # First tick arms timer; +29s drains nothing; +30s drains 1 (2 -> 1); +60s drains to 0 and unsummons
+        self.assertFalse(self.run_async(sess.pets.tick_dungeon_energy(char, now=1000.0)))
+        self.assertFalse(self.run_async(sess.pets.tick_dungeon_energy(char, now=1029.0)))
+        self.assertEqual(char['pets'][0]['satiety'], 2)
+
+        self.assertTrue(self.run_async(sess.pets.tick_dungeon_energy(char, now=1000.0 + PET_DUNGEON_ENERGY_INTERVAL)))
+        self.assertEqual(char['pets'][0]['satiety'], 1)
+        self.assertEqual(char['summoned_pet'], 42)
+
+        self.assertTrue(self.run_async(sess.pets.tick_dungeon_energy(char, now=1000.0 + 2 * PET_DUNGEON_ENERGY_INTERVAL)))
+        self.assertEqual(char['pets'][0]['satiety'], 0)
+        self.assertIsNone(char['summoned_pet'])
 
 
 if __name__ == '__main__':
