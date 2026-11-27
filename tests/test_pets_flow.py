@@ -603,6 +603,24 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_taming_delete_keeps_same_species_in_another_slot(self):
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('TameKeeper'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['tamed_monsters'] = [{'monster_id': 501, 'slot': 0}, {'monster_id': 501, 'slot': 1}]
+            client.send_event(2350, TameingMonsterDeleteReq(monster_id=501, slot=1).encode())
+            _, body = await client.expect_event(2351)
+            self.assertEqual(TamingMonsterDeleteAck.decode(body).result, 0)
+            self.assertEqual(char['tamed_monsters'], [{'monster_id': 501, 'slot': 0}])
+
+        self.run_async(self.with_server(scenario))
+
     def test_pet_depot_slot_wire_size_matches_client_reader(self):
         """0x00A1E820 reads 0x1B (27) raw bytes per pet_depot_slots entry (unlike 0x00A1EBF0's 0x13 bytes)."""
         from darkblood.games.network.messages import DepotSlotInfo, PetDepotSlotInfo
