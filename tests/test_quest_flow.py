@@ -442,7 +442,8 @@ class QuestFlowTest(ServerTestCase):
             char['level'] = 20
             char['sp'] = 12
             char['total_ap'] = 58
-            char['skills'] = {'30': 3, '26': 2}
+            char['skills'] = {'30': 3, '26': 2, '9007': 1}
+            char['learned_proficiencies'] = [0]
             char['locked_skills'] = [30]
             store.save_char('OfflinePlayer', char_id)
 
@@ -461,17 +462,21 @@ class QuestFlowTest(ServerTestCase):
             self.assertEqual(res, 0)
             self.assertEqual(new_cls, int(CharacterClass.SORCERER))
             self.assertEqual(sp, 58)
-            self.assertEqual(not2283[9:], b'\x17\x80')  # empty map<u16, LearnedSkill>
+            life_skills = {str(skill): 1 for skill in (9005, 9006, 9007, 9009)}
+            from darkblood.games.handlers.skills import learned_skill_map
+
             self.assertEqual(
                 not2283,
-                PromotionNot(result=0, new_class=int(CharacterClass.SORCERER), sp=58, skills={}).encode(),
+                PromotionNot(result=0, new_class=int(CharacterClass.SORCERER), sp=58,
+                             skills=learned_skill_map(life_skills)).encode(),
             )
 
             # Verify persisted state
             updated = store.get('OfflinePlayer', char_id)
             self.assertEqual(updated['char_class'], int(CharacterClass.SORCERER))
             self.assertEqual(updated['sp'], 58)
-            self.assertEqual(updated['skills'], {})
+            self.assertEqual(updated['skills'], life_skills)
+            self.assertEqual(updated['learned_proficiencies'], [0])
             self.assertEqual(updated['locked_skills'], [])
             self.assertIn(q_hash, updated.get('quests_done', []))
 

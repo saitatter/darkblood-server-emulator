@@ -344,12 +344,17 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         cur_class = int(char.get('char_class', 0))
         if promo_class is None or (cur_class & 0x0F) != (promo_class & 0x0F) or cur_class == promo_class:
             return
+        from darkblood.games.handlers.skills import LIFE_SKILL_TO_PROFICIENCY, learned_skill_map
+
         new_sp = total_ap(char)
-        char.update(char_class=promo_class, sp=new_sp, total_ap=new_sp, skills={}, locked_skills=[],
-                    skill_show_cooltime=[])
+        life_skills = {key: level for key, level in char.get('skills', {}).items()
+                       if int(key) in LIFE_SKILL_TO_PROFICIENCY}
+        char.update(char_class=promo_class, sp=new_sp, total_ap=new_sp, skills=life_skills,
+                    locked_skills=[], skill_show_cooltime=[])
         char.pop('temp_skills', None)
         self.save_char()
-        await self.send_msg(PromotionNot(result=0, new_class=promo_class, sp=new_sp, skills={}),
+        await self.send_msg(PromotionNot(result=0, new_class=promo_class, sp=new_sp,
+                                         skills=learned_skill_map(life_skills)),
                             note=f'promotion not (class {cur_class:#x} -> {promo_class:#x}, sp={new_sp})')
 
     @packet_handler(2346)

@@ -41,7 +41,7 @@ When it fails, note what the client did and keep it here.
 | # | Check | Expected | Since |
 |---|---|---|---|
 | O1 | Random-box success notice (`2196`) | Opening a random box shows the success notice. | — |
-| O2 | Subclass promotion (`2283`) learned-skill map | Promotion grants the expected auto-learned skills (map currently empty). | 2026-11-24 |
+| O2 | Subclass promotion (`2283`) learned-skill map | Promotion keeps the learned life skills in the skill map and resets the old combat skills. Verify the resulting skill lists in the client. | 2026-11-24 |
 | O3 | Life Skills screen (issue #15 item 5) | Screen opens with the expected data. | 2026-11-24 |
 | O4 | Dual Skill item (issue #15 item 6) | Using the item enables the dual skill. | 2026-11-24 |
 | O5 | Mount summoning (`ridecall`) and pet items (`PetCall`) | Mount appears; pet summons. | — |
