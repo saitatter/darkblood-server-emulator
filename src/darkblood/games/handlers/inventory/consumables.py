@@ -6,6 +6,7 @@ from darkblood.core.hashing import jhash
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
+from darkblood.games.handlers.pets.cards import free_monster_card_slots
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
     BuyLifeWaterAck,
@@ -95,42 +96,26 @@ class ConsumableHandlersMixin:
         await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
         await self.session.life.use_fishing_proficiency_item(char, item_str_code, use_count)
 
+    def _store_booster_cards(self, account_book: dict, contents: list):
+        cards = account_book.setdefault('monster_cards', [])
+        album = account_book.setdefault('monster_card_album', [])
+        next_uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
+        new_cards = []
+        new_album_codes = []
+        for item_code, qty in contents:
+            card_code = item_code[1:] if item_code.startswith('MCard') else item_code
+            if card_code not in album:
+                album.append(card_code)
+                new_album_codes.append(card_code)
+            for _ in range(max(1, int(qty))):
+                uid = next_uid
+                next_uid += 1
+                cards.append({'uid': uid, 'code': card_code, 'level': 1, 'owner_uid': 0})
+                new_cards.append(MonsterCardInfo(card_uid=uid, card_id=jhash(card_code), level=1, owner_uid=0))
+        self.store().save_account_data(self.account)
+        return MonsterCardChangeListNot(new_cards=new_cards, from_random_card=True), new_album_codes
+
     async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, box_kind: str):
-        if box_kind == 'monster_card':
-            acct = self.store().account_data(self.account)
-            cards = acct.setdefault('monster_cards', [])
-            album = acct.setdefault('monster_card_album', [])
-            next_uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
-            new_cards = []
-            new_album_codes = []
-            granted_names = []
-            for item_code, qty in contents:
-                card_code = item_code[1:] if item_code.startswith('MCard') else item_code
-                if card_code not in album:
-                    album.append(card_code)
-                    new_album_codes.append(card_code)
-                for _ in range(max(1, int(qty))):
-                    uid = next_uid
-                    next_uid += 1
-                    cards.append({'uid': uid, 'code': card_code, 'level': 1, 'owner_uid': 0})
-                    new_cards.append(MonsterCardInfo(
-                        card_uid=uid,
-                        card_id=jhash(card_code),
-                        level=1,
-                        owner_uid=0,
-                    ))
-                    granted_names.append(card_code)
-            self.store().save_account_data(self.account)
-            await self.send_msg(
-                MonsterCardChangeListNot(new_cards=new_cards, del_cards=[], from_random_card=True),
-                note='monster card booster opened (%s -> %s)' % (box_code, ', '.join(granted_names)),
-            )
-            for card_code in new_album_codes:
-                await self.send_msg(
-                    MonsterCardInsertAlbumNot(album_card_id=jhash(card_code)),
-                    note='monster card album insert (%s)' % card_code,
-                )
-            return
         stored = add_reward_items(char, contents)
         self.save_char()
         wire_items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
@@ -183,6 +168,13 @@ class ConsumableHandlersMixin:
                 await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
                                  note='use item fail (bag full: need %d, free %d)' % (needed, free))
                 return
+        card_book = self.store().account_data(self.account) if box_kind == 'monster_card' else None
+        if card_book is not None:
+            card_count = sum(max(1, int(qty)) for _, qty in contents)
+            if card_count > free_monster_card_slots(card_book):
+                await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
+                                 note='monster card booster refused (account book full)')
+                return
         item_code = jhash(item_str_code)
         updated = []
         if count <= 0:
@@ -201,11 +193,21 @@ class ConsumableHandlersMixin:
             used_item['count'] = count
             updated.append(Item(owner=UPDATE_OWNER, **used_item))
         self.save_char()
+        # Reserve the shared slots before a network write can yield to another character.
+        card_reward = self._store_booster_cards(card_book, contents) if card_book is not None else None
 
         await self.reply(UseItemAck(result=0, items=updated, item_id=item_code, use_count=req.use_count),
                          correlation, note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
         await self._apply_special_consumable(char, item_str_code, item_code, req.use_count)
-        if contents:
+        if card_reward is not None:
+            change, new_album_codes = card_reward
+            await self.send_msg(change, note=f'monster card booster opened ({item_str_code})')
+            for card_code in new_album_codes:
+                await self.send_msg(
+                    MonsterCardInsertAlbumNot(album_card_id=jhash(card_code)),
+                    note=f'monster card album insert ({card_code})',
+                )
+        elif contents:
             await self._grant_opened_box_contents(char, item_str_code, contents, box_kind)
 
     @packet_handler(UseDyeingItemReq)

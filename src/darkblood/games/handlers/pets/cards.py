@@ -38,6 +38,11 @@ MONSTER_CARD_MAX_SLOTS = 200
 MONSTER_CARD_EXTEND_PRICE = 500_000
 
 
+def free_monster_card_slots(account_book: dict) -> int:
+    capacity = int(account_book.get('monster_card_max_slots', MONSTER_CARD_BASE_SLOTS))
+    return max(0, capacity - len(account_book.get('monster_cards', [])))
+
+
 def _card_info_from_record(rec: dict) -> MonsterCardInfo:
     return MonsterCardInfo(
         card_uid=int(rec.get('uid', 0)),
@@ -112,6 +117,11 @@ class MonsterCardHandlersMixin:
             await self.reply(MonsterCardInsertAck(result=0), correlation,
                              note=f'monster card insert ack (item={req.item_uid})')
             return
+        acct = self._account_book()
+        if not free_monster_card_slots(acct):
+            await self.reply(MonsterCardInsertAck(result=results.INVEN_FULL), correlation,
+                             note='monster card insert refused (account book full)')
+            return
         item_code = target.get('code', '')
         card_code = item_code[1:] if item_code.startswith('MCard') else item_code
         count = int(target.get('count', 1)) - 1
@@ -128,7 +138,6 @@ class MonsterCardHandlersMixin:
         else:
             target['count'] = count
             updated = Item(owner=UPDATE_OWNER, **target)
-        acct = self._account_book()
         cards = acct.setdefault('monster_cards', [])
         uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
         rec = {'uid': uid, 'code': card_code, 'level': 1, 'owner_uid': 0}
