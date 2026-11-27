@@ -243,6 +243,19 @@ class GmFlowTest(ServerTestCase):
             _, ack2007 = await client.expect_event(2007)
             self.assertIn(struct.pack('<?HH', True, 3, 1), ack2007)
 
+            from darkblood.games.network import results
+            from darkblood.games.session import GameSession
+            store = GameSession.store()
+            char = store.get('OfflinePlayer', char_id)
+            char['mark_bonus_cnt'] = 3
+            agreement = dict(code='IAMk1R190', uid=901, container=3, slot=2, count=1)
+            char['items'].append(agreement)
+            client.send_event(2038, messages.UseItemReq(item_uid=agreement['uid'], use_count=1).encode())
+            _, capped = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', capped)[0], results.INVALID_STATE)
+            self.assertIn(agreement, char['items'])
+            self.assertEqual(char['mark_bonus_cnt'], 3)
+
         self.run_async(self.with_server(scenario))
 
     def test_gm_bridge_shares_level_up_rune_slate_unlock(self):
