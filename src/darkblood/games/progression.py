@@ -367,6 +367,16 @@ def refresh_dungeon_entry_limits(char, now=None) -> bool:
     return changed
 
 
+def refresh_daily_rebirth(char, now=None) -> bool:
+    """Clear yesterday's rebirth coin claims before publishing the daily count."""
+    today = time.strftime('%Y-%m-%d', time.localtime(now))
+    if char.get('daily_rebirth_day') == today:
+        return False
+    char['daily_rebirth_day'] = today
+    char['daily_rebirth_recv'] = 0
+    return True
+
+
 def refresh_character_timers(char, now=None) -> bool:
     """Refresh all persisted wall-clock timers on a character (stress, penalties, depot, dungeon limits)."""
     now = time.time() if now is None else float(now)
@@ -380,5 +390,7 @@ def refresh_character_timers(char, now=None) -> bool:
     if refresh_depot_timers(char, now=now):
         changed = True
     if refresh_dungeon_entry_limits(char, now=now):
+        changed = True
+    if refresh_daily_rebirth(char, now=now):
         changed = True
     return changed

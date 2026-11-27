@@ -1,6 +1,5 @@
 """Dungeon layer transitions, monster kills, death/revive, rebirth coins, and combat events."""
 import struct
-import time
 
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
@@ -29,6 +28,9 @@ from darkblood.games.network.messages.dungeon import (
 )
 from darkblood.games.handlers.commerce.stores import add_roulette_points
 from darkblood.games.handlers.pets.pets import grant_pet_exp
+
+from darkblood.games.progression import refresh_daily_rebirth
+
 
 # The daily-claim sender refuses when owned or received coins reach 3.
 DAILY_REBIRTH_COINS = 3
@@ -221,10 +223,7 @@ class DungeonCombatHandlers:
             await self.reply(DailyRebirthCoinUseAck(result=results.NO_EXIST_CHAR), correlation,
                              note='daily rebirth coin fail (no char)')
             return
-        today = time.strftime('%Y-%m-%d')
-        if char.get('daily_rebirth_day') != today:
-            char['daily_rebirth_day'] = today
-            char['daily_rebirth_recv'] = 0
+        refresh_daily_rebirth(char)
         coins = int(char.get('rebirth_coins', 3))
         received = int(char.get('daily_rebirth_recv', 0))
         granted = max(0, min(DAILY_REBIRTH_COINS - coins, DAILY_REBIRTH_COINS - received))

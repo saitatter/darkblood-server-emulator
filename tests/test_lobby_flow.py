@@ -3,11 +3,10 @@ import struct
 import time
 import unittest
 
-from darkblood.games.entities.character import Character
-from darkblood.games.entities.items import Item
-
 from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.games import session
+from darkblood.games.entities.character import Character
+from darkblood.games.entities.items import Item
 
 
 class LobbyFlowTest(ServerTestCase):
@@ -34,10 +33,13 @@ class LobbyFlowTest(ServerTestCase):
             for item in worn:
                 self.assertIn(Item(owner=char_id, **item).encode(), preview)
 
-            # Select character
+            # Select a character that already used yesterday's free coins.
+            char = store.get('OfflinePlayer', char_id)
+            char.update(daily_rebirth_day='2000-01-01', daily_rebirth_recv=3, rebirth_coins=1)
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             _, ack2007 = await client.expect_event(2007)
             self.assertEqual(struct.unpack_from('<I', ack2007)[0], 0)
+            self.assertEqual((char['rebirth_coins'], char['daily_rebirth_recv']), (1, 0))
 
             # Character deletion
             # Deletion is pending: the record stays until the delay ends.
