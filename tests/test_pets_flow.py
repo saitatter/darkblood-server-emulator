@@ -362,7 +362,16 @@ class PetsFlowTest(ServerTestCase):
             _, r = await client.expect_event(2499)
             self.assertEqual(struct.unpack_from('<Ih', r), (0, 1))
 
+            from darkblood.games.handlers.character_select import _build_pet_depot_slots
+
             char = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertIn('pet_depot_extend_expires', char)
+            deadline = char['pet_depot_extend_expires']['1']
+            running = _build_pet_depot_slots(char, now=deadline - 60)[1]
+            self.assertEqual((running.active, running.remain_sec), (True, 60))
+            expired = _build_pet_depot_slots(char, now=deadline)[1]
+            self.assertEqual((expired.active, expired.slot_index, expired.remain_sec), (False, 0xFFFF, 0))
+
             char['pets'] = [
                 {'uid': 10, 'slot': 0, 'code': 'PetCall001', 'name': 'First'},
                 {'uid': 20, 'slot': 1, 'code': 'PetCall001', 'name': 'Second'},

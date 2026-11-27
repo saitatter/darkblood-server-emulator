@@ -1,5 +1,7 @@
 """2007 SelectCharacterAck and character details built from a stored character."""
 import struct
+import time
+
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import DEPOT_CONTAINER, Bag, Item
 from darkblood.games.missions.quests import ActiveQuest
@@ -126,11 +128,14 @@ def _build_quest_special_info(char) -> QuestSpecialInfo:
     )
 
 
-def _build_pet_depot_slots(char: dict) -> list:
+def _build_pet_depot_slots(char: dict, *, now=None) -> list:
     """Build 4 PetDepotSlotInfo (0x1B-byte) entries for 2007 SelectCharacterAck (0x00A3EDD0 -> 0x00A1E820)."""
     pet_extend = list(char.get('pet_depot_extend', [0, 0, 0, 0]))
     while len(pet_extend) < 4:
         pet_extend.append(0)
+    now = int(time.time()) if now is None else int(now)
+    for index, expires_at in char.get('pet_depot_extend_expires', {}).items():
+        pet_extend[int(index)] = max(0, int(expires_at) - now)
     return [
         PetDepotSlotInfo(
             active=rem > 0,
