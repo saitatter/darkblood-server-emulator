@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 834  
+**Tracked opcodes**: 838  
 **Client handlers mapped**: 298  
-**Server handlers**: 365  
+**Server handlers**: 367  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -363,6 +363,10 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2389 | `eEGS_ROULETTE_POINT_INSERT_NOT` | — | — | `RoulettePointInsertNot` |  |
 | 2390 | `eEGS_ROULETTE_MANAGER_INFO_REQ` | — | `commerce/stores.py` (`handle_roulette_manager_info`) | — | eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x0062CBC0. |
 | 2391 | `eEGS_ROULETTE_MANAGER_INFO_ACK` | — | — | `RouletteManagerInfoAck` |  |
+| 2392 | `eEGS_BILLING_GET_ITEMLIST_REQ` | — | `commerce/cash_shop.py` (`handle_billing_get_item_list`) | `BillingGetItemListReq` | eEGS_BILLING_GET_ITEMLIST_REQ -> 2393 (0x00557AE0). No sender was |
+| 2393 | `eEGS_BILLING_GET_ITEMLIST_ACK` | — | — | `BillingGetItemListAck` |  |
+| 2394 | `eEGS_BILLING_USE_ITEM_REQ` | — | `commerce/cash_shop.py` (`handle_billing_use_item`) | `BillingUseItemReq` | eEGS_BILLING_USE_ITEM_REQ (0x0054EA30: m_nUnlockCashID = ProductID) |
+| 2395 | `eEGS_BILLING_USE_ITEM_ACK` | — | — | `BillingUseItemAck` |  |
 | 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | `BrokerChangeRegistCountNot` |  |
 | 2399 | `eEGS_POST_DAILY_SEND_RECOVER_NOT` | 0x0079A880 | — | `PostDailySendRecoverNot` |  |
 | 2400 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_ADD_NOT` | 0x0076BE80 | — | `DepotShareExpireTimeAddNot` |  |

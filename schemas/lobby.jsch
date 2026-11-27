@@ -133,7 +133,7 @@ message 2007 SelectCharacterAck ok_only
   i64 personal_store_expire_sec  # +0x40C JAppPagePersonalStore::SetExpire (0x00603130): expiry = _time64 + this
   u32 _                      # +0x414 first SetExpire argument, only logged
   vector<u32> learned_proficiencies  # 0x004DA660 (+0x418 -> JProficiencyMgr::Init 0x00AC9BD0, max 2 chosen prof types 0..6)
-  vector<u32> u32_vec_b      # 0x004DA660
+  vector<u32> cash_items     # +0x428 vecCashItemOut: Premium inventory ProductIDs (0x004DA660 -> 0x004D9610 -> 0x004D6E60), handler passes it to 0x00830300 (0x007AA85D)
   u16 _                      # +0x438 -> JAppPageInitLifeSkill (AppPage 0x46) +0x120 via 0x005A3FE0
   i64 life_skill_init_remain_sec  # +0x43A -> 0x005A3FE0: +0x118 = _time64 + this (read back by 0x005A4020)
   u64 _

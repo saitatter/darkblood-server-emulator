@@ -1,4 +1,4 @@
-"""Steam cash shop offline: 2712 -> unsolicited 2037 with the items + 2714."""
+"""Steam cash shop offline: 2712 -> 2714 (Premium inventory), 2394 -> 2395 moves a product to the bags."""
 import os
 import struct
 import tempfile
@@ -10,6 +10,10 @@ from tests.common import ServerTestCase, create_request, lobby_flow
 from darkblood.core.hashing import jhash
 from darkblood.games import session
 from darkblood.games.game_data import cash_shop, client_dict
+from darkblood.games.network.messages import (
+    BillingGetItemListAck, BillingUseItemReq, SteamFinalizeBuyItemAck,
+)
+from darkblood.games.handlers.character_select import build_select_char_ack
 
 
 class CashShopFlowTest(ServerTestCase):
@@ -49,20 +53,53 @@ class CashShopFlowTest(ServerTestCase):
             _, ack = await client.expect_event(2714)
             self.assertEqual(struct.unpack_from('<I', ack)[0], 442)
 
-            with patch('darkblood.games.handlers.commerce.free_bag_slots', return_value=0):
-                client.send_event(2712, purchase)
-                _, ack = await client.expect_event(2714)
-                self.assertEqual(struct.unpack_from('<I', ack)[0], 67)
-
+            # A purchase lands in the account's Premium inventory, not in a bag:
+            # 2714 carries the whole vecCashItemOut list and no 2037 is sent.
+            store = session.GameSession.store()
+            bag_items = len(store.get('OfflinePlayer', char_id)['items'])
             client.send_event(2712, purchase)
-            _, items = await client.expect_event(2037)
-            self.assertEqual(struct.unpack_from('<i', items)[0], 0)
-            self.assertEqual(items[4:6], b'\x10\x81')
             _, ack = await client.expect_event(2714)
-            self.assertEqual(ack, struct.pack('<I', 0) + b'\x10\x80' + b'\x00\x01')
+            finalize = SteamFinalizeBuyItemAck.decode(ack)
+            self.assertEqual((finalize.result, finalize.cash_items, finalize.authorized), (0, [288], True))
+            client.send_event(2712, purchase)
+            _, ack = await client.expect_event(2714)
+            self.assertEqual(SteamFinalizeBuyItemAck.decode(ack).cash_items, [288, 288])
+            encoded_list = ack[4:-2]  # the vector<u32> between the result and the two bools
+            self.assertEqual(len(store.get('OfflinePlayer', char_id)['items']), bag_items)
+            self.assertEqual(store.account_data('OfflinePlayer')['cash_items'], [288, 288])
 
-            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            # Reselecting the character restores the list through 2007 (+0x428).
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, select = await client.expect_event(2007)
+            # (2007 has extern fields and cannot be decoded; the same encoded
+            # vector must follow learned_proficiencies.)
+            self.assertIn(encoded_list, select)
+            self.assertNotIn(encoded_list, build_select_char_ack(store.get('OfflinePlayer', char_id)))
+
+            # 2394 moves one product to the bags (UI_2420: one-way).
+            use = lambda product: BillingUseItemReq(product_id=product).encode()
+            with patch('darkblood.games.handlers.commerce.free_bag_slots', return_value=0):
+                client.send_event(2394, use(288))
+                _, ack = await client.expect_event(2395)
+                self.assertEqual(ack, struct.pack('<I', 67))  # ok_only: result alone
+            client.send_event(2394, use(5))
+            _, ack = await client.expect_event(2395)
+            self.assertEqual(ack, struct.pack('<I', 63))
+
+            client.send_event(2394, use(288))
+            _, ack = await client.expect_event(2395)
+            # Item is not readable here: compare the result and the remaining list
+            # bytes; vecItemOut then holds one record (the stack checked below).
+            remaining = BillingGetItemListAck(cash_items=[288]).encode()
+            self.assertTrue(ack.startswith(remaining))
+            self.assertEqual(ack[len(remaining):len(remaining) + 2], bytes.fromhex('1081'))
+            char = store.get('OfflinePlayer', char_id)
             self.assertIn(('IRanCashEtc232', 2), [(i['code'], i.get('count', 1)) for i in char['items']])
+            self.assertEqual(store.account_data('OfflinePlayer')['cash_items'], [288])
+
+            client.send_event(2392, b'')
+            _, ack = await client.expect_event(2393)
+            self.assertEqual(BillingGetItemListAck.decode(ack).cash_items, [288])
 
         with patch.object(cash_shop, 'CATALOG_PATH', path):
             self.run_async(self.with_server(scenario))

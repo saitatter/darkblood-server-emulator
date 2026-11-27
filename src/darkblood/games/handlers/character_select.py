@@ -92,6 +92,7 @@ def build_select_char_ack(char, account_chars=None, account_data=None):
         achieve_completed=completed,
         waypoints=_build_waypoints_map(data),
         learned_proficiencies=learned_proficiencies_for_char(char),
+        cash_items=[int(p) for p in (account_data or {}).get('cash_items', [])],
         ridings=_build_ridings_map(data),
         pets=_build_pets_map(data),
         summoned_pet_uid=int(data.get('summoned_pet') or 0),

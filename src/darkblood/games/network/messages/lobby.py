@@ -177,7 +177,7 @@ class SelectCharacterAck(WireMessage):
     waypoints: Map[u64, Extern[WaypointData, 'encode', False]] = field(default_factory=dict)  # 0x00A3EA00 -> 0x00A3E490 -> 0x00A1F4E0 (u64 + WaypointData)
     personal_store_expire_sec: i64 = 0  # +0x40C JAppPagePersonalStore::SetExpire (0x00603130): expiry = _time64 + this
     learned_proficiencies: Vector[u32] = field(default_factory=list)  # 0x004DA660 (+0x418 -> JProficiencyMgr::Init 0x00AC9BD0, max 2 chosen prof types 0..6)
-    u32_vec_b: Vector[u32] = field(default_factory=list)  # 0x004DA660
+    cash_items: Vector[u32] = field(default_factory=list)  # +0x428 vecCashItemOut: Premium inventory ProductIDs (0x004DA660 -> 0x004D9610 -> 0x004D6E60), handler passes it to 0x00830300 (0x007AA85D)
     life_skill_init_remain_sec: i64 = 0  # +0x43A -> 0x005A3FE0: +0x118 = _time64 + this (read back by 0x005A4020)
     buff_map_a: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9190 -> 0x005F6640
     ridings: Map[h32, Extern[RidingInfo, 'encode', False]] = field(default_factory=dict)  # 0x0076ABA0 -> 0x00768250 -> 0x007656E0 (unlocked mounts)
@@ -241,7 +241,7 @@ class SelectCharacterAck(WireMessage):
         'personal_store_expire_sec',
         Const(u32, 0),
         'learned_proficiencies',
-        'u32_vec_b',
+        'cash_items',
         Const(u16, 0),
         'life_skill_init_remain_sec',
         Const(u64, 0),

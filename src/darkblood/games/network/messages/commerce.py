@@ -44,6 +44,10 @@ __all__ = [
     'DepotLoadArAck',
     'SteamInitBuyItemNot',
     'SteamFinalizeBuyItemAck',
+    'BillingGetItemListReq',
+    'BillingGetItemListAck',
+    'BillingUseItemReq',
+    'BillingUseItemAck',
     'DepotShareExpireTimeGetAck',
     'DepotShareExpireTimeAddNot',
     'DepotSizeIncreaseNot',
@@ -497,13 +501,70 @@ class SteamInitBuyItemNot(WireMessage):
 class SteamFinalizeBuyItemAck(WireMessage):
     """Opcode 2714: eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_ACK (reply).
 
-    JAppPageCashshop vf20 (0x004DCCC0) -> 0x004DB680.
+    JAppPageCashshop vf20 (0x004DCCC0) -> 0x004DB680
+    (assert 0xC9F858: jEvt.Read() >> vecCashItemOut >> bFailExist >> bAuthorized).
     """
     OPCODE: ClassVar[int] = 2714
     result: u32 = 0
-    values: Vector[u32] = field(default_factory=list)  # 0x004D6E60, copied to inventory +0x38 by 0x00830300; meaning unknown
-    flag: bool = False  # selects the result message text
-    applied: bool = True  # refreshes inventory/cash views and shows the purchase message
+    cash_items: Vector[u32] = field(default_factory=list)  # vecCashItemOut: the whole Premium inventory (ProductIDs, 0x004D6E60), replaces inventory +0x38 via 0x00830300
+    fail_exist: bool = False  # bFailExist: selects the result message text
+    authorized: bool = True  # bAuthorized: refreshes inventory/cash views and shows the purchase message
+
+
+@dataclass
+class BillingGetItemListReq(WireMessage):
+    """Opcode 2392: eEGS_BILLING_GET_ITEMLIST_REQ (request).
+
+    eEGS_BILLING_GET_ITEMLIST_REQ. No sender found in this build (no push of
+    0x958); the body is not recovered and is ignored.
+    """
+    OPCODE: ClassVar[int] = 2392
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class BillingGetItemListAck(WireMessage):
+    """Opcode 2393: eEGS_BILLING_GET_ITEMLIST_ACK (reply).
+
+    JAppPageGameMenuInventory::OneEGS_BILLING_GET_ITEMLIST_ACK 0x00557AE0
+    (assert 0xCB1638: jEvt.Read() >> vecCashItemOut) -> 0x00830300.
+    """
+    OPCODE: ClassVar[int] = 2393
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cash_items: Vector[u32] = field(default_factory=list)  # vecCashItemOut: Premium inventory ProductIDs (0x004D6E60)
+
+
+@dataclass
+class BillingUseItemReq(WireMessage):
+    """Opcode 2394: eEGS_BILLING_USE_ITEM_REQ (request).
+
+    JAppPageGameMenuInventory::UnlockCashItemOK 0x0054EA30 (assert 0xCB03C0:
+    SendPacket( eEGS_BILLING_USE_ITEM_REQ ).Add() << m_nUnlockCashID, writer
+    0x00B352B0 = 4 bytes). UnlockCashItem 0x00559D80 sets m_nUnlockCashID
+    (+0xE4) from the clicked Premium cell's "ProductID" attribute and asks
+    UI_2420 (one-way move) or, at 0x0043A180()+0x68 >= 1, UI_QA_180.
+    """
+    OPCODE: ClassVar[int] = 2394
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    product_id: u32 = 0
+
+
+@dataclass
+class BillingUseItemAck(WireMessage):
+    """Opcode 2395: eEGS_BILLING_USE_ITEM_ACK (reply).
+
+    JAppPageGameMenuInventory::OneEGS_BILLING_USE_ITEM_ACK 0x00558450 (assert
+    0xCB18F8: jEvt.Read() >> vecCashItemOut >> vecItemOut). A non-zero result
+    shows its error text (0x005402D0) and reads nothing else.
+    """
+    OPCODE: ClassVar[int] = 2395
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cash_items: Vector[u32] = field(default_factory=list)  # vecCashItemOut: the remaining Premium inventory (0x004D6E60 -> 0x00830300)
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)  # vecItemOut: inserted with 0x00835990 (0x004B9210, 0xE4 bytes each)
 
 
 @dataclass

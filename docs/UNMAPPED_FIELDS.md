@@ -24,7 +24,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:494 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:506 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (6 of 149 fields)
+## commerce (6 of 155 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

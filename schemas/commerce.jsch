@@ -233,11 +233,42 @@ message 2712 SteamInitBuyItemNot header
 end
 
 message 2714 SteamFinalizeBuyItemAck
-  ## JAppPageCashshop vf20 (0x004DCCC0) -> 0x004DB680.
+  ## JAppPageCashshop vf20 (0x004DCCC0) -> 0x004DB680
+  ## (assert 0xC9F858: jEvt.Read() >> vecCashItemOut >> bFailExist >> bAuthorized).
   u32 result
-  vector<u32> values         # 0x004D6E60, copied to inventory +0x38 by 0x00830300; meaning unknown
-  bool flag                  # selects the result message text
-  bool applied = true        # refreshes inventory/cash views and shows the purchase message
+  vector<u32> cash_items     # vecCashItemOut: the whole Premium inventory (ProductIDs, 0x004D6E60), replaces inventory +0x38 via 0x00830300
+  bool fail_exist            # bFailExist: selects the result message text
+  bool authorized = true     # bAuthorized: refreshes inventory/cash views and shows the purchase message
+end
+
+message 2392 BillingGetItemListReq header?
+  ## eEGS_BILLING_GET_ITEMLIST_REQ. No sender found in this build (no push of
+  ## 0x958); the body is not recovered and is ignored.
+end
+
+message 2393 BillingGetItemListAck ok_only
+  ## JAppPageGameMenuInventory::OneEGS_BILLING_GET_ITEMLIST_ACK 0x00557AE0
+  ## (assert 0xCB1638: jEvt.Read() >> vecCashItemOut) -> 0x00830300.
+  u32 result
+  vector<u32> cash_items     # vecCashItemOut: Premium inventory ProductIDs (0x004D6E60)
+end
+
+message 2394 BillingUseItemReq header?
+  ## JAppPageGameMenuInventory::UnlockCashItemOK 0x0054EA30 (assert 0xCB03C0:
+  ## SendPacket( eEGS_BILLING_USE_ITEM_REQ ).Add() << m_nUnlockCashID, writer
+  ## 0x00B352B0 = 4 bytes). UnlockCashItem 0x00559D80 sets m_nUnlockCashID
+  ## (+0xE4) from the clicked Premium cell's "ProductID" attribute and asks
+  ## UI_2420 (one-way move) or, at 0x0043A180()+0x68 >= 1, UI_QA_180.
+  u32 product_id
+end
+
+message 2395 BillingUseItemAck ok_only
+  ## JAppPageGameMenuInventory::OneEGS_BILLING_USE_ITEM_ACK 0x00558450 (assert
+  ## 0xCB18F8: jEvt.Read() >> vecCashItemOut >> vecItemOut). A non-zero result
+  ## shows its error text (0x005402D0) and reads nothing else.
+  u32 result
+  vector<u32> cash_items     # vecCashItemOut: the remaining Premium inventory (0x004D6E60 -> 0x00830300)
+  vector<Item> items         # vecItemOut: inserted with 0x00835990 (0x004B9210, 0xE4 bytes each)
 end
 
 message 2243 DepotShareExpireTimeGetAck ok_only
