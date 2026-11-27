@@ -12,6 +12,7 @@ from launcher_app.gm_catalogs import (  # noqa: E402
     load_catalog,
     load_gm_pins,
     lookup_entry,
+    move_item,
     parse_command_params,
     save_gm_pins,
     search_catalog,
@@ -80,16 +81,26 @@ class GmCatalogsTest(unittest.TestCase):
             path = Path(tmp) / 'gm_pins.json'
             self.assertEqual(load_gm_pins(path), [])
             pins = [
-                {'label': '25-Slot Bag', 'command': '%itemcall IbagU160 1'},
-                {'label': 'Card Pack x10', 'command': 'itemcall IRanCashEtc260 10'},
+                {'label': '25-Slot Bag', 'commands': ['%itemcall IbagU160 1']},
+                {'label': 'Starter kit', 'commands': ['itemcall IRanCashEtc260 10', ' ', '%ar 500000']},
+                {'label': 'Empty', 'commands': []},
+                {'label': 'Old format', 'command': 'ar 1'},
             ]
             save_gm_pins(pins, path)
             loaded = load_gm_pins(path)
             self.assertEqual(loaded, [
-                {'label': '25-Slot Bag', 'command': 'itemcall IbagU160 1'},
-                {'label': 'Card Pack x10', 'command': 'itemcall IRanCashEtc260 10'},
+                {'label': '25-Slot Bag', 'commands': ['itemcall IbagU160 1']},
+                {'label': 'Starter kit', 'commands': ['itemcall IRanCashEtc260 10', 'ar 500000']},
             ])
 
+    def test_move_item_reorders_and_clamps(self):
+        items = ['a', 'b', 'c']
+        self.assertEqual(move_item(items, 0, 1), 1)
+        self.assertEqual(items, ['b', 'a', 'c'])
+        self.assertEqual(move_item(items, 2, -5), 0)
+        self.assertEqual(items, ['c', 'b', 'a'])
+        self.assertEqual(move_item(items, 2, 1), 2)
+        self.assertEqual(items, ['c', 'b', 'a'])
 
 if __name__ == '__main__':
     unittest.main()

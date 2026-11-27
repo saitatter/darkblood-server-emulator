@@ -305,8 +305,26 @@ def suggest_pin_label(command: str, ids_dir: Path = GM_IDS_DIR) -> str:
     return cmd
 
 
-def load_gm_pins(path: Path = GM_PINS_PATH) -> List[Dict[str, str]]:
-    """Load user-pinned GM favorite commands from data/gm_pins.json."""
+def _clean_gm_command(command) -> str:
+    return str(command or '').strip().lstrip('%').strip()
+
+
+def normalize_gm_pin(item) -> Optional[Dict[str, object]]:
+    """Return ``{'label', 'commands'}`` for a pin/macro dict, or None when it has no commands."""
+    if not isinstance(item, dict):
+        return None
+    raw = item.get('commands')
+    if not isinstance(raw, list):
+        return None
+    commands = [c for c in (_clean_gm_command(x) for x in raw) if c]
+    if not commands:
+        return None
+    label = str(item.get('label') or '').strip() or commands[0]
+    return {'label': label, 'commands': commands}
+
+
+def load_gm_pins(path: Path = GM_PINS_PATH) -> List[Dict[str, object]]:
+    """Load pinned GM macros (label + ordered command list) from data/gm_pins.json."""
     if not path.is_file():
         return []
     try:
@@ -315,29 +333,21 @@ def load_gm_pins(path: Path = GM_PINS_PATH) -> List[Dict[str, str]]:
         return []
     if not isinstance(raw, list):
         return []
-    pins = []
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        cmd = str(item.get('command') or '').strip()
-        if cmd.startswith('%'):
-            cmd = cmd[1:].strip()
-        label = str(item.get('label') or '').strip() or cmd
-        if cmd:
-            pins.append({'label': label, 'command': cmd})
-    return pins
+    return [p for p in (normalize_gm_pin(x) for x in raw) if p]
 
 
-def save_gm_pins(pins: List[Dict[str, str]], path: Path = GM_PINS_PATH) -> None:
-    """Persist user-pinned GM favorite commands to data/gm_pins.json."""
+def save_gm_pins(pins: List[Dict[str, object]], path: Path = GM_PINS_PATH) -> None:
+    """Persist pinned GM macros to data/gm_pins.json (pins without commands are dropped)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    clean = [
-        {
-            'label': str(p.get('label') or '').strip() or str(p.get('command') or '').strip(),
-            'command': str(p.get('command') or '').strip().lstrip('%').strip(),
-        }
-        for p in pins
-        if str(p.get('command') or '').strip()
-    ]
+    clean = [p for p in (normalize_gm_pin(x) for x in pins) if p]
     path.write_text(json.dumps(clean, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
+
+def move_item(items: list, index: int, delta: int) -> int:
+    """Move ``items[index]`` by ``delta`` positions in place; return its new index."""
+    if not 0 <= index < len(items):
+        return index
+    new = max(0, min(len(items) - 1, index + delta))
+    if new != index:
+        items.insert(new, items.pop(index))
+    return new

@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import tkinter as tk
 import webbrowser
 from pathlib import Path
@@ -78,11 +79,14 @@ from launcher_app.theme import (  # noqa: E402
 )
 from launcher_app.gm_catalogs import (  # noqa: E402
     load_gm_pins,
+    move_item,
     parse_command_params,
     save_gm_pins,
     suggest_pin_label,
 )
 from launcher_app.widgets import ScrollFrame, SearchableIdPicker  # noqa: E402
+
+GM_MACRO_STEP_DELAY = 0.3  # seconds between pinned-macro steps so the client applies each one
 
 
 class DarkBloodLauncher(tk.Tk):
@@ -767,7 +771,7 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_cmd_var.set(line)
 
     def _render_gm_pins(self):
-        """Render the pinned favorite GM commands bar (wrapped rows of 1-click pills)."""
+        """Render the pinned GM macros bar (wrapped rows of 1-click pills)."""
         for child in self.gm_pins_bar.winfo_children():
             child.destroy()
         if not self._gm_pins:
@@ -782,9 +786,9 @@ class DarkBloodLauncher(tk.Tk):
         row_chars = 10
 
         for idx, pin in enumerate(self._gm_pins):
-            lbl = pin['label']
-            cmd_txt = pin['command']
-            pill_chars = len(lbl) + 6
+            commands = pin['commands']
+            text = f'▶ {pin["label"]}' + (f'  ·{len(commands)}' if len(commands) > 1 else '')
+            pill_chars = len(text) + 4
             if row_chars + pill_chars > 96 and row_chars > 10:
                 row = tk.Frame(self.gm_pins_bar, bg=BG_CARD_ALT)
                 row.pack(fill='x', pady=2)
@@ -795,16 +799,17 @@ class DarkBloodLauncher(tk.Tk):
             pill.pack(side='left', padx=(0, 6), pady=1)
 
             run_lbl = tk.Label(
-                pill, text=f'▶ {lbl}', bg=BG_CARD, fg=TEXT_MAIN,
+                pill, text=text, bg=BG_CARD, fg=TEXT_MAIN,
                 font=('Segoe UI', 8, 'bold'), padx=7, pady=2, cursor='hand2',
             )
             run_lbl.pack(side='left')
-            run_lbl.bind('<Button-1>', lambda _e, c=cmd_txt: self._run_pinned_gm(c))
-            run_lbl.bind('<Button-3>', lambda _e, c=cmd_txt, l=lbl: self._load_pinned_gm(c, l))
-            run_lbl.bind('<Enter>', lambda _e, w=run_lbl, p=pill, c=cmd_txt: (
+            preview = '  →  '.join(f'%{c}' for c in commands)
+            run_lbl.bind('<Button-1>', lambda _e, i=idx: self._run_pinned_gm(i))
+            run_lbl.bind('<Button-3>', lambda _e, i=idx: self._edit_gm_pin(i))
+            run_lbl.bind('<Enter>', lambda _e, w=run_lbl, p=pill, t=preview: (
                 w.configure(bg=ACCENT, fg='white'),
                 p.configure(highlightbackground=ACCENT),
-                self.gm_result_lbl.config(text=f'Pinned: %{c}  (Left-click: Run  •  Right-click: Load into input)', fg=TEXT_DIM),
+                self.gm_result_lbl.config(text=f'{t}   (Left-click: Run  •  Right-click: Edit)', fg=TEXT_DIM),
             ))
             run_lbl.bind('<Leave>', lambda _e, w=run_lbl, p=pill: (
                 w.configure(bg=BG_CARD, fg=TEXT_MAIN),
@@ -823,13 +828,67 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_pins_sep.pack(fill='x', before=self._gm_split)
         self.gm_pins_bar.pack(fill='x', before=self._gm_split)
 
-    def _run_pinned_gm(self, command: str):
-        self.gm_cmd_var.set(command)
-        self._send_gm_command()
+    def _run_pinned_gm(self, index: int):
+        if not 0 <= index < len(self._gm_pins):
+            return
+        pin = self._gm_pins[index]
+        commands = list(pin['commands'])
+        if len(commands) == 1:
+            self.gm_cmd_var.set(commands[0])
+            self._send_gm_command()
+            return
+        self._run_gm_macro(pin['label'], commands)
 
-    def _load_pinned_gm(self, command: str, label: str):
-        self.gm_cmd_var.set(command)
-        self.gm_result_lbl.config(text=f'Loaded pinned "{label}" (%{command}).', fg=LINK_BLUE)
+    def _run_gm_macro(self, label: str, commands):
+        """Execute a pinned macro's commands in order on a worker thread, stopping at the first error."""
+        if getattr(self, '_gm_macro_running', False):
+            self.gm_result_lbl.config(text='A macro is already running.', fg=WARN_AMBER)
+            return
+        self._gm_macro_running = True
+        char_id = self._selected_gm_char_id()
+        total = len(commands)
+        self.gm_send_btn.config(state='disabled')
+
+        def status(text, color):
+            self.after(0, lambda: self.gm_result_lbl.config(text=text, fg=color))
+
+        def worker():
+            done, skipped = 0, []
+            failure = None
+            for step, cmd in enumerate(commands, 1):
+                status(f'Macro "{label}" {step}/{total}: %{cmd}...', TEXT_DIM)
+                resp = query_gm_bridge({'action': 'exec', 'command': cmd, 'char_id': char_id})
+                if resp.get('ok'):
+                    done += 1
+                elif resp.get('client_only'):
+                    skipped.append(cmd)
+                else:
+                    failure = (step, cmd, resp.get('message', 'failed'))
+                    break
+                if step < total:
+                    time.sleep(GM_MACRO_STEP_DELAY)
+            self.after(0, lambda: self._on_gm_macro_done(label, total, done, skipped, failure))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_gm_macro_done(self, label, total, done, skipped, failure):
+        self._gm_macro_running = False
+        self.gm_send_btn.config(state='normal')
+        if skipped:
+            text = '\n'.join(f'%{c}' for c in skipped)
+            self.clipboard_clear()
+            self.clipboard_append(text)
+        note = f'  •  {len(skipped)} client-only step(s) copied to clipboard' if skipped else ''
+        if failure:
+            step, cmd, msg = failure
+            self.gm_result_lbl.config(
+                text=f'✗ Macro "{label}" stopped at {step}/{total} (%{cmd}): {msg}{note}', fg=ERR_RED)
+        else:
+            self.gm_result_lbl.config(
+                text=f'✓ Macro "{label}": {done}/{total} step(s) executed{note}',
+                fg=WARN_AMBER if skipped else OK_GREEN)
+        if done:
+            self._refresh_gm_players_async()
 
     def _unpin_gm_command(self, index: int):
         if 0 <= index < len(self._gm_pins):
@@ -838,15 +897,48 @@ class DarkBloodLauncher(tk.Tk):
             self._render_gm_pins()
             self.gm_result_lbl.config(text=f'Unpinned "{removed["label"]}".', fg=TEXT_MUTED)
 
-    def _add_gm_pin(self, label: str, command: str):
+    def _add_gm_pin(self, label: str, command: str, target_index=None):
+        """Pin ``command`` as a new macro, or append it as a step of macro ``target_index``."""
         cmd = (command or '').strip().lstrip('%').strip()
         if not cmd:
             return
-        lbl = (label or '').strip() or suggest_pin_label(cmd) or cmd
-        self._gm_pins.append({'label': lbl, 'command': cmd})
+        if target_index is not None and 0 <= target_index < len(self._gm_pins):
+            pin = self._gm_pins[target_index]
+            pin['commands'].append(cmd)
+            msg = f'★ Added %{cmd} to "{pin["label"]}" (step {len(pin["commands"])}).'
+        else:
+            lbl = (label or '').strip() or suggest_pin_label(cmd) or cmd
+            self._gm_pins.append({'label': lbl, 'commands': [cmd]})
+            msg = f'★ Pinned "{lbl}" (%{cmd}).'
         save_gm_pins(self._gm_pins)
         self._render_gm_pins()
-        self.gm_result_lbl.config(text=f'★ Pinned "{lbl}" (%{cmd}).', fg=GOLD)
+        self.gm_result_lbl.config(text=msg, fg=GOLD)
+
+    def _gm_dialog(self, title: str, w: int, h: int):
+        dlg = tk.Toplevel(self)
+        dlg.title(title)
+        dlg.configure(bg=BG_CARD)
+        dlg.resizable(False, False)
+        dlg.transient(self)
+        dlg.grab_set()
+        self.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - w) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - h) // 2
+        dlg.geometry(f'{w}x{h}+{max(20, x)}+{max(20, y)}')
+        dlg.bind('<Escape>', lambda _e: dlg.destroy())
+        body = tk.Frame(dlg, bg=BG_CARD, padx=16, pady=12)
+        body.pack(fill='both', expand=True)
+        return dlg, body
+
+    def _dark_option_menu(self, parent, var, choices, command=None):
+        menu = tk.OptionMenu(parent, var, *choices, command=command)
+        menu.configure(
+            bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
+            highlightthickness=1, highlightbackground=BORDER, relief='flat', bd=0,
+            font=('Segoe UI', 8), cursor='hand2',
+        )
+        menu['menu'].configure(bg=BG_CARD_ALT, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground='white')
+        return menu
 
     def _prompt_pin_gm_command(self):
         cmd = (self.gm_cmd_var.get() or '').strip().lstrip('%').strip()
@@ -854,51 +946,202 @@ class DarkBloodLauncher(tk.Tk):
             self.gm_result_lbl.config(text='Enter or select a GM command first before pinning.', fg=WARN_AMBER)
             return
 
-        dlg = tk.Toplevel(self)
-        dlg.title('Pin GM Command')
-        dlg.configure(bg=BG_CARD)
-        dlg.resizable(False, False)
-        dlg.transient(self)
-        dlg.grab_set()
-
-        w, h = 420, 165
-        self.update_idletasks()
-        x = self.winfo_rootx() + (self.winfo_width() - w) // 2
-        y = self.winfo_rooty() + (self.winfo_height() - h) // 2
-        dlg.geometry(f'{w}x{h}+{max(20, x)}+{max(20, y)}')
-
-        body = tk.Frame(dlg, bg=BG_CARD, padx=16, pady=12)
-        body.pack(fill='both', expand=True)
-
+        dlg, body = self._gm_dialog('Pin GM Command', 440, 195)
         tk.Label(body, text='PIN FAVORITE GM COMMAND', bg=BG_CARD, fg=GOLD,
                  font=('Segoe UI', 9, 'bold'), anchor='w').pack(fill='x', pady=(0, 4))
         tk.Label(body, text=f'Command:  %{cmd}', bg=BG_CARD, fg=TEXT_DIM,
                  font=('Consolas', 8), anchor='w').pack(fill='x', pady=(0, 10))
 
-        row = tk.Frame(body, bg=BG_CARD)
-        row.pack(fill='x', pady=(0, 12))
-        tk.Label(row, text='Custom label:', bg=BG_CARD, fg=TEXT_MAIN,
-                 font=('Segoe UI', 9)).pack(side='left', padx=(0, 8))
+        new_choice = 'New pin'
+        choices = [new_choice] + [f'Add to: {p["label"]}' for p in self._gm_pins]
+        target_var = tk.StringVar(value=new_choice)
         label_var = tk.StringVar(value=suggest_pin_label(cmd))
-        ent = self._make_entry(row, label_var, width=28)
+
+        trow = tk.Frame(body, bg=BG_CARD)
+        trow.pack(fill='x', pady=(0, 8))
+        tk.Label(trow, text='Pin as:', bg=BG_CARD, fg=TEXT_MAIN, width=12, anchor='w',
+                 font=('Segoe UI', 9)).pack(side='left', padx=(0, 8))
+
+        lrow = tk.Frame(body, bg=BG_CARD)
+        lrow.pack(fill='x', pady=(0, 12))
+        tk.Label(lrow, text='Custom label:', bg=BG_CARD, fg=TEXT_MAIN, width=12, anchor='w',
+                 font=('Segoe UI', 9)).pack(side='left', padx=(0, 8))
+        ent = self._make_entry(lrow, label_var, width=28)
         ent.pack(side='left', fill='x', expand=True, ipady=3)
         ent.select_range(0, 'end')
 
-        btns = tk.Frame(body, bg=BG_CARD)
-        btns.pack(fill='x')
+        def on_target(_v=None):
+            ent.configure(state='normal' if target_var.get() == new_choice else 'disabled')
+
+        self._dark_option_menu(trow, target_var, choices, command=on_target).pack(side='left', fill='x', expand=True)
 
         def confirm(_e=None):
-            self._add_gm_pin(label_var.get(), cmd)
+            choice = target_var.get()
+            target = choices.index(choice) - 1 if choice in choices and choice != new_choice else None
+            self._add_gm_pin(label_var.get(), cmd, target)
             dlg.destroy()
 
+        btns = tk.Frame(body, bg=BG_CARD)
+        btns.pack(fill='x')
         self._make_btn(btns, '★ Save Pin', confirm, bg=ACCENT, hover=ACCENT_HOVER, fg='white',
                        font=('Segoe UI', 8, 'bold'), padx=14, pady=5).pack(side='right')
         self._make_btn(btns, 'Cancel', dlg.destroy, bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
                        font=('Segoe UI', 8, 'bold'), padx=12, pady=5).pack(side='right', padx=(0, 8))
-
         ent.bind('<Return>', confirm)
-        dlg.bind('<Escape>', lambda _e: dlg.destroy())
         ent.focus_set()
+
+    def _edit_gm_pin(self, index: int):
+        """Macro editor: rename, reorder/edit/remove steps, move the pin, or run it."""
+        if not 0 <= index < len(self._gm_pins):
+            return
+        pin_ref = self._gm_pins[index]
+        steps = list(pin_ref['commands'])
+
+        dlg, body = self._gm_dialog('Edit Pinned Macro', 560, 400)
+        tk.Label(body, text='EDIT PINNED MACRO', bg=BG_CARD, fg=GOLD,
+                 font=('Segoe UI', 9, 'bold'), anchor='w').pack(fill='x', pady=(0, 6))
+
+        lrow = tk.Frame(body, bg=BG_CARD)
+        lrow.pack(fill='x', pady=(0, 8))
+        tk.Label(lrow, text='Label:', bg=BG_CARD, fg=TEXT_MAIN, font=('Segoe UI', 9)).pack(side='left', padx=(0, 8))
+        label_var = tk.StringVar(value=pin_ref['label'])
+        self._make_entry(lrow, label_var, width=30).pack(side='left', fill='x', expand=True, ipady=3)
+
+        mid = tk.Frame(body, bg=BG_CARD)
+        mid.pack(fill='both', expand=True, pady=(0, 8))
+        lb_wrap = tk.Frame(mid, bg=BG_CARD, highlightbackground=BORDER, highlightthickness=1)
+        lb_wrap.pack(side='left', fill='both', expand=True, padx=(0, 8))
+        lb = tk.Listbox(
+            lb_wrap, bg=BG_CARD_ALT, fg=TEXT_MAIN, selectbackground=ACCENT, selectforeground='white',
+            activestyle='none', relief='flat', bd=0, highlightthickness=0, font=('Consolas', 9),
+            exportselection=False,
+        )
+        lb.pack(fill='both', expand=True)
+
+        step_var = tk.StringVar()
+
+        def refresh(select=None):
+            lb.delete(0, 'end')
+            for i, c in enumerate(steps, 1):
+                lb.insert('end', f'{i:>2}. %{c}')
+            if select is not None and steps:
+                select = max(0, min(len(steps) - 1, select))
+                lb.selection_set(select)
+                lb.see(select)
+
+        def selected():
+            sel = lb.curselection()
+            return sel[0] if sel else None
+
+        def move(delta):
+            i = selected()
+            if i is not None:
+                refresh(move_item(steps, i, delta))
+
+        def remove():
+            i = selected()
+            if i is not None:
+                steps.pop(i)
+                refresh(i)
+
+        def on_select(_e=None):
+            i = selected()
+            if i is not None:
+                step_var.set(steps[i])
+
+        def add_step(cmd_text):
+            c = (cmd_text or '').strip().lstrip('%').strip()
+            if c:
+                i = selected()
+                pos = len(steps) if i is None else i + 1
+                steps.insert(pos, c)
+                refresh(pos)
+
+        def update_step():
+            i = selected()
+            c = (step_var.get() or '').strip().lstrip('%').strip()
+            if i is not None and c:
+                steps[i] = c
+                refresh(i)
+
+        lb.bind('<<ListboxSelect>>', on_select)
+
+        side = tk.Frame(mid, bg=BG_CARD)
+        side.pack(side='left', fill='y')
+        for text, fn in (('▲ Up', lambda: move(-1)), ('▼ Down', lambda: move(1)), ('✕ Remove', remove)):
+            self._make_btn(side, text, fn, bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
+                           font=('Segoe UI', 8, 'bold'), padx=10, pady=4).pack(fill='x', pady=(0, 4))
+        self._make_btn(side, '+ Current %cmd', lambda: add_step(self.gm_cmd_var.get()),
+                       bg=BG_CARD_ALT, hover=BORDER, fg=GOLD,
+                       font=('Segoe UI', 8, 'bold'), padx=10, pady=4).pack(fill='x', pady=(8, 4))
+
+        erow = tk.Frame(body, bg=BG_CARD)
+        erow.pack(fill='x', pady=(0, 10))
+        tk.Label(erow, text='%', bg=BG_CARD, fg=GOLD, font=('Consolas', 10, 'bold')).pack(side='left')
+        step_ent = self._make_entry(erow, step_var, width=30)
+        step_ent.configure(font=('Consolas', 9))
+        step_ent.pack(side='left', fill='x', expand=True, ipady=3, padx=(2, 8))
+        step_ent.bind('<Return>', lambda _e: add_step(step_var.get()))
+        self._make_btn(erow, 'Update', update_step, bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
+                       font=('Segoe UI', 8, 'bold'), padx=10, pady=4).pack(side='right')
+        self._make_btn(erow, 'Add', lambda: add_step(step_var.get()), bg=BG_CARD_ALT, hover=BORDER,
+                       fg=TEXT_DIM, font=('Segoe UI', 8, 'bold'), padx=10, pady=4).pack(side='right', padx=(0, 6))
+
+        def current_index():
+            for i, p in enumerate(self._gm_pins):
+                if p is pin_ref:
+                    return i
+            return None
+
+        def apply():
+            i = current_index()
+            if i is None:
+                return None
+            if not steps:
+                self._gm_pins.pop(i)
+                save_gm_pins(self._gm_pins)
+                self._render_gm_pins()
+                self.gm_result_lbl.config(text=f'Unpinned "{pin_ref["label"]}" (no steps left).', fg=TEXT_MUTED)
+                return None
+            pin_ref['label'] = (label_var.get() or '').strip() or steps[0]
+            pin_ref['commands'] = list(steps)
+            save_gm_pins(self._gm_pins)
+            self._render_gm_pins()
+            return i
+
+        def move_pin(delta):
+            i = current_index()
+            if i is not None:
+                move_item(self._gm_pins, i, delta)
+                save_gm_pins(self._gm_pins)
+                self._render_gm_pins()
+
+        def save():
+            if apply() is not None:
+                self.gm_result_lbl.config(text=f'★ Saved macro "{pin_ref["label"]}" ({len(steps)} step(s)).', fg=GOLD)
+            dlg.destroy()
+
+        def save_and_run():
+            i = apply()
+            dlg.destroy()
+            if i is not None:
+                self._run_pinned_gm(i)
+
+        btns = tk.Frame(body, bg=BG_CARD)
+        btns.pack(fill='x')
+        self._make_btn(btns, '◀ Pin', lambda: move_pin(-1), bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
+                       font=('Segoe UI', 8, 'bold'), padx=10, pady=5).pack(side='left')
+        self._make_btn(btns, 'Pin ▶', lambda: move_pin(1), bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
+                       font=('Segoe UI', 8, 'bold'), padx=10, pady=5).pack(side='left', padx=(6, 0))
+        self._make_btn(btns, 'Save', save, bg=ACCENT, hover=ACCENT_HOVER, fg='white',
+                       font=('Segoe UI', 8, 'bold'), padx=14, pady=5).pack(side='right')
+        self._make_btn(btns, '▶ Save & Run', save_and_run, bg=BG_CARD_ALT, hover=BORDER, fg=OK_GREEN,
+                       font=('Segoe UI', 8, 'bold'), padx=12, pady=5).pack(side='right', padx=(0, 8))
+        self._make_btn(btns, 'Cancel', dlg.destroy, bg=BG_CARD_ALT, hover=BORDER, fg=TEXT_DIM,
+                       font=('Segoe UI', 8, 'bold'), padx=12, pady=5).pack(side='right', padx=(0, 8))
+
+        refresh(0)
+        on_select()
 
     def _select_gm_target(self, char_id, label):
         self._gm_target_char_id = char_id
