@@ -210,6 +210,14 @@ src/darkblood/
 │   │   ├── stores.py         # NPC store catalog tables (npcs.tsv, stores.tsv)
 │   │   └── world.py          # Monster stats, loot tables, money drops, dungeon maps and gate listings
 │   ├── handlers/             # JEvent handlers grouped by game domain (mixins of GameSession)
+│   │   ├── arena/            # Arena matches, teams, ladder rankings, and 1v1 town duels handlers
+│   │   │   ├── duels.py      # Arena: 1v1 town duels (5097-5113)
+│   │   │   ├── extended.py   # Arena: Extended arena room, square, team, league stat and random matchin…
+│   │   │   ├── league.py     # Arena: League season arena rankings (2550-2553)
+│   │   │   ├── minigame.py   # Arena: Rock-paper-scissors minigame (GBB, 2715-2720)
+│   │   │   ├── rooms.py      # Arena: Arena channels (2304/2305) and room management (2306/2307, 5145-5…
+│   │   │   ├── state.py      # Arena rooms, teams and the league ladder owned by one server
+│   │   │   └── teams.py      # Arena: Arena teams (5269-5275)
 │   │   ├── commerce/         # Commerce domain controller composed from stores, cash shop, trade and st…
 │   │   │   ├── cash_shop.py  # Offline Steam Cash Shop, cash packages, HTTP notices and play options
 │   │   │   ├── stalls.py     # Personal shops (town stalls) and Broker (Auction House) handlers
@@ -235,7 +243,6 @@ src/darkblood/
 │   │   │   ├── friends.py    # Friends, block list, character/item inspection, achievements and system …
 │   │   │   ├── guild.py      # Guild creation, roster, bank, skills, broker, siege and citadel handlers
 │   │   │   └── party.py      # Party invites, joins, kicks and teaching/guide/summon handlers
-│   │   ├── arena.py          # Arena matches, teams, ladder rankings, and 1v1 town duels handlers
 │   │   ├── base.py           # Shared access to the owning game session
 │   │   ├── frontend.py       # Frontend flow: server/channel lists, character list, creation and select…
 │   │   ├── gm.py             # Native GM Console & Cheat command handlers (eEGS_CHEAT_* / eERC_CHEAT_*)

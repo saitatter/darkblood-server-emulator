@@ -302,11 +302,11 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2301 | `eEGS_DUNGEON_BONUS_EXP_CHANGE_NOT` | 0x007987D0 | — | `DungeonBonusExpChangeNot` |  |
 | 2302 | `eEGS_READJUST_QUALITY_REQ` | — | `skills.py` (`handle_readjust_quality`) | `ReadjustQualityReq` | Opcode 2302 (eEGS_READJUST_QUALITY_REQ) -> 2303 (eEGS_READJUST_QUALITY_ACK): re-roll equipment quality. |
 | 2303 | `eEGS_READJUST_QUALITY_ACK` | — | — | `ReadjustQualityAck` |  |
-| 2304 | `eEGS_ARENA_SQUARELIST_REQ` | — | `arena.py` (`handle_arena_square_list`) | `ArenaSquareListReq` | Opcode 2304 -> 2305 / 2447. |
+| 2304 | `eEGS_ARENA_SQUARELIST_REQ` | — | `arena/rooms.py` (`handle_arena_square_list`) | `ArenaSquareListReq` | Opcode 2304 -> 2305 / 2447. |
 | 2305 | `eEGS_ARENA_SQUARELIST_ACK` | — | — | `ArenaSquareListAck` |  |
-| 2306 | `eEGS_ARENA_GET_ROOMLIST_REQ` | — | `arena.py` (`handle_arena_get_room_list`) | `ArenaGetRoomListReq` | Opcode 2306 -> 2307 / 2449. |
+| 2306 | `eEGS_ARENA_GET_ROOMLIST_REQ` | — | `arena/rooms.py` (`handle_arena_get_room_list`) | `ArenaGetRoomListReq` | Opcode 2306 -> 2307 / 2449. |
 | 2307 | `eEGS_ARENA_GET_ROOMLIST_ACK` | — | — | `ArenaGetRoomListAck` |  |
-| 2308 | `eEGS_ARENA_GET_INVITELIST_REQ` | — | `arena.py` (`handle_arena_get_invite_list`) | `ArenaGetInviteListReq` | Opcode 2308 (eEGS_ARENA_GET_INVITELIST_REQ) -> 2309 (eEGS_ARENA_GET_INVITELIST_ACK). |
+| 2308 | `eEGS_ARENA_GET_INVITELIST_REQ` | — | `arena/rooms.py` (`handle_arena_get_invite_list`) | `ArenaGetInviteListReq` | Opcode 2308 (eEGS_ARENA_GET_INVITELIST_REQ) -> 2309 (eEGS_ARENA_GET_INVITELIST_ACK). |
 | 2309 | `eEGS_ARENA_GET_INVITELIST_ACK` | — | — | `ArenaGetInviteListAck` |  |
 | 2310 | `eEGS_CHAR_NICK_CHANGE_REQ` | — | `social/friends.py` (`handle_char_nick_change`) | `CharNickChangeReq` | eEGS_CHAR_NICK_CHANGE_REQ -> 2311 eEGS_CHAR_NICK_CHANGE_ACK (0x00780200). |
 | 2311 | `eEGS_CHAR_NICK_CHANGE_ACK` | 0x00780200 | — | `CharNickChangeAck` |  |
@@ -484,13 +484,13 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2546 | `eEGS_ITEM_DECOMPOSE_ACK` | 0x00782300 | — | `ItemDecomposeAck` |  |
 | 2547 | `eEGS_RANDOM_OPTION_CHANGE_REQ` | — | `inventory/crafting.py` (`handle_random_option_change`) | `RandomOptionChangeReq` | Opcode 2547 (eEGS_RANDOM_OPTION_CHANGE_REQ) -> 2548: reroll random bonus options on an item. |
 | 2548 | `eEGS_RANDOM_OPTION_CHANGE_ACK` | 0x00782830 | — | `RandomOptionChangeAck` |  |
-| 2550 | `eEGS_LEAGUE_SEASON_ARENA_GET_RANK_REQ` | — | `arena.py` (`handle_league_season_arena_get_rank`) | `LeagueSeasonArenaGetRankReq` | Opcode 2550 / 2475 -> 2551 / 2476. |
+| 2550 | `eEGS_LEAGUE_SEASON_ARENA_GET_RANK_REQ` | — | `arena/league.py` (`handle_league_season_arena_get_rank`) | `LeagueSeasonArenaGetRankReq` | Opcode 2550 / 2475 -> 2551 / 2476. |
 | 2551 | `eEGS_LEAGUE_SEASON_ARENA_GET_RANK_ACK` | — | — | `LeagueSeasonArenaGetRankAck` |  |
-| 2552 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_REQ` | — | `arena.py` (`handle_league_season_arena_get_my_rank`) | `LeagueSeasonArenaGetMyRankReq` | Opcode 2552 / 2477 -> 2553 / 2478. |
+| 2552 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_REQ` | — | `arena/league.py` (`handle_league_season_arena_get_my_rank`) | `LeagueSeasonArenaGetMyRankReq` | Opcode 2552 / 2477 -> 2553 / 2478. |
 | 2553 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_ACK` | — | — | `LeagueSeasonArenaGetMyRankAck` |  |
-| 2556 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_REQ` | — | `arena.py` (`handle_league_season_arena_charstat_update`) | `LeagueSeasonArenaCharStatUpdateReq` |  |
+| 2556 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_REQ` | — | `arena/extended.py` (`handle_league_season_arena_charstat_update`) | `LeagueSeasonArenaCharStatUpdateReq` |  |
 | 2557 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_ACK` | — | — | `LeagueSeasonArenaCharStatUpdateAck` |  |
-| 2561 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_REQ` | — | `arena.py` (`handle_league_season_arena_charstat_init`) | `LeagueSeasonArenaCharStatInitReq` |  |
+| 2561 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_REQ` | — | `arena/extended.py` (`handle_league_season_arena_charstat_init`) | `LeagueSeasonArenaCharStatInitReq` |  |
 | 2562 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_ACK` | — | — | `LeagueSeasonArenaCharStatInitAck` |  |
 | 2565 | `eEGS_FRIEND_BLOCK_LIST_ADD_REQ` | — | `social/friends.py` (`handle_friend_block_list_add`) | `FriendBlockListAddReq` | eEGS_FRIEND_BLOCK_LIST_ADD_REQ (0x007A2930) -> 2566 eEGS_FRIEND_BLOCK_LIST_ADD_ACK (0x0075B640). |
 | 2566 | `eEGS_FRIEND_BLOCK_LIST_ADD_ACK` | 0x0075B640 | — | `FriendBlockListAddAck` |  |
@@ -618,11 +618,11 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2712 | `eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT` | — | `commerce/cash_shop.py` (`handle_steam_init_buy_item`) | `SteamInitBuyItemNot` | eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT. On Steam the overlay then |
 | 2713 | `eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ` | — | `commerce/cash_shop.py` (`handle_steam_finalize_buy_item`) | — | eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_REQ (0x004E6440: u64 order id, |
 | 2714 | `eEGS_BILLING_STEAM_FINALIZE_BUY_ITEM_ACK` | — | — | `SteamFinalizeBuyItemAck` |  |
-| 2715 | `eEGS_MINIGAME_GBB_START_REQ` | — | `arena.py` (`handle_minigame_gbb_start`) | `MinigameGbbStartReq` | Opcode 2715 (eEGS_MINIGAME_GBB_START_REQ, 0x007A8280) -> 2716. |
+| 2715 | `eEGS_MINIGAME_GBB_START_REQ` | — | `arena/minigame.py` (`handle_minigame_gbb_start`) | `MinigameGbbStartReq` | Opcode 2715 (eEGS_MINIGAME_GBB_START_REQ, 0x007A8280) -> 2716. |
 | 2716 | `eEGS_MINIGAME_GBB_START_ACK` | — | — | `MinigameGbbStartAck` |  |
-| 2717 | `eEGS_GBB_CHALLENGE_REQ` | — | `arena.py` (`handle_gbb_challenge`) | `GbbChallengeReq` | Opcode 2717 (eEGS_GBB_CHALLENGE_REQ, 0x007A8300) -> 2718. |
+| 2717 | `eEGS_GBB_CHALLENGE_REQ` | — | `arena/minigame.py` (`handle_gbb_challenge`) | `GbbChallengeReq` | Opcode 2717 (eEGS_GBB_CHALLENGE_REQ, 0x007A8300) -> 2718. |
 | 2718 | `eEGS_GBB_CHALLENGE_ACK` | — | — | `GbbChallengeAck` |  |
-| 2719 | `eEGS_GBB_GIVEUP_REQ` | — | `arena.py` (`handle_gbb_giveup`) | `GbbGiveupReq` | Opcode 2719 (eEGS_GBB_GIVEUP_REQ, 0x007A83A0) -> 2720. |
+| 2719 | `eEGS_GBB_GIVEUP_REQ` | — | `arena/minigame.py` (`handle_gbb_giveup`) | `GbbGiveupReq` | Opcode 2719 (eEGS_GBB_GIVEUP_REQ, 0x007A83A0) -> 2720. |
 | 2720 | `eEGS_GBB_GIVEUP_ACK` | — | — | `GbbGiveupAck` |  |
 | 2721 | `eEGS_STEAM_BUY_PACKAGE_REQ` | — | `commerce/cash_shop.py` (`handle_steam_buy_package`) | `SteamBuyPackageReq` | eEGS_STEAM_BUY_PACKAGE_REQ (0x007A8420) -> 2722 eEGS_STEAM_BUY_PACKAGE_ACK. |
 | 2722 | `eEGS_STEAM_BUY_PACKAGE_ACK` | — | — | `SteamBuyPackageAck` |  |
@@ -724,15 +724,15 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5094 | `eERC_GAMEPLAY_DIE_CHAR_ACK` | 0x0078F090 | — | `GameplayDieCharAck` |  |
 | 5095 | `eERC_CHANGE_DUNGEON_LAYER_NOT` | — | `dungeon/combat.py` (`handle_change_dungeon_layer`) | `ChangeDungeonLayerNot` | eERC_CHANGE_DUNGEON_LAYER_NOT (sender 0x7900B0): ffffff7f + i64 layer_net_id. |
 | 5096 | `eERC_UPDATE_CHAR_INFO_NOT` | 0x0078C990 | — | `UpdateCharInfoNot` |  |
-| 5097 | `eERC_DUEL_START_REQ` | — | `arena.py` (`handle_duel_start`) | `DuelStartReq` | Opcode 5097 (eERC_DUEL_START_REQ) -> 5098 (eERC_DUEL_START_ACK) & 5099 (DuelStartNot). |
+| 5097 | `eERC_DUEL_START_REQ` | — | `arena/duels.py` (`handle_duel_start`) | `DuelStartReq` | Opcode 5097 (eERC_DUEL_START_REQ) -> 5098 (eERC_DUEL_START_ACK) & 5099 (DuelStartNot). |
 | 5098 | `eERC_DUEL_START_ACK` | — | — | `DuelStartAck` |  |
 | 5099 | `eERC_DUEL_START_NOT` | — | — | `DuelStartNot` |  |
-| 5100 | `eERC_DUEL_REQUEST_REQ` | — | `arena.py` (`handle_duel_request`) | `DuelRequestReq` | Opcode 5100 (eERC_DUEL_REQUEST_REQ) -> 5101 (eERC_DUEL_REQUEST_ACK). |
+| 5100 | `eERC_DUEL_REQUEST_REQ` | — | `arena/duels.py` (`handle_duel_request`) | `DuelRequestReq` | Opcode 5100 (eERC_DUEL_REQUEST_REQ) -> 5101 (eERC_DUEL_REQUEST_ACK). |
 | 5101 | `eERC_DUEL_REQUEST_ACK` | — | — | `DuelRequestAck` |  |
-| 5105 | `eERC_DUEL_RESULT_REQ` | — | `arena.py` (`handle_duel_result`) | `DuelResultReq` | Opcode 5105 (eERC_DUEL_RESULT_REQ) -> 5106 (eERC_DUEL_RESULT_ACK). |
+| 5105 | `eERC_DUEL_RESULT_REQ` | — | `arena/duels.py` (`handle_duel_result`) | `DuelResultReq` | Opcode 5105 (eERC_DUEL_RESULT_REQ) -> 5106 (eERC_DUEL_RESULT_ACK). |
 | 5106 | `eERC_DUEL_RESULT_ACK` | — | — | `DuelResultAck` |  |
 | 5108 | `eERC_DUEL_GIVEUP_NOT` | — | — | `DuelGiveupNot` |  |
-| 5112 | `eERC_DUEL_REFUSE_REQ` | — | `arena.py` (`handle_duel_refuse`) | `DuelRefuseReq` | Opcode 5112 (eERC_DUEL_REFUSE_REQ) -> 5113 (eERC_DUEL_REFUSE_ACK). |
+| 5112 | `eERC_DUEL_REFUSE_REQ` | — | `arena/duels.py` (`handle_duel_refuse`) | `DuelRefuseReq` | Opcode 5112 (eERC_DUEL_REFUSE_REQ) -> 5113 (eERC_DUEL_REFUSE_ACK). |
 | 5113 | `eERC_DUEL_REFUSE_ACK` | — | — | `DuelRefuseAck` |  |
 | 5114 | `eERC_GET_DROP_AR_NOT` | 0x00792700 | — | `GetDropArNot` |  |
 | 5117 | `eERC_CHEAT_VIEW_ITEM_DROP_LOG_NOT` | 0x00758E20 | — | `CheatViewItemDropLogNot` |  |
@@ -754,27 +754,27 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5138 | `eERC_ARENA_JOIN_SQUARE_ACK` | — | — | `ArenaJoinSquareAck` |  |
 | 5140 | `eERC_ARENA_LEAVE_SQUARE_ACK` | — | — | `ArenaLeaveSquareAck` |  |
 | 5141 | `eERC_ARENA_LEAVE_LAYER_NOT` | — | — | `ArenaLeaveLayerNot` |  |
-| 5142 | `eERC_ARENA_JOIN_LAYER_REQ` | — | `arena.py` (`handle_arena_join_layer`) | `ArenaJoinLayerReq` |  |
+| 5142 | `eERC_ARENA_JOIN_LAYER_REQ` | — | `arena/extended.py` (`handle_arena_join_layer`) | `ArenaJoinLayerReq` |  |
 | 5143 | `eERC_ARENA_JOIN_LAYER_ACK` | — | — | `ArenaJoinLayerAck` |  |
 | 5144 | `eERC_ARENA_JOIN_LAYER_NOT` | — | — | `ArenaJoinLayerNot` |  |
-| 5145 | `eERC_ARENA_JOIN_ROOM_REQ` | — | `arena.py` (`handle_arena_join_room`) | `ArenaJoinRoomReq` | Opcode 5145 (eERC_ARENA_JOIN_ROOM_REQ) -> 5146 (eERC_ARENA_JOIN_ROOM_ACK). |
+| 5145 | `eERC_ARENA_JOIN_ROOM_REQ` | — | `arena/rooms.py` (`handle_arena_join_room`) | `ArenaJoinRoomReq` | Opcode 5145 (eERC_ARENA_JOIN_ROOM_REQ) -> 5146 (eERC_ARENA_JOIN_ROOM_ACK). |
 | 5146 | `eERC_ARENA_JOIN_ROOM_ACK` | — | — | `ArenaJoinRoomAck` |  |
-| 5148 | `eERC_ARENA_LEAVE_ROOM_REQ` | — | `arena.py` (`handle_arena_leave_room`) | `ArenaLeaveRoomReq` | Opcode 5148 (eERC_ARENA_LEAVE_ROOM_REQ) -> 5149 (eERC_ARENA_LEAVE_ROOM_ACK). |
+| 5148 | `eERC_ARENA_LEAVE_ROOM_REQ` | — | `arena/rooms.py` (`handle_arena_leave_room`) | `ArenaLeaveRoomReq` | Opcode 5148 (eERC_ARENA_LEAVE_ROOM_REQ) -> 5149 (eERC_ARENA_LEAVE_ROOM_ACK). |
 | 5149 | `eERC_ARENA_LEAVE_ROOM_ACK` | — | — | `ArenaLeaveRoomAck` |  |
 | 5150 | `eERC_ARENA_LEAVE_ROOM_NOT` | — | — | `ArenaLeaveRoomNot` |  |
-| 5153 | `eERC_ARENA_CREATE_ROOM_REQ` | — | `arena.py` (`handle_arena_create_room`) | `ArenaCreateRoomReq` | Opcode 5153 (eERC_ARENA_CREATE_ROOM_REQ) -> 5154 (eERC_ARENA_CREATE_ROOM_ACK). |
+| 5153 | `eERC_ARENA_CREATE_ROOM_REQ` | — | `arena/rooms.py` (`handle_arena_create_room`) | `ArenaCreateRoomReq` | Opcode 5153 (eERC_ARENA_CREATE_ROOM_REQ) -> 5154 (eERC_ARENA_CREATE_ROOM_ACK). |
 | 5154 | `eERC_ARENA_CREATE_ROOM_ACK` | — | — | `ArenaCreateRoomAck` |  |
-| 5163 | `eERC_ARENA_BANISH_USER_REQ` | — | `arena.py` (`handle_arena_banish_user`) | `ArenaBanishUserReq` |  |
+| 5163 | `eERC_ARENA_BANISH_USER_REQ` | — | `arena/extended.py` (`handle_arena_banish_user`) | `ArenaBanishUserReq` |  |
 | 5164 | `eERC_ARENA_BANISH_USER_ACK` | — | — | `ArenaBanishUserAck` |  |
 | 5165 | `eERC_ARENA_BACK_TO_SQUARE_REQ` | — | `social/friends.py` (`handle_arena_back_to_square`) | `ArenaBackToSquareReq` | eERC_ARENA_BACK_TO_SQUARE_REQ -> 5166 eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550). |
 | 5166 | `eERC_ARENA_BACK_TO_SQUARE_ACK` | 0x00758550 | — | `ArenaBackToSquareAck` |  |
-| 5168 | `eERC_ARENA_CHANGE_ROOMHOST_REQ` | — | `arena.py` (`handle_arena_change_room_host`) | `ArenaChangeRoomHostReq` |  |
+| 5168 | `eERC_ARENA_CHANGE_ROOMHOST_REQ` | — | `arena/extended.py` (`handle_arena_change_room_host`) | `ArenaChangeRoomHostReq` |  |
 | 5169 | `eERC_ARENA_CHANGE_ROOMHOST_ACK` | — | — | `ArenaChangeRoomHostAck` |  |
-| 5172 | `eERC_ARENA_START_GAME_REQ` | — | `arena.py` (`handle_arena_start_game`) | `ArenaStartGameReq` |  |
+| 5172 | `eERC_ARENA_START_GAME_REQ` | — | `arena/extended.py` (`handle_arena_start_game`) | `ArenaStartGameReq` |  |
 | 5173 | `eERC_ARENA_START_GAME_ACK` | — | — | `ArenaStartGameAck` |  |
-| 5182 | `eERC_ARENA_READY_GAME_REQ` | — | `arena.py` (`handle_arena_ready_game`) | `ArenaReadyGameReq` |  |
+| 5182 | `eERC_ARENA_READY_GAME_REQ` | — | `arena/extended.py` (`handle_arena_ready_game`) | `ArenaReadyGameReq` |  |
 | 5183 | `eERC_ARENA_READY_GAME_ACK` | — | — | `ArenaReadyGameAck` |  |
-| 5202 | `eERC_ARENA_RANDOM_MATCHING_REQUEST_REQ` | — | `arena.py` (`handle_arena_random_matching_request`) | `ArenaRandomMatchingRequestReq` |  |
+| 5202 | `eERC_ARENA_RANDOM_MATCHING_REQUEST_REQ` | — | `arena/extended.py` (`handle_arena_random_matching_request`) | `ArenaRandomMatchingRequestReq` |  |
 | 5203 | `eERC_ARENA_RANDOM_MATCHING_REQUEST_ACK` | — | — | `ArenaRandomMatchingRequestAck` |  |
 | 5220 | `eERC_ARENA_RANDOM_MATCHING_INIT_ACK` | — | — | `ArenaRandomMatchingInitAck` |  |
 | 5222 | `eERC_FAIL_DUNGEON_ENTER_LIMIT_NOT` | 0x00798B30 | — | `FailDungeonEnterLimitNot` |  |
@@ -801,22 +801,22 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5261 | `eERC_SECOND_PASS_AUTH_ACK` | 0x0075B080 | — | `SecondPassAuthAck` |  |
 | 5262 | `eERC_CHEAT_SECOND_PASS_DELETE_REQ` | — | `gm.py` (`handle_cheat_second_pass_delete`) | `CheatSecondPassDeleteReq` |  |
 | 5263 | `eERC_CHEAT_SECOND_PASS_DELETE_ACK` | — | — | `CheatSecondPassDeleteAck` |  |
-| 5265 | `eERC_ARENA_CHANGE_ROOMCHAR_INFO_REQ` | — | `arena.py` (`handle_arena_change_room_char_info`) | `ArenaChangeRoomCharInfoReq` |  |
+| 5265 | `eERC_ARENA_CHANGE_ROOMCHAR_INFO_REQ` | — | `arena/extended.py` (`handle_arena_change_room_char_info`) | `ArenaChangeRoomCharInfoReq` |  |
 | 5266 | `eERC_ARENA_CHANGE_ROOMCHAR_INFO_ACK` | — | — | `ArenaChangeRoomCharInfoAck` |  |
-| 5267 | `eERC_ARENA_CHANGE_SLOTCHAR_INFO_REQ` | — | `arena.py` (`handle_arena_change_slot_char_info`) | `ArenaChangeSlotCharInfoReq` |  |
+| 5267 | `eERC_ARENA_CHANGE_SLOTCHAR_INFO_REQ` | — | `arena/extended.py` (`handle_arena_change_slot_char_info`) | `ArenaChangeSlotCharInfoReq` |  |
 | 5268 | `eERC_ARENA_CHANGE_SLOTCHAR_INFO_ACK` | — | — | `ArenaChangeSlotCharInfoAck` |  |
-| 5269 | `eERC_ARENA_TEAM_CREATE_REQ` | — | `arena.py` (`handle_arena_team_create`) | `ArenaTeamCreateReq` | Opcode 5269 / 2452 -> 5270 / 2453. |
+| 5269 | `eERC_ARENA_TEAM_CREATE_REQ` | — | `arena/teams.py` (`handle_arena_team_create`) | `ArenaTeamCreateReq` | Opcode 5269 / 2452 -> 5270 / 2453. |
 | 5270 | `eERC_ARENA_TEAM_CREATE_ACK` | — | — | `ArenaTeamCreateAck` |  |
-| 5271 | `eERC_ARENA_TEAM_JOIN_REQ` | — | `arena.py` (`handle_arena_team_join`) | `ArenaTeamJoinReq` | Opcode 5271 / 2454 -> 5272 / 2455. |
+| 5271 | `eERC_ARENA_TEAM_JOIN_REQ` | — | `arena/teams.py` (`handle_arena_team_join`) | `ArenaTeamJoinReq` | Opcode 5271 / 2454 -> 5272 / 2455. |
 | 5272 | `eERC_ARENA_TEAM_JOIN_ACK` | — | — | `ArenaTeamJoinAck` |  |
-| 5274 | `eERC_ARENA_TEAM_LEAVE_REQ` | — | `arena.py` (`handle_arena_team_leave`) | `ArenaTeamLeaveReq` | Opcode 5274 / 2456 -> 5275 / 2457. |
+| 5274 | `eERC_ARENA_TEAM_LEAVE_REQ` | — | `arena/teams.py` (`handle_arena_team_leave`) | `ArenaTeamLeaveReq` | Opcode 5274 / 2456 -> 5275 / 2457. |
 | 5275 | `eERC_ARENA_TEAM_LEAVE_ACK` | — | — | `ArenaTeamLeaveAck` |  |
 | 5276 | `eERC_ARENA_TEAM_LEAVE_NOT` | — | — | `ArenaTeamLeaveNot` |  |
-| 5282 | `eERC_ARENA_TEAM_BANISH_REQ` | — | `arena.py` (`handle_arena_team_banish`) | `ArenaTeamBanishReq` |  |
+| 5282 | `eERC_ARENA_TEAM_BANISH_REQ` | — | `arena/extended.py` (`handle_arena_team_banish`) | `ArenaTeamBanishReq` |  |
 | 5283 | `eERC_ARENA_TEAM_BANISH_ACK` | — | — | `ArenaTeamBanishAck` |  |
-| 5286 | `eERC_ARENA_TEAM_CHANGE_HOST_REQ` | — | `arena.py` (`handle_arena_team_change_host`) | `ArenaTeamChangeHostReq` |  |
+| 5286 | `eERC_ARENA_TEAM_CHANGE_HOST_REQ` | — | `arena/extended.py` (`handle_arena_team_change_host`) | `ArenaTeamChangeHostReq` |  |
 | 5287 | `eERC_ARENA_TEAM_CHANGE_HOST_ACK` | — | — | `ArenaTeamChangeHostAck` |  |
-| 5301 | `eERC_ARENA_CHANGE_TEAMINFO_REQ` | — | `arena.py` (`handle_arena_change_team_info`) | `ArenaChangeTeamInfoReq` |  |
+| 5301 | `eERC_ARENA_CHANGE_TEAMINFO_REQ` | — | `arena/extended.py` (`handle_arena_change_team_info`) | `ArenaChangeTeamInfoReq` |  |
 | 5302 | `eERC_ARENA_CHANGE_TEAMINFO_ACK` | — | — | `ArenaChangeTeamInfoAck` |  |
 | 5323 | `eERC_PET_LEVEL_UP_NOT` | 0x007754E0 | — | `PetLevelUpNot` |  |
 | 5324 | `eERC_PET_CHANGE_EXP_NOT` | 0x0079EFA0 | — | `PetChangeExpNot` |  |
