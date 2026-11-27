@@ -481,6 +481,9 @@ The cropped splash screenshot is preserved locally as `research/splash-local.png
 
 Verified environment: Windows x64, Python 3.8, MSVC 2022 x86, Ghidra 12.1.4, JDK 21.0.9, REA CLI 6.7.0. The server and tools use only the Python standard library.
 
+Collection quests count and consume the player's carried items. A matching stack
+in depot storage stays in the depot after turn-in.
+
 ### Headless tests (no game window)
 
 ```powershell
