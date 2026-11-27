@@ -388,7 +388,12 @@ class PetCoreHandlersMixin:
             slot = max(0, int(req.depot_slot_index))
             while len(pet_extend) <= slot:
                 pet_extend.append(0)
-            pet_extend[slot] = int(pet_extend[slot]) + extend_time
+            now = int(time.time())
+            deadlines = char.setdefault('pet_depot_extend_expires', {})
+            key = str(slot)
+            previous_deadline = int(deadlines.get(key, now + int(pet_extend[slot])))
+            deadlines[key] = max(now, previous_deadline) + extend_time
+            pet_extend[slot] = deadlines[key] - now
             char['pet_depot_extend'] = pet_extend
             items = char.get('items', [])
             used = next((i for i in items if i.get('uid') == req.item_uid), None)
