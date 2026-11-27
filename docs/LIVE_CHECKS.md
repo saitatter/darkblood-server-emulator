@@ -78,6 +78,9 @@ When it fails, note what the client did and keep it here.
 After a team leader changes the arena team name and type (`5301`), joining that
 team (`5271`) shows the updated values.
 
+Fishing stops when changing or leaving a town layer. Moving while a cast is pending
+leaves the bait in the bag without a catch notification from the old layer.
+
 ## Basic client checklist (from ROADMAP)
 
 - [ ] Store: buying decrements gold and adds the bag icon; selling removes it.
