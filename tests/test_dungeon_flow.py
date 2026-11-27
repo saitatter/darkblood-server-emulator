@@ -685,7 +685,20 @@ class DungeonFlowTest(ServerTestCase):
         c['citadel_play_count'] = 1
         self.assertTrue(refresh_dungeon_entry_limits(c, now=tue))
         self.assertEqual(c['citadel_play_count'], 2)  # +1 daily charge
+        fri = datetime.datetime(2026, 11, 27, 12, 0).timestamp()
+        self.assertTrue(refresh_dungeon_entry_limits(c, now=fri))
+        self.assertEqual(c['citadel_play_count'], 5)
+        self.assertFalse(refresh_dungeon_entry_limits(c, now=fri))
+        sun = datetime.datetime(2026, 11, 29, 12, 0).timestamp()
+        c['citadel_play_count'] = 6
+        self.assertTrue(refresh_dungeon_entry_limits(c, now=sun))
+        self.assertEqual(c['citadel_play_count'], 7)
+
         c['citadel_play_count'] = 0
+        next_wed = datetime.datetime(2026, 12, 2, 12, 0).timestamp()
+        away = dict(c)
+        self.assertTrue(refresh_dungeon_entry_limits(away, now=next_wed))
+        self.assertEqual(away['citadel_play_count'], 5)
         self.assertTrue(refresh_dungeon_entry_limits(c, now=next_mon))
         self.assertEqual(c['citadel_play_count'], 3)  # Monday weekly reset
 
