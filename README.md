@@ -23,7 +23,11 @@ struct layouts were recovered from it, and other builds are not supported.
 Launch and configure the emulator using **`DarkBloodLauncher.exe`** (standalone release ZIP, no Python required) or `python tools/launcher/launcher.py` (from source). The launcher verifies the client binary, probes game/relay server latency, starts/stops the local server, rebuilds and deploys the modular `steam_api.dll` hook, and launches 1–4 clients in a 2×2 grid with automatic multibox mutex release.
 
 ### News & Server
-Displays the live repository commit feed, server connection settings (`host`, `port`, `relay_port`), account/multibox configuration, live TCP latency probes, and a summary of enabled patches.
+
+Shows the installed release's changelog and uses the bundled `RELEASE_NOTES.md`
+when offline. The launcher reads local Git history when running from a
+development checkout. This tab also shows server settings (`host`, `port`,
+`relay_port`), account and multibox settings, TCP latency, and enabled patches.
 
 ![Dark Blood Custom Launcher — News & Server](docs/images/launcher_news_server.png)
 

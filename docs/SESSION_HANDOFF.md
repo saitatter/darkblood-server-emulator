@@ -97,6 +97,7 @@
 - **Launcher & GM Bridge (`tools/launcher/launcher.py`, `tools/launcher/launcher_app/changelog.py`, `tools/launcher/updater.py`, `tools/launcher/build_release.py`, `src/darkblood/games/gm_bridge.py`)**:
   - Restricted launcher updates strictly to published GitHub Releases (`releases_only=True`, no fallback to unreleased `main` commits) and fixed release changelog scoping via GitHub `/compare/{prev_tag}...{cur_tag}`.
   - Updated the launcher release changelog (`tools/launcher/launcher_app/changelog.py`) to display all commits in the release (not only `feat`/`fix`) across local git log, GitHub API, and offline `RELEASE_NOTES.md` fallback.
+  - Portable installations use their installed version to query GitHub and read bundled release notes when offline. The launcher uses local Git history only when its own folder is a checkout.
   - Eliminated Windows light-theme flash on tab/page switches via `tkraise()` and off-screen atomic `ScrollFrame.swap_inner()`.
   - Hid `Build & Deploy Hook` in frozen release builds, added `--icon assets/darkblood.ico` to `DarkBloodLauncher.exe`, defaulted `skip_logos` and `skip_tutorial_always` to `True`, and added `ensure_hook_deployed()` on Play.
   - Added searchable `GM COMMANDS` tab (shown only when `gm_mode` is enabled) backed by localhost-only GM bridge (`127.0.0.1:9402`) for live execution of server-backed GM commands.
