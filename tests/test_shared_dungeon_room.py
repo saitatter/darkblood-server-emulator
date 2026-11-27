@@ -44,7 +44,7 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(heard, echo)
                 self.assertIn(wide('RoomHost'), heard)
                 self.assertIn(wide('hello town'), heard)
-                whisper = ChatReq(channel=2, target='RoomHost', message='psst', tail=CHAT_TAIL).encode()
+                whisper = ChatReq(channel=2, target='RoomHost', message='psst').encode()
                 guest.send_event(5040, whisper)
                 _, whisper_ack = await guest.expect_event(5041)
                 _, whispered = await host.expect_event(5041)

@@ -106,7 +106,7 @@ message 2007 SelectCharacterAck
   u64 _
   u64 _
   vector<?> _                # 0x004B1A60
-  u64 _                      # +0x255 -> singleton 0x0049F7F0 +0xC4
+  u64 _                      # +0x255 -> JGuildManager (singleton 0x0049F7F0) +0xC4
   bool _
   bool _
   f32 _                      # +0x3BD -> player +0xB0

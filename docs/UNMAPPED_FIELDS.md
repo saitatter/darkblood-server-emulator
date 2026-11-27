@@ -24,7 +24,7 @@
 | `5266 ArenaChangeRoomCharInfoAck` | `map<?>` | arena.jsch:490 | mapSlotInfo (0x004AA240) |
 | `5268 ArenaChangeSlotCharInfoAck` | `map<?>` | arena.jsch:502 | m_mapSlotInfo (0x004AA240) |
 
-## commerce (9 of 153 fields)
+## commerce (7 of 156 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -33,10 +33,8 @@
 | `StoreRecord` | `raw[8]` | commerce.jsch:16 | +0x10 unknown |
 | `StoreRecord` | `i16` | commerce.jsch:18 | +0x1A: -1 = max buy count is the item's stack size (dict +0x19E) |
 | `StoreRecord` | `raw[4]` | commerce.jsch:19 | +0x1C unknown |
-| `2066 StoreInfoAck` | `vector<?>` | commerce.jsch:27 | vecRePur (assert: nNPCID >> vecGoods >> vecRePur; 0x005910D0, as 2591 vecReItem) |
-| `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:153 | meaning unknown |
-| `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:240 | 0x005F6540 |
-| `2591 SellItemAllAck` | `vector<?>` | commerce.jsch:303 | vecReItem (0x0077CEB0 -> 0x00A1ECA0) |
+| `5077 DeleteTradeItemReq` | `i64` | commerce.jsch:161 | meaning unknown |
+| `2602 MonsterCardListAck` | `map<?>` | commerce.jsch:248 | 0x005F6540 |
 
 ## dungeon (25 of 284 fields)
 
@@ -80,12 +78,42 @@
 | :--- | :--- | ---: | :--- |
 | `2060 CheatItemDropAck` | `vector<?>` | gm.jsch:29 | vecDropItem (0x004E3AD0 -> 0x00A509E0: u32, u32, u16, u16, set<i64>, u16), names not recovered |
 
-## guild (2 of 151 fields)
+## guild (32 of 185 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `2157 GuildInfoNot` | `raw[64]` | guild.jsch:139 |  |
-| `2158 GuildPersonListNot` | `vector<?>` | guild.jsch:144 | guild members |
+| `GuildInfo` | `u8` | guild.jsch:144 | +0x28 |
+| `GuildInfo` | `u16` | guild.jsch:145 | +0x29 -> player +0x234 (1 when guildless, ctor in 0x00966730) |
+| `GuildInfo` | `u32` | guild.jsch:146 | +0x2B |
+| `GuildInfo` | `u32` | guild.jsch:147 | +0x2F |
+| `GuildInfo` | `u32` | guild.jsch:148 | +0x33 |
+| `GuildInfo` | `u32` | guild.jsch:149 | +0x37 |
+| `GuildInfo` | `u32` | guild.jsch:150 | +0x3B |
+| `GuildInfo` | `u32` | guild.jsch:151 | +0x3F |
+| `GuildInfo` | `i64` | guild.jsch:152 | +0x43 |
+| `GuildInfo` | `wstr` | guild.jsch:153 | +0x4B |
+| `GuildInfo` | `u64` | guild.jsch:154 | +0x67 (0x00B356F0) |
+| `GuildInfo` | `i64` | guild.jsch:155 | +0x6F |
+| `GuildInfo` | `u64` | guild.jsch:156 | +0x77 |
+| `GuildInfo` | `u64` | guild.jsch:157 | +0x7F |
+| `GuildInfo` | `u64` | guild.jsch:158 | +0x87 |
+| `GuildInfo` | `u32` | guild.jsch:159 | +0x08 (read last) |
+| `GuildMember` | `i64` | guild.jsch:165 | +0x00 |
+| `GuildMember` | `i64` | guild.jsch:166 | +0x08 |
+| `GuildMember` | `wstr` | guild.jsch:167 | +0x10 |
+| `GuildMember` | `u16` | guild.jsch:168 | +0x2C |
+| `GuildMember` | `u16` | guild.jsch:169 | +0x2E |
+| `GuildMember` | `u8` | guild.jsch:170 | +0x30 |
+| `GuildMember` | `u8` | guild.jsch:171 | +0x31 |
+| `GuildMember` | `u16` | guild.jsch:172 | +0x32 |
+| `GuildMember` | `u32` | guild.jsch:173 | +0x34 |
+| `GuildMember` | `u64` | guild.jsch:174 | +0x38 |
+| `GuildMember` | `u64` | guild.jsch:175 | +0x40 |
+| `GuildMember` | `i64` | guild.jsch:176 | +0x6C |
+| `GuildMember` | `i64` | guild.jsch:177 | +0x74 |
+| `GuildMember` | `u32` | guild.jsch:178 | +0x48 |
+| `GuildMember` | `u32` | guild.jsch:179 | +0x4C |
+| `GuildMember` | `wstr` | guild.jsch:180 | +0x50 |
 
 ## inventory (3 of 233 fields)
 
@@ -120,7 +148,7 @@
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:106 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:107 |  |
 | `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:108 | 0x004B1A60 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:109 | +0x255 -> singleton 0x0049F7F0 +0xC4 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:109 | +0x255 -> JGuildManager (singleton 0x0049F7F0) +0xC4 |
 | `2007 SelectCharacterAck` | `bool` | lobby.jsch:110 |  |
 | `2007 SelectCharacterAck` | `bool` | lobby.jsch:111 |  |
 | `2007 SelectCharacterAck` | `f32` | lobby.jsch:112 | +0x3BD -> player +0xB0 |
@@ -176,18 +204,20 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (8 of 131 fields)
+## social (10 of 137 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `FriendEntry` | `i64` | social.jsch:21 | +0x4A |
-| `5041 ChatAck` | `bool` | social.jsch:111 | +0x55 sub-struct flag (0x00A52BD0) |
-| `5041 ChatAck` | `vector<?>` | social.jsch:112 |  |
-| `5041 ChatAck` | `vector<?>` | social.jsch:113 |  |
-| `5041 ChatAck` | `i64` | social.jsch:116 |  |
-| `5041 ChatAck` | `i64` | social.jsch:117 |  |
-| `5041 ChatAck` | `i32` | social.jsch:118 |  |
-| `LeagueArenaCharInfo` | `raw[16]` | social.jsch:169 | +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810) |
+| `5040 ChatReq` | `u32` | social.jsch:111 | +0x76 (1 in captures; the server answers with its server key) |
+| `5040 ChatReq` | `i64` | social.jsch:112 | +0x7A |
+| `5040 ChatReq` | `i64` | social.jsch:113 | +0x82 |
+| `5040 ChatReq` | `i64` | social.jsch:114 | +0x8A |
+| `5040 ChatReq` | `i32` | social.jsch:115 | +0x92 |
+| `5041 ChatAck` | `i64` | social.jsch:129 |  |
+| `5041 ChatAck` | `i64` | social.jsch:130 |  |
+| `5041 ChatAck` | `i32` | social.jsch:131 |  |
+| `LeagueArenaCharInfo` | `raw[16]` | social.jsch:182 | +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810) |
 
 ## stalls (11 of 92 fields)
 

@@ -41,7 +41,7 @@ CHAT_TAIL = bytes.fromhex('001080108001000000') + b'\xff' * 28
 def chat_request(text: str, channel: int = 0) -> bytes:
     """5040 body in the captured client form (no header)."""
     from darkblood.games.network.messages import ChatReq
-    return ChatReq(channel=channel, message=text, tail=CHAT_TAIL).encode()
+    return ChatReq(channel=channel, message=text).encode()
 
 
 class ServerTestCase(unittest.TestCase):

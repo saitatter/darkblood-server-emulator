@@ -88,16 +88,31 @@ message 5016 ChangeTeamAck
   i32 team_id
 end
 
+struct ChatPaint
+  ## jChatInfo +0x55 sub-struct (reader 0x00A52BD0). Filled only by
+  ## JAppPagePaint::SendMsg (0x005FF4B0): page +0x165 flag, +0xD8 4-byte vector,
+  ## +0xE8 byte vector (drawn picture sent through chat).
+  bool has_paint             # +0x55
+  vector<u32> paint_words    # +0x66 (0x005F17F0 -> 0x00B35390, 4-byte elements)
+  vector<u8> paint_bytes     # +0x56 (0x0095F9B0 -> 0x0095E700, u8 elements)
+end
+
 message 5040 ChatReq
-  ## Sender 0x007AC570 writes one struct (0x00A4DC70). Captures carry no header:
+  ## JUserClient::ChatREQ 0x007AC570 writes jChatInfo (0x00A4DC70; assert
+  ## "jEvt.Write() << jChatInfo"). Captures carry no header:
   ## normal: 01 80 80 8a "/bags" 00 1080 1080 01000000 ff...
   ## whisper: 02 90 "Warrior1" 80 8a "sadad" 00 1080 1080 01000000 ff...
   ## Field order verified in 0x00544310: +0x01 is target, +0x1D is sender.
   u8 channel
-  wstr target
-  wstr sender
-  wstr message
-  rest tail
+  wstr target                # m_strNickTo
+  wstr sender                # m_strNick
+  wstr message               # m_strMsg
+  ChatPaint paint = ChatPaint()
+  u32 _ = 1                  # +0x76 (1 in captures; the server answers with its server key)
+  i64 _ = -1                 # +0x7A
+  i64 _ = -1                 # +0x82
+  i64 _ = -1                 # +0x8A
+  i32 _ = -1                 # +0x92
 end
 
 message 5041 ChatAck ok_only
@@ -108,9 +123,7 @@ message 5041 ChatAck ok_only
   wstr target
   wstr sender = 'System'
   wstr message
-  bool _                     # +0x55 sub-struct flag (0x00A52BD0)
-  vector<?> _
-  vector<?> _
+  ChatPaint paint = ChatPaint()  # +0x55 paint data, echoed from the 5040 request
   i32 server_key = 31        # +0x76; must match local player's server key (0x1F) for whispers
   i64 sender_square_uid = 0x07C0000000000001 # +0x7A; bits 54-58 checked by 0x00544310 (else "(Other server)")
   i64 _

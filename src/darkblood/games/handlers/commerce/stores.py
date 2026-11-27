@@ -99,6 +99,12 @@ class StoreHandlers:
                                         note=f'monster card ack {opcode} (empty)')
 
 
+    def _repurchase_list(self):
+        """Items sold this session, as RepurchaseItem entries (2066 vecRePur)."""
+        from darkblood.games.network.messages.commerce import RepurchaseItem
+        return [RepurchaseItem(item=Item(owner=0, **record), price=price, sell_time=sold_at)
+                for record, price, sold_at in getattr(self, '_repurchase_items', {}).values()]
+
     @packet_handler(2065)
     async def handle_get_store_info(self, correlation, body):
         # eEGS_GET_STORE_INFO_REQ (i32, u32 npc id; observed when talking to a
@@ -106,7 +112,8 @@ class StoreHandlers:
         npc_id = struct.unpack_from('<I', body, 4)[0] if len(body) >= 8 else 0
         from darkblood.games.game_data import client_dict
         npc, items = client_dict.items_for_npc(npc_id)
-        ack = StoreInfoAck(npc_id=npc_id, records=[store_record(i, c) for i, c in items])
+        ack = StoreInfoAck(npc_id=npc_id, records=[store_record(i, c) for i, c in items],
+                           repurchase=self._repurchase_list())
         await self.reply(ack, correlation, note='store info ack (%s, %d items)' % (npc or '%08x' % npc_id, len(items)))
 
 
@@ -234,7 +241,8 @@ class StoreHandlers:
         if repurchase_map is None:
             repurchase_map = {}
             self._repurchase_items = repurchase_map
-        repurchase_map[repurchase_uid] = (sold_record, earned)
+        sold_at = int(time.time())
+        repurchase_map[repurchase_uid] = (sold_record, earned, sold_at)
 
         # On_eEGS_SELL_ITEM_ACK (0x0077E8E0 -> 0x0059F370) looks up repurchase_item's
         # item_id via 0x009E5440 and dereferences it unconditionally (0x0059F3B8).
@@ -245,7 +253,7 @@ class StoreHandlers:
             gold=char_gold,
             repurchase_item=repurchase_wire,
             repurchase_price=earned,
-            sell_time=int(time.time()),
+            sell_time=sold_at,
         )
         await self.reply(ack, correlation, note=f'sell item ack (uid={req.item_uid} code={target.get("code")} del={del_cnt} price={earned} gold={char_gold})')
 
@@ -265,7 +273,7 @@ class StoreHandlers:
         if not entry:
             await self.reply(RepurchaseItemAck(result=1), correlation, note=f'repurchase fail (unknown {req.item_uid})')
             return
-        sold_record, price = entry
+        sold_record, price, _sold_at = entry
         char_gold = char.get('gold', 0)
         if char_gold < price:
             await self.reply(RepurchaseItemAck(result=1), correlation,

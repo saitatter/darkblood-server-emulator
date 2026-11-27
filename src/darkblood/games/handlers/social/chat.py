@@ -25,7 +25,8 @@ class ChatHandlers:
         char = self.current_char()
         char_name = char.get('name', 'Player') if char else 'Player'
         target = req.target
-        ack = ChatAck(result=0, channel=req.channel, target=target, sender=char_name, message=msg).encode()
+        ack = ChatAck(result=0, channel=req.channel, target=target, sender=char_name, message=msg,
+                      paint=req.paint).encode()
         await self.transport.send_event(event(5041, ack, correlation), note=f'chat ack ({msg})')
         if not msg:
             return

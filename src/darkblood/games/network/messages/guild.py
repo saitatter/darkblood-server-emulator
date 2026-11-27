@@ -35,6 +35,8 @@ __all__ = [
     'GuildAllSkillInitAck',
     'GuildNameChangeReq',
     'GuildNameChangeAck',
+    'GuildInfo',
+    'GuildMember',
     'GuildInfoNot',
     'GuildPersonListNot',
     'GuildPersonGradeModifyReq',
@@ -375,27 +377,79 @@ class GuildNameChangeAck(WireMessage):
 
 
 @dataclass
+class GuildInfo(WireMessage):
+    """jGuild, reader 0x00A49A10 (variable length: two J-wstrings; the earlier raw[64]
+    could not match it). Consumed by JGuildManager::OnGuildInfoNot 0x0092A2A0, which
+    copies the whole struct (0x0091A150) and sets the player's +0x210 guild UID,
+    a string from +0x0C and +0x234 from +0x29.
+    """
+    guild_uid: i64 = 0  # +0x00 -> player +0x210
+    name: wstr = ''  # +0x0C, assigned to the player with the UID (assumed guild name)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'guild_uid',
+        'name',
+        Const(u8, 0),
+        Const(u16, 1),
+        Const(u32, 0),
+        Const(u32, 0),
+        Const(u32, 0),
+        Const(u32, 0),
+        Const(u32, 0),
+        Const(u32, 0),
+        Const(i64, 0),
+        Const(wstr, ''),
+        Const(u64, 0),
+        Const(i64, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(u32, 0),
+    )
+
+
+@dataclass
+class GuildMember(WireMessage):
+    """Element of 2158 vecModifyPersonList: 0x00763970 -> 0x0074CF70 -> 0x00A49950.
+    Field meanings are not recovered; types follow the reader.
+    """
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(i64, 0),
+        Const(i64, 0),
+        Const(wstr, ''),
+        Const(u16, 0),
+        Const(u16, 0),
+        Const(u8, 0),
+        Const(u8, 0),
+        Const(u16, 0),
+        Const(u32, 0),
+        Const(u64, 0),
+        Const(u64, 0),
+        Const(i64, 0),
+        Const(i64, 0),
+        Const(u32, 0),
+        Const(u32, 0),
+        Const(wstr, ''),
+    )
+
+
+@dataclass
 class GuildInfoNot(WireMessage):
     """Opcode 2157: eEGS_GUILD_INFO_NOT (reply).
 
-    Handler 0x00752FF0. Guild struct not recovered: 64 zero bytes.
+    Handler 0x00752FF0 (assert: jGuild).
     """
     OPCODE: ClassVar[int] = 2157
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(Raw[64], bytes(64)),
-    )
+    guild: GuildInfo = field(default_factory=GuildInfo)
 
 
 @dataclass
 class GuildPersonListNot(WireMessage):
     """Opcode 2158: eEGS_GUILD_PERSON_LIST_NOT (reply).
 
-    Handler 0x0077ABA0.
+    Handler 0x0077ABA0 (assert: vecModifyPersonList).
     """
     OPCODE: ClassVar[int] = 2158
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        Const(EmptyVector),
-    )
+    members: Vector[GuildMember] = field(default_factory=list)  # vecModifyPersonList
 
 
 @dataclass

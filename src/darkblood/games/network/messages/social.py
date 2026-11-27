@@ -26,6 +26,7 @@ __all__ = [
     'FriendMyDisconnectionNot',
     'ChangeTeamReq',
     'ChangeTeamAck',
+    'ChatPaint',
     'ChatReq',
     'ChatAck',
     'UseSpeakerItemReq',
@@ -211,20 +212,44 @@ class ChangeTeamAck(WireMessage):
 
 
 @dataclass
+class ChatPaint(WireMessage):
+    """jChatInfo +0x55 sub-struct (reader 0x00A52BD0). Filled only by
+    JAppPagePaint::SendMsg (0x005FF4B0): page +0x165 flag, +0xD8 4-byte vector,
+    +0xE8 byte vector (drawn picture sent through chat).
+    """
+    has_paint: bool = False  # +0x55
+    paint_words: Vector[u32] = field(default_factory=list)  # +0x66 (0x005F17F0 -> 0x00B35390, 4-byte elements)
+    paint_bytes: Vector[u8] = field(default_factory=list)  # +0x56 (0x0095F9B0 -> 0x0095E700, u8 elements)
+
+
+@dataclass
 class ChatReq(WireMessage):
     """Opcode 5040: eERC_CHAT_REQ (request).
 
-    Sender 0x007AC570 writes one struct (0x00A4DC70). Captures carry no header:
+    JUserClient::ChatREQ 0x007AC570 writes jChatInfo (0x00A4DC70; assert
+    "jEvt.Write() << jChatInfo"). Captures carry no header:
     normal: 01 80 80 8a "/bags" 00 1080 1080 01000000 ff...
     whisper: 02 90 "Warrior1" 80 8a "sadad" 00 1080 1080 01000000 ff...
     Field order verified in 0x00544310: +0x01 is target, +0x1D is sender.
     """
     OPCODE: ClassVar[int] = 5040
     channel: u8 = 0
-    target: wstr = ''
-    sender: wstr = ''
-    message: wstr = ''
-    tail: rest = b''
+    target: wstr = ''  # m_strNickTo
+    sender: wstr = ''  # m_strNick
+    message: wstr = ''  # m_strMsg
+    paint: ChatPaint = field(default_factory=ChatPaint)
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'channel',
+        'target',
+        'sender',
+        'message',
+        'paint',
+        Const(u32, 1),
+        Const(i64, -1),
+        Const(i64, -1),
+        Const(i64, -1),
+        Const(i32, -1),
+    )
 
 
 @dataclass
@@ -241,6 +266,7 @@ class ChatAck(WireMessage):
     target: wstr = ''
     sender: wstr = 'System'
     message: wstr = ''
+    paint: ChatPaint = field(default_factory=ChatPaint)  # +0x55 paint data, echoed from the 5040 request
     server_key: i32 = 31  # +0x76; must match local player's server key (0x1F) for whispers
     sender_square_uid: i64 = 0x07C0000000000001  # +0x7A; bits 54-58 checked by 0x00544310 (else "(Other server)")
     _WIRE_LAYOUT: ClassVar[tuple] = (
@@ -249,9 +275,7 @@ class ChatAck(WireMessage):
         'target',
         'sender',
         'message',
-        Const(bool, False),
-        Const(EmptyVector),
-        Const(EmptyVector),
+        'paint',
         'server_key',
         'sender_square_uid',
         Const(i64, 0),

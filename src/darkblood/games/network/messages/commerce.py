@@ -11,6 +11,7 @@ from darkblood.games.entities.items import Item
 
 __all__ = [
     'StoreRecord',
+    'RepurchaseItem',
     'StoreInfoAck',
     'CurrentCashAck',
     'BuyItemReq',
@@ -95,6 +96,16 @@ class StoreRecord(WireMessage):
 
 
 @dataclass
+class RepurchaseItem(WireMessage):
+    """Repurchase entry, reader 0x00A1ECA0: Item, i32 price, i64 sell time
+    (2070 sends one flat; 2066 vecRePur and 2591 vecReItem send lists).
+    """
+    item: Extern[Item, 'encode', False] = field(default_factory=lambda: Item('', 0))  # +0x00..+0xE3
+    price: i32 = 0  # +0xE4: AR price shown in the Repurchase tab (0x0059AA20)
+    sell_time: i64 = 0  # +0xF0: sell timestamp (Unix seconds as sent by 2070)
+
+
+@dataclass
 class StoreInfoAck(WireMessage):
     """Opcode 2066: eEGS_GET_STORE_INFO_ACK (reply).
 
@@ -104,12 +115,7 @@ class StoreInfoAck(WireMessage):
     result: u32 = 0
     npc_id: h32 = 0  # stored at store window +0xCC (NPC id echoed, assumption)
     records: Vector[StoreRecord] = field(default_factory=list)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'npc_id',
-        'records',
-        Const(EmptyVector),
-    )
+    repurchase: Vector[RepurchaseItem] = field(default_factory=list)  # vecRePur (assert: nNPCID >> vecGoods >> vecRePur; 0x005910D0 -> 0x00A1ECA0)
 
 
 @dataclass
@@ -634,14 +640,8 @@ class SellItemAllAck(WireMessage):
     result: i32 = 0
     items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
     cur_ar: i64 = 0
+    repurchase: Vector[RepurchaseItem] = field(default_factory=list)  # vecReItem (0x0077CEB0 -> 0x00A1ECA0)
     deleted_item_uids: Set[i64] = field(default_factory=list)  # setDelItem (0x006B9200)
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'items',
-        'cur_ar',
-        Const(EmptyVector),
-        'deleted_item_uids',
-    )
 
 
 @dataclass

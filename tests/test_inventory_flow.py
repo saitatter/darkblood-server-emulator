@@ -733,6 +733,13 @@ class SkillCostTest(ServerTestCase):
             empty_cell = Item(code='', uid=-1, owner=UPDATE_OWNER, container=3, slot=0, count=0).encode()
             self.assertIn(empty_cell, body2)
 
+            # Reopening the shop lists both sales in 2066 vecRePur (RepurchaseItem 0x00A1ECA0):
+            # the last field is a two-entry vector (tag 0x10, count 2).
+            client.send_event(2065, struct.pack('<iI', 0x7fffffff, 1))
+            _, body2066 = await client.expect_event(2066)
+            self.assertIn(bytes.fromhex('1082'), body2066)
+            self.assertIn(struct.pack('<i', sell_price), body2066)
+
             # Repurchase the sold item (2071 -> 2072): charges sell_price AR and restores item to bag
             client.send_event(2071, RepurchaseItemReq(item_uid=77).encode())
             _, body2072 = await client.expect_event(2072)

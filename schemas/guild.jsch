@@ -134,14 +134,60 @@ message 2315 GuildNameChangeAck
   wstr new_name
 end
 
+struct GuildInfo
+  ## jGuild, reader 0x00A49A10 (variable length: two J-wstrings; the earlier raw[64]
+  ## could not match it). Consumed by JGuildManager::OnGuildInfoNot 0x0092A2A0, which
+  ## copies the whole struct (0x0091A150) and sets the player's +0x210 guild UID,
+  ## a string from +0x0C and +0x234 from +0x29.
+  i64 guild_uid              # +0x00 -> player +0x210
+  wstr name                  # +0x0C, assigned to the player with the UID (assumed guild name)
+  u8 _                       # +0x28
+  u16 _ = 1                  # +0x29 -> player +0x234 (1 when guildless, ctor in 0x00966730)
+  u32 _                      # +0x2B
+  u32 _                      # +0x2F
+  u32 _                      # +0x33
+  u32 _                      # +0x37
+  u32 _                      # +0x3B
+  u32 _                      # +0x3F
+  i64 _                      # +0x43
+  wstr _                     # +0x4B
+  u64 _                      # +0x67 (0x00B356F0)
+  i64 _                      # +0x6F
+  u64 _                      # +0x77
+  u64 _                      # +0x7F
+  u64 _                      # +0x87
+  u32 _                      # +0x08 (read last)
+end
+
+struct GuildMember
+  ## Element of 2158 vecModifyPersonList: 0x00763970 -> 0x0074CF70 -> 0x00A49950.
+  ## Field meanings are not recovered; types follow the reader.
+  i64 _                      # +0x00
+  i64 _                      # +0x08
+  wstr _                     # +0x10
+  u16 _                      # +0x2C
+  u16 _                      # +0x2E
+  u8 _                       # +0x30
+  u8 _                       # +0x31
+  u16 _                      # +0x32
+  u32 _                      # +0x34
+  u64 _                      # +0x38
+  u64 _                      # +0x40
+  i64 _                      # +0x6C
+  i64 _                      # +0x74
+  u32 _                      # +0x48
+  u32 _                      # +0x4C
+  wstr _                     # +0x50
+end
+
 message 2157 GuildInfoNot
-  ## Handler 0x00752FF0. Guild struct not recovered: 64 zero bytes.
-  raw[64] _
+  ## Handler 0x00752FF0 (assert: jGuild).
+  GuildInfo guild = GuildInfo()
 end
 
 message 2158 GuildPersonListNot
-  ## Handler 0x0077ABA0.
-  vector<?> _                # guild members
+  ## Handler 0x0077ABA0 (assert: vecModifyPersonList).
+  vector<GuildMember> members  # vecModifyPersonList
 end
 
 message 2164 GuildPersonGradeModifyReq header?

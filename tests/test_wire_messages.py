@@ -443,8 +443,8 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<ii', ack_ct), (0, 2))
 
     def test_chat_messages(self):
-        # Captured form: u8 channel, sender, target, message, undecoded tail.
-        raw = bytes.fromhex('0180808a2f0062006100670073000010801080010000') + b'\xff' * 28
+        # Captured form: u8 channel, target, sender, message, then the rest of jChatInfo.
+        raw = bytes.fromhex('0180808a2f006200610067007300001080108001000000') + b'\xff' * 28
         req_chat = messages.ChatReq.decode(raw)
         self.assertEqual((req_chat.channel, req_chat.message), (1, '/bags'))
         self.assertEqual(req_chat.encode(), raw)
@@ -1020,3 +1020,15 @@ class RoomMemberInfoTest(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<I', wire, 16)[0], 2)
         self.assertEqual(struct.unpack_from('<BhB', wire, name_end), (3, 37, 9))
         self.assertEqual(messages.RoomMemberInfo.decode(wire).stress, 37)
+
+
+class ChatPaintTest(unittest.TestCase):
+    def test_capture_decodes_and_paint_round_trips(self):
+        # Live capture: 02 90 "Warrior1" 80 8a "sadad" 00 1080 1080 01000000 ff...
+        body = (b'\x02' + jser.wide_string('Warrior1') + b'\x80' + jser.wide_string('sadad')
+                + bytes.fromhex('001080108001000000') + b'\xff' * 28)
+        req = messages.ChatReq.decode(body)
+        self.assertEqual((req.channel, req.target, req.message, req.paint.has_paint), (2, 'Warrior1', 'sadad', False))
+        paint = messages.ChatPaint(has_paint=True, paint_words=[7, 9], paint_bytes=[1, 2, 3])
+        ack = messages.ChatAck.decode(messages.ChatAck(result=0, channel=1, sender='A', message='m', paint=paint).encode())
+        self.assertEqual((ack.paint.paint_words, ack.paint.paint_bytes), ([7, 9], [1, 2, 3]))

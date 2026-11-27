@@ -19,12 +19,20 @@ struct StoreRecord
   raw[4] _                   # +0x1C unknown
 end
 
+struct RepurchaseItem
+  ## Repurchase entry, reader 0x00A1ECA0: Item, i32 price, i64 sell time
+  ## (2070 sends one flat; 2066 vecRePur and 2591 vecReItem send lists).
+  Item item = Item('', 0)    # +0x00..+0xE3
+  i32 price                  # +0xE4: AR price shown in the Repurchase tab (0x0059AA20)
+  i64 sell_time              # +0xF0: sell timestamp (Unix seconds as sent by 2070)
+end
+
 message 2066 StoreInfoAck
   ## Handler 0x007842C0. Draft schema from tools/extract_schemas.py.
   u32 result
   h32 npc_id                 # stored at store window +0xCC (NPC id echoed, assumption)
   vector<StoreRecord> records
-  vector<?> _                # vecRePur (assert: nNPCID >> vecGoods >> vecRePur; 0x005910D0, as 2591 vecReItem)
+  vector<RepurchaseItem> repurchase  # vecRePur (assert: nNPCID >> vecGoods >> vecRePur; 0x005910D0 -> 0x00A1ECA0)
 end
 
 message 2370 CurrentCashAck
@@ -300,7 +308,7 @@ message 2591 SellItemAllAck ok_only
   i32 result
   vector<Item> items
   i64 cur_ar
-  vector<?> _                # vecReItem (0x0077CEB0 -> 0x00A1ECA0)
+  vector<RepurchaseItem> repurchase  # vecReItem (0x0077CEB0 -> 0x00A1ECA0)
   set<i64> deleted_item_uids # setDelItem (0x006B9200)
 end
 
