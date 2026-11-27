@@ -94,6 +94,9 @@ fallback, global character selection, and synthetic stall, arena, pet,
 and position routes. Town presence is indexed by square and layer, and the
 relay serializes the member roster once per join. All 171 headless tests pass.
 
+The mail return flow (`2234`/`2235`) honors the message's return flag. A second
+return attempt leaves the message in its current inbox.
+
 ## Quest abandonment and relay latency — 2026-11-20
 
 The live 2078 request was routed to the stall alias because its timestamp

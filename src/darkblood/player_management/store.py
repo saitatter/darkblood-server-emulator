@@ -490,11 +490,13 @@ class SqliteCharacterStore(ICharacterStore):
             conn.commit()
             return list(mail_uids)
 
-    def return_mail(self, mail_uid: int) -> bool:
+    def return_mail(self, mail_uid: int, recipient_char_id: int) -> bool:
         with self.lock:
             conn = self._get_connection()
             row = conn.execute(
-                'SELECT recipient_char_id, sender_char_id FROM mailbox WHERE uid = ? AND is_deleted = 0', (mail_uid,)
+                'SELECT recipient_char_id, sender_char_id FROM mailbox '
+                'WHERE uid = ? AND recipient_char_id = ? AND is_deleted = 0 AND can_return = 1',
+                (mail_uid, recipient_char_id),
             ).fetchone()
             if not row:
                 return False
