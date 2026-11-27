@@ -139,7 +139,7 @@ class PetCoreHandlersMixin:
             return
         tamed = char.setdefault('tamed_monsters', [])
         for m in list(tamed):
-            if m.get('slot') == req.slot or (req.monster_id and m.get('monster_id') == req.monster_id):
+            if m.get('slot') == req.slot and (not req.monster_id or m.get('monster_id') == req.monster_id):
                 tamed.remove(m)
                 break
         self.save_char()

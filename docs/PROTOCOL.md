@@ -1049,7 +1049,7 @@ Decompiled directly from `0x00A40760` (invoked by handler `0x007AA4B0`):
 29. `i16 + 2 x i64`: daily mail send count and reset timestamps.
 30. `tag 0x17 map (0x005F9190)`: cash shop purchased perks map.
 31. `tag 0x13 set (0x0076ABA0)`: unlocked emotes / gestures set.
-32. `4 x tag 0x10 vectors (0x00A1E8C0, 0x00A3EDD0, 0x00A1EEA0, 0x00A1E900)`: taming monsters, arena presets, league records.
+32. `4 x tag 0x10 vectors (0x00A1E8C0, 0x00A3EDD0, 0x00A1EEA0, 0x00A1E900)`: taming monsters, arena presets, league records. A taming deletion (`2350`) removes the selected slot when its species matches the request.
 33. `i16 + tag 0x10 vector + tag 0x17 map + i16 + tag 0x17 map`: mentorship links, guild permissions, second password status.
 34. `tag 0x10 vector (0x004B9210)`: trailing item updates vector.
 
