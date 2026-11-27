@@ -98,9 +98,11 @@ progress table and [`docs/UNMAPPED_FIELDS.md`](docs/UNMAPPED_FIELDS.md).
   `character_select.py`, `quest_npc.py`).
 - [x] Function-local imports hoisted to module level (2026-11-27): 105 of 108 moved; the 3 left break real cycles
   and are commented (`entities/character.py`, `world.py`, `player_management/characters.py`).
-- [ ] Remaining refactor candidates: `handlers/quests.py` (~500 lines, quest lifecycle), the arena ladder is still a
-  fixed sample list, the `stores.py` loaders use a different override shape than `bundled_asset`, and the
-  `try/except Exception: pass` around online notifications (`mail.py`, `commerce/stalls.py`, `frontend.py`) hides errors.
+- [x] Second refactor pass (2026-11-27): `handlers/quests/` package (start, objectives, complete, promotion,
+  journal, wire, npc), `stores.py` loaders on `bundled_asset`, no `except Exception: pass` around notifications
+  (stall notices now reach the seller's own square/layer), and the league ladder built from stored characters.
+- [ ] Record league results: nothing writes `league_arena` win/lose/draw/rating yet, so the ladder stays empty
+  until arena matches report results.
 - [ ] Reduce the unmapped fields shown in the README progress table (the number that matters most for fidelity).
 
 ### C# / .NET 8 port (P10, MHServerEmu layout)
