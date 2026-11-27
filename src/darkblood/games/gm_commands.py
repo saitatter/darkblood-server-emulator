@@ -17,6 +17,7 @@ from darkblood.games.progression import (
     set_stress,
     stress_changed_not,
     total_ap,
+    extend_depot_rental,
 )
 from darkblood.player_management.characters import add_reward_items, gold_of
 
@@ -146,7 +147,6 @@ def apply_equip_durability(char: dict, value: int) -> List[Item]:
 
 def apply_depot_expand(char: dict, days: int = 30) -> None:
     """Extend personal depot rental timer to at least ``days`` days."""
-    from darkblood.games.progression import extend_depot_rental
 
     extend_depot_rental(char, 0, int(days) * 86400, minimum=True)
 

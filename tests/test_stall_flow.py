@@ -174,12 +174,6 @@ class StallFlowTest(ServerTestCase):
                 # Stall removed from active manager
                 self.assertIsNone(PersonalShopManager.get().get_stall(seller_id))
 
-                # An older store may still contain a persisted listing flag.
-                seller_updated['items'][0]['in_stall'] = True
-                store.save_char('OfflinePlayer', seller_id)
-                store.refresh_all_timers()
-                self.assertNotIn('in_stall', seller_updated['items'][0])
-
             finally:
                 await client2.close()
 

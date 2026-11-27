@@ -920,7 +920,7 @@ class SkillCostTest(ServerTestCase):
 
             from unittest.mock import patch
 
-            with patch('darkblood.games.game_data.client_dict.skill_learn_cost', return_value=(25, 0)):
+            with patch('darkblood.games.handlers.skills.skill_learn_cost', return_value=(25, 0)):
                 client.send_event(2050, LearnSkillReq(skill_index=9007, level=1).encode())
                 _, refused = await client.expect_event(2051)
                 self.assertNotEqual(struct.unpack_from('<i', refused)[0], 0)

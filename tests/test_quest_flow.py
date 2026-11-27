@@ -37,7 +37,7 @@ class QuestFlowTest(ServerTestCase):
             from unittest.mock import patch
 
             objectives = {'Iquea0310': [(quest, 0, 1)]}
-            with patch('darkblood.games.game_data.client_dict.quest_item_objectives', return_value=objectives):
+            with patch('darkblood.games.handlers.quests.objectives.quest_item_objectives', return_value=objectives):
                 client.send_event(2076, req, compressed=True)
                 _, retry = await client.expect_event(2077)
             self.assertEqual(struct.unpack_from('<I', retry)[0], 0)
