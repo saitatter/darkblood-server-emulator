@@ -10,6 +10,7 @@ and verified against client dispatchers:
 """
 from __future__ import annotations
 
+from itertools import count
 from typing import Dict, List
 
 from darkblood.games.network.messages import (
@@ -80,27 +81,25 @@ from darkblood.games.handlers.base import BaseDomainService
 from darkblood.player_management.characters import gold_of
 
 
-class ArenaHandlers(BaseDomainService):
-    """Arena matches, teams, ladder rankings, and 1v1 town duels handlers."""
+class ArenaState:
+    """Arena rooms, teams and the league ladder for one server instance.
 
-    # Server-wide shared state for rooms, teams, and leaderboard rankings
-    _arena_rooms: Dict[int, ArenaRoomInfo] = {}
-    _arena_room_members: Dict[int, list] = {}  # room id -> member dicts (server state, not on the wire)
-    _arena_teams: Dict[int, ArenaTeamInfo] = {}
-    _leaderboard: List[LeagueRankEntry] = []
-    _room_id_counter: int = 1
-    _team_id_counter: int = 1
+    Held by BootstrapServer as `server.arena` (like `dungeon_rooms`); it used to
+    live in ArenaHandlers class attributes shared by every server and test.
+    """
 
-    def __init__(self, session):
-        super().__init__(session)
-        self._current_arena_room_id = None   # arena room this session joined (5145/5147)
-        self._current_arena_team_id = None   # arena team this session created or joined
+    def __init__(self):
+        self.rooms: Dict[int, ArenaRoomInfo] = {}
+        self.room_members: Dict[int, list] = {}   # room id -> member dicts (server state, not on the wire)
+        self.teams: Dict[int, ArenaTeamInfo] = {}
+        self.room_ids = count(1)
+        self.team_ids = count(1)
+        self._leaderboard: List[LeagueRankEntry] = []
 
-    @classmethod
-    def get_leaderboard(cls, season_id: int = 1) -> List[LeagueRankEntry]:
+    def leaderboard(self, season_id: int = 1) -> List[LeagueRankEntry]:
         """Returns or initializes realistic ranked league leaderboard."""
-        if not cls._leaderboard:
-            cls._leaderboard = [
+        if not self._leaderboard:
+            self._leaderboard = [
                 LeagueRankEntry(rank=1, char_uid=90001, char_name="BloodLord", score=2450,
                                 char_class=1, char_level=60, wins=88, losses=6, draws=1, rating=2450, tier=1),
                 LeagueRankEntry(rank=2, char_uid=90002, char_name="ShadowBlade", score=2320,
@@ -122,7 +121,21 @@ class ArenaHandlers(BaseDomainService):
                 LeagueRankEntry(rank=10, char_uid=90010, char_name="SwiftArrow", score=1420,
                                 char_class=4, char_level=40, wins=19, losses=35, draws=2, rating=1420, tier=4),
             ]
-        return cls._leaderboard
+        return self._leaderboard
+
+
+class ArenaHandlers(BaseDomainService):
+    """Arena matches, teams, ladder rankings, and 1v1 town duels handlers."""
+
+    def __init__(self, session):
+        super().__init__(session)
+        self._current_arena_room_id = None   # arena room this session joined (5145/5147)
+        self._current_arena_team_id = None   # arena team this session created or joined
+
+    @property
+    def arena(self):
+        """Server-wide arena state (rooms, teams, ladder) owned by the BootstrapServer."""
+        return self.transport.server.arena
 
     def _get_active_char_info(self) -> tuple[int, str, int, int]:
         """Returns (uid, name, class, level) of the active session character."""
@@ -243,7 +256,7 @@ class ArenaHandlers(BaseDomainService):
         """
         req = ArenaGetRoomListReq.decode(body)
         self.transport.record('arena-get-roomlist-req', body, page=req.page)
-        rooms = list(self._arena_rooms.values())
+        rooms = list(self.arena.rooms.values())
         ack = ArenaGetRoomListAck(result=0, flag=True, room_count=len(rooms), rooms=rooms)
         await self.reply(ack, correlation, note='arena get room list ack')
 
@@ -258,19 +271,18 @@ class ArenaHandlers(BaseDomainService):
         char_uid, char_name, char_class, char_level = self._get_active_char_info()
         room = req.room
         if not room.room_id or room.room_id <= 0:
-            room.room_id = ArenaHandlers._room_id_counter
-            ArenaHandlers._room_id_counter += 1
+            room.room_id = next(self.arena.room_ids)
         if not room.room_name:
             room.room_name = f"{char_name}'s Colosseum"
         room.host_uid = char_uid
         room.team_id = self._current_arena_team_id or 1
-        ArenaHandlers._arena_room_members[room.room_id] = [{
+        self.arena.room_members[room.room_id] = [{
             'uid': char_uid,
             'name': char_name,
             'class': char_class,
             'level': char_level,
         }]
-        ArenaHandlers._arena_rooms[room.room_id] = room
+        self.arena.rooms[room.room_id] = room
         self._current_arena_room_id = room.room_id
 
         self.transport.record('arena-create-room-req', body, room_id=room.room_id, name=room.room_name)
@@ -286,17 +298,17 @@ class ArenaHandlers(BaseDomainService):
         """
         req = ArenaJoinRoomReq.decode(body)
         char_uid, char_name, char_class, char_level = self._get_active_char_info()
-        room = ArenaHandlers._arena_rooms.get(req.room_id)
+        room = self.arena.rooms.get(req.room_id)
         if not room:
             room = ArenaRoomInfo(
                 room_id=req.room_id or 1,
                 room_name="Colosseum Arena",
                 host_uid=char_uid,
             )
-            ArenaHandlers._arena_rooms[room.room_id] = room
+            self.arena.rooms[room.room_id] = room
 
         member_entry = {'uid': char_uid, 'name': char_name, 'class': char_class, 'level': char_level}
-        members = ArenaHandlers._arena_room_members.setdefault(room.room_id, [])
+        members = self.arena.room_members.setdefault(room.room_id, [])
         if not any(m.get('uid') == char_uid for m in members):
             members.append(member_entry)
         self._current_arena_room_id = room.room_id
@@ -315,14 +327,14 @@ class ArenaHandlers(BaseDomainService):
         """
         char_uid, _, _, _ = self._get_active_char_info()
         curr_room_id = self._current_arena_room_id
-        if curr_room_id and curr_room_id in ArenaHandlers._arena_rooms:
-            room = ArenaHandlers._arena_rooms[curr_room_id]
-            members = [m for m in ArenaHandlers._arena_room_members.get(curr_room_id, [])
+        if curr_room_id and curr_room_id in self.arena.rooms:
+            room = self.arena.rooms[curr_room_id]
+            members = [m for m in self.arena.room_members.get(curr_room_id, [])
                        if m.get('uid') != char_uid]
-            ArenaHandlers._arena_room_members[curr_room_id] = members
+            self.arena.room_members[curr_room_id] = members
             if not members:
-                ArenaHandlers._arena_rooms.pop(curr_room_id, None)
-                ArenaHandlers._arena_room_members.pop(curr_room_id, None)
+                self.arena.rooms.pop(curr_room_id, None)
+                self.arena.room_members.pop(curr_room_id, None)
             self._current_arena_room_id = None
 
         self.transport.record('arena-leave-room-req', body)
@@ -359,8 +371,7 @@ class ArenaHandlers(BaseDomainService):
         """
         req = ArenaTeamCreateReq.decode(body)
         char_uid, char_name, _, _ = self._get_active_char_info()
-        team_id = ArenaHandlers._team_id_counter
-        ArenaHandlers._team_id_counter += 1
+        team_id = next(self.arena.team_ids)
 
         team = ArenaTeamInfo(
             team_id=team_id,
@@ -372,7 +383,7 @@ class ArenaHandlers(BaseDomainService):
             leader_uid=char_uid,
             notice="Ready for Arena combat",
         )
-        ArenaHandlers._arena_teams[team_id] = team
+        self.arena.teams[team_id] = team
         self._current_arena_team_id = team_id
 
         self.transport.record('arena-team-create-req', body, team_name=req.team_name)
@@ -387,7 +398,7 @@ class ArenaHandlers(BaseDomainService):
         Joins an existing arena PvP team.
         """
         req = ArenaTeamJoinReq.decode(body)
-        team = ArenaHandlers._arena_teams.get(req.team_id)
+        team = self.arena.teams.get(req.team_id)
         if not team:
             team = ArenaTeamInfo(
                 team_id=req.team_id,
@@ -398,7 +409,7 @@ class ArenaHandlers(BaseDomainService):
                 leader_name="Leader",
                 notice="Welcome to Arena Team",
             )
-            ArenaHandlers._arena_teams[req.team_id] = team
+            self.arena.teams[req.team_id] = team
 
         team.member_count += 1
         self._current_arena_team_id = team.team_id
@@ -415,8 +426,8 @@ class ArenaHandlers(BaseDomainService):
         Departs from current arena team.
         """
         curr_team = self._current_arena_team_id
-        if curr_team and curr_team in ArenaHandlers._arena_teams:
-            team = ArenaHandlers._arena_teams[curr_team]
+        if curr_team and curr_team in self.arena.teams:
+            team = self.arena.teams[curr_team]
             team.member_count = max(0, team.member_count - 1)
             self._current_arena_team_id = None
 
@@ -435,7 +446,7 @@ class ArenaHandlers(BaseDomainService):
         Returns league season rank leaderboard.
         """
         req = LeagueSeasonArenaGetRankReq.decode(body)
-        ranks = ArenaHandlers.get_leaderboard(req.season_id)
+        ranks = self.arena.leaderboard(req.season_id)
         ack = LeagueSeasonArenaGetRankAck(result=0, season_id=req.season_id, ranks=ranks)
         await self.reply(ack, correlation, note=f'league season arena get rank ack (season={req.season_id})')
 
@@ -448,7 +459,7 @@ class ArenaHandlers(BaseDomainService):
         """
         req = LeagueSeasonArenaGetMyRankReq.decode(body)
         char_uid, char_name, _, _ = self._get_active_char_info()
-        ranks = ArenaHandlers.get_leaderboard(req.season_id)
+        ranks = self.arena.leaderboard(req.season_id)
         my_rank = 1
         for entry in ranks:
             if entry.char_uid == char_uid or entry.char_name == char_name:
