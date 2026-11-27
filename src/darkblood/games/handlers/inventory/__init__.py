@@ -1,6 +1,7 @@
 """Inventory domain controller composed from responsibility-focused mixins."""
 from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.handlers.inventory.bags import BagHandlersMixin
+from darkblood.games.handlers.inventory.consumables import ConsumableHandlersMixin
 from darkblood.games.handlers.inventory.crafting import CraftingHandlersMixin
 from darkblood.games.handlers.inventory.depot import DepotHandlersMixin
 from darkblood.games.handlers.inventory.items import ItemHandlersMixin
@@ -9,6 +10,7 @@ from darkblood.games.handlers.inventory.items import ItemHandlersMixin
 class InventoryHandlers(
     BagHandlersMixin,
     ItemHandlersMixin,
+    ConsumableHandlersMixin,
     CraftingHandlersMixin,
     DepotHandlersMixin,
     BaseDomainService,

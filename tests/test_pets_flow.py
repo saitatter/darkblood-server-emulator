@@ -372,7 +372,7 @@ class PetsFlowTest(ServerTestCase):
             self.assertEqual({pet['uid']: pet['slot'] for pet in char['pets']}, {10: 1, 20: 0, 30: -1})
             self.assertEqual(char['summoned_pet'], 30)
 
-            from darkblood.games.handlers.frontend import _build_pets_map
+            from darkblood.games.handlers.character_select import _build_pets_map
 
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             _, selected = await client.expect_event(2007)

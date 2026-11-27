@@ -4,12 +4,14 @@ from darkblood.games.handlers.base import BaseDomainService
 from darkblood.games.handlers.dungeon.combat import DAILY_REBIRTH_COINS, DungeonCombatHandlers
 from darkblood.games.handlers.dungeon.entry import DungeonEntryHandlers
 from darkblood.games.handlers.dungeon.events import DungeonEventsHandlers
+from darkblood.games.handlers.dungeon.gate import DungeonGateHandlers
 from darkblood.games.handlers.dungeon.rewards import DungeonRewardsHandlers
 from darkblood.games.handlers.dungeon.rooms import DungeonRoom, DungeonRoomHandlers
 
 
 class DungeonHandlers(
     DungeonRoomHandlers,
+    DungeonGateHandlers,
     DungeonEntryHandlers,
     DungeonCombatHandlers,
     DungeonRewardsHandlers,

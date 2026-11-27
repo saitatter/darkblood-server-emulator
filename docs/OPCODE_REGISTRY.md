@@ -54,7 +54,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2033 | `eEGS_CHANGE_BAG_NAME_ACK` | 0x007528B0 | — | `ChangeBagNameAck` |  |
 | 2036 | `eEGS_DRAG_ITEM_REQ` | — | `inventory/items.py` (`handle_drag_item`) | `DragItemReq` | Opcode 2036 (eEGS_DRAG_ITEM_REQ) -> 2037 (eEGS_DRAG_ITEM_ACK): move or swap an item between bags/depot. |
 | 2037 | `eEGS_DRAG_ITEM_ACK` | 0x0077F570 | — | `DragItemAck` |  |
-| 2038 | `eEGS_USE_ITEM_REQ` | — | `inventory/items.py` (`handle_use_item`) | `UseItemReq` | Opcode 2038 (eEGS_USE_ITEM_REQ) -> 2039 (eEGS_USE_ITEM_ACK): consume an item, open cash boxes or pet/mount items. |
+| 2038 | `eEGS_USE_ITEM_REQ` | — | `inventory/consumables.py` (`handle_use_item`) | `UseItemReq` | Opcode 2038 (eEGS_USE_ITEM_REQ) -> 2039 (eEGS_USE_ITEM_ACK): consume an item, open cash boxes or pet/mount items. |
 | 2039 | `eEGS_USE_ITEM_ACK` | 0x0077D4C0 | — | `UseItemAck` |  |
 | 2040 | `eEGS_DELETE_ITEM_REQ` | — | `inventory/items.py` (`handle_delete_item`) | `DeleteItemReq` | Opcode 2040 (eEGS_DELETE_ITEM_REQ) -> 2041 (eEGS_DELETE_ITEM_ACK): discard an item or stack portion. |
 | 2041 | `eEGS_DELETE_ITEM_ACK` | — | — | `DeleteItemAck` |  |
@@ -101,7 +101,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2083 | `eEGS_CLEAR_TUTORIAL_ACK` | 0x0077EEB0 | — | `ClearTutorialAck` |  |
 | 2084 | `eEGS_CLEAR_OPENING_NOT` | — | `square.py` (`handle_clear_opening`) | — | Opcode 2084 (eEGS_CLEAR_OPENING_NOT): Cinematic intro complete. |
 | 2085 | `eEGS_CHANGE_DUNGEON_PENALTY_NOT` | 0x0078FA70 | — | `ChangeDungeonPenaltyNot` |  |
-| 2086 | `eEGS_BUY_LIFE_WATER_REQ` | — | `inventory/items.py` (`handle_buy_life_water`) | `BuyLifeWaterReq` | Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): cure dungeon penalty for AR. |
+| 2086 | `eEGS_BUY_LIFE_WATER_REQ` | — | `inventory/consumables.py` (`handle_buy_life_water`) | `BuyLifeWaterReq` | Opcode 2086 (eEGS_BUY_LIFE_WATER_REQ) -> 2087 (eEGS_BUY_LIFE_WATER_ACK): cure dungeon penalty for AR. |
 | 2087 | `eEGS_BUY_LIFE_WATER_ACK` | 0x0078FF90 | — | `BuyLifeWaterAck` |  |
 | 2088 | `eEGS_CHEAT_PLEASE_REQ` | — | `gm.py` (`handle_cheat_please`) | `CheatPleaseReq` | 2088 -> 2089 (0x004ED150): generic GM cheat router |
 | 2089 | `eEGS_CHEAT_PLEASE_ACK` | — | — | `CheatPleaseAck` |  |
@@ -162,7 +162,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2144 | `eEGS_DURABILITY_CHANGE_ACK` | 0x00774AE0 | — | `DurabilityChangeAck` |  |
 | 2145 | `eEGS_DURABILITY_REPAIR_REQ` | — | `inventory/crafting.py` (`handle_durability_repair`) | `DurabilityRepairReq` | Opcode 2145 (eEGS_DURABILITY_REPAIR_REQ) -> 2146 (eEGS_DURABILITY_REPAIR_ACK): repair equipment with AR. |
 | 2146 | `eEGS_DURABILITY_REPAIR_ACK` | 0x007930D0 | — | `DurabilityRepairAck` |  |
-| 2147 | `eEGS_SEAL_ITEM_REQ` | — | `inventory/items.py` (`handle_seal_item`) | `SealItemReq` | Opcode 2147 (eEGS_SEAL_ITEM_REQ) -> 2148 (eEGS_SEAL_ITEM_ACK): seal a tradable equipment piece. |
+| 2147 | `eEGS_SEAL_ITEM_REQ` | — | `inventory/consumables.py` (`handle_seal_item`) | `SealItemReq` | Opcode 2147 (eEGS_SEAL_ITEM_REQ) -> 2148 (eEGS_SEAL_ITEM_ACK): seal a tradable equipment piece. |
 | 2148 | `eEGS_SEAL_ITEM_ACK` | — | — | `SealItemAck` |  |
 | 2150 | `eEGS_GUILD_CREATE_REQ` | — | `social/guild.py` (`handle_guild_create`) | `GuildCreateReq` | eEGS_GUILD_CREATE_REQ -> 2151 eEGS_GUILD_CREATE_ACK (0x00793720). |
 | 2151 | `eEGS_GUILD_CREATE_ACK` | 0x00793720 | — | `GuildCreateAck` |  |
@@ -190,7 +190,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2174 | `eEGS_GUILD_GRADE_DELEGATION_ACK` | 0x0074B830 | — | `GuildGradeDelegationAck` |  |
 | 2175 | `eEGS_GUILD_PERSON_EXPULSION_REQ` | — | `social/guild.py` (`handle_guild_person_expulsion`) | `GuildPersonExpulsionReq` | eEGS_GUILD_PERSON_EXPULSION_REQ (0x007940D0) -> 2176 eEGS_GUILD_PERSON_EXPULSION_ACK (0x0074B830). |
 | 2176 | `eEGS_GUILD_PERSON_EXPULSION_ACK` | 0x0074B830 | — | `GuildPersonExpulsionAck` |  |
-| 2177 | `eEGS_ACT_KAIRO_REQ` | — | `quests.py` (`handle_act_kairo`) | `ActKairoReq` | Opcode 2177 (eEGS_ACT_KAIRO_REQ) -> 2178 (eEGS_ACT_KAIRO_ACK): execute Kairo box/action. |
+| 2177 | `eEGS_ACT_KAIRO_REQ` | — | `quest_npc.py` (`handle_act_kairo`) | `ActKairoReq` | Opcode 2177 (eEGS_ACT_KAIRO_REQ) -> 2178 (eEGS_ACT_KAIRO_ACK): execute Kairo box/action. |
 | 2178 | `eEGS_ACT_KAIRO_ACK` | — | — | `ActKairoAck` |  |
 | 2179 | `eEGS_GUILD_MONEY_IN_REQ` | — | `social/guild.py` (`handle_guild_money_in`) | `GuildMoneyInReq` | eEGS_GUILD_MONEY_IN_REQ (0x00790000.c:3031) -> 2180 eEGS_GUILD_MONEY_IN_ACK (0x00794250). |
 | 2180 | `eEGS_GUILD_MONEY_IN_ACK` | 0x00794250 | — | `GuildMoneyInAck` |  |
@@ -221,7 +221,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2207 | `eEGS_GUILD_LEARN_SKILL_ACK` | 0x0074B820 | — | `GuildLearnSkillAck` |  |
 | 2208 | `eEGS_GUILD_SKILL_CHANGE_USE_STATE_REQ` | — | `social/guild.py` (`handle_guild_skill_change_use_state`) | `GuildSkillChangeUseStateReq` | eEGS_GUILD_SKILL_CHANGE_USE_STATE_REQ (0x00794BC0) -> 2209 eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK (0x0074B820). |
 | 2209 | `eEGS_GUILD_SKILL_CHANGE_USE_STATE_ACK` | 0x0074B820 | — | `GuildSkillChangeUseStateAck` |  |
-| 2210 | `eEGS_USE_DYEING_ITEM_REQ` | — | `inventory/items.py` (`handle_use_dyeing_item`) | `UseDyeingItemReq` | Opcode 2210 (eEGS_USE_DYEING_ITEM_REQ) -> 2211 (eEGS_USE_DYEING_ITEM_ACK): apply hair/skin/item dye and consume it. |
+| 2210 | `eEGS_USE_DYEING_ITEM_REQ` | — | `inventory/consumables.py` (`handle_use_dyeing_item`) | `UseDyeingItemReq` | Opcode 2210 (eEGS_USE_DYEING_ITEM_REQ) -> 2211 (eEGS_USE_DYEING_ITEM_ACK): apply hair/skin/item dye and consume it. |
 | 2211 | `eEGS_USE_DYEING_ITEM_ACK` | — | — | `UseDyeingItemAck` |  |
 | 2212 | `eEGS_CHEAT_GUILD_ALL_SKILL_INIT_REQ` | — | `gm.py` (`handle_cheat_guild_all_skill_init`) | `CheatGuildAllSkillInitReq` |  |
 | 2213 | `eEGS_CHEAT_GUILD_ALL_SKILL_INIT_ACK` | — | — | `CheatGuildAllSkillInitAck` |  |
@@ -385,7 +385,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2422 | `eEGS_ACTIVE_WARFLAG_REQ` | — | `dungeon/events.py` (`handle_active_war_flag`) | `ActiveWarFlagReq` | eEGS_ACTIVE_WARFLAG_REQ (sender 0x79C300): ffffff7f + u32 war_flag_id. |
 | 2426 | `eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_REQ` | — | `social/guild.py` (`handle_guild_person_arena_grade_modify`) | `GuildPersonArenaGradeModifyReq` | eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_REQ -> 2427 eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK (0x00771D70). |
 | 2427 | `eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK` | 0x00771D70 | — | `GuildPersonArenaGradeModifyAck` |  |
-| 2428 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ` | — | `inventory/items.py` (`handle_use_selected_skill_change_item`) | `UseSelectedSkillChangeItemReq` | Opcode 2428 (eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ) -> 2429: reset/change a selected skill via item. |
+| 2428 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ` | — | `inventory/consumables.py` (`handle_use_selected_skill_change_item`) | `UseSelectedSkillChangeItemReq` | Opcode 2428 (eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ) -> 2429: reset/change a selected skill via item. |
 | 2429 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_ACK` | 0x0079C5E0 | — | `UseSelectedSkillChangeItemAck` |  |
 | 2432 | `eEGS_AVATAR_MERGE_REQ` | — | `inventory/crafting.py` (`handle_avatar_merge`) | `AvatarMergeReq` | Opcode 2432 (eEGS_AVATAR_MERGE_REQ) -> 2433: combine two avatar pieces. |
 | 2433 | `eEGS_AVATAR_MERGE_ACK` | — | — | `AvatarMergeAck` |  |
@@ -444,7 +444,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2493 | `eEGS_PET_CASH_FOOD_EQUIP_ACK` | 0x007A0A20 | — | `PetCashFoodEquipAck` |  |
 | 2494 | `eEGS_PET_CASH_FOOD_UNEQUIP_REQ` | — | `pets/pets.py` (`handle_pet_cash_food_unequip`) | `PetCashFoodUnequipReq` | eEGS_PET_CASH_FOOD_UNEQUIP_REQ (0x007A0930) -> 2495 eEGS_PET_CASH_FOOD_UNEQUIP_ACK (0x007A0C30) |
 | 2495 | `eEGS_PET_CASH_FOOD_UNEQUIP_ACK` | 0x007A0C30 | — | `PetCashFoodUnequipAck` |  |
-| 2496 | `eEGS_NPC_MAKING_KAIRO_REQ` | — | `quests.py` (`handle_npc_making_kairo`) | `NpcMakingKairoReq` | Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting. |
+| 2496 | `eEGS_NPC_MAKING_KAIRO_REQ` | — | `quest_npc.py` (`handle_npc_making_kairo`) | `NpcMakingKairoReq` | Opcode 2496 (eEGS_NPC_MAKING_KAIRO_REQ) -> 2497 (eEGS_NPC_MAKING_KAIRO_ACK): NPC Kairo crafting. |
 | 2497 | `eEGS_NPC_MAKING_KAIRO_ACK` | — | — | `NpcMakingKairoAck` |  |
 | 2498 | `eEGS_PET_EXTEND_DEPOT_REQ` | — | `pets/pets.py` (`handle_pet_extend_depot`) | `PetExtendDepotReq` | eEGS_PET_EXTEND_DEPOT_REQ (0x007A1030) -> 2499 eEGS_PET_EXTEND_DEPOT_ACK (0x00781990) |
 | 2499 | `eEGS_PET_EXTEND_DEPOT_ACK` | 0x00781990 | — | `PetExtendDepotAck` |  |
@@ -480,7 +480,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2542 | `eEGS_FISHING_LICENSE_EXPIRE_NOT` | 0x0075B480 | — | `FishingLicenseExpireNot` |  |
 | 2543 | `eEGS_AVATAR_CHANGER_REQ` | — | `inventory/crafting.py` (`handle_avatar_changer`) | `AvatarChangerReq` | Opcode 2543 (eEGS_AVATAR_CHANGER_REQ) -> 2544: reroll an avatar item via changer. |
 | 2544 | `eEGS_AVATAR_CHANGER_ACK` | — | — | `AvatarChangerAck` |  |
-| 2545 | `eEGS_ITEM_DECOMPOSE_REQ` | — | `inventory/items.py` (`handle_item_decompose`) | `ItemDecomposeReq` | Opcode 2545 (eEGS_ITEM_DECOMPOSE_REQ) -> 2546 (eEGS_ITEM_DECOMPOSE_ACK): dismantle an item. |
+| 2545 | `eEGS_ITEM_DECOMPOSE_REQ` | — | `inventory/consumables.py` (`handle_item_decompose`) | `ItemDecomposeReq` | Opcode 2545 (eEGS_ITEM_DECOMPOSE_REQ) -> 2546 (eEGS_ITEM_DECOMPOSE_ACK): dismantle an item. |
 | 2546 | `eEGS_ITEM_DECOMPOSE_ACK` | 0x00782300 | — | `ItemDecomposeAck` |  |
 | 2547 | `eEGS_RANDOM_OPTION_CHANGE_REQ` | — | `inventory/crafting.py` (`handle_random_option_change`) | `RandomOptionChangeReq` | Opcode 2547 (eEGS_RANDOM_OPTION_CHANGE_REQ) -> 2548: reroll random bonus options on an item. |
 | 2548 | `eEGS_RANDOM_OPTION_CHANGE_ACK` | 0x00782830 | — | `RandomOptionChangeAck` |  |
@@ -500,7 +500,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2570 | `eEGS_FRIEND_BLOCK_LIST_REQUEST_ACK` | 0x00772160 | — | `FriendBlockListRequestAck` |  |
 | 2571 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ` | — | `social/friends.py` (`handle_friend_block_list_update`) | `FriendBlockListUpdateReq` | eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ (0x007A2F20) -> 2572 eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK (0x00753C80). |
 | 2572 | `eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK` | 0x00753C80 | — | `FriendBlockListUpdateAck` |  |
-| 2573 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ` | — | `inventory/items.py` (`handle_use_league_point_item`) | `UseItemLeaguePointAddReq` | Opcode 2573 (eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ) -> 2574: consume an item that awards league points. |
+| 2573 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ` | — | `inventory/consumables.py` (`handle_use_league_point_item`) | `UseItemLeaguePointAddReq` | Opcode 2573 (eEGS_USE_ITEM_LEAGUE_POINT_ADD_REQ) -> 2574: consume an item that awards league points. |
 | 2574 | `eEGS_USE_ITEM_LEAGUE_POINT_ADD_ACK` | 0x007A3140 | — | `UseItemLeaguePointAddAck` |  |
 | 2577 | `eEGS_DUALSKILL_EXPIRE_NOT` | 0x007A3530 | — | `DualSkillExpireNot` |  |
 | 2578 | `eEGS_DUALSKILL_ACTIVE_NOT` | 0x007A3990 | — | `DualSkillActiveNot` |  |
@@ -612,7 +612,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2702 | `eEGS_MARK_OPTION_CHANGE_ACK` | — | — | `MarkOptionChangeAck` |  |
 | 2703 | `eEGS_DECREASE_USAGELIMIT_NOT` | 0x00766EA0 | — | `DecreaseUsageLimitNot` |  |
 | 2704 | `eEGS_CLEAR_USAGELIMIT_NOT` | 0x0075FEA0 | — | `ClearUsageLimitNot` |  |
-| 2709 | `eEGS_USE_ARENA_SP_ITEM_REQ` | — | `inventory/items.py` (`handle_use_arena_sp_item`) | `UseArenaSpItemReq` | Opcode 2709 (eEGS_USE_ARENA_SP_ITEM_REQ) -> 2710 (eEGS_USE_ARENA_SP_ITEM_ACK): consume an arena SP item. |
+| 2709 | `eEGS_USE_ARENA_SP_ITEM_REQ` | — | `inventory/consumables.py` (`handle_use_arena_sp_item`) | `UseArenaSpItemReq` | Opcode 2709 (eEGS_USE_ARENA_SP_ITEM_REQ) -> 2710 (eEGS_USE_ARENA_SP_ITEM_ACK): consume an arena SP item. |
 | 2710 | `eEGS_USE_ARENA_SP_ITEM_ACK` | 0x007A7CA0 | — | `UseArenaSpItemAck` |  |
 | 2711 | `eEGS_VIP_SERVICE_INFO_NOT` | 0x007A8040 | — | `VipServiceInfoNot` |  |
 | 2712 | `eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT` | — | `commerce/cash_shop.py` (`handle_steam_init_buy_item`) | `SteamInitBuyItemNot` | eEGS_BILLING_STEAM_INIT_BUY_ITEM_NOT. On Steam the overlay then |
@@ -626,7 +626,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2720 | `eEGS_GBB_GIVEUP_ACK` | — | — | `GbbGiveupAck` |  |
 | 2721 | `eEGS_STEAM_BUY_PACKAGE_REQ` | — | `commerce/cash_shop.py` (`handle_steam_buy_package`) | `SteamBuyPackageReq` | eEGS_STEAM_BUY_PACKAGE_REQ (0x007A8420) -> 2722 eEGS_STEAM_BUY_PACKAGE_ACK. |
 | 2722 | `eEGS_STEAM_BUY_PACKAGE_ACK` | — | — | `SteamBuyPackageAck` |  |
-| 2728 | `eEGS_NPC_SEAL_ITEM_REQ` | — | `quests.py` (`handle_npc_seal_item`) | `NpcSealItemReq` | Opcode 2728 (eEGS_NPC_SEAL_ITEM_REQ) -> 2729 (eEGS_NPC_SEAL_ITEM_ACK): seal an equipment item at NPC. |
+| 2728 | `eEGS_NPC_SEAL_ITEM_REQ` | — | `quest_npc.py` (`handle_npc_seal_item`) | `NpcSealItemReq` | Opcode 2728 (eEGS_NPC_SEAL_ITEM_REQ) -> 2729 (eEGS_NPC_SEAL_ITEM_ACK): seal an equipment item at NPC. |
 | 2729 | `eEGS_NPC_SEAL_ITEM_ACK` | — | — | `NpcSealItemAck` |  |
 
 ## Database and other services (3000-4999)
@@ -649,7 +649,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5006 | `eERC_LEAVE_ROOM_ACK` | — | — | `LeaveRoomAck` |  |
 | 5007 | `eERC_BANISH_USER_REQ` | — | `social/friends.py` (`handle_banish_user`) | `BanishUserReq` | eERC_BANISH_USER_REQ (0x005975D0) -> 5008 eERC_BANISH_USER_ACK (0x005999A0). |
 | 5008 | `eERC_BANISH_USER_ACK` | — | — | `BanishUserAck` |  |
-| 5009 | `eERC_CHANGE_MAPCODE_REQ` | — | `dungeon/rooms.py` (`handle_change_map_code`) | — | eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f |
+| 5009 | `eERC_CHANGE_MAPCODE_REQ` | — | `dungeon/gate.py` (`handle_change_map_code`) | — | eERC_CHANGE_MAPCODE_REQ (sender 0x7AD680), observed body: ffffff7f |
 | 5010 | `eERC_CHANGE_MAPCODE_ACK` | — | — | `ChangeMapCodeAck` |  |
 | 5011 | `eERC_CHANGE_ROOMINFO_REQ` | — | `dungeon/rooms.py` (`handle_change_room_info`) | `ChangeRoomInfoReq` | eERC_CHANGE_ROOMINFO_REQ (Party info OK) -> 5012. The request is a whole |
 | 5012 | `eERC_CHANGE_ROOMINFO_ACK` | — | — | `ChangeRoomInfoAck` |  |
@@ -675,7 +675,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5039 | `eERC_LEAVE_LAYER_NOT` | 0x00789450 | — | `LeaveLayerNot` |  |
 | 5040 | `eERC_CHAT_REQ` | — | `social/chat.py` (`handle_chat`) | `ChatReq` | eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890). |
 | 5041 | `eERC_CHAT_ACK` | 0x007AC890 | — | `ChatAck` |  |
-| 5043 | `eERC_SELECT_DUNGEON_REQ` | — | `dungeon/rooms.py` (`handle_select_dungeon`) | — | eERC_SELECT_DUNGEON_REQ (sender 0x7AC1C0), observed body: |
+| 5043 | `eERC_SELECT_DUNGEON_REQ` | — | `dungeon/gate.py` (`handle_select_dungeon`) | — | eERC_SELECT_DUNGEON_REQ (sender 0x7AC1C0), observed body: |
 | 5044 | `eERC_SELECT_DUNGEON_ACK` | 0x007702E0 | — | `SelectDungeonAck` |  |
 | 5045 | `eERC_BACK_TO_SQUARE_REQ` | — | `square.py` (`handle_back_to_square`) | — | Opcode 5045 (eERC_BACK_TO_SQUARE_REQ) -> 5046 (eERC_BACK_TO_SQUARE_ACK). |
 | 5046 | `eERC_BACK_TO_SQUARE_ACK` | 0x007897F0 | — | `BackToSquareAck` |  |
@@ -684,7 +684,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5049 | `eERC_INVITE_REQ` | — | `social/party.py` (`handle_party_invite`) | `PartyInviteReq` | Opcode 5049 (eERC_INVITE_REQ) -> 5050 (eERC_INVITE_ACK). |
 | 5050 | `eERC_INVITE_ACK` | 0x00758700 | — | `PartyInviteAck` |  |
 | 5051 | `eERC_INVITE_NOT` | 0x007706E0 | — | `PartyInviteNot` |  |
-| 5052 | `eERC_AGAIN_SELECT_DUNGEON_REQ` | — | `dungeon/rooms.py` (`handle_again_select_dungeon`) | `AgainSelectDungeonReq` | eERC_AGAIN_SELECT_DUNGEON_REQ (0x007AC480) -> 5053 eERC_AGAIN_SELECT_DUNGEON_ACK (0x00770A80). |
+| 5052 | `eERC_AGAIN_SELECT_DUNGEON_REQ` | — | `dungeon/gate.py` (`handle_again_select_dungeon`) | `AgainSelectDungeonReq` | eERC_AGAIN_SELECT_DUNGEON_REQ (0x007AC480) -> 5053 eERC_AGAIN_SELECT_DUNGEON_ACK (0x00770A80). |
 | 5053 | `eERC_AGAIN_SELECT_DUNGEON_ACK` | 0x00770A80 | — | `AgainSelectDungeonAck` |  |
 | 5054 | `eERC_ACCEPT_INVITE_REQ` | — | `social/party.py` (`handle_party_accept_invite`) | `PartyAcceptInviteReq` | Opcode 5054 (eERC_ACCEPT_INVITE_REQ) -> 5055 (eERC_ACCEPT_INVITE_ACK). |
 | 5055 | `eERC_ACCEPT_INVITE_ACK` | — | — | `PartyAcceptInviteAck` |  |
@@ -843,7 +843,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5365 | `eERC_GOLDGOBLIEN_DEAD_REQ` | — | `dungeon/combat.py` (`handle_gold_goblin_dead`) | `GoldGoblinDeadReq` | eERC_GOLDGOBLIEN_DEAD_REQ -> 5366 eERC_GOLDGOBLIEN_DEAD_ACK (0x00784CA0). |
 | 5366 | `eERC_GOLDGOBLIEN_DEAD_ACK` | 0x00784CA0 | — | `GoldGoblinDeadAck` |  |
 | 5367 | `eERC_GOLDGOBLIEN_DISAPPEAR_NOT` | — | — | `GoldGoblinDisappearNot` |  |
-| 5382 | `eERC_QUESTITEM_DROP_REQ` | — | `quests.py` (`handle_quest_item_drop`) | `QuestItemDropReq` | Opcode 5382 (eERC_QUESTITEM_DROP_REQ) -> 5383 (eERC_QUESTITEM_DROP_ACK): spawn quest item floor drop. |
+| 5382 | `eERC_QUESTITEM_DROP_REQ` | — | `quest_npc.py` (`handle_quest_item_drop`) | `QuestItemDropReq` | Opcode 5382 (eERC_QUESTITEM_DROP_REQ) -> 5383 (eERC_QUESTITEM_DROP_ACK): spawn quest item floor drop. |
 | 5383 | `eERC_QUESTITEM_DROP_ACK` | 0x007A78C0 | — | `QuestItemDropAck` |  |
 | 5386 | `eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ` | — | `games/session.py` (`handle_authenticate_steam_user`) | — | Opcode 5386 (eERC_AUTHENTICATE_STEAM_GAMEUSER_REQ) -> 5020 welcome. |
 
