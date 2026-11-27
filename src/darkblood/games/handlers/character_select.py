@@ -53,7 +53,7 @@ def _build_depot_info(char_dict: dict) -> DepotInfo:
     )
 
 
-def build_select_char_ack(char, account_chars=None):
+def build_select_char_ack(char, account_chars=None, account_data=None):
     """Serialize eEGS_SELECT_CHAR_ACK (2007) using SelectCharacterAck model.
 
     `char` is a stored character dict or a Character; a Character carries no
@@ -69,6 +69,7 @@ def build_select_char_ack(char, account_chars=None):
             if isinstance(entry, dict) and 'id' in entry:
                 depots[int(entry['id'])] = _build_depot_info(entry)
     divisions, completed = achievements.total_info(data)
+    card_max_slots = int((account_data or {}).get('monster_card_max_slots', 60))
     return SelectCharacterAck(
         result=0,
         proficiencies=proficiency_values_for_char(char),
@@ -96,6 +97,7 @@ def build_select_char_ack(char, account_chars=None):
         summoned_pet_uid=int(data.get('summoned_pet') or 0),
         pet_summoned=bool(data.get('summoned_pet')),
         pet_depot_slots=_build_pet_depot_slots(data),
+        monster_card_add_slots=max(0, card_max_slots - 60),
         citadel_play_count=int(data.get('citadel_play_count', 3)),
     ).encode()
 

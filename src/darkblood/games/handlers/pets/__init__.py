@@ -17,6 +17,10 @@ class PetHandlers(
 ):
     """Pet summoning, evolution, feeding, mounts, monster taming and monster cards."""
 
+    def __init__(self, session):
+        super().__init__(session)
+        self.pet_energy_last_tick = None
+
 
 __all__ = [
     'PetHandlers',

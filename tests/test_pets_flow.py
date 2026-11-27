@@ -415,6 +415,50 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_releasing_a_card_from_another_character_keeps_its_details(self):
+        from darkblood.core.hashing import jhash
+        from darkblood.games.network.messages.pets import MonsterCardReleaseAllCharAck, MonsterCardReleaseAllCharReq
+
+        async def scenario(client):
+            client.account = 'ReleaseCardBook'
+            await lobby_flow(client)
+            char_ids = []
+            for name in ('CardBookOwner', 'CardBookAlt'):
+                client.send_event(2012, create_request(name))
+                _, created = await client.expect_event(2013)
+                char_ids.append(struct.unpack_from('<Q', created, 10)[0])
+            owner_id, alt_id = char_ids
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, alt_id))
+            await client.expect_event(2007)
+
+            store = session.GameSession.store()
+            owner, alt = (store.get(client.account, cid) for cid in char_ids)
+            account_book = store.account_data(client.account)
+            selected = dict(uid=1, code='Card001', level=3, owner_uid=owner_id)
+            retained = dict(uid=2, code='Card001', level=1, owner_uid=owner_id)
+            other = dict(uid=3, code='Card001', level=1, owner_uid=alt_id)
+            account_book['monster_cards'] = [selected, retained, other]
+            owner['monster_card_deck'] = [1, 2]
+            alt['monster_card_deck'] = [3]
+            store.save_chars([(client.account, cid) for cid in char_ids])
+            store.save_account_data(client.account)
+
+            client.send_event(2613, MonsterCardReleaseAllCharReq(card_uid=1).encode())
+            _, body = await client.expect_event(2614)
+            released = MonsterCardReleaseAllCharAck.decode(body)
+            self.assertEqual((released.result, released.deck_uids), (0, [3]))
+            self.assertEqual((released.card.card_uid, released.card.card_id, released.card.level,
+                              released.card.owner_uid), (1, jhash('Card001'), 3, 0))
+            self.assertEqual(owner['monster_card_deck'], [2])
+            self.assertEqual(alt['monster_card_deck'], [3])
+            self.assertEqual(account_book['monster_cards'], [
+                dict(uid=1, code='Card001', level=3, owner_uid=0),
+                dict(uid=2, code='Card001', level=1, owner_uid=owner_id),
+                dict(uid=3, code='Card001', level=1, owner_uid=alt_id),
+            ])
+
+        self.run_async(self.with_server(scenario))
+
     def test_monster_card_roulette_cronos_explore_clear_rank(self):
         """Test MonsterCard, Roulette, StorageShare, Cronos, Explore, and ClearRank opcodes."""
         from darkblood.games.network.messages.pets import (
@@ -460,17 +504,9 @@ class PetsFlowTest(ServerTestCase):
             _, r = await client.expect_event(2611)
             self.assertEqual(MonsterCardSetCharDeckAck.decode(r).deck_uids, [1, 2, 3])
 
-            from darkblood.core.hashing import jhash
-
-            card_owner = session.GameSession.store().get('OfflinePlayer', char_id)
-            card_owner['monster_cards'] = [dict(uid=1, code='Card001', level=3)]
             client.send_event(2613, MonsterCardReleaseAllCharReq(card_uid=1).encode())
             _, r = await client.expect_event(2614)
-            released = MonsterCardReleaseAllCharAck.decode(r)
-            self.assertEqual((released.result, released.deck_uids), (0, []))
-            self.assertEqual((released.card.card_uid, released.card.card_id, released.card.level),
-                             (1, jhash('Card001'), 3))
-            self.assertEqual(card_owner['monster_cards'], [dict(uid=1, code='Card001', level=3)])
+            self.assertEqual(MonsterCardReleaseAllCharAck.decode(r).result, 0)
 
             # 2615 is bare; requires 500,000 AR (SlotExtendPrice) and expands 60 -> 70
             client.send_event(2615, MonsterCardExtendSlotReq().encode())
@@ -752,10 +788,71 @@ class PetsFlowTest(ServerTestCase):
         from darkblood.games.progression import MAX_LEVEL
 
         pet = char['pets'][0]
+        char['level'] = MAX_LEVEL
         pet.update(level=MAX_LEVEL, exp=0)
         self.assertFalse(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
         self.assertEqual((pet['level'], pet['exp']), (MAX_LEVEL, 0))
         self.assertEqual(len(sent), 2)
+
+        # Level difference >= 20 blocks pet EXP; diff 19 allows it
+        char['level'] = 21
+        pet.update(level=1, exp=0)
+        self.assertFalse(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
+        self.assertEqual(pet['exp'], 0)
+
+        char['level'] = 20
+        self.assertTrue(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
+        self.assertEqual(pet['exp'], 50)
+
+        # Premium cash food doubles gained pet EXP (+100%)
+        pet['is_cash_food'] = True
+        self.assertTrue(self.run_async(grant_pet_exp(_FakeSession(), char, 20)))
+        self.assertEqual(pet['exp'], 90)
+
+    def test_pet_dungeon_energy_drain_and_auto_unsummon(self):
+        """Summoned pet loses 1 Energy on dungeon entry and 1 every 30s via 2479, unsummoning at 0."""
+        from darkblood.games.handlers.pets.pets import PET_DUNGEON_ENERGY_INTERVAL, PetCoreHandlersMixin, consume_pet_energy
+
+        sent = []
+
+        class _FakeTransport:
+            async def send_event(self, payload, note=''):
+                sent.append((payload, note))
+
+        class _FakePets(PetCoreHandlersMixin):
+            def __init__(self, session):
+                self.session = session
+                self.pet_energy_last_tick = None
+
+        class _FakeSession:
+            def __init__(self):
+                self.transport = _FakeTransport()
+                self.pets = _FakePets(self)
+
+        sess = _FakeSession()
+        char = {
+            'id': 7,
+            'summoned_pet': 42,
+            'pets': [{'uid': 42, 'code': 'PetCall001', 'level': 1, 'exp': 0, 'satiety': 3, 'name': 'Pup'}],
+        }
+        # Entry consumes 1 Energy (3 -> 2)
+        self.assertTrue(self.run_async(consume_pet_energy(sess, char, 1)))
+        self.assertEqual(char['pets'][0]['satiety'], 2)
+        self.assertEqual(char['summoned_pet'], 42)
+        self.assertIn('pet consume satiety not', sent[-1][1])
+
+        # First tick arms timer; +29s drains nothing; +30s drains 1 (2 -> 1); +60s drains to 0 and unsummons
+        self.assertFalse(self.run_async(sess.pets.tick_dungeon_energy(char, now=1000.0)))
+        self.assertFalse(self.run_async(sess.pets.tick_dungeon_energy(char, now=1029.0)))
+        self.assertEqual(char['pets'][0]['satiety'], 2)
+
+        self.assertTrue(self.run_async(sess.pets.tick_dungeon_energy(char, now=1000.0 + PET_DUNGEON_ENERGY_INTERVAL)))
+        self.assertEqual(char['pets'][0]['satiety'], 1)
+        self.assertEqual(char['summoned_pet'], 42)
+
+        self.assertTrue(self.run_async(sess.pets.tick_dungeon_energy(char, now=1000.0 + 2 * PET_DUNGEON_ENERGY_INTERVAL)))
+        self.assertEqual(char['pets'][0]['satiety'], 0)
+        self.assertIsNone(char['summoned_pet'])
 
 
 if __name__ == '__main__':

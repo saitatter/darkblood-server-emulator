@@ -1,11 +1,13 @@
 """Dungeon entry validation, Citadel/daily limit enforcement, stress cost, and start-game fan-out."""
 import random
+import time
 
 from darkblood.games.network import results
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.game_data.world import dungeon_entry_rule
+from darkblood.games.handlers.pets.pets import consume_pet_energy
 from darkblood.games.handlers.skills import learned_skill_map
 from darkblood.games.network.messages.dungeon import (
     DailyDunEnterCountUpdateNot,
@@ -63,6 +65,7 @@ class DungeonEntryHandlers:
             self.in_dungeon = True
             self.dungeon_cleared = False
             await self._consume_session_stress(self.session)
+            await self._consume_pet_dungeon_entry_energy(self.session)
         room = self.room
         if ack.result == 0 and room is not None and room.host is self.session and room.info.name != '_singleplay':
             # Shared dungeon, step 1: the members sit in the same gate (5044 at the
@@ -81,8 +84,18 @@ class DungeonEntryHandlers:
                         note='start game (party, %s)' % request.map_code,
                     )
                     await self._consume_session_stress(member)
+                    await self._consume_pet_dungeon_entry_energy(member)
                 except (ConnectionError, OSError):
                     pass
+
+    @staticmethod
+    async def _consume_pet_dungeon_entry_energy(member):
+        """Consume 1 Energy when entering a dungeon with a summoned pet and arm the 30s drain timer."""
+        char = member.dungeon.current_char()
+        if char is not None and char.get('summoned_pet'):
+            if await consume_pet_energy(member, char, 1):
+                member.dungeon.save_char()
+            member.pets.pet_energy_last_tick = time.time() if char.get('summoned_pet') else None
 
     @staticmethod
     def _start_game_ack(map_code, participants):

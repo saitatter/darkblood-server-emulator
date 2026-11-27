@@ -13,6 +13,7 @@ from darkblood.games.network.messages.pets import (
     PetCashFoodEquipReq,
     PetCashFoodUnequipAck,
     PetChangeExpNot,
+    PetConsumeSatietyNot,
     PetCreateAck,
     PetCreateReq,
     PetDeleteAck,
@@ -55,10 +56,43 @@ from darkblood.games.game_data.client_dict import char_level_stat
 from darkblood.games.progression import MAX_LEVEL
 
 
+PET_DUNGEON_ENERGY_INTERVAL = 30.0
+PET_EXP_MAX_LEVEL_DIFF = 20
+
+
+async def consume_pet_energy(session, char: dict, amount: int = 1) -> bool:
+    """Consume Energy (satiety) from the summoned pet and send 2479 PetConsumeSatietyNot.
+
+    Client handler 0x0079F980 stores sConsumeSatiety as the remaining value and
+    auto-unsummons the pet when it reaches 0. Returns True if the pet record changed.
+    """
+    if not char or amount <= 0:
+        return False
+    pet_uid = char.get('summoned_pet')
+    if not pet_uid:
+        return False
+    pet = next((p for p in (char.get('pets') or []) if p.get('uid') == pet_uid), None)
+    if pet is None:
+        return False
+    cur = max(0, int(pet.get('satiety', 0)))
+    new_satiety = max(0, cur - int(amount))
+    pet['satiety'] = new_satiety
+    if new_satiety <= 0:
+        char['summoned_pet'] = None
+        if hasattr(session, 'pets'):
+            session.pets.pet_energy_last_tick = None
+    await session.transport.send_event(
+        event(2479, PetConsumeSatietyNot(pet_uid=int(pet_uid), consume_satiety=new_satiety).encode()),
+        note=f'pet consume satiety not (pet={pet_uid} satiety={new_satiety})',
+    )
+    return True
+
+
 async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
     """Grant EXP to the character's currently summoned pet and send 5324 / 5323 notifications.
 
     Uses the UPExp curve from DictPet:LoadPetStat (identical to char_level_stat(0, lv)['upexp']).
+    Pet EXP is only gained when abs(char_level - pet_level) < 20; Premium cash food doubles EXP.
     Returns True if the pet record was updated.
     """
     if not char or exp_amount <= 0:
@@ -70,12 +104,16 @@ async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
     if pet is None:
         return False
 
-
     level = max(1, int(pet.get('level', 1)))
     if level >= MAX_LEVEL:
         return False
+    char_level = max(1, int(char.get('level', 1)))
+    if abs(char_level - level) >= PET_EXP_MAX_LEVEL_DIFF:
+        return False
 
     gain = max(1, int(exp_amount))
+    if pet.get('is_cash_food'):
+        gain *= 2
     cur_exp = max(0, int(pet.get('exp', 0))) + gain
     leveled_up = False
     while level < MAX_LEVEL:
@@ -235,11 +273,30 @@ class PetCoreHandlersMixin:
         await self.reply(PetDeleteAck(result=0, pet_uid=req.pet_uid), correlation,
                          note=f'pet delete ack (uid={req.pet_uid})')
 
+    async def tick_dungeon_energy(self, char: dict, now: float = None) -> bool:
+        """Consume 1 Energy every 30 seconds while a pet is summoned in a dungeon."""
+        if not char or not char.get('summoned_pet'):
+            self.pet_energy_last_tick = None
+            return False
+        now = time.time() if now is None else float(now)
+        if self.pet_energy_last_tick is None:
+            self.pet_energy_last_tick = now
+            return False
+        changed = False
+        while now - self.pet_energy_last_tick >= PET_DUNGEON_ENERGY_INTERVAL:
+            self.pet_energy_last_tick += PET_DUNGEON_ENERGY_INTERVAL
+            if await consume_pet_energy(self.session, char, 1):
+                changed = True
+            if not char.get('summoned_pet'):
+                self.pet_energy_last_tick = None
+                break
+        return changed
+
     @packet_handler(PetSummonReq)
     async def handle_pet_summon(self, correlation, body):
         # eEGS_PET_SUMMON_REQ (0x0079E3C0) -> 2469 eEGS_PET_SUMMON_ACK (0x0079ECF0)
         # 0x0079ECF0 reads u16 sNurturePoint (satiety) and writes it via 0x009524F0.
-        # Sending 0 zeroed the pet's satiety, blocking subsequent summons (0x008625D0).
+        # In a dungeon, summoning consumes 1 Energy immediately and 1 more every 30s.
         PetSummonReq.decode(body)
         char = self.current_char()
         if not char:
@@ -247,10 +304,19 @@ class PetCoreHandlersMixin:
             return
         pets = char.get('pets', [])
         active = next((p for p in pets if p.get('slot', -1) == -1), pets[0] if pets else None)
-        satiety = max(2, int(active.get('satiety', 100))) if active else 100
-        if active is not None:
+        satiety = int(active.get('satiety', 100)) if active else 100
+        if active is not None and satiety <= 0:
+            await self.reply(PetSummonAck(result=results.INVALID_STATE), correlation,
+                             note='pet summon fail (no energy)')
+            return
+        in_dungeon = getattr(self.session.dungeon, 'in_dungeon', False)
+        if active is not None and in_dungeon:
+            satiety = max(0, satiety - 1)
             active['satiety'] = satiety
-        char['summoned_pet'] = active['uid'] if active else 0
+            self.pet_energy_last_tick = time.time() if satiety > 0 else None
+        elif active is not None:
+            active['satiety'] = satiety
+        char['summoned_pet'] = active['uid'] if (active and satiety > 0) else (0 if not active else None)
         self.save_char()
         await self.reply(PetSummonAck(result=0, satiety=satiety), correlation,
                          note=f'pet summon ack (satiety={satiety})')
@@ -259,6 +325,7 @@ class PetCoreHandlersMixin:
     async def handle_pet_release_summon(self, correlation, body):
         # eEGS_PET_RELEASE_SUMMON_REQ (0x0079E510) -> 2471 eEGS_PET_RELEASE_SUMMON_ACK (0x0079EEE0)
         char = self.current_char()
+        self.pet_energy_last_tick = None
         if char:
             char['summoned_pet'] = None
             self.save_char()
@@ -360,6 +427,7 @@ class PetCoreHandlersMixin:
         active = self._pet_for_feeding(char) if char else None
         if active is not None:
             active['satiety'] = 100
+            active['is_cash_food'] = True
             self.save_char()
         await self.reply(PetEatCashAck(result=0, items=[], satiety=satiety, is_cash_food=True),
                          correlation, note=f'pet eat cash ack (item={req.item_uid} satiety={satiety})')

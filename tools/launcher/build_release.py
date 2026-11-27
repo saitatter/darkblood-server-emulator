@@ -38,6 +38,14 @@ INCLUDE_SOURCE_ROOT_FILES = (
 
 INCLUDE_DOC_FILES = (
     'docs/GM_COMMANDS.md',
+    'docs/gm_ids/buffs.md',
+    'docs/gm_ids/items.md',
+    'docs/gm_ids/items_equipment.md',
+    'docs/gm_ids/monsters.md',
+    'docs/gm_ids/mounts_and_pets.md',
+    'docs/gm_ids/npcs.md',
+    'docs/gm_ids/quests.md',
+    'docs/gm_ids/skills.md',
 )
 
 INCLUDE_TOOLS = (

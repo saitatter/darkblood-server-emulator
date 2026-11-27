@@ -115,7 +115,7 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (44 of 153 fields)
+## lobby (43 of 153 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
@@ -158,7 +158,6 @@
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:150 |  |
 | `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:151 | +0x303 0x00A1E900: map + vector -> AppPage(0x2A).0x0058DFB0 |
 | `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:152 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:153 | +0x4AB -> AppPage(0x93).0x005DE1B0 |
 | `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:157 | +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640 |
 | `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:182 | vecTargetState (0x00773870), element layout unknown |
 | `RelayJoinGroupAck` | `u16` | lobby.jsch:190 | RMI id |
