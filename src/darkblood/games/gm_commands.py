@@ -146,11 +146,9 @@ def apply_equip_durability(char: dict, value: int) -> List[Item]:
 
 def apply_depot_expand(char: dict, days: int = 30) -> None:
     """Extend personal depot rental timer to at least ``days`` days."""
-    rem = list(char.get('depot_extend_remain', [0, 0]))
-    while len(rem) < 2:
-        rem.append(0)
-    rem[0] = max(rem[0], int(days) * 86400)
-    char['depot_extend_remain'] = rem
+    from darkblood.games.progression import extend_depot_rental
+
+    extend_depot_rental(char, 0, int(days) * 86400, minimum=True)
 
 
 def apply_learn_skill(char: dict, skill_id: int, skill_level: int) -> Tuple[int, int]:

@@ -335,6 +335,16 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2462 = await client.expect_event(2462)
             self.assertEqual(struct.unpack_from('<ihq', ack2462[:14]), (0, 0, 30 * 86400))
 
+            from darkblood.games.progression import refresh_depot_timers
+
+            renter = session.GameSession.store().get('OfflinePlayer', char_id)
+            self.assertIn('depot_extend_expires', renter)
+            expires_at = renter['depot_extend_expires'][0]
+            self.assertTrue(refresh_depot_timers(renter, now=expires_at - 60))
+            self.assertEqual(renter['depot_extend_remain'][0], 60)
+            self.assertTrue(refresh_depot_timers(renter, now=expires_at))
+            self.assertEqual(renter['depot_extend_remain'][0], 0)
+
             # 46. Durability loss (2143 -> 2144), AR repair (2145 -> 2146), and repair-by-item (2154 -> 2146)
             from darkblood.games.network.messages import (
                 DurabilityChangeAck, DurabilityChangeReq, DurabilityRepairAck,

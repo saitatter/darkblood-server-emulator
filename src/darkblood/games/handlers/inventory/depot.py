@@ -10,6 +10,7 @@ from darkblood.games.network.messages import (
     DepotSlotExtendAck,
     DepotSlotExtendReq,
 )
+from darkblood.games.progression import extend_depot_rental
 from darkblood.player_management.characters import add_gold, gold_of
 
 
@@ -85,13 +86,8 @@ class DepotHandlersMixin:
         remain_sec = 30 * 86400
         char = self.current_char()
         if char:
-            extend_remain = list(char.get('depot_extend_remain', [0, 0]))
-            while len(extend_remain) < 2:
-                extend_remain.append(0)
             if 0 <= req.slot_index < 2:
-                extend_remain[req.slot_index] = int(extend_remain[req.slot_index]) + remain_sec
-                remain_sec = extend_remain[req.slot_index]
-            char['depot_extend_remain'] = extend_remain
+                remain_sec = extend_depot_rental(char, req.slot_index, remain_sec)
             char['depot_slots'] = char.get('depot_slots', 20) + 20
             self.save_char()
         await self.reply(DepotSlotExtendAck(result=0, slot_index=req.slot_index, expire_time=remain_sec, items=[]),

@@ -300,6 +300,23 @@ def refresh_depot_timers(char, now=None) -> bool:
     return changed
 
 
+def extend_depot_rental(char, slot, seconds, *, minimum=False):
+    """Store a depot rental deadline and return the remaining seconds."""
+    now = int(time.time())
+    deadlines = list(char.get('depot_extend_expires') or [])
+    previous = char.get('depot_extend_remain', [])
+    for index in range(len(deadlines), 2):
+        remaining = int(previous[index]) if index < len(previous) else 0
+        deadlines.append(now + remaining if remaining > 0 else 0)
+
+    deadline = max(now, int(deadlines[slot]))
+    seconds = max(0, seconds)
+    deadlines[slot] = max(deadline, now + seconds) if minimum else deadline + seconds
+    char['depot_extend_expires'] = deadlines
+    refresh_depot_timers(char, now=now)
+    return deadlines[slot] - now
+
+
 CITADEL_WEEKLY_INIT = 3
 CITADEL_MAX_PLAY_COUNT = 7
 
