@@ -873,7 +873,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2227 eEGS_POST_NEW_ARRIVAL_NOT` (`0x007965B0`):
   empty -> HUD mail notification icon.
 - `2234 eEGS_POST_RETURN_REQ` -> `2235 eEGS_POST_RETURN_ACK` (`0x00771470`):
-  `mail_id: i64` -> `result: i32 (0), tag 0x10 vector`.
+  `mail_id: i64` -> `result: i32 (0), tag 0x10 vector`. The original sender receives unread mail attributed to the character who returned it.
 - `2109 eEGS_INSERT_AP_NOT` (`0x00790480`):
   `current_ap: i32, total_ap: i32`.
 - `2085 eEGS_CHANGE_DUNGEON_PENALTY_NOT` (`0x0078FA70`):

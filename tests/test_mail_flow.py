@@ -159,6 +159,9 @@ class MailFlowTest(ServerTestCase):
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char2_id))
             await client.expect_event(2007)
 
+            client.send_event(2223, PostReadReq(mail_uid=mail_uid).encode())
+            await client.expect_event(2224)
+
             # Receiver returns the mail
             client.send_event(2234, PostReturnReq(mail_id=mail_uid).encode())
             _, ack2235 = await client.expect_event(2235)
@@ -169,6 +172,9 @@ class MailFlowTest(ServerTestCase):
             self.assertEqual(len(sender_inbox), 1)
             self.assertEqual(sender_inbox[0]['uid'], mail_uid)
             self.assertEqual(sender_inbox[0]['post_type'], 2)  # returned
+            self.assertEqual(sender_inbox[0]['sender_name'], 'ReceiverChar')
+            self.assertFalse(sender_inbox[0]['is_read'])
+            self.assertEqual(sender_inbox[0]['gold'], 1000)
 
         self.run_async(self.with_server(scenario))
 
