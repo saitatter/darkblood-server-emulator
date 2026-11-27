@@ -508,6 +508,10 @@ The arena room creation test uses three headless clients. Two request the same
 room ID and the third leaves its ID unset. The room list must retain all three
 rooms with their original hosts.
 
+Arena room disconnects close empty rooms and hand over the host role when
+members remain. If the same character rejoins before their old connection
+closes, closing the old connection leaves the new membership active.
+
 ### Driving the game
 
 `tools/automation/gamectl.py` (CLI) and `tools/automation/mcp_server.py` (MCP stdio server, registered in `.mcp.json`) start/stop the server and client, take screenshots, send keys/clicks, skip the intro, walk to character select, and decode the wire log with opcode names:
