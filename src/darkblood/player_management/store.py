@@ -332,6 +332,24 @@ class SqliteCharacterStore(ICharacterStore):
             )
             conn.commit()
 
+    def rename_character(self, account: str, char: dict, new_name: str) -> bool:
+        """Persist a unique name before updating the live character record."""
+        with self.lock:
+            conn = self._get_connection()
+            try:
+                cursor = conn.execute(
+                    'UPDATE characters SET name = ?, data_json = ? WHERE account = ? AND id = ?',
+                    (new_name, json.dumps(dict(char, name=new_name)), account, char['id']),
+                )
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                return False
+            if not cursor.rowcount:
+                return False
+            char['name'] = new_name
+            return True
+
     def save_chars(self, pairs):
         """Atomically persist a specific set of (account, char_id) pairs in one transaction."""
         with self.lock:

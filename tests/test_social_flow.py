@@ -171,6 +171,13 @@ class SocialFlowTest(ServerTestCase):
 
             # 31. Character nickname change (2310 -> 2311)
             from darkblood.core.serialization.jser import wide_string
+            GameSession.store().create('OfflinePlayer', {'name': 'OccupiedNick', 'char_class': 1})
+            duplicate = CharNickChangeReq(item_uid=123, new_name='occupiednick').encode()
+            client.send_event(2310, duplicate)
+            _, refused = await client.expect_event(2311)
+            self.assertEqual(struct.unpack_from('<i', refused)[0], 16)
+            self.assertEqual(char['name'], 'Socialite')
+
             nick_payload = CharNickChangeReq(item_uid=123, new_name='RenamedHero').encode()
             client.send_event(2310, nick_payload)
             _, ack2311 = await client.expect_event(2311)
