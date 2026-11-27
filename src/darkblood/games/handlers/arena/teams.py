@@ -72,8 +72,12 @@ class ArenaTeamHandlers:
             )
             self.arena.teams[req.team_id] = team
 
-        team.member_count += 1
-        self._current_arena_team_id = team.team_id
+        if self._current_arena_team_id != team.team_id:
+            previous_team = self.arena.teams.get(self._current_arena_team_id)
+            if previous_team is not None:
+                previous_team.member_count = max(0, previous_team.member_count - 1)
+            team.member_count += 1
+            self._current_arena_team_id = team.team_id
 
         self.transport.record('arena-team-join-req', body, team_id=req.team_id)
         ack = self._team_ack(ArenaTeamJoinAck, team)

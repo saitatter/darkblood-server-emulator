@@ -178,6 +178,15 @@ class ArenaFlowTest(ServerTestCase):
             join_ack = messages.ArenaTeamJoinAck.decode(ack5272)
             self.assertEqual(join_ack.result, 0)
             self.assertEqual(join_ack.team_id, t1_id)
+            self.assertEqual(join_ack.member_count, 1)
+
+            client.send_event(5271, messages.ArenaTeamJoinReq(team_id=t1_id).encode())
+            _, retry = await client.expect_event(5272)
+            self.assertEqual(messages.ArenaTeamJoinAck.decode(retry).member_count, 1)
+
+            client.send_event(5271, messages.ArenaTeamJoinReq(team_id=t2_id).encode())
+            _, returned = await client.expect_event(5272)
+            self.assertEqual(messages.ArenaTeamJoinAck.decode(returned).member_count, 1)
 
         self.run_async(self.with_server(scenario))
 
