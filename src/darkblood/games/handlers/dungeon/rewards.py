@@ -36,6 +36,7 @@ from darkblood.player_management.characters import (
     add_reward_items,
     free_bag_slots,
     gold_of,
+    spend_gold,
     slots_needed,
 )
 
@@ -80,6 +81,20 @@ def _fallback_rank_from_stats(score: int, kill_count: int) -> int:
     if score >= 1000 or kill_count >= 2:
         return 1
     return 0
+
+
+def _member_rank(uid, party_scores, total_monster_hp, fallback_rank):
+    """Individual rank 0..6 (D..SSS) from the member's share of the monster HP."""
+    if total_monster_hp > 0 and uid in party_scores:
+        return _ratio_to_rank(party_scores[uid] / total_monster_hp)
+    return fallback_rank
+
+
+def _party_rank(party_scores, total_monster_hp, member_ranks, fallback_rank):
+    """Party rank on the same 0..6 scale; in solo runs it equals the member's rank."""
+    if total_monster_hp > 0 and party_scores:
+        return _ratio_to_rank(sum(party_scores.values()) / total_monster_hp)
+    return round(sum(member_ranks) / len(member_ranks)) if member_ranks else fallback_rank
 
 
 def _parse_finish_game_tail(tail: bytes):
@@ -145,75 +160,23 @@ class DungeonRewardsHandlers:
                 return
 
         map_code = self.map_code
-        room = self._shared_run()
-        # Only the host's client sends 5017 in a party run (live 2026-11-21): its
-        # result goes to every member. A member's own 5017 stays a solo result.
-        if room is not None and room.host is self.session:
-            members = self._run_members()
-        else:
-            char = self._current_char()
-            members = [(self.session, char)] if char is not None else []
-
+        members = self._finish_members()
         party_scores, total_monster_hp = _parse_finish_game_tail(req.tail)
-        fallback_rank = _fallback_rank_from_stats(
-            self.dungeon_score,
-            self.dungeon_kill_count,
-        )
+        fallback_rank = _fallback_rank_from_stats(self.dungeon_score, self.dungeon_kill_count)
 
         # The player's UID is the character id (2007 details +0x1C, copied to
         # player +0x10 by 0x0095A150). Characters have no 'char_uid' key, so
         # mapSingleReward used to go out empty and the result screen froze.
-        rewards = {}
-        member_ranks = []
-        extra_box_cost = 0
+        rewards, member_ranks, extra_box_cost = {}, [], 0
         for member, char in members:
-            dungeon = member.dungeon
-            dungeon.dungeon_cleared = bool(req.is_clear)
-            if req.is_clear:
-                dungeon._record_dungeon_clear(char, map_code)
-                await dungeon._update_quest_dungeon_clear(map_code, char)
-                await self._count_daily_clear(member, char, map_code)
             uid = int(char.get('id', 0))
-            gained = dungeon.dungeon_exp
-            if total_monster_hp > 0 and uid in party_scores:
-                user_rank = _ratio_to_rank(party_scores[uid] / total_monster_hp)
-            else:
-                user_rank = fallback_rank
-            member_ranks.append(user_rank)
-            extra_boxes = _RANK_EXTRA_BOXES.get(user_rank, 0) if req.is_clear else 0
-            member_extra_cost = max(500, int(char.get('level', 1)) * 200) if req.is_clear else 0
-            if member_extra_cost > extra_box_cost:
-                extra_box_cost = member_extra_cost
-            if req.is_clear and dungeon.in_dungeon and dungeon.reward_card is None:
-                dungeon.reward_card = (uid, map_code, extra_boxes, member_extra_cost)
-                dungeon.reward_cards_claimed = set()
-            bonus_exp = round(gained * _RANK_EXP_BONUS.get(user_rank, 0.0)) if (req.is_clear and gained > 0) else 0
-            if bonus_exp > 0:
-                await member.quests.grant_exp(char, bonus_exp)
-            if req.is_clear:
-                from darkblood.games.handlers.commerce.stores import add_roulette_points
-                new_pts = add_roulette_points(char, 1)
-                await member.transport.send_event(
-                    event(2389, RoulettePointInsertNot(roulette_points=new_pts).encode()),
-                    note=f'roulette point not (clear, pts={new_pts:.1f})',
-                )
-            rewards[uid] = SingleReward(
-                total=gained,
-                exp=gained,
-                bonus_exp=bonus_exp,
-                final_total_exp=gained + bonus_exp,
-                extra_box_count=extra_boxes,
-                rank=user_rank,
-            )
+            rank = _member_rank(uid, party_scores, total_monster_hp, fallback_rank)
+            member_ranks.append(rank)
+            rewards[uid], member_extra_cost = await self._settle_member(member, char, map_code, rank, req.is_clear)
+            extra_box_cost = max(extra_box_cost, member_extra_cost)
         if members and req.is_clear:
             self.store().save_chars([(member.account, member.char_id) for member, _ in members])
-
-        # Party rank uses the exact same 0..6 (D..SSS) scale as SingleReward.rank.
-        # In solo runs sum(party_scores) == member score, so party_rank == user_rank.
-        if total_monster_hp > 0 and party_scores:
-            party_rank = _ratio_to_rank(sum(party_scores.values()) / total_monster_hp)
-        else:
-            party_rank = round(sum(member_ranks) / len(member_ranks)) if member_ranks else fallback_rank
+        party_rank = _party_rank(party_scores, total_monster_hp, member_ranks, fallback_rank)
 
         from darkblood.games.game_data.world import dungeon_entry_rule
         rule = dungeon_entry_rule(map_code)
@@ -239,6 +202,45 @@ class DungeonRewardsHandlers:
             event(5018, ack),
             f'finish game (party, {map_code} rank={party_rank})',
         )
+
+    def _finish_members(self):
+        """(session, char) pairs that receive this 5018.
+
+        Only the host's client sends 5017 in a party run (live 2026-11-21): its
+        result goes to every member. A member's own 5017 stays a solo result.
+        """
+        room = self._shared_run()
+        if room is not None and room.host is self.session:
+            return self._run_members()
+        char = self._current_char()
+        return [(self.session, char)] if char is not None else []
+
+    async def _settle_member(self, member, char, map_code, rank, is_clear):
+        """Record one member's clear and rewards; returns (SingleReward, extra box cost)."""
+        dungeon = member.dungeon
+        dungeon.dungeon_cleared = bool(is_clear)
+        uid = int(char.get('id', 0))
+        gained = dungeon.dungeon_exp
+        extra_boxes = _RANK_EXTRA_BOXES.get(rank, 0) if is_clear else 0
+        extra_cost = max(500, int(char.get('level', 1)) * 200) if is_clear else 0
+        bonus_exp = round(gained * _RANK_EXP_BONUS.get(rank, 0.0)) if (is_clear and gained > 0) else 0
+        if is_clear:
+            dungeon._record_dungeon_clear(char, map_code)
+            await dungeon._update_quest_dungeon_clear(map_code, char)
+            await self._count_daily_clear(member, char, map_code)
+            if dungeon.in_dungeon and dungeon.reward_card is None:
+                dungeon.reward_card = (uid, map_code, extra_boxes, extra_cost)
+                dungeon.reward_cards_claimed = set()
+        if bonus_exp > 0:
+            await member.quests.grant_exp(char, bonus_exp)
+        if is_clear:
+            from darkblood.games.handlers.commerce.stores import add_roulette_points
+            new_pts = add_roulette_points(char, 1)
+            await self.send_to([member], RoulettePointInsertNot(roulette_points=new_pts),
+                               f'roulette point not (clear, pts={new_pts:.1f})')
+        reward = SingleReward(total=gained, exp=gained, bonus_exp=bonus_exp, final_total_exp=gained + bonus_exp,
+                              extra_box_count=extra_boxes, rank=rank)
+        return reward, extra_cost
 
     async def _count_daily_clear(self, member, char, map_code):
         """Clear-limited dungeons (rule clear_limit > 0) count today's clears and push
@@ -292,78 +294,26 @@ class DungeonRewardsHandlers:
         # card_index: 0 = basic free chest, 1 = VIP/PC-bang chest, 2..(2 + extra_boxes - 1) = extra chests (0x007208D0).
         req = ChoiceRewardPartyRankReq.decode(body)
         char = self._current_char()
-        card = self.reward_card
-        if (char is None or card is None or card[0] != char['id']
-                or not self.in_dungeon or not self.dungeon_cleared):
-            await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
-                             note='reward card unavailable')
-            return
-
-        char_id, map_code, extra_boxes, extra_box_cost = card
         idx = int(req.card_index)
-        claimed = self.reward_cards_claimed
-        valid_extra = 2 <= idx < 2 + extra_boxes
-        if idx in claimed or (idx not in (0, 1) and not valid_extra):
-            await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
-                             note=f'reward card {idx} unavailable (claimed={sorted(claimed)}, extra={extra_boxes})')
+        refusal = self._reward_card_refusal(char, idx)
+        if refusal:
+            result, note = refusal
+            await self.reply(ChoiceRewardPartyRankAck(result=result), correlation, note=note)
             return
 
-        cost = extra_box_cost if valid_extra else 0
-        gold = gold_of(char)
-        if cost > gold:
-            await self.reply(ChoiceRewardPartyRankAck(result=results.NOT_ENOUGH_AR), correlation,
-                             note=f'extra reward card {idx} refused (need {cost} AR, have {gold})')
-            return
-
+        char_id, map_code, extra_boxes, extra_box_cost = self.reward_card
+        cost = extra_box_cost if 2 <= idx < 2 + extra_boxes else 0
         reward_code, reward_count = loot.roll_dungeon_reward(map_code, int(char.get('char_class', 0)))
         grant = [(reward_code, reward_count)]
         free = free_bag_slots(char)
         bag_full = free is not None and free < slots_needed(grant)
-
-        if cost:
-            gold -= cost
-            char['gold'] = gold
-
+        spend_gold(char, cost)   # affordability checked by _reward_card_refusal
+        stored_items = [] if bag_full else add_reward_items(char, grant)
         if bag_full:
-            # 0x0078D660 accepts result 0x126 (294 JERI_DUN_REWARD_00) with the full chest payload,
-            # opens the chest visually, and shows UI_3329 ("Send via mail as there is not enough space in the inventory.").
-            from darkblood.player_management.characters import next_item_uid
-            mail_item = {'code': reward_code, 'uid': next_item_uid(char), 'count': reward_count}
-            self.store().send_mail(
-                sender_char_id=0,
-                sender_name='System',
-                recipient_char_id=char_id,
-                title='Dungeon Reward',
-                content='',
-                gold=0,
-                extra=0,
-                items=[mail_item],
-                post_type=1,
-            )
-            self.save_char()
-            claimed.add(idx)
-            self.reward_cards_claimed = claimed
-            ack_body = ChoiceRewardPartyRankAck(
-                result=0,
-                char_uid=char_id,
-                item_id=jhash(reward_code) & 0xFFFFFFFF,
-                count=reward_count,
-                box_type=idx,
-                box_cost=cost,
-                items=[],
-                gold=gold,
-            ).encode()
-            await self.transport.send_event(
-                event(5091, struct.pack('<i', results.DUN_REWARD_SENT_MAIL) + ack_body[4:], correlation),
-                note=f'choice reward partyrank ack -> mail (card={idx} cost={cost} item={reward_code} x{reward_count})',
-            )
-            await self.send_msg(PostNewArrivalNot(), note='dungeon reward mail arrival')
-            return
-
-        stored_items = add_reward_items(char, grant)
+            self._mail_reward(char_id, char, reward_code, reward_count)
         self.save_char()
-        claimed.add(idx)
-        self.reward_cards_claimed = claimed
+        self.reward_cards_claimed.add(idx)
+
         ack = ChoiceRewardPartyRankAck(
             char_uid=char_id,
             item_id=jhash(reward_code) & 0xFFFFFFFF,
@@ -371,11 +321,46 @@ class DungeonRewardsHandlers:
             box_type=idx,
             box_cost=cost,
             items=[Item(owner=UPDATE_OWNER, **item) for item in stored_items],
-            gold=gold,
+            gold=gold_of(char),
         )
-        await self.reply(
-            ack, correlation,
-            note=f'choice reward partyrank ack (card={idx} cost={cost} item={reward_code} x{reward_count})',
+        note = f'choice reward partyrank ack (card={idx} cost={cost} item={reward_code} x{reward_count})'
+        if not bag_full:
+            await self.reply(ack, correlation, note=note)
+            return
+        # 0x0078D660 accepts result 0x126 (294 JERI_DUN_REWARD_00) with the full chest payload,
+        # opens the chest visually, and shows UI_3329 ("Send via mail as there is not enough
+        # space in the inventory."). ok_only would cut the payload, so the result is patched in.
+        body = struct.pack('<i', results.DUN_REWARD_SENT_MAIL) + ack.encode()[4:]
+        await self.transport.send_event(event(5091, body, correlation), note=note + ' -> mail')
+        await self.send_msg(PostNewArrivalNot(), note='dungeon reward mail arrival')
+
+    def _reward_card_refusal(self, char, idx):
+        """(result, note) when card `idx` cannot be claimed now, else None.
+
+        card_index: 0 = basic free chest, 1 = VIP/PC-bang chest,
+        2..(2 + extra_boxes - 1) = paid extra chests (0x007208D0).
+        """
+        card = self.reward_card
+        if (char is None or card is None or card[0] != char['id']
+                or not self.in_dungeon or not self.dungeon_cleared):
+            return results.INVALID_STATE, 'reward card unavailable'
+        _, _, extra_boxes, extra_box_cost = card
+        claimed = self.reward_cards_claimed
+        valid_extra = 2 <= idx < 2 + extra_boxes
+        if idx in claimed or (idx not in (0, 1) and not valid_extra):
+            return results.INVALID_STATE, f'reward card {idx} unavailable (claimed={sorted(claimed)}, extra={extra_boxes})'
+        cost = extra_box_cost if valid_extra else 0
+        if cost > gold_of(char):
+            return results.NOT_ENOUGH_AR, f'extra reward card {idx} refused (need {cost} AR, have {gold_of(char)})'
+        return None
+
+    def _mail_reward(self, char_id, char, code, count):
+        """Send a chest reward that does not fit in the bags to the character's mailbox."""
+        from darkblood.player_management.characters import next_item_uid
+        self.store().send_mail(
+            sender_char_id=0, sender_name='System', recipient_char_id=char_id, title='Dungeon Reward',
+            content='', gold=0, extra=0, items=[{'code': code, 'uid': next_item_uid(char), 'count': count}],
+            post_type=1,
         )
 
     @packet_handler(5065)

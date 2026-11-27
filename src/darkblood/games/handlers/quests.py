@@ -81,6 +81,26 @@ from darkblood.games.handlers.base import BaseDomainService
 from darkblood.player_management.characters import gold_of
 
 
+def _take_quest_items(char, quest_id):
+    """Remove the items a collection quest asked for (MissionType 1 targets) from the bags."""
+    from darkblood.games.game_data.client_dict import quest_item_objectives
+    for item_code, q_list in quest_item_objectives().items():
+        for target_qid, _, target_val in q_list:
+            if target_qid != quest_id:
+                continue
+            remaining, kept = target_val, []
+            for item in char.get('items', []):
+                if item.get('code') == item_code and remaining > 0:
+                    count = item.get('count', 1)
+                    if count <= remaining:
+                        remaining -= count
+                        continue
+                    item['count'] = count - remaining
+                    remaining = 0
+                kept.append(item)
+            char['items'] = kept
+
+
 class QuestHandlers(BaseDomainService):
     """Quest start/complete and tutorial quests."""
 
@@ -299,23 +319,7 @@ class QuestHandlers(BaseDomainService):
                 done.append(quest_id)
             char['gold'] = total
             await self.grant_exp(char, exp)
-            from darkblood.games.game_data.client_dict import quest_item_objectives
-            for item_code, q_list in quest_item_objectives().items():
-                for target_qid, _, target_val in q_list:
-                    if target_qid == quest_id:
-                        rem = target_val
-                        new_items = []
-                        for it in char.get('items', []):
-                            if it.get('code') == item_code and rem > 0:
-                                cnt = it.get('count', 1)
-                                if cnt <= rem:
-                                    rem -= cnt
-                                    continue
-                                else:
-                                    it['count'] = cnt - rem
-                                    rem = 0
-                            new_items.append(it)
-                        char['items'] = new_items
+            _take_quest_items(char, quest_id)
             from darkblood.player_management.characters import add_reward_items
             reward_items = [] if already else add_reward_items(char, items)
             self.save_char()
@@ -328,37 +332,33 @@ class QuestHandlers(BaseDomainService):
                                items=[Item(owner=owner, **i) for i in reward_items])
         await self.reply(ack, correlation, note='quest complete ack (%08x)' % quest_id)
         if char and not already:
-            from darkblood.games.handlers.commerce.stores import (
-                add_roulette_points,
-                contribute_roulette_jackpot,
-            )
-            new_pts = add_roulette_points(char, 2)
-            if gold > 0:
-                contribute_roulette_jackpot(gold)
-            self.save_char()
-            await self.send_msg(
-                RoulettePointInsertNot(roulette_points=new_pts),
-                note=f'roulette point not (quest, pts={new_pts:.1f})',
-            )
-            from darkblood.games.game_data.client_dict import quest_promotion_class
-            promo_class = quest_promotion_class(quest_id)
-            cur_class = int(char.get('char_class', 0))
-            if (promo_class is not None
-                    and (cur_class & 0x0F) == (promo_class & 0x0F)
-                    and cur_class != promo_class):
-                new_sp = total_ap(char)
-                char['char_class'] = promo_class
-                char['sp'] = new_sp
-                char['total_ap'] = new_sp
-                char['skills'] = {}
-                char['locked_skills'] = []
-                char['skill_show_cooltime'] = []
-                char.pop('temp_skills', None)
-                self.save_char()
-                await self.send_msg(
-                    PromotionNot(result=0, new_class=promo_class, sp=new_sp, skills={}),
-                    note=f'promotion not (class {cur_class:#x} -> {promo_class:#x}, sp={new_sp})',
-                )
+            await self._quest_roulette_points(char, gold)
+            await self._promote_after_quest(char, quest_id)
+
+    async def _quest_roulette_points(self, char, gold):
+        """A first completion adds 2 roulette points and feeds the quest gold to the jackpot."""
+        from darkblood.games.handlers.commerce.stores import add_roulette_points, contribute_roulette_jackpot
+        new_pts = add_roulette_points(char, 2)
+        if gold > 0:
+            contribute_roulette_jackpot(gold)
+        self.save_char()
+        await self.send_msg(RoulettePointInsertNot(roulette_points=new_pts),
+                            note=f'roulette point not (quest, pts={new_pts:.1f})')
+
+    async def _promote_after_quest(self, char, quest_id):
+        """Final class-promotion quests switch the class, reset skills and refund AP (2283)."""
+        from darkblood.games.game_data.client_dict import quest_promotion_class
+        promo_class = quest_promotion_class(quest_id)
+        cur_class = int(char.get('char_class', 0))
+        if promo_class is None or (cur_class & 0x0F) != (promo_class & 0x0F) or cur_class == promo_class:
+            return
+        new_sp = total_ap(char)
+        char.update(char_class=promo_class, sp=new_sp, total_ap=new_sp, skills={}, locked_skills=[],
+                    skill_show_cooltime=[])
+        char.pop('temp_skills', None)
+        self.save_char()
+        await self.send_msg(PromotionNot(result=0, new_class=promo_class, sp=new_sp, skills={}),
+                            note=f'promotion not (class {cur_class:#x} -> {promo_class:#x}, sp={new_sp})')
 
     @packet_handler(2346)
     async def handle_tutorial_quest_start(self, correlation: int, body: bytes):
