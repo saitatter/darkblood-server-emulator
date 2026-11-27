@@ -35,7 +35,9 @@ from darkblood.games.network.messages.mail import (
     PostSendReq,
 )
 from darkblood.player_management.characters import (
+    add_gold,
     free_cells,
+    gold_of,
     next_item_uid,
 )
 from darkblood.games.dispatcher import packet_handler
@@ -70,7 +72,7 @@ class MailHandlers(BaseDomainService):
             has_item=bool(r.get('has_item', 0)),
             can_return=bool(r.get('can_return', 1)),
             remain_days=r.get('remain_days', 30),
-            gold=r.get('gold', 0),
+            gold=gold_of(r),
             send_time=r.get('send_time', 0),
             sender_name=r.get('sender_name', ''),
             title=r.get('title', ''),
@@ -105,7 +107,7 @@ class MailHandlers(BaseDomainService):
         char = self.current_char()
         sender_id = char.get('id', self.char_id) if char else self.char_id
         sender_name = char.get('name', 'Sender') if char else 'Sender'
-        current_gold = int(char.get('gold', 0)) if char else 0
+        current_gold = gold_of(char)
 
         if not req.recipient:
             # Empty / test request
@@ -168,7 +170,7 @@ class MailHandlers(BaseDomainService):
         except Exception:
             pass
 
-        ack = PostSendAck(result=0, items=[], remain_gold=int(char.get('gold', 0)) if char else 0)
+        ack = PostSendAck(result=0, items=[], remain_gold=gold_of(char))
         await self.reply(ack, correlation, note=f'post send ack to {req.recipient}')
 
     @packet_handler(PostReadReq)
@@ -201,7 +203,7 @@ class MailHandlers(BaseDomainService):
 
         claimed_gold, claimed_items = claim
         if claimed_gold > 0:
-            char['gold'] = int(char.get('gold', 0)) + claimed_gold
+            add_gold(char, claimed_gold)
 
         new_items = []
         for it, (container, slot) in zip(claimed_items, cells):
@@ -253,9 +255,9 @@ class MailHandlers(BaseDomainService):
             return
         claimed_gold = self.store().claim_mail_gold(req.mail_uid)
         if claimed_gold > 0:
-            char['gold'] = int(char.get('gold', 0)) + claimed_gold
+            add_gold(char, claimed_gold)
             self.save_char()
-        cur_ar = int(char.get('gold', 0))
+        cur_ar = gold_of(char)
         await self.reply(
             PostGetAppendArAck(result=0, mail_uid=req.mail_uid, current_ar=cur_ar),
             correlation,

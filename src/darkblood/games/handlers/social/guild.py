@@ -67,6 +67,8 @@ from darkblood.games.network.messages import (
     RefuseGuildInviteNot,
     SiegeTeamMembers,
 )
+from darkblood.games.network import results
+from darkblood.player_management.characters import add_gold, gold_of, spend_gold
 
 
 class GuildHandlers:
@@ -80,7 +82,7 @@ class GuildHandlers:
             await self.reply(GuildCreateAck(result=1), correlation, note='guild create fail (no character)')
             return
         char['guild_name'] = req.guild_name
-        gold = char.get('gold', 100000)
+        gold = gold_of(char)
         self.save_char()
         ack = GuildCreateAck(result=0, guild_uid=1001, guild_name=req.guild_name, remain_gold=gold)
         await self.reply(ack, correlation, note=f'guild create ack (name={req.guild_name})')
@@ -160,14 +162,16 @@ class GuildHandlers:
         char = self.current_char()
         guild_money = req.amount
         if char:
-            current_gold = char.get('gold', 0)
             deposit = req.amount
-            if current_gold >= deposit:
-                char['gold'] = current_gold - deposit
+            if not spend_gold(char, deposit):
+                await self.reply(GuildMoneyInAck(result=results.NOT_ENOUGH_AR), correlation,
+                                 note=f'guild money in refused (need {deposit} AR, have {gold_of(char)})')
+                return
             guild_money = char.setdefault('guild_money', 0) + deposit
             char['guild_money'] = guild_money
             self.save_char()
-        ack = GuildMoneyInAck(result=0, remain_gold=guild_money)
+        # remain_gold is the player's own AR: 0x00794250 writes it to player +0x70.
+        ack = GuildMoneyInAck(result=0, remain_gold=gold_of(char))
         await self.reply(ack, correlation, note=f'guild money in ack (deposited={req.amount} guild_money={guild_money})')
 
 
@@ -179,13 +183,14 @@ class GuildHandlers:
         char = self.current_char()
         guild_money = 0
         if char:
-            curr_guild = char.get('guild_money', req.amount)
+            curr_guild = int(char.get('guild_money', 0))
             withdraw = min(max(0, req.amount), curr_guild)
             char['guild_money'] = curr_guild - withdraw
-            char['gold'] = char.get('gold', 0) + withdraw
+            add_gold(char, withdraw)
             guild_money = char['guild_money']
             self.save_char()
-        ack = GuildMoneyOutAck(result=0, remain_gold=guild_money)
+        # remain_gold is the player's own AR: 0x00794470 writes it to player +0x70.
+        ack = GuildMoneyOutAck(result=0, remain_gold=gold_of(char))
         await self.reply(ack, correlation, note=f'guild money out ack (withdrawn={req.amount} remain_guild_money={guild_money})')
 
 

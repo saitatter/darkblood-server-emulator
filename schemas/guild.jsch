@@ -67,7 +67,7 @@ end
 message 2180 GuildMoneyInAck ok_only
   ## On_eEGS_GUILD_MONEY_IN_ACK 0x00794250.
   i32 result
-  i64 remain_gold            # written to player +0x70
+  i64 remain_gold            # the player's AR after the transfer, written to player +0x70
 end
 
 message 2181 GuildMoneyOutReq header?
@@ -78,7 +78,7 @@ end
 message 2182 GuildMoneyOutAck ok_only
   ## On_eEGS_GUILD_MONEY_OUT_ACK 0x00794470.
   i32 result
-  i64 remain_gold            # written to player +0x70
+  i64 remain_gold            # the player's AR after the transfer, written to player +0x70
 end
 
 message 2183 GuildLevelUpReq header?

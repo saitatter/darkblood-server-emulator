@@ -262,3 +262,23 @@ def add_reward_items(char, items):
             char.setdefault('items', []).append(record)
             stored.append(record)
     return stored
+
+
+def gold_of(char):
+    """The character's AR (char['gold']); 0 for a missing character or key."""
+    return int((char or {}).get('gold', 0))
+
+
+def add_gold(char, amount):
+    """Add (or with a negative amount, remove) AR, never below 0. Returns the new total."""
+    char['gold'] = max(0, gold_of(char) + int(amount))
+    return char['gold']
+
+
+def spend_gold(char, amount):
+    """Remove `amount` AR if the character has it. Returns True when it was spent."""
+    amount = int(amount)
+    if amount < 0 or gold_of(char) < amount:
+        return False
+    char['gold'] = gold_of(char) - amount
+    return True

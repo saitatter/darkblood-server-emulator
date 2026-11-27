@@ -49,6 +49,7 @@ from darkblood.games.network.messages.pets import (
 from darkblood.games.network.messages import (
     TamedMonster,
 )
+from darkblood.player_management.characters import gold_of
 
 
 async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
@@ -319,7 +320,7 @@ class PetCoreHandlersMixin:
                 self.save_char()
         await self.reply(
             PetEvolutionAck(result=0, old_pet_uid=old_uid, new_pet_id=new_pet_id,
-                            cur_ar=int(char.get('gold', 0)) if char else 0),
+                            cur_ar=gold_of(char)),
             correlation,
             note=f'pet evolution ack (uid={new_uid})',
         )

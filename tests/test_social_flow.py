@@ -102,15 +102,26 @@ class SocialFlowTest(ServerTestCase):
             _, ack2156 = await client.expect_event(2156)
             self.assertEqual(struct.unpack_from('<i', ack2156)[0], 0)
 
-            # 17. Guild money deposit (2179 -> 2180)
+            # 17. Guild money deposit (2179 -> 2180): a new character (0 AR) is refused
+            # with JERI_NOT_ENOUGH_AR; with AR, the deposit leaves the player's AR in the ack
+            # (0x00794250 writes it to player +0x70).
+            from darkblood.games.session import GameSession
+            char = GameSession.store().get('OfflinePlayer', char_id)
             client.send_event(2179, struct.pack('<q', 500))
             _, ack2180 = await client.expect_event(2180)
-            self.assertEqual(struct.unpack_from('<i', ack2180)[0], 0)
+            self.assertEqual(ack2180, struct.pack('<i', 168))
+            self.assertEqual(char.get('guild_money', 0), 0)
+            char['gold'] = 1000
+            client.send_event(2179, struct.pack('<q', 500))
+            _, ack2180 = await client.expect_event(2180)
+            self.assertEqual(struct.unpack_from('<iq', ack2180), (0, 500))
+            self.assertEqual(char['guild_money'], 500)
 
-            # 18. Guild money withdraw (2181 -> 2182)
+            # 18. Guild money withdraw (2181 -> 2182): moves AR back, capped by the guild bank.
             client.send_event(2181, struct.pack('<q', 200))
             _, ack2182 = await client.expect_event(2182)
-            self.assertEqual(struct.unpack_from('<i', ack2182)[0], 0)
+            self.assertEqual(struct.unpack_from('<iq', ack2182), (0, 700))
+            self.assertEqual(char['guild_money'], 300)
 
             # 19. Guild level up (2183 -> 2184)
             client.send_event(2183, b'')
@@ -230,14 +241,19 @@ class SocialFlowTest(ServerTestCase):
             self.assertEqual(ack6029, struct.pack('<i', 63))
 
             # 43. Guild money in (2179 -> 2180)
+            from darkblood.games.session import GameSession
+            char = GameSession.store().get('OfflinePlayer', char_id)
+            char['gold'] = 20000
+            char['guild_money'] = 0
             client.send_event(2179, struct.pack('<q', 15000))
             _, ack2180 = await client.expect_event(2180)
-            self.assertEqual(struct.unpack_from('<iq', ack2180), (0, 15300))
+            self.assertEqual(struct.unpack_from('<iq', ack2180), (0, 5000))   # player AR left
 
             # 44. Guild money out (2181 -> 2182)
             client.send_event(2181, struct.pack('<q', 5000))
             _, ack2182 = await client.expect_event(2182)
-            self.assertEqual(struct.unpack_from('<iq', ack2182), (0, 10300))
+            self.assertEqual(struct.unpack_from('<iq', ack2182), (0, 10000))  # player AR after
+            self.assertEqual(char['guild_money'], 10000)
 
             # 45. Guild person grade modify (2164 -> 2165)
             client.send_event(2164, GuildPersonGradeModifyReq(member_uids=[888], new_grade=2).encode())

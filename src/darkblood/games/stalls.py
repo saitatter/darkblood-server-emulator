@@ -5,7 +5,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from darkblood.games.entities.items import Item, UPDATE_OWNER
-from darkblood.player_management.characters import add_reward_items
+from darkblood.player_management.characters import add_gold, add_reward_items, gold_of
 from darkblood.games.network.messages import (
     BrokerProduct,
     StallItem,
@@ -189,7 +189,7 @@ class PersonalShopManager:
                 return False, "Invalid purchase count", 0, []
 
             total_cost = stall_item.price * buy_count
-            buyer_gold = buyer_char.get('gold', 0)
+            buyer_gold = gold_of(buyer_char)
             if buyer_gold < total_cost:
                 return False, "Insufficient gold", 0, []
 
@@ -203,7 +203,7 @@ class PersonalShopManager:
             buyer_char['gold'] = buyer_gold - total_cost
 
             # 2. Credit gold to seller
-            seller_gold = seller_char.get('gold', 0) + total_cost
+            seller_gold = gold_of(seller_char) + total_cost
             seller_char['gold'] = seller_gold
 
             # 3. Transfer item to buyer
@@ -357,7 +357,7 @@ class BrokerManager:
 
             buy_cnt = listing.count if count is None else min(count, listing.count)
             total_price = listing.price * buy_cnt // max(1, listing.count)
-            buyer_gold = buyer_char.get('gold', 0)
+            buyer_gold = gold_of(buyer_char)
             if buyer_gold < total_price:
                 return False, "Insufficient gold", 0, [], 0
 
@@ -368,7 +368,7 @@ class BrokerManager:
             buyer_char['gold'] = buyer_gold - total_price
 
             if seller_char:
-                seller_char['gold'] = seller_char.get('gold', 0) + total_price
+                add_gold(seller_char, total_price)
 
             # Grant item to buyer
             new_items = add_reward_items(buyer_char, [(listing.code, buy_cnt)])

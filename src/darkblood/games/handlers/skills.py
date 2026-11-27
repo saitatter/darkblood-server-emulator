@@ -26,6 +26,7 @@ from darkblood.games.network.messages import (
 )
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+from darkblood.player_management.characters import gold_of
 
 # Life skills (gathering.lua, making.lua, fishing.lua): skill NameIndex <-> ProficiencyType (0..9).
 # Client 0x00A5F610 marks ProficiencyTypes 7, 8, 9 (BaseSupply=1) as always-present base tabs;
@@ -126,7 +127,7 @@ class SkillHandlers(BaseDomainService):
                 s, a = skill_learn_cost(int(sidx), cur, target)
                 sp, ar = sp + s, ar + a
                 running[key] = target
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         if sp > char.get('sp', 0) or ar > gold:
             return False
         char['sp'] = char.get('sp', 0) - sp
@@ -156,7 +157,7 @@ class SkillHandlers(BaseDomainService):
                 return
             char.setdefault('skills', {})[str(req.skill_index)] = req.level
             self.save_char()
-            remain_gold = char.get('gold', 0)
+            remain_gold = gold_of(char)
             remain_sp = char.get('sp', 0)
         ack = LearnSkillAck(result=0, skill_index=req.skill_index, level=req.level,
                             remain_sp=remain_sp, remain_gold=remain_gold)
@@ -179,7 +180,7 @@ class SkillHandlers(BaseDomainService):
                 skills[str(s.skill_index)] = new_lv
                 learned_skills[s.skill_index] = new_lv
             self.save_char()
-            remain_gold = char.get('gold', 0)
+            remain_gold = gold_of(char)
             remain_sp = char.get('sp', 0)
         else:
             learned_skills = {s.skill_index: s.level for s in req.skills}

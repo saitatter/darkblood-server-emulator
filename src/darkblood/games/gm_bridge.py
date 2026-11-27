@@ -53,6 +53,7 @@ from darkblood.games.network.messages.skills import (
 from darkblood.games.network.messages.system import RebirthCoinChangeNot
 from darkblood.games.progression import level_up_not
 from darkblood.games.world import GameWorldManager
+from darkblood.player_management.characters import gold_of
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ def _list_players() -> list:
             'name': str(c.get('name', f'Char#{cid}')),
             'account': str(getattr(wp.session, 'account', '')),
             'level': int(c.get('level', 1)),
-            'gold': int(c.get('gold', 0)),
+            'gold': gold_of(c),
             'sp': int(c.get('sp', 0)),
         })
     return out
@@ -291,7 +292,7 @@ async def _cmd_skill(ctx: _BridgeCtx, args: List[str]) -> dict:
         result=0,
         skills=learned_skill_map({sidx: slv}),
         remain_sp=int(ctx.char.get('sp', 0)),
-        remain_gold=int(ctx.char.get('gold', 0)),
+        remain_gold=gold_of(ctx.char),
     )
     await ctx.send(ack, f'gm bridge skill {sidx}={slv}')
     return {'ok': True, 'message': f'{ctx.cname}: skill {sidx} set to Lv.{slv}.'}

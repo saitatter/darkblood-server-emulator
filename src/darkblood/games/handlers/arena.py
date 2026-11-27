@@ -77,6 +77,7 @@ from darkblood.games.network.messages import (
 )
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+from darkblood.player_management.characters import gold_of
 
 
 class ArenaHandlers(BaseDomainService):
@@ -571,7 +572,7 @@ class ArenaHandlers(BaseDomainService):
     @packet_handler(2561)
     async def handle_league_season_arena_charstat_init(self, correlation: int, body: bytes):
         char = self.current_char()
-        cur_ar = int(char.get('gold', 0)) if char else 0
+        cur_ar = gold_of(char)
         if char is not None:
             char['league_season_stat'] = {}
             self.save_char()

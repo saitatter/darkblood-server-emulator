@@ -18,7 +18,7 @@ from darkblood.games.progression import (
     stress_changed_not,
     total_ap,
 )
-from darkblood.player_management.characters import add_reward_items
+from darkblood.player_management.characters import add_reward_items, gold_of
 
 _RUNE_CODES = tuple(
     [f'MMrk{i:03d}' for i in range(181)]
@@ -43,7 +43,7 @@ def apply_level_up(char: dict, target_level: int) -> Tuple[int, Optional[int]]:
 
 def apply_ar_delta(char: dict, delta: int) -> int:
     """Adjust character AR (gold) by delta, clamped at 0."""
-    cur_ar = max(0, int(char.get('gold', 0)) + int(delta))
+    cur_ar = max(0, gold_of(char) + int(delta))
     char['gold'] = cur_ar
     return cur_ar
 

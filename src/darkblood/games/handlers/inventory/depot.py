@@ -10,6 +10,7 @@ from darkblood.games.network.messages import (
     DepotSlotExtendAck,
     DepotSlotExtendReq,
 )
+from darkblood.player_management.characters import add_gold, gold_of
 
 
 class DepotHandlersMixin:
@@ -33,7 +34,7 @@ class DepotHandlersMixin:
         char, target = self._depot_target_char(req.depot_uid)
         depot_ar = {}
         if char and target:
-            gold = int(char.get('gold', 0))
+            gold = gold_of(char)
             deposit = min(max(0, req.gold), gold) if gold > 0 else 0
             char['gold'] = gold - deposit
             target['depot_gold'] = int(target.get('depot_gold', 0)) + deposit
@@ -59,7 +60,7 @@ class DepotHandlersMixin:
             stored_gold = int(target.get('depot_gold', 0))
             withdraw = min(max(0, req.gold), stored_gold)
             target['depot_gold'] = stored_gold - withdraw
-            char['gold'] = int(char.get('gold', 0)) + withdraw
+            add_gold(char, withdraw)
             current_gold = char['gold']
             target_id = int(target.get('id', self.char_id))
             depot_ar[target_id] = target['depot_gold']

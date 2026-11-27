@@ -33,6 +33,7 @@ TUTORIAL_QUEST_ID = 0x34c58e7c
 
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+from darkblood.player_management.characters import gold_of
 
 _GTARGETS_CACHE = None
 
@@ -223,7 +224,7 @@ class SquareHandlers(BaseDomainService):
 
     def _current_gold(self):
         char = self.current_char()
-        return int(char.get('gold', 0)) if char else 0
+        return gold_of(char)
 
     @packet_handler(5124)
     async def handle_get_gtarget_list(self, correlation: int, body: bytes):
@@ -255,7 +256,7 @@ class SquareHandlers(BaseDomainService):
             if char is not None and src_wp and dst_wp and src_wp['id'] != dst_wp['id']:
                 cost = portal_cost(src_wp['id'], dst_wp['id'], char.get('level', 1))
                 if cost > 0:
-                    char['gold'] = max(0, int(char.get('gold', 0)) - cost)
+                    char['gold'] = max(0, gold_of(char) - cost)
                     self.save_char()
         self._remember_layer(layer_id)
         world = GameWorldManager.get()

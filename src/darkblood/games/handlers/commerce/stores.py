@@ -31,8 +31,11 @@ from darkblood.games.network.messages import (
     StoreRecord,
 )
 from darkblood.player_management.characters import (
+    add_gold,
     add_reward_items,
     free_bag_slots,
+    gold_of,
+    spend_gold,
     slots_needed,
 )
 
@@ -168,10 +171,8 @@ class StoreHandlers:
 
         unit_price = client_dict.item_field(item_code, 'BuyPrice', 0)
         cost = unit_price * count
-        char_gold = char.get('gold', 100000)
-        if char_gold >= cost:
-            char_gold -= cost
-            char['gold'] = char_gold
+        if spend_gold(char, cost):
+            char_gold = gold_of(char)
             if cost > 0:
                 contribute_roulette_jackpot(cost)
             new_items = add_reward_items(char, [(item_code, count)])
@@ -235,7 +236,7 @@ class StoreHandlers:
 
         from darkblood.games.game_data.client_dict import item_field
         earned = item_field(target.get('code', ''), 'SellPrice', 0) * del_cnt
-        char_gold = char.get('gold', 0) + earned
+        char_gold = gold_of(char) + earned
         char['gold'] = char_gold
         self.save_char()
 
@@ -277,7 +278,7 @@ class StoreHandlers:
             await self.reply(RepurchaseItemAck(result=1), correlation, note=f'repurchase fail (unknown {req.item_uid})')
             return
         sold_record, price, _sold_at = entry
-        char_gold = char.get('gold', 0)
+        char_gold = gold_of(char)
         if char_gold < price:
             await self.reply(RepurchaseItemAck(result=1), correlation,
                              note=f'repurchase fail (need {price} AR, have {char_gold})')
@@ -387,7 +388,7 @@ class StoreHandlers:
         # eEGS_BEAUTYSHOP_CARE_REQ (0x0079B730) -> 2417 eEGS_BEAUTYSHOP_CARE_ACK (0x0079B3A0).
         req = BeautyShopCareReq.decode(body)
         char = self.current_char()
-        cur_ar = int(char.get('gold', 0)) if char else 0
+        cur_ar = gold_of(char)
         if char is not None:
             char['beauty_style_slots'] = list(req.info.style_slots)
             self.save_char()
@@ -399,7 +400,7 @@ class StoreHandlers:
     async def handle_sell_item_all(self, correlation, body):
         # eEGS_SELL_ITEM_ALL_REQ (0x007A4BB0) -> 2591 eEGS_SELL_ITEM_ALL_ACK (0x007845B0).
         char = self.current_char()
-        cur_ar = int(char.get('gold', 0)) if char else 0
+        cur_ar = gold_of(char)
         await self.reply(SellItemAllAck(result=0, items=[], cur_ar=cur_ar, deleted_item_uids=[]),
                          correlation, note=f'sell item all ack (ar={cur_ar})')
 
@@ -426,7 +427,7 @@ class StoreHandlers:
             reward_ar = max(1, int(_ROULETTE_JACKPOT_AR * reward_rate))
             _ROULETTE_JACKPOT_AR = max(_ROULETTE_JACKPOT_FLOOR, _ROULETTE_JACKPOT_AR - reward_ar)
             if char is not None:
-                char['gold'] = int(char.get('gold', 0)) + reward_ar
+                add_gold(char, reward_ar)
         else:
             item_code = str(value)
             reward_items = [item_code]
@@ -435,7 +436,7 @@ class StoreHandlers:
                 new_items = add_reward_items(char, [(item_code, 1)])
                 wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
 
-        cur_ar = int((char or {}).get('gold', 0))
+        cur_ar = gold_of(char)
         pts = float((char or {}).get('roulette_points', _ROULETTE_SPIN_COST))
         if pts >= _ROULETTE_SPIN_COST:
             pts = max(0.0, pts - _ROULETTE_SPIN_COST)

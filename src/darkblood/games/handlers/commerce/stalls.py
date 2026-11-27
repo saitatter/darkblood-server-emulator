@@ -34,6 +34,7 @@ from darkblood.games.network.messages import (
     SaleByBulkRegistReq,
 )
 from darkblood.games.stalls import BrokerManager, PersonalShopManager
+from darkblood.player_management.characters import gold_of
 
 
 class StallHandlers:
@@ -99,7 +100,7 @@ class StallHandlers:
             remaining_stall = stall.wire_items() if stall else []
             ack = PersonalShopBuyAck(
                 result=0,
-                gold=char.get('gold', 0),
+                gold=gold_of(char),
                 items=wire_items,
                 stall_items=remaining_stall,
                 seller_uid=req.seller_uid
@@ -196,7 +197,7 @@ class StallHandlers:
         char_uid = char.get('id', self.char_id)
         ack = BrokerRegistItemAck(
             result=0 if success else 1,
-            cur_ar=int(char.get('gold', 0)),
+            cur_ar=gold_of(char),
             items=wire_items,
             my_products=mgr.get_my_listings(char_uid) if success else [],
         )
@@ -217,7 +218,7 @@ class StallHandlers:
         success, msg, total_cost, new_items, bought_uid = mgr.buy_listing(
             char, req.listing_id, None, self.store()
         )
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold, item_uid=bought_uid)
         await self.reply(ack, correlation, note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
         if success and new_items:

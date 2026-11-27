@@ -41,6 +41,7 @@ from darkblood.games.network.messages import (
     RareAvatarChangeLookAck,
     RareAvatarChangeLookReq,
 )
+from darkblood.player_management.characters import gold_of
 
 
 class CraftingHandlersMixin:
@@ -72,7 +73,7 @@ class CraftingHandlersMixin:
             await self.reply(DurabilityRepairAck(result=1, remain_gold=0), correlation,
                              note='durability repair ack (no char)')
             return
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         items_by_uid = {int(it.get('uid', -1)): it for it in char.get('items', [])}
         repaired = {}
         total_cost = 0
@@ -117,7 +118,7 @@ class CraftingHandlersMixin:
             await self.reply(DurabilityRepairAck(result=1, remain_gold=0), correlation,
                              note='durability repair by item ack (no char)')
             return
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         items = char.get('items', [])
         items_by_uid = {int(it.get('uid', -1)): it for it in items}
         repaired = {}
@@ -147,7 +148,7 @@ class CraftingHandlersMixin:
         req = MagicEnchantEnchantReq.decode(body)
         self.transport.record('magicenchant-enchant-req', body, item_uid=req.item_uid)
         char = self.current_char()
-        gold = char.get('gold', 1000) if char else 1000
+        gold = gold_of(char)
         await self.reply(MagicEnchantEnchantAck(result=0, items=[], gold=gold), correlation,
                          note=f'magicenchant enchant ack (item={req.item_uid})')
 
@@ -157,7 +158,7 @@ class CraftingHandlersMixin:
         req = MagicEnchantEraseOptionReq.decode(body)
         self.transport.record('magicenchant-erase-option-req', body, item_uid=req.item_uid)
         char = self.current_char()
-        gold = char.get('gold', 1000) if char else 1000
+        gold = gold_of(char)
         await self.reply(MagicEnchantEraseOptionAck(result=0, items=[], gold=gold), correlation,
                          note=f'magicenchant erase option ack (item={req.item_uid})')
 
@@ -235,7 +236,7 @@ class CraftingHandlersMixin:
         """Opcode 2547 (eEGS_RANDOM_OPTION_CHANGE_REQ) -> 2548: reroll random bonus options on an item."""
         req = RandomOptionChangeReq.decode(body)
         char = self.current_char()
-        gold = char.get('gold', 0) if char else 0
+        gold = gold_of(char)
         items = char.get('items', []) if char else []
         target = next((i for i in items if i.get('uid') == req.item_uid), None)
         out = [Item(owner=UPDATE_OWNER, **target)] if target else []
@@ -262,7 +263,7 @@ class CraftingHandlersMixin:
         """Opcode 2629 (eEGS_ITEM_CLASS_SMELTING_REQ) -> 2630: smelt an item into a target class item."""
         req = ItemClassSmeltingReq.decode(body)
         char = self.current_char()
-        gold = char.get('gold', 0) if char else 0
+        gold = gold_of(char)
         await self.reply(ItemClassSmeltingAck(result=0, items=[], current_gold=gold), correlation,
                          note=f'item class smelting ack (item={req.use_item_uid})')
 
@@ -279,7 +280,7 @@ class CraftingHandlersMixin:
         """Opcode 2701 (eEGS_MARK_OPTION_CHANGE_REQ) -> 2702 (eEGS_MARK_OPTION_CHANGE_ACK): reroll mark item options."""
         req = MarkOptionChangeReq.decode(body)
         char = self.current_char()
-        gold = char.get('gold', 0) if char else 0
+        gold = gold_of(char)
         items = char.get('items', []) if char else []
         target = next((i for i in items if i.get('uid') == req.target_item_uid), None)
         out = [Item(owner=UPDATE_OWNER, **target)] if target else []

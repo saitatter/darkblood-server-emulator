@@ -78,6 +78,7 @@ def _to_i32(val: int) -> int:
 
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
+from darkblood.player_management.characters import gold_of
 
 
 class QuestHandlers(BaseDomainService):
@@ -122,7 +123,7 @@ class QuestHandlers(BaseDomainService):
             }
             self.save_char()
             sp = int(char.get('sp', 0))
-            gold = int(char.get('gold', 0))
+            gold = gold_of(char)
             for idx in temp_indices[:2]:
                 await self.send_msg(
                     LearnSkillAck(
@@ -290,7 +291,7 @@ class QuestHandlers(BaseDomainService):
         already = quest_id in char.get('quests_done', [])
         if already:
             exp = gold = gp = 0
-        total = int(char.get('gold', 0)) + gold
+        total = gold_of(char) + gold
         if char:
             char.setdefault('quests_active', {}).pop(str(quest_id), None)
             done = char.setdefault('quests_done', [])
@@ -519,7 +520,7 @@ class QuestHandlers(BaseDomainService):
         req = ActKairoReq.decode(body)
         self.transport.record('act-kairo-req', body, kairo_id=req.kairo_id, param=req.param)
         char = self.current_char()
-        gold = int(char.get('gold', 0)) if char else 0
+        gold = gold_of(char)
         await self.reply(
             ActKairoAck(result=0, kairo=KairoResult(kairo_id=req.kairo_id), remain_gold=gold),
             correlation, note=f'act kairo ack ({req.kairo_id})',
@@ -531,7 +532,7 @@ class QuestHandlers(BaseDomainService):
         req = NpcMakingKairoReq.decode(body)
         self.transport.record('npc-making-kairo-req', body, kairo_id=req.kairo_id)
         char = self.current_char()
-        gold = int(char.get('gold', 0)) if char else 0
+        gold = gold_of(char)
         await self.reply(
             NpcMakingKairoAck(result=0, kairo=KairoResult(kairo_id=req.kairo_id), remain_gold=gold),
             correlation, note=f'npc making kairo ack ({req.kairo_id})',
@@ -549,7 +550,7 @@ class QuestHandlers(BaseDomainService):
             await self.reply(NpcSealItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
                              note=f'npc seal item fail (uid={req.item_uid} not found)')
             return
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         await self.reply(
             NpcSealItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **target)], remain_gold=gold),
             correlation, note=f'npc seal item ack (uid={req.item_uid})',

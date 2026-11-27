@@ -20,6 +20,7 @@ from darkblood.games.network.messages.pets import (
     MonsterCardSetCharDeckAck,
     MonsterCardSetCharDeckReq,
 )
+from darkblood.player_management.characters import gold_of
 
 
 class MonsterCardHandlersMixin:
@@ -35,7 +36,7 @@ class MonsterCardHandlersMixin:
     async def handle_monster_card_merge(self, correlation, body):
         req = MonsterCardMergeReq.decode(body)
         char = self.current_char()
-        cur_ar = int(char.get('gold', 0)) if char else 0
+        cur_ar = gold_of(char)
         await self.reply(MonsterCardMergeAck(result=0, new_cards=[], del_cards=req.card_uids, cur_ar=cur_ar),
                          correlation, note=f'monster card merge ack (count={len(req.card_uids)})')
 
@@ -65,7 +66,7 @@ class MonsterCardHandlersMixin:
     async def handle_monster_card_extend_slot(self, correlation, body):
         req = MonsterCardExtendSlotReq.decode(body)
         char = self.current_char()
-        cur_ar = int(char.get('gold', 0)) if char else 0
+        cur_ar = gold_of(char)
         max_cnt = int((char or {}).get('monster_card_max_slots', 50)) + max(1, req.count) * 10
         if char is not None:
             char['monster_card_max_slots'] = max_cnt
@@ -77,7 +78,7 @@ class MonsterCardHandlersMixin:
     async def handle_monster_card_lotto_reg(self, correlation, body):
         req = MonsterCardLottoRegReq.decode(body)
         char = self.current_char()
-        cur_ar = int(char.get('gold', 0)) if char else 0
+        cur_ar = gold_of(char)
         entry = MonsterCardLottoEntry(reg_uid=1, char_uid=self.char_id or 0, lotto_key=1, numbers=req.numbers)
         await self.reply(MonsterCardLottoRegAck(result=0, entry=entry, event_cards_out={}, cur_ar=cur_ar),
                          correlation, note='monster card lotto reg ack')

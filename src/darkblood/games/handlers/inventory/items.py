@@ -55,6 +55,7 @@ from darkblood.player_management.characters import (
     add_reward_items,
     fits_equip_slot,
     free_bag_slots,
+    gold_of,
     slots_needed,
 )
 
@@ -443,7 +444,7 @@ class ItemHandlersMixin:
                              correlation, note='buy life water ack (no char)')
             return
         penalty_type = 1 if req.flag else 0
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         cost = life_water_cost(char, penalty_type=penalty_type)
         if cost > gold:
             await self.reply(BuyLifeWaterAck(result=1, flag=req.flag, remain_currency=gold),

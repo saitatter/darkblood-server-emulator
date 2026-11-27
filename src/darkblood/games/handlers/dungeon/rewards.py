@@ -32,8 +32,10 @@ from darkblood.games.network.messages import (
     SingleReward,
 )
 from darkblood.player_management.characters import (
+    add_gold,
     add_reward_items,
     free_bag_slots,
+    gold_of,
     slots_needed,
 )
 
@@ -307,7 +309,7 @@ class DungeonRewardsHandlers:
             return
 
         cost = extra_box_cost if valid_extra else 0
-        gold = int(char.get('gold', 0))
+        gold = gold_of(char)
         if cost > gold:
             await self.reply(ChoiceRewardPartyRankAck(result=results.NOT_ENOUGH_AR), correlation,
                              note=f'extra reward card {idx} refused (need {cost} AR, have {gold})')
@@ -412,7 +414,7 @@ class DungeonRewardsHandlers:
         amount = holder.floor_gold.pop(drop_uid, None)
         if amount is None:
             amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
-        char['gold'] = char.get('gold', 0) + amount
+        add_gold(char, amount)
         self.store().save_char(winner.account, winner.char_id)
         ack = GetDropArNot(result=0, gold=amount, drop_id=drop_uid, picker_uid=char['id']).encode()
         await winner.transport.send_event(

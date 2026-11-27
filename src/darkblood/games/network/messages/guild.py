@@ -234,7 +234,7 @@ class GuildMoneyInAck(WireMessage):
     OPCODE: ClassVar[int] = 2180
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    remain_gold: i64 = 0  # written to player +0x70
+    remain_gold: i64 = 0  # the player's AR after the transfer, written to player +0x70
 
 
 @dataclass
@@ -258,7 +258,7 @@ class GuildMoneyOutAck(WireMessage):
     OPCODE: ClassVar[int] = 2182
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
-    remain_gold: i64 = 0  # written to player +0x70
+    remain_gold: i64 = 0  # the player's AR after the transfer, written to player +0x70
 
 
 @dataclass
