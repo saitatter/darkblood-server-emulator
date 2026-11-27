@@ -110,9 +110,9 @@ message 5040 ChatReq
   ChatPaint paint = ChatPaint()
   u32 _ = 1                  # +0x76 (1 in captures; the server answers with its server key)
   i64 _ = -1                 # +0x7A
-  i64 _ = -1                 # +0x82
-  i64 _ = -1                 # +0x8A
-  i32 _ = -1                 # +0x92
+  i64 link_char_uid = -1     # +0x82 item link CharUID (-1 from the client; the server fills it in 5041)
+  i64 linked_item_uid = -1   # +0x8A UID of the linked item (live: 9 = Hunter2's Ihppa0000, "[HP Potion for training]")
+  i32 item_info_id = -1      # +0x92 item link ItemInfoID (-1 from the client)
 end
 
 message 5041 ChatAck ok_only
@@ -126,9 +126,12 @@ message 5041 ChatAck ok_only
   ChatPaint paint = ChatPaint()  # +0x55 paint data, echoed from the 5040 request
   i32 server_key = 31        # +0x76; must match local player's server key (0x1F) for whispers
   i64 sender_square_uid = 0x07C0000000000001 # +0x7A; bits 54-58 checked by 0x00544310 (else "(Other server)")
-  i64 _
-  i64 _
-  i32 _
+  ## Item links (display 0x005402D0): when +0x92 != -1 the line gets the attributes
+  ## CharUID = +0x82 and ItemInfoID = +0x92; a click sends them as 6028
+  ## (0x0053D790 -> 0x007A4F20: nItemInfoID, nTargetCharUID).
+  i64 link_char_uid = -1     # +0x82
+  i64 linked_item_uid = -1   # +0x8A (echoed)
+  i32 item_info_id = -1      # +0x92 (-1 = no item link)
 end
 
 message 2128 UseSpeakerItemReq header?

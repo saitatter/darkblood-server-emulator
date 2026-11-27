@@ -239,6 +239,9 @@ class ChatReq(WireMessage):
     sender: wstr = ''  # m_strNick
     message: wstr = ''  # m_strMsg
     paint: ChatPaint = field(default_factory=ChatPaint)
+    link_char_uid: i64 = -1  # +0x82 item link CharUID (-1 from the client; the server fills it in 5041)
+    linked_item_uid: i64 = -1  # +0x8A UID of the linked item (live: 9 = Hunter2's Ihppa0000, "[HP Potion for training]")
+    item_info_id: i32 = -1  # +0x92 item link ItemInfoID (-1 from the client)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'channel',
         'target',
@@ -247,9 +250,9 @@ class ChatReq(WireMessage):
         'paint',
         Const(u32, 1),
         Const(i64, -1),
-        Const(i64, -1),
-        Const(i64, -1),
-        Const(i32, -1),
+        'link_char_uid',
+        'linked_item_uid',
+        'item_info_id',
     )
 
 
@@ -259,6 +262,9 @@ class ChatAck(WireMessage):
 
     Handler 0x007AC890 -> 0x00A53490 -> 0x00A52BD0 (bool + 2 vectors + 5 ints).
     Display 0x00544310 reads sender from +0x1D and target from +0x01.
+    Item links (display 0x005402D0): when +0x92 != -1 the line gets the attributes
+    CharUID = +0x82 and ItemInfoID = +0x92; a click sends them as 6028
+    (0x0053D790 -> 0x007A4F20: nItemInfoID, nTargetCharUID).
     """
     OPCODE: ClassVar[int] = 5041
     _WIRE_OK_INDEX: ClassVar[int] = 1
@@ -270,19 +276,9 @@ class ChatAck(WireMessage):
     paint: ChatPaint = field(default_factory=ChatPaint)  # +0x55 paint data, echoed from the 5040 request
     server_key: i32 = 31  # +0x76; must match local player's server key (0x1F) for whispers
     sender_square_uid: i64 = 0x07C0000000000001  # +0x7A; bits 54-58 checked by 0x00544310 (else "(Other server)")
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'channel',
-        'target',
-        'sender',
-        'message',
-        'paint',
-        'server_key',
-        'sender_square_uid',
-        Const(i64, 0),
-        Const(i64, 0),
-        Const(i32, 0),
-    )
+    link_char_uid: i64 = -1  # +0x82
+    linked_item_uid: i64 = -1  # +0x8A (echoed)
+    item_info_id: i32 = -1  # +0x92 (-1 = no item link)
 
 
 @dataclass

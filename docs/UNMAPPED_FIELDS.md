@@ -195,20 +195,14 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (10 of 139 fields)
+## social (4 of 139 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `FriendEntry` | `i64` | social.jsch:21 | +0x4A |
 | `5040 ChatReq` | `u32` | social.jsch:111 | +0x76 (1 in captures; the server answers with its server key) |
 | `5040 ChatReq` | `i64` | social.jsch:112 | +0x7A |
-| `5040 ChatReq` | `i64` | social.jsch:113 | +0x82 |
-| `5040 ChatReq` | `i64` | social.jsch:114 | +0x8A |
-| `5040 ChatReq` | `i32` | social.jsch:115 | +0x92 |
-| `5041 ChatAck` | `i64` | social.jsch:129 |  |
-| `5041 ChatAck` | `i64` | social.jsch:130 |  |
-| `5041 ChatAck` | `i32` | social.jsch:131 |  |
-| `LeagueArenaCharInfo` | `raw[16]` | social.jsch:182 | +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810) |
+| `LeagueArenaCharInfo` | `raw[16]` | social.jsch:185 | +0x10..+0x1C (4 x i32 parsed by 0x00A4A0C0, not copied by 0x00944810) |
 
 ## stalls (11 of 92 fields)
 

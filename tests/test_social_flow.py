@@ -525,6 +525,43 @@ class SocialFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_chat_item_link_click_returns_the_linked_item(self):
+        """5040 carries the linked item UID (+0x8A); 5041 fills CharUID/ItemInfoID for 6028."""
+        from darkblood.games import session
+        from darkblood.games.entities.items import Item
+        from darkblood.games.network.messages import ChatAck, ChatReq, RequestItemInfoAck, RequestItemInfoReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Linker'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            potion = dict(code='Ihppa0000', uid=901, container=3, slot=7, count=2)
+            char['items'].append(potion)
+
+            # Live 5040 tail: 01000000, -1, -1, 9 (item UID), -1.
+            client.send_event(5040, ChatReq(channel=1, message='@C549FF0[HP Potion for training]@CR',
+                                            linked_item_uid=901).encode())
+            _, body = await client.expect_event(5041)
+            ack = ChatAck.decode(body)
+            self.assertEqual((ack.link_char_uid, ack.item_info_id), (char_id, 901))
+
+            client.send_event(6028, RequestItemInfoReq(item_info_id=ack.item_info_id,
+                                                       target_char_uid=ack.link_char_uid).encode())
+            _, info = await client.expect_event(6029)
+            self.assertEqual(info, RequestItemInfoAck(result=0, char_uid=char_id,
+                                                      item=Item(owner=char_id, **potion)).encode())
+
+            # A plain line keeps ItemInfoID -1, so the display attaches no link.
+            client.send_event(5040, ChatReq(channel=1, message='hello').encode())
+            _, plain = await client.expect_event(5041)
+            self.assertEqual(ChatAck.decode(plain).item_info_id, -1)
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()

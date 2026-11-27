@@ -32,8 +32,17 @@ class ChatHandlers:
         char = self.current_char()
         char_name = char.get('name', 'Player') if char else 'Player'
         target = req.target
+        # Item link: the client sends the linked item's UID (+0x8A) and leaves CharUID
+        # (+0x82) and ItemInfoID (+0x92) at -1. The display (0x005402D0) attaches both to
+        # the line, and a click asks 6028 (ItemInfoID, CharUID); 6028 looks the item up by
+        # UID in that character's items, so ItemInfoID is the item UID.
+        link = {}
+        if char and req.linked_item_uid != -1 and any(
+                int(i.get('uid', 0)) == req.linked_item_uid for i in char.get('items', [])):
+            link = dict(link_char_uid=int(char['id']), linked_item_uid=req.linked_item_uid,
+                        item_info_id=req.linked_item_uid & 0x7FFFFFFF)
         ack = ChatAck(result=0, channel=req.channel, target=target, sender=char_name, message=msg,
-                      paint=req.paint).encode()
+                      paint=req.paint, **link).encode()
         await self.transport.send_event(event(5041, ack, correlation), note=f'chat ack ({msg})')
         if not msg:
             return
