@@ -224,7 +224,7 @@ class ConsumableHandlersMixin:
         gold = gold_of(char)
         cost = life_water_cost(char, penalty_type=penalty_type)
         if cost > gold:
-            await self.reply(BuyLifeWaterAck(result=1, flag=req.flag, remain_currency=gold),
+            await self.reply(BuyLifeWaterAck(result=results.NOT_ENOUGH_AR, flag=req.flag, remain_currency=gold),
                              correlation, note=f'buy life water refused (need {cost} AR, have {gold})')
             return
         gold -= cost
