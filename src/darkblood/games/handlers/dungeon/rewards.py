@@ -306,7 +306,7 @@ class DungeonRewardsHandlers:
             return
 
         cost = extra_box_cost if valid_extra else 0
-        gold = int(char.get('gold', char.get('u66', 0)))
+        gold = int(char.get('gold', 0))
         if cost > gold:
             await self.reply(ChoiceRewardPartyRankAck(result=results.NOT_ENOUGH_AR), correlation,
                              note=f'extra reward card {idx} refused (need {cost} AR, have {gold})')
@@ -320,7 +320,6 @@ class DungeonRewardsHandlers:
         if cost:
             gold -= cost
             char['gold'] = gold
-            char['u66'] = gold
 
         if bag_full:
             # 0x0078D660 accepts result 0x126 (294 JERI_DUN_REWARD_00) with the full chest payload,
@@ -414,7 +413,6 @@ class DungeonRewardsHandlers:
         if amount is None:
             amount = random.randint(int(money[0]), max(int(money[0]), int(money[1])))
         char['gold'] = char.get('gold', 0) + amount
-        char['u66'] = char['gold']
         self.store().save_char(winner.account, winner.char_id)
         ack = GetDropArNot(result=0, gold=amount, drop_id=drop_uid, picker_uid=char['id']).encode()
         await winner.transport.send_event(

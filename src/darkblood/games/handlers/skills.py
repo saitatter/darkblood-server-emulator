@@ -126,13 +126,12 @@ class SkillHandlers(BaseDomainService):
                 s, a = skill_learn_cost(int(sidx), cur, target)
                 sp, ar = sp + s, ar + a
                 running[key] = target
-        gold = int(char.get('gold', char.get('u66', 0)))
+        gold = int(char.get('gold', 0))
         if sp > char.get('sp', 0) or ar > gold:
             return False
         char['sp'] = char.get('sp', 0) - sp
         if ar:
             char['gold'] = gold - ar
-            char['u66'] = char['gold']
         return True
 
     @packet_handler(LearnSkillReq)

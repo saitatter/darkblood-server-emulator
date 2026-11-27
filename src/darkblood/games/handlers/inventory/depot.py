@@ -36,7 +36,6 @@ class DepotHandlersMixin:
             gold = int(char.get('gold', 0))
             deposit = min(max(0, req.gold), gold) if gold > 0 else 0
             char['gold'] = gold - deposit
-            char['u66'] = char['gold']
             target['depot_gold'] = int(target.get('depot_gold', 0)) + deposit
             current_gold = char['gold']
             target_id = int(target.get('id', self.char_id))
@@ -61,7 +60,6 @@ class DepotHandlersMixin:
             withdraw = min(max(0, req.gold), stored_gold)
             target['depot_gold'] = stored_gold - withdraw
             char['gold'] = int(char.get('gold', 0)) + withdraw
-            char['u66'] = char['gold']
             current_gold = char['gold']
             target_id = int(target.get('id', self.char_id))
             depot_ar[target_id] = target['depot_gold']

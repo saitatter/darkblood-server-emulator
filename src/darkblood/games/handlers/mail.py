@@ -254,7 +254,6 @@ class MailHandlers(BaseDomainService):
         claimed_gold = self.store().claim_mail_gold(req.mail_uid)
         if claimed_gold > 0:
             char['gold'] = int(char.get('gold', 0)) + claimed_gold
-            char['u66'] = char['gold']
             self.save_char()
         cur_ar = int(char.get('gold', 0))
         await self.reply(

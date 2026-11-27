@@ -164,7 +164,6 @@ class StoreHandlers:
         if char_gold >= cost:
             char_gold -= cost
             char['gold'] = char_gold
-            char['u66'] = char_gold
             if cost > 0:
                 contribute_roulette_jackpot(cost)
             new_items = add_reward_items(char, [(item_code, count)])
@@ -230,7 +229,6 @@ class StoreHandlers:
         earned = item_field(target.get('code', ''), 'SellPrice', 0) * del_cnt
         char_gold = char.get('gold', 0) + earned
         char['gold'] = char_gold
-        char['u66'] = char_gold
         self.save_char()
 
         import time
@@ -295,7 +293,6 @@ class StoreHandlers:
         repurchase_map.pop(req.item_uid, None)
         char_gold -= price
         char['gold'] = char_gold
-        char['u66'] = char_gold
         self.save_char()
 
         wire_items = [Item(owner=UPDATE_OWNER, **r) for r in added]
@@ -430,7 +427,6 @@ class StoreHandlers:
             _ROULETTE_JACKPOT_AR = max(_ROULETTE_JACKPOT_FLOOR, _ROULETTE_JACKPOT_AR - reward_ar)
             if char is not None:
                 char['gold'] = int(char.get('gold', 0)) + reward_ar
-                char['u66'] = char['gold']
         else:
             item_code = str(value)
             reward_items = [item_code]

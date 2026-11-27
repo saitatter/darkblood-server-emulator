@@ -198,12 +198,10 @@ class PersonalShopManager:
 
             # 1. Deduct gold from buyer
             buyer_char['gold'] = buyer_gold - total_cost
-            buyer_char['u66'] = buyer_char['gold']
 
             # 2. Credit gold to seller
             seller_gold = seller_char.get('gold', 0) + total_cost
             seller_char['gold'] = seller_gold
-            seller_char['u66'] = seller_gold
 
             # 3. Transfer item to buyer
             item_code = stall_item.code
@@ -366,11 +364,9 @@ class BrokerManager:
 
             # Deduct buyer gold
             buyer_char['gold'] = buyer_gold - total_price
-            buyer_char['u66'] = buyer_char['gold']
 
             if seller_char:
                 seller_char['gold'] = seller_char.get('gold', 0) + total_price
-                seller_char['u66'] = seller_char['gold']
 
             # Grant item to buyer
             new_items = add_reward_items(buyer_char, [(listing.code, buy_cnt)])

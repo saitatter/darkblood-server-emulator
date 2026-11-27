@@ -295,7 +295,6 @@ class InventoryFlowTest(ServerTestCase):
             from darkblood.games.entities.items import DEPOT_CONTAINER
             char_for_depot = GameSession.store().get('OfflinePlayer', char_id)
             char_for_depot['gold'] = 25000
-            char_for_depot['u66'] = 25000
             char_for_depot['depot_gold'] = 0
             client.send_event(2228, DepotSaveArReq(depot_uid=char_id, gold=10000).encode())
             _, ack2229 = await client.expect_event(2229)
@@ -344,7 +343,6 @@ class InventoryFlowTest(ServerTestCase):
             from darkblood.games.session import GameSession
             char = GameSession.store().get('OfflinePlayer', char_id)
             char['gold'] = 5000
-            char['u66'] = 5000
             target_item = {'uid': 777, 'code': 'Abodk0002', 'container': 1, 'slot': 2, 'durability': 20.0}
             char.setdefault('items', []).append(target_item)
             item_uid = 777
@@ -872,7 +870,6 @@ class SkillCostTest(ServerTestCase):
 
             # Recipe learning respects DemandAr from making.lua (e.g. 10032 Wmake33 = 64,300 AR)
             char['gold'] = 1000
-            char['u66'] = 1000
             session.GameSession.store().save_char('OfflinePlayer', char_id)
             client.send_event(2050, LearnSkillReq(skill_index=10032, level=1).encode())
             _, ack2051_poor = await client.expect_event(2051)
@@ -881,7 +878,6 @@ class SkillCostTest(ServerTestCase):
             self.assertEqual(char['gold'], 1000)
 
             char['gold'] = 100000
-            char['u66'] = 100000
             session.GameSession.store().save_char('OfflinePlayer', char_id)
             client.send_event(2050, LearnSkillReq(skill_index=10032, level=1).encode())
             _, ack2051_recipe = await client.expect_event(2051)

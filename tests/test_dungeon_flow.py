@@ -129,7 +129,6 @@ class DungeonFlowTest(ServerTestCase):
             from darkblood.games.network.messages import BuyLifeWaterAck, BuyLifeWaterReq
             from darkblood.games.progression import life_water_cost
             char['gold'] = 10000
-            char['u66'] = 10000
             expected_lw_cost = life_water_cost(char, penalty_type=0)
             self.assertGreater(expected_lw_cost, 0)
             client.send_event(2086, BuyLifeWaterReq(flag=False).encode())
@@ -592,7 +591,6 @@ class DungeonFlowTest(ServerTestCase):
             fillers = add_reward_items(char, [('Ihppa0001', 1)] * free_bag_slots(char))
             full_inventory = list(char['items'])
             char['gold'] = parsed.extra_box_cost * 2
-            char['u66'] = char['gold']
             client.send_event(5090, struct.pack('<ii', 0x7fffffff, 2))
             _, ack5091_mail = await client.expect_event(5091)
             res_m, uid_m, hash_m = struct.unpack_from('<iqI', ack5091_mail, 0)

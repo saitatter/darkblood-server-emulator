@@ -45,7 +45,6 @@ def apply_ar_delta(char: dict, delta: int) -> int:
     """Adjust character AR (gold) by delta, clamped at 0."""
     cur_ar = max(0, int(char.get('gold', 0)) + int(delta))
     char['gold'] = cur_ar
-    char['u66'] = cur_ar
     return cur_ar
 
 

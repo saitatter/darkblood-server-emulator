@@ -72,7 +72,7 @@ class CraftingHandlersMixin:
             await self.reply(DurabilityRepairAck(result=1, remain_gold=0), correlation,
                              note='durability repair ack (no char)')
             return
-        gold = int(char.get('gold', char.get('u66', 0)))
+        gold = int(char.get('gold', 0))
         items_by_uid = {int(it.get('uid', -1)): it for it in char.get('items', [])}
         repaired = {}
         total_cost = 0
@@ -100,7 +100,6 @@ class CraftingHandlersMixin:
             items_by_uid[item_uid]['durability'] = target_dur
         gold -= total_cost
         char['gold'] = gold
-        char['u66'] = gold
         if repaired:
             self.save_char()
         await self.reply(DurabilityRepairAck(result=0, repaired_items=repaired, remain_gold=gold), correlation,
@@ -118,7 +117,7 @@ class CraftingHandlersMixin:
             await self.reply(DurabilityRepairAck(result=1, remain_gold=0), correlation,
                              note='durability repair by item ack (no char)')
             return
-        gold = int(char.get('gold', char.get('u66', 0)))
+        gold = int(char.get('gold', 0))
         items = char.get('items', [])
         items_by_uid = {int(it.get('uid', -1)): it for it in items}
         repaired = {}

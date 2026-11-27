@@ -118,8 +118,8 @@ class QuestFlowTest(ServerTestCase):
             return char_id, ack
 
         char_id, ack = self.run_async(self.with_server(scenario))
-        # jAck +0x1E gold total: default 21 + RewardGold 774; item vector holds Ibaga0004.
-        self.assertEqual(struct.unpack_from('<q', ack, 4 + 0x1E)[0], 21 + 774)
+        # jAck +0x1E gold total: starting 0 + RewardGold 774; item vector holds Ibaga0004.
+        self.assertEqual(struct.unpack_from('<q', ack, 4 + 0x1E)[0], 0 + 774)  # new character: 0 AR
         self.assertEqual(ack[4 + 0x26:4 + 0x28], b'\x10\x81')
         self.assertEqual(struct.unpack_from('<ii', ack, len(ack) - 8), (150, 0))  # EXP, GP
         char = session.GameSession.store().get('OfflinePlayer', char_id)

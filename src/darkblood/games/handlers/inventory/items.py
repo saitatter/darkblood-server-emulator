@@ -442,7 +442,7 @@ class ItemHandlersMixin:
                              correlation, note='buy life water ack (no char)')
             return
         penalty_type = 1 if req.flag else 0
-        gold = int(char.get('gold', char.get('u66', 0)))
+        gold = int(char.get('gold', 0))
         cost = life_water_cost(char, penalty_type=penalty_type)
         if cost > gold:
             await self.reply(BuyLifeWaterAck(result=1, flag=req.flag, remain_currency=gold),
@@ -450,7 +450,6 @@ class ItemHandlersMixin:
             return
         gold -= cost
         char['gold'] = gold
-        char['u66'] = gold
         clear_not = clear_dungeon_penalty(char, penalty_type=penalty_type)
         self.save_char()
         await self.reply(BuyLifeWaterAck(result=0, flag=req.flag, remain_currency=gold),

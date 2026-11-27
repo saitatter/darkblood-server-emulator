@@ -116,203 +116,103 @@ def quest_rewards(quest_hash, select_index=-1):
     return quest['exp'], quest['gold'], quest['gp'], items
 
 
-@lru_cache(maxsize=None)
-def quest_mission_objectives():
-    """Mapping: mission id ("QM807") -> [(quest_id_hash, objective_index, target_value)]."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv_m = ASSETS_DIR / 'quest_missions.tsv'
-        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
-        if tsv_m.is_file() and tsv_c.is_file():
-            targets = {}
-            for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 4:
-                    targets[parts[0]] = int(parts[3])
-            out = {}
-            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 3:
-                    qid, idx, mid = parts[0], int(parts[1]), parts[2]
-                    out.setdefault(mid, []).append((jhash(qid) & 0xFFFFFFFF, idx, targets.get(mid, 1)))
-            return out
+def _tsv_rows(name):
+    """Data rows (header skipped) of an assets TSV as lists of columns."""
+    return [line.split('\t') for line in
+            (ASSETS_DIR / name).read_text(encoding='utf-8', errors='replace').splitlines()[1:]]
 
-    root = data_root()
-    if not root.exists():
-        return {}
-    targets, quest_missions = {}, {}
-    for p in _quest_files():
-        txt = p.read_text(encoding='utf-8', errors='replace')
-        for block in re.split(r'assert\(DictQuest:', txt):
+
+@lru_cache(maxsize=None)
+def _mission_table():
+    """(missions, chains) shared by the objective tables.
+
+    missions: mission id -> (mission_type str, target_id str, target_value int or None)
+    chains:   [(quest_id_hash, objective_index, mission_id)] in quest order
+    Read from assets/quest_missions.tsv + quest_chains.tsv, or from the DictQuest
+    LoadMission/LoadQuest blocks when quest Lua files override them.
+    """
+    missions, chains = {}, []
+    if not _quest_override_files() and (ASSETS_DIR / 'quest_missions.tsv').is_file() \
+            and (ASSETS_DIR / 'quest_chains.tsv').is_file():
+        for parts in _tsv_rows('quest_missions.tsv'):
+            if len(parts) >= 4:
+                missions[parts[0]] = (parts[1], parts[2], int(parts[3]))
+        for parts in _tsv_rows('quest_chains.tsv'):
+            if len(parts) >= 3:
+                chains.append((jhash(parts[0]) & 0xFFFFFFFF, int(parts[1]), parts[2]))
+        return missions, chains
+
+    if not data_root().exists() and not _quest_override_files():
+        return missions, chains
+    for path in _quest_files():
+        text = path.read_text(encoding='utf-8', errors='replace')
+        for block in re.split(r'assert\(DictQuest:', text):
             if block.startswith('LoadMission'):
                 for m_block in re.split(r'\n  \{', block):
                     mid = re.search(r'MissionID\s*=\s*"([^"]+)"', m_block)
+                    if not mid:
+                        continue
+                    mtype = re.search(r'MissionType\s*=\s*"([^"]+)"', m_block)
+                    tid = re.search(r'TargetID\s*=\s*"([^"]+)"', m_block)
                     tval = re.search(r'TargetValue\s*=\s*(\d+)', m_block)
-                    if mid:
-                        targets[mid.group(1)] = int(tval.group(1)) if tval else 1
+                    missions[mid.group(1)] = (mtype.group(1) if mtype else '', tid.group(1) if tid else '',
+                                              int(tval.group(1)) if tval else None)
             elif block.startswith('LoadQuest'):
                 for q_block in re.split(r'\n  \{', block):
                     qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    mids = re.search(r'MissionID = \{([^}]*)\}', q_block)
-                    if qid and mids:
-                        quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = re.findall(r'"([^"]+)"', mids.group(1))
+                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
+                    if qid and m_match:
+                        q_hash = jhash(qid.group(1)) & 0xFFFFFFFF
+                        chains.extend((q_hash, idx, mid)
+                                      for idx, mid in enumerate(re.findall(r'"([^"]+)"', m_match.group(1))))
+    return missions, chains
+
+
+def _objectives_by_target(types, hash_keys=False):
+    """target_id -> [(quest_id_hash, objective_index, target_value)] for missions of `types`."""
+    missions, chains = _mission_table()
     out = {}
-    for q_hash, mids in quest_missions.items():
-        for idx, mid in enumerate(mids):
-            out.setdefault(mid, []).append((q_hash, idx, targets.get(mid, 1)))
+    for q_hash, idx, mid in chains:
+        mission = missions.get(mid)
+        if not mission or mission[0] not in types or not mission[1] or mission[2] is None:
+            continue
+        mtype, target, value = mission
+        out.setdefault(target, []).append((q_hash, idx, value))
+        if hash_keys:
+            out.setdefault(jhash(target) & 0xFFFFFFFF, []).append((q_hash, idx, value))
+    return out
+
+
+@lru_cache(maxsize=None)
+def quest_mission_objectives():
+    """Mapping: mission id ("QM807") -> [(quest_id_hash, objective_index, target_value)]."""
+    missions, chains = _mission_table()
+    out = {}
+    for q_hash, idx, mid in chains:
+        value = (missions.get(mid) or ('', '', None))[2]
+        out.setdefault(mid, []).append((q_hash, idx, value if value is not None else 1))
     return out
 
 
 @lru_cache(maxsize=None)
 def quest_mission_counts():
     """Mapping: quest_id_hash (int) -> count of missions."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
-        if tsv_c.is_file():
-            counts = {}
-            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 3:
-                    qhash = jhash(parts[0]) & 0xFFFFFFFF
-                    counts[qhash] = counts.get(qhash, 0) + 1
-            return counts
-
-    root = data_root()
-    if not root.exists():
-        return {}
-    out = {}
-    for p in _quest_files():
-        txt = p.read_text(encoding='utf-8', errors='replace')
-        for block in re.split(r'assert\(DictQuest:', txt):
-            if block.startswith('LoadQuest'):
-                for q_block in re.split(r'\n  \{', block):
-                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
-                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
-                    if qid and mids:
-                        out[jhash(qid.group(1)) & 0xFFFFFFFF] = len(mids)
-    return out
+    counts = {}
+    for q_hash, _, _ in _mission_table()[1]:
+        counts[q_hash] = counts.get(q_hash, 0) + 1
+    return counts
 
 
 @lru_cache(maxsize=None)
 def quest_item_objectives():
-    """Mapping: item_code (str) -> [(quest_id_hash, objective_index, target_count)]."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv_m = ASSETS_DIR / 'quest_missions.tsv'
-        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
-        if tsv_m.is_file() and tsv_c.is_file():
-            mission_defs = {}
-            for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 4 and parts[1] == '1':
-                    mid, tid, tval = parts[0], parts[2], int(parts[3])
-                    mission_defs[mid] = (tid, tval)
-            out = {}
-            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 3:
-                    qid, idx, mid = parts[0], int(parts[1]), parts[2]
-                    if mid in mission_defs:
-                        tid, tval = mission_defs[mid]
-                        out.setdefault(tid, []).append((jhash(qid) & 0xFFFFFFFF, idx, tval))
-            return out
-
-    root = data_root()
-    if not root.exists():
-        return {}
-    mission_defs = {}
-    quest_missions = {}
-
-    for p in _quest_files():
-        txt = p.read_text(encoding='utf-8', errors='replace')
-        for block in re.split(r'assert\(DictQuest:', txt):
-            if block.startswith('LoadMission'):
-                for m_block in re.split(r'\n  \{', block):
-                    mid = re.search(r'MissionID\s*=\s*"([^"]+)"', m_block)
-                    mtype = re.search(r'MissionType\s*=\s*"([^"]+)"', m_block)
-                    tid = re.search(r'TargetID\s*=\s*"([^"]+)"', m_block)
-                    tval = re.search(r'TargetValue\s*=\s*(\d+)', m_block)
-                    if mid and mtype and tval and mtype.group(1) == '1' and tid:
-                        mission_defs[mid.group(1)] = (tid.group(1), int(tval.group(1)))
-            elif block.startswith('LoadQuest'):
-                for q_block in re.split(r'\n  \{', block):
-                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
-                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
-                    if qid and mids:
-                        quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = mids
-
-    out = {}
-    for qid_hash, mids in quest_missions.items():
-        for obj_idx, mid in enumerate(mids):
-            if mid in mission_defs:
-                target_item, target_val = mission_defs[mid]
-                out.setdefault(target_item, []).append((qid_hash, obj_idx, target_val))
-    return out
+    """Mapping: item_code (str) -> [(quest_id_hash, objective_index, target_count)] (MissionType 1)."""
+    return _objectives_by_target({'1'})
 
 
 @lru_cache(maxsize=None)
 def quest_monster_objectives():
-    """Mapping: monster_id (str) -> [(quest_id_hash, objective_index, target_count)]."""
-    q_override = _quest_override_files()
-    if not q_override:
-        tsv_m = ASSETS_DIR / 'quest_missions.tsv'
-        tsv_c = ASSETS_DIR / 'quest_chains.tsv'
-        if tsv_m.is_file() and tsv_c.is_file():
-            mission_defs = {}
-            for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 4 and parts[1] == '0':
-                    mid, tid, tval = parts[0], parts[2], int(parts[3])
-                    mission_defs[mid] = (tid, tval)
-            out = {}
-            for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-                parts = line.split('\t')
-                if len(parts) >= 3:
-                    qid, idx, mid = parts[0], int(parts[1]), parts[2]
-                    if mid in mission_defs:
-                        target_mon, tval = mission_defs[mid]
-                        qhash = jhash(qid) & 0xFFFFFFFF
-                        out.setdefault(target_mon, []).append((qhash, idx, tval))
-                        out.setdefault(jhash(target_mon) & 0xFFFFFFFF, []).append((qhash, idx, tval))
-            return out
-
-    root = data_root()
-    if not root.exists():
-        return {}
-    mission_defs = {}
-    quest_missions = {}
-
-    for p in _quest_files():
-        txt = p.read_text(encoding='utf-8', errors='replace')
-        for block in re.split(r'assert\(DictQuest:', txt):
-            if block.startswith('LoadMission'):
-                for m_block in re.split(r'\n  \{', block):
-                    mid = re.search(r'MissionID\s*=\s*"([^"]+)"', m_block)
-                    mtype = re.search(r'MissionType\s*=\s*"([^"]+)"', m_block)
-                    tid = re.search(r'TargetID\s*=\s*"([^"]+)"', m_block)
-                    tval = re.search(r'TargetValue\s*=\s*(\d+)', m_block)
-                    if mid and mtype and tval and mtype.group(1) == '0' and tid:
-                        mission_defs[mid.group(1)] = (tid.group(1), int(tval.group(1)))
-            elif block.startswith('LoadQuest'):
-                for q_block in re.split(r'\n  \{', block):
-                    qid = re.search(r'\bID\s*=\s*"([^"]+)"', q_block)
-                    m_match = re.search(r'MissionID\s*=\s*\{([^}]*)\}', q_block, re.S)
-                    mids = re.findall(r'"([^"]+)"', m_match.group(1)) if m_match else []
-                    if qid and mids:
-                        quest_missions[jhash(qid.group(1)) & 0xFFFFFFFF] = mids
-
-    out = {}
-    for qid_hash, mids in quest_missions.items():
-        for obj_idx, mid in enumerate(mids):
-            if mid in mission_defs:
-                target_mon, target_val = mission_defs[mid]
-                target_hash = jhash(target_mon) & 0xFFFFFFFF
-                out.setdefault(target_mon, []).append((qid_hash, obj_idx, target_val))
-                out.setdefault(target_hash, []).append((qid_hash, obj_idx, target_val))
-    return out
+    """Mapping: monster_id (str) and jhash(monster_id) -> [(quest_id_hash, objective_index, target_count)] (MissionType 0)."""
+    return _objectives_by_target({'0'}, hash_keys=True)
 
 
 @lru_cache(maxsize=None)
@@ -323,27 +223,7 @@ def quest_dungeon_objectives():
     - mission_type 3: target_id is an exact MapID (e.g. 'Act1_G1_A34')
     Each maps id (str) -> [(quest_id_hash, objective_index, target_count)].
     """
-    by_dungeon = {}
-    by_map = {}
-    tsv_m = ASSETS_DIR / 'quest_missions.tsv'
-    tsv_c = ASSETS_DIR / 'quest_chains.tsv'
-    if tsv_m.is_file() and tsv_c.is_file():
-        mission_defs = {}
-        for line in tsv_m.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
-            if len(parts) >= 4 and parts[1] in ('2', '3') and parts[2]:
-                mission_defs[parts[0]] = (parts[1], parts[2], int(parts[3]))
-        for line in tsv_c.read_text(encoding='utf-8', errors='replace').splitlines()[1:]:
-            parts = line.split('\t')
-            if len(parts) >= 3:
-                qid, idx, mid = parts[0], int(parts[1]), parts[2]
-                if mid in mission_defs:
-                    mtype, target_id, tval = mission_defs[mid]
-                    qhash = jhash(qid) & 0xFFFFFFFF
-                    bucket = by_dungeon if mtype == '2' else by_map
-                    bucket.setdefault(target_id, []).append((qhash, idx, tval))
-        return by_dungeon, by_map
-    return by_dungeon, by_map
+    return _objectives_by_target({'2'}), _objectives_by_target({'3'})
 
 
 def _promotion_target_class(base_class: int, promo_type: int) -> int:

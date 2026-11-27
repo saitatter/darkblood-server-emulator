@@ -288,13 +288,12 @@ class QuestHandlers(BaseDomainService):
         already = quest_id in char.get('quests_done', [])
         if already:
             exp = gold = gp = 0
-        total = (Character.from_dict(char).u66 if char else Character().u66) + gold
+        total = int(char.get('gold', 0)) + gold
         if char:
             char.setdefault('quests_active', {}).pop(str(quest_id), None)
             done = char.setdefault('quests_done', [])
             if quest_id not in done:
                 done.append(quest_id)
-            char['u66'] = total
             char['gold'] = total
             await self.grant_exp(char, exp)
             from darkblood.games.game_data.client_dict import quest_item_objectives

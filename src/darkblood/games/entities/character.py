@@ -122,7 +122,7 @@ class Character:
     # 2007 details +0x41 EXP and +0x45 gold (player +0x78 / +0x70). Not part
     # of the lobby entry, whose +0x62 / +0x66 are the bonus fields below.
     exp: int = 0
-    u66: int = 21
+    gold: int = 0              # +0x45 u64, stored as char['gold'] (single source of truth)
     # Lobby +0x62 f32 rate and +0x66 i64: when +0x66 > 0, character select
     # shows a "bonus" of (rate - 1.0) (0x007045B4). Meaning of the amount
     # (rest EXP?) not recovered; sent as no bonus.
@@ -206,7 +206,7 @@ class Character:
             guild_uid=data.get('guild_uid', -1),
             guild_grade=data.get('guild_grade', 0),
             exp=data.get('exp', 0),
-            u66=data.get('u66', 21),
+            gold=int(data.get('gold', 0)),
             u6e=data.get('u6e', 15),
             b72=data.get('b72', False),
             b73=data.get('b73', False),
@@ -253,7 +253,7 @@ class Character:
             'guild_uid': self.guild_uid,
             'guild_grade': self.guild_grade,
             'exp': self.exp,
-            'u66': self.u66,
+            'gold': self.gold,
             'u6e': self.u6e,
             'b72': self.b72,
             'b73': self.b73,
@@ -308,7 +308,7 @@ class Character:
         b += struct.pack('<B', self.level)
         # 0x00A52630: +0x41 u32 exp, +0x45 u64 gold, +0x4D u32 total_ap,
         # +0x7C i16 stress, +0x7E i16 stress_week, +0x80 i16 stress_pcb, +0x82 i16 daily_post_send.
-        b += struct.pack('<IQIhhhh', self.exp, self.u66, self.total_ap,
+        b += struct.pack('<IQIhhhh', self.exp, self.gold, self.total_ap,
                          self.stress, self.stress_week, self.stress_pcb, 0)
         # Sub-struct 0xa488f0: untagged 24-byte GameOption block (+0x84), copied
         # by 0x00470D10 into 0x00F2DA28 +0xBE..+0xD5 on 2007 SelectCharacterAck.

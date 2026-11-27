@@ -104,7 +104,6 @@ class GuildHandlers:
             deposit = req.amount
             if current_gold >= deposit:
                 char['gold'] = current_gold - deposit
-                char['u66'] = char['gold']
             guild_money = char.setdefault('guild_money', 0) + deposit
             char['guild_money'] = guild_money
             self.save_char()
@@ -125,7 +124,6 @@ class GuildHandlers:
             withdraw = min(max(0, req.amount), curr_guild)
             char['guild_money'] = curr_guild - withdraw
             char['gold'] = char.get('gold', 0) + withdraw
-            char['u66'] = char['gold']
             guild_money = char['guild_money']
             self.save_char()
         ack = GuildMoneyOutAck(result=0, remain_gold=guild_money)
