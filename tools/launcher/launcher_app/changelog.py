@@ -48,18 +48,17 @@ def _current_release_tags(flags):
         return cur, ''
     try:
         proc = subprocess.run(
-            ['git', 'tag', '--sort=-creatordate', '--list', 'v*'],
+            ['git', 'tag', '--merged', 'HEAD', '--sort=-creatordate', '--list', 'v*'],
             cwd=str(ROOT), capture_output=True, text=True, timeout=5, creationflags=flags,
         )
         if proc.returncode == 0:
             tags = [t.strip() for t in proc.stdout.splitlines() if t.strip()]
-            if cur:
-                if cur in tags:
-                    idx = tags.index(cur)
-                    return cur, (tags[idx + 1] if idx + 1 < len(tags) else '')
-                return cur, (tags[0] if tags else '')
+            if cur in tags:
+                idx = tags.index(cur)
+                return cur, (tags[idx + 1] if idx + 1 < len(tags) else '')
             if tags:
                 return tags[0], (tags[1] if len(tags) > 1 else '')
+            return '', ''
     except Exception:
         pass
     return cur, ''

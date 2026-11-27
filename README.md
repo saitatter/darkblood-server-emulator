@@ -26,7 +26,8 @@ Launch and configure the emulator using **`DarkBloodLauncher.exe`** (standalone 
 
 Shows the installed release's changelog and uses the bundled `RELEASE_NOTES.md`
 when offline. The launcher reads local Git history when running from a
-development checkout. This tab also shows server settings (`host`, `port`,
+development checkout and considers only release tags reachable from that checkout.
+This tab also shows server settings (`host`, `port`,
 `relay_port`), account and multibox settings, TCP latency, and enabled patches.
 
 ![Dark Blood Custom Launcher — News & Server](docs/images/launcher_news_server.png)
