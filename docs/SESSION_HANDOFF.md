@@ -4,6 +4,10 @@
 
 ## Recent verified changes (2026-11-22 – 2026-11-27)
 
+- **Pet dungeon Energy drain (`2479 PetConsumeSatietyNot`) & EXP level-diff rule (2026-11-27)**:
+  - Verified `2479 eEGS_PET_CONSUME_SATIETY_NOT` (`0x0079F980`: `nPetUID >> sConsumeSatiety`, stores remaining satiety via `0x009524F0` and auto-unsummons when `<= 0`).
+  - Summoning a pet inside a dungeon (`2468 -> 2469`) or entering a dungeon with a summoned pet (`5013`) now consumes 1 Energy immediately, and `GameSession.tick_timers` drains 1 additional Energy every 30 seconds via `2479`, auto-unsummoning at 0 (refusing summons at 0 Energy).
+  - `grant_pet_exp` (`src/darkblood/games/handlers/pets/pets.py`) now enforces `abs(char_level - pet_level) < 20` and applies the Premium cash food `+100%` Pet EXP bonus (`is_cash_food`). Verified headless (285/285 tests); pending live re-check.
 - **Fix Card Booster Pack (`Type=58`) client crash, Card Collection (`2601`/`2608`/`2617`/`2619`) & Expand Card Inventory (`2615/2616`, 2026-11-27)**:
   - Live crash (`hook_log.OfflinePlayer.txt` + `logs/wire.jsonl`): using `IRanCashEtc260` (Card Booster Pack, `Type=58`) crashed at `0x00B06784` (`ecx=0x35C`, caller `0x0061414B` inside `JAppPageRandomBox::ShowResult` `0x00614030`) when the server replied with `2196 RandomboxResultItemNot(..., is_jackpot=True)`.
   - Disassembly of the client `UseItem` switch (`0x00839EF4`, jump table `0x0083E600`) confirmed `Type=6` random boxes (`0x00839F68 -> 0x0083A020`) open `Page_RandomBox (0x41)` before sending `2038`, whereas `Type=58` Monster Card Booster Packs (`0x0083A0F8`, 13 items, all dropping `MCard*`) check Monster Card bag space on `Page 0x93` (`JAppPageMonsterCard`) and send `2038` directly without opening `Page_RandomBox`, so `0x00AD7C90(4)` returned `NULL` in `2196`.
