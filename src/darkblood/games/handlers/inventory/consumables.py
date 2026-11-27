@@ -17,6 +17,8 @@ from darkblood.games.network.messages import (
     ItemDecomposeReq,
     MarkItemActiveNot,
     MarkTabActiveNot,
+    MonsterCardChangeListNot,
+    MonsterCardInfo,
     RandomboxResultItemNot,
     SealItemAck,
     SealItemReq,
@@ -92,7 +94,32 @@ class ConsumableHandlersMixin:
         await self.session.pets.apply_pet_or_mount_item(char, item_str_code)
         await self.session.life.use_fishing_proficiency_item(char, item_str_code, use_count)
 
-    async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, random_box: bool):
+    async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, box_kind: str):
+        if box_kind == 'monster_card':
+            cards = char.setdefault('monster_cards', [])
+            next_uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
+            new_cards = []
+            granted_names = []
+            owner_uid = self.char_id or 0
+            for item_code, qty in contents:
+                card_code = item_code[1:] if item_code.startswith('MCard') else item_code
+                for _ in range(max(1, int(qty))):
+                    uid = next_uid
+                    next_uid += 1
+                    cards.append({'uid': uid, 'code': card_code, 'level': 1})
+                    new_cards.append(MonsterCardInfo(
+                        card_uid=uid,
+                        card_id=jhash(card_code),
+                        level=1,
+                        owner_uid=owner_uid,
+                    ))
+                    granted_names.append(card_code)
+            self.save_char()
+            await self.send_msg(
+                MonsterCardChangeListNot(new_cards=new_cards, del_cards=[], from_random_card=True),
+                note='monster card booster opened (%s -> %s)' % (box_code, ', '.join(granted_names)),
+            )
+            return
         stored = add_reward_items(char, contents)
         self.save_char()
         wire_items = [Item(owner=UPDATE_OWNER, **i) for i in stored]
@@ -100,7 +127,7 @@ class ConsumableHandlersMixin:
             DragItemAck(result=0, items=wire_items),
             note='cash box opened (%s -> %s)' % (box_code, ', '.join(i['code'] for i in stored)),
         )
-        if random_box:
+        if box_kind == 'random_box':
             reward_code, reward_count = contents[0]
             reward_hash = jhash(reward_code)
             if reward_hash >= 0x80000000:
@@ -129,9 +156,9 @@ class ConsumableHandlersMixin:
             await self.reply(UseItemAck(result=results.INVALID_STATE), correlation,
                              note='rune agreement refused (all bonus slots unlocked)')
             return
-        contents, random_box = self._cash_box_contents(item_str_code)
+        contents, box_kind = self._cash_box_contents(item_str_code)
         count = used_item.get('count', 1) - req.use_count
-        if contents:
+        if contents and box_kind != 'monster_card':
             inventory = char
             if count <= 0:
                 inventory = dict(char, items=[item for item in items if item is not used_item])
@@ -164,7 +191,7 @@ class ConsumableHandlersMixin:
                          correlation, note='use item ack (uid=%d code=%08x)' % (req.item_uid, item_code))
         await self._apply_special_consumable(char, item_str_code, item_code, req.use_count)
         if contents:
-            await self._grant_opened_box_contents(char, item_str_code, contents, random_box)
+            await self._grant_opened_box_contents(char, item_str_code, contents, box_kind)
 
     @packet_handler(UseDyeingItemReq)
     async def handle_use_dyeing_item(self, correlation, body):
@@ -202,18 +229,23 @@ class ConsumableHandlersMixin:
     def _cash_box_contents(self, code):
         info = client_dict.cash_items().get(code)
         if not info or not info['adj']:
-            return [], False
+            return [], ''
         adj = info['adj']
         if adj.startswith('PACKAGE'):
-            return list(client_dict.cash_packages().get(adj, [])), False
+            return list(client_dict.cash_packages().get(adj, [])), 'package'
         states, groups = client_dict.random_boxes()
         grades = states.get(adj)
         if not grades:
-            return [], False
+            return [], ''
         weights = [p for p, _ in grades]
         _, names = random.choices(grades, weights=weights)[0]
         pool = [entry for name in names for entry in groups.get(name, [])]
-        return ([random.choice(pool)], True) if pool else ([], False)
+        if not pool:
+            return [], ''
+        # Type 58 items (Card Booster Packs) are handled by JAppPageMonsterCard (0x93)
+        # via 2603 MonsterCardChangeListNot(from_random_card=True), not Page_RandomBox (0x41).
+        kind = 'monster_card' if info.get('type') == 58 else 'random_box'
+        return [random.choice(pool)], kind
 
     @packet_handler(BuyLifeWaterReq)
     async def handle_buy_life_water(self, correlation, body):

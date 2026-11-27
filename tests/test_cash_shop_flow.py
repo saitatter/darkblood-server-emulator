@@ -168,20 +168,24 @@ class CashShopFlowTest(ServerTestCase):
             self.assertEqual(len(char['items']), 1)
             self.assertNotEqual(char['items'][0]['code'], 'IRanCashbod1')
 
-            # Card Booster Pack (IRanCashEtc260 -> RboxEEtc150R628 in item_randombox.lua)
+            # Card Booster Pack (Type 58: IRanCashEtc260 -> RboxEEtc150R628).
+            # Client opens this via JAppPageMonsterCard (page 0x93), not Page_RandomBox (0x41),
+            # so the server must send 2603 MonsterCardChangeListNot(from_random_card=True)
+            # instead of 2196 RandomboxResultItemNot (which crashes when Page_RandomBox is closed).
             char['items'] = [dict(code='IRanCashEtc260', uid=54, container=bag, slot=0, count=1)]
             session.GameSession.store().save_char('OfflinePlayer', char_id)
             client.send_event(2038, struct.pack('<iqi', 0x7fffffff, 54, 1))
             _, ack2039_card = await client.expect_event(2039)
             self.assertEqual(struct.unpack_from('<i', ack2039_card)[0], 0)
-            _, drag2037_card = await client.expect_event(2037)
-            self.assertEqual(struct.unpack_from('<i', drag2037_card)[0], 0)
-            _, result2196_card = await client.expect_event(2196)
-            res_c, hash_c, cnt_c, sel_c = struct.unpack('<iih?', result2196_card)
-            self.assertEqual((res_c, sel_c), (0, True))
-            self.assertGreaterEqual(cnt_c, 1)
-            self.assertEqual(len(char['items']), 1)
-            self.assertTrue(char['items'][0]['code'].startswith('MCard'))
+            _, card2603 = await client.expect_event(2603)
+            # vector<MonsterCardInfo> (1 elem, 36B) + empty del_cards (10 80) + from_random_card=True (01)
+            self.assertEqual(card2603[:2], b'\x10\x81')
+            self.assertEqual(card2603[-3:], b'\x10\x80\x01')
+            self.assertEqual(len(char['items']), 0)
+            self.assertEqual(len(char['monster_cards']), 1)
+            card_code = char['monster_cards'][0]['code']
+            self.assertTrue(card_code.startswith('Card'))
+            self.assertEqual(struct.unpack_from('<I', card2603, 10)[0], jhash(card_code))
 
         self.run_async(self.with_server(scenario))
 

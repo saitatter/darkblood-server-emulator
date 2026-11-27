@@ -180,8 +180,8 @@
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
-| `MonsterCardInfo` | `vector<?>` | pets.jsch:339 | 0x004B0BB0 card options |
-| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:479 | m_mapWinCnt (0x005F6730) |
+| `MonsterCardInfo` | `vector<?>` | pets.jsch:340 | 0x004B0BB0 card options |
+| `2643 MonsterCardLottoInfoNot` | `map<?>` | pets.jsch:480 | m_mapWinCnt (0x005F6730) |
 
 ## quests (1 of 109 fields)
 

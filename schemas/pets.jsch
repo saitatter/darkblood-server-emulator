@@ -7,6 +7,7 @@
 domain pets Dark Blood protocol wire messages - Pet, Mount and Taming domain.
 
 extern Item from darkblood.games.entities.items
+extern DateTime6 from darkblood.games.network.messages.commerce readable
 
 message 2348 TameingMonsterInsertReq header?
   ## Sender 0x00799BA0 writes a struct (0x00A48AB0) and a 4-byte value; the two
@@ -332,10 +333,10 @@ end
 struct MonsterCardInfo
   ## Monster card record, reader 0x00A52DB0 (2614).
   i64 card_uid
-  i32 card_id
+  h32 card_id
   i16 level = 1
   i64 owner_uid
-  raw[12] expire_time
+  DateTime6 expire_time = DateTime6()  # 0x1E + 0x00A49110 (6 x u16)
   vector<?> _                # 0x004B0BB0 card options
 end
 

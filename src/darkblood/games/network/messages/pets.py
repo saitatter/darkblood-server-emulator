@@ -8,6 +8,7 @@ from typing import ClassVar
 from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.commerce import DateTime6
 
 __all__ = [
     'TameingMonsterInsertReq',
@@ -696,10 +697,10 @@ class PetChangeExpNot(WireMessage):
 class MonsterCardInfo(WireMessage):
     """Monster card record, reader 0x00A52DB0 (2614)."""
     card_uid: i64 = 0
-    card_id: i32 = 0
+    card_id: h32 = 0
     level: i16 = 1
     owner_uid: i64 = 0
-    expire_time: Raw[12] = bytes(12)
+    expire_time: DateTime6 = field(default_factory=DateTime6)  # 0x1E + 0x00A49110 (6 x u16)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'card_uid',
         'card_id',
