@@ -928,6 +928,12 @@ element layout is unknown and sent empty. The request body is not recovered.
 Status: static reconstruction plus headless tests. A live run that confirms the
 client enters SquarePlay after skip is still pending.
 
+### Broker item placement
+
+Broker purchases and cancellations require enough free bag cells for the
+items being transferred. When there is insufficient space, the listing and
+AR balances stay as they were.
+
 ## 6. Mailbox (Post) System Specification (Opcodes 2219 - 2237)
 
 Binary layout reconstructed from client senders and dispatch handlers:

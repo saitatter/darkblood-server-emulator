@@ -5,7 +5,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from darkblood.games.entities.items import Item, UPDATE_OWNER
-from darkblood.player_management.characters import add_gold, add_reward_items, gold_of
+from darkblood.player_management.characters import add_gold, add_reward_items, free_cells, gold_of, slots_needed
 from darkblood.games.network.messages import (
     BrokerProduct,
     StallItem,
@@ -336,6 +336,8 @@ class BrokerManager:
             char_uid = char.get('id', 1)
             if listing.seller_uid != char_uid:
                 return False, "Not the seller", []
+            if len(free_cells(char)) < slots_needed([(listing.code, listing.count)]):
+                return False, "Inventory full", []
 
             # Return item to character inventory
             returned = add_reward_items(char, [(listing.code, listing.count)])
@@ -360,6 +362,9 @@ class BrokerManager:
             buyer_gold = gold_of(buyer_char)
             if buyer_gold < total_price:
                 return False, "Insufficient gold", 0, [], 0
+
+            if len(free_cells(buyer_char)) < slots_needed([(listing.code, buy_cnt)]):
+                return False, "Inventory full", 0, [], 0
 
             # Credit seller
             seller_char = _find_char_by_id(store, listing.seller_uid)
