@@ -70,6 +70,9 @@ When it fails, note what the client did and keep it here.
 | W15 | Guild bank deposit/withdraw (`2179`-`2182`) | The AR display shows the player's AR after the transfer (it showed the guild bank total); a deposit without enough AR is refused with "Not enough Ar."; the guild bank never grows without paying. |
 | W16 | Failure messages | Refusals now show their real reason (item not found, not enough Ar, no bag slot, invalid name, "Can't perform in the current position") instead of "Unavailable character". |
 
+After a team leader changes the arena team name and type (`5301`), joining that
+team (`5271`) shows the updated values.
+
 ## Basic client checklist (from ROADMAP)
 
 - [ ] Store: buying decrements gold and adds the bag icon; selling removes it.
