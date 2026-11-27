@@ -114,6 +114,40 @@ class BagFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_unequip_waits_for_space_in_any_bag(self):
+        from darkblood.games.network import results
+        from darkblood.games.network.messages import EquipItemReq
+        from darkblood.player_management.characters import add_reward_items, free_cells
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('UnequipHero'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+
+            equipped = next(item for item in char['items'] if item.get('container') == 1)
+            original_slot = equipped['slot']
+            char['bags'].append(dict(bag_id=38, code='Ibaga0004', b28=0, b29=5, w2a=1))
+            fillers = add_reward_items(char, [('Ihppa0001', 1)] * len(free_cells(char)))
+            request = EquipItemReq(item_uid=equipped['uid'], equip_slot=-1).encode()
+            client.send_event(2042, request)
+            _, blocked = await client.expect_event(2043)
+            self.assertEqual(struct.unpack_from('<i', blocked)[0], results.INVEN_FULL)
+            self.assertEqual((equipped['container'], equipped['slot']), (1, original_slot))
+
+            freed = fillers[-1]
+            self.assertEqual(freed['container'], 38)
+            char['items'].remove(freed)
+            client.send_event(2042, request)
+            _, moved = await client.expect_event(2043)
+            self.assertEqual(struct.unpack_from('<i', moved)[0], 0)
+            self.assertEqual((equipped['container'], equipped['slot']), (38, freed['slot']))
+
+        self.run_async(self.with_server(scenario))
+
 
 if __name__ == '__main__':
     unittest.main()
