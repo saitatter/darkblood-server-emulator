@@ -50,7 +50,7 @@ class SqliteCharacterStoreTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_sqlite_create_and_get_character(self):
-        req = {'name': 'SqlHero', 'char_class': 2}
+        req = {'name': '  SqlHero  ', 'char_class': 2}
         char = self.store.create('PlayerAccount', req)
         self.assertIsNotNone(char)
         self.assertEqual(char['name'], 'SqlHero')
@@ -61,6 +61,9 @@ class SqliteCharacterStoreTest(unittest.TestCase):
         self.assertEqual(found['name'], 'SqlHero')
         chars = self.store.characters('PlayerAccount')
         self.assertEqual(len(chars), 1)
+        self.store.save_char('PlayerAccount', char['id'])
+        with SqliteCharacterStore(db_path=self.db_path) as reopened:
+            self.assertEqual(reopened.get_by_name('SqlHero')[1]['id'], char['id'])
 
     def test_sqlite_duplicate_name_case_insensitive_rejected(self):
         self.store.create('Account1', {'name': 'Paladin', 'char_class': 1})
