@@ -99,6 +99,7 @@ class DarkBloodLauncher(tk.Tk):
 
         self._server_proc = None
         self._patch_vars = {}
+        self._number_vars = {}
         self._header_icon_img = None
         self._temp_ico_path = None
         self._active_tab = 'news'
@@ -441,12 +442,16 @@ class DarkBloodLauncher(tk.Tk):
 
         inner = self.patches_scroll.inner
         for cat_id, cat_title in options.CATEGORIES:
-            keys = [k for k in options.OPTIONS if options.PATCH_META.get(k, ('', ''))[0] == cat_id]
+            all_keys = list(options.OPTIONS) + list(options.NUMERIC_OPTIONS)
+            keys = [k for k in all_keys if options.PATCH_META.get(k, ('', ''))[0] == cat_id]
             if not keys:
                 continue
             tk.Label(inner, text=cat_title.upper(), bg=BG_CARD, fg=GOLD,
                      font=('Segoe UI', 8, 'bold')).pack(anchor='w', padx=10, pady=(10, 4))
             for key in keys:
+                if key in options.NUMERIC_OPTIONS:
+                    self._build_number_row(inner, key)
+                    continue
                 _, default, label, desc = options.OPTIONS[key]
                 _, src_file = options.PATCH_META[key]
                 var = tk.BooleanVar(value=default)
@@ -471,6 +476,40 @@ class DarkBloodLauncher(tk.Tk):
                 tk.Label(row_card, text=desc, bg=BG_CARD_ALT, fg=TEXT_DIM,
                          font=('Segoe UI', 8), wraplength=820, justify='left').pack(
                     anchor='w', padx=(34, 10), pady=(0, 7))
+
+    def _build_number_row(self, parent, key):
+        """A numeric server option row (e.g. a game multiplier) with an entry and presets."""
+        _, default, label, desc, lo, hi = options.NUMERIC_OPTIONS[key]
+        _, src_file = options.PATCH_META[key]
+        var = tk.StringVar(value=f'{default:g}')
+        self._number_vars[key] = var
+
+        row_card = tk.Frame(parent, bg=BG_CARD_ALT, highlightbackground=BORDER, highlightthickness=1)
+        row_card.pack(fill='x', padx=8, pady=3)
+        top_row = tk.Frame(row_card, bg=BG_CARD_ALT)
+        top_row.pack(fill='x', padx=10, pady=(6, 2))
+        tk.Label(top_row, text=label, bg=BG_CARD_ALT, fg=TEXT_MAIN,
+                 font=('Segoe UI', 9, 'bold')).pack(side='left', padx=(24, 10))
+        ent = self._make_entry(top_row, var, width=8)
+        ent.configure(font=('Consolas', 9), justify='center')
+        ent.pack(side='left', ipady=2)
+
+        def normalize(_e=None):
+            var.set(f'{options.clamp_number(key, var.get()):g}')
+
+        ent.bind('<FocusOut>', normalize)
+        ent.bind('<Return>', normalize)
+        for preset in (0.5, 1, 2, 5, 10):
+            if lo <= preset <= hi:
+                self._make_btn(
+                    top_row, f'x{preset:g}', lambda p=preset: var.set(f'{p:g}'),
+                    bg=BG_CARD, hover=BORDER, fg=TEXT_DIM, font=('Segoe UI', 7, 'bold'), padx=6, pady=1,
+                ).pack(side='left', padx=(6, 0))
+        tk.Label(top_row, text=src_file, bg=BG_INPUT, fg=LINK_BLUE,
+                 font=('Consolas', 8), padx=6, pady=1).pack(side='right')
+        tk.Label(row_card, text=f'{desc}  Range {lo:g}–{hi:g}, default {default:g}.',
+                 bg=BG_CARD_ALT, fg=TEXT_DIM, font=('Segoe UI', 8), wraplength=820, justify='left').pack(
+            anchor='w', padx=(34, 10), pady=(0, 7))
 
     def _build_gm_page(self):
         """Build the searchable GM Commands console & live execution tab (visible when gm_mode=1)."""
@@ -1320,6 +1359,8 @@ class DarkBloodLauncher(tk.Tk):
         self.clients_var.set(cfg['launcher']['clients'])
         for key, var in self._patch_vars.items():
             var.set(bool(cfg['options'].get(key, options.OPTIONS[key][1])))
+        for key, var in self._number_vars.items():
+            var.set(f"{cfg['numbers'].get(key, options.NUMERIC_OPTIONS[key][1]):g}")
         self._update_patch_summary()
         self._sync_gm_tab_visibility()
 
@@ -1467,7 +1508,10 @@ class DarkBloodLauncher(tk.Tk):
             'clients': self.clients_var.get(),
         }
         values = {key: var.get() for key, var in self._patch_vars.items()}
-        options.write_all(values=values, network=net, launcher=launcher)
+        numbers = {key: options.clamp_number(key, var.get()) for key, var in self._number_vars.items()}
+        for key, var in self._number_vars.items():
+            var.set(f'{numbers[key]:g}')
+        options.write_all(values=values, network=net, launcher=launcher, numbers=numbers)
         return net, launcher, values
 
     def _save_config(self):
@@ -1488,6 +1532,8 @@ class DarkBloodLauncher(tk.Tk):
         self.clients_var.set(options.LAUNCHER_DEFAULTS['clients'])
         for key, (_, default, _, _) in options.OPTIONS.items():
             self._patch_vars[key].set(default)
+        for key, var in self._number_vars.items():
+            var.set(f'{options.NUMERIC_OPTIONS[key][1]:g}')
         self.status_var.set('Defaults restored (click Save Config or PLAY to write).')
 
     def _refresh_client_badge(self):
