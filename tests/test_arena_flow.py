@@ -297,6 +297,13 @@ class ArenaFlowTest(ServerTestCase):
             self.assertEqual(my_rank_ack.result, 0)
             self.assertEqual(my_rank_ack.my_rank, 2)
 
+            client.send_event(6011, messages.RequestCharInfoReq(is_other=True, char_uid=leader_id).encode())
+            _, info6012 = await client.expect_event(6012)
+            player = messages.LeagueArenaCharInfo(
+                rating=1700, rank=1, win_count=12, lose_count=3, draw_count=0, win_streak=4,
+            )
+            self.assertIn(player.encode(), info6012)
+
             # 3. Arena Square List (2304 -> 2305)
             client.send_event(2304, messages.ArenaSquareListReq(server_key=1).encode())
             _, ack2305 = await client.expect_event(2305)
