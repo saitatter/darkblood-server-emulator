@@ -71,6 +71,20 @@ class BagFlowTest(ServerTestCase):
             _, selected = await client.expect_event(2007)
             self.assertIn(Bag(**moved).encode(), selected)
 
+            # Equipping a bag from a stack leaves the other bags in inventory.
+            stacked = dict(code='Ibaga0004', uid=87, container=bag, slot=17, count=3)
+            char['next_item_uid'] = 100
+            char['items'].append(stacked)
+            client.send_event(2026, struct.pack('<iq', 0x7fffffff, 87))
+            _, opened = await client.expect_event(2027)
+            self.assertEqual(struct.unpack_from('<Iq', opened), (0, 87))
+            remainder = [item for item in char['items'] if item.get('code') == 'Ibaga0004']
+            self.assertEqual([(item['count'], item['container'], item['slot']) for item in remainder],
+                             [(2, bag, 17)])
+            self.assertNotEqual(remainder[0]['uid'], 87)
+            _, refresh = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', refresh)[0], 0)
+
             # A non-bag item is refused.
             client.send_event(2026, struct.pack('<iq', 0x7fffffff, 999))
             _, ack = await client.expect_event(2027)

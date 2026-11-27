@@ -11,6 +11,7 @@ from darkblood.games.network.messages import (
     ChangeBagPropertyReq,
     CloseBagAck,
     CloseBagReq,
+    DragItemAck,
     OpenBagAck,
     OpenBagReq,
     SwitchBagAck,
@@ -18,7 +19,7 @@ from darkblood.games.network.messages import (
     SwitchQuickslotAck,
     SwitchQuickslotReq,
 )
-from darkblood.player_management.characters import add_reward_items, free_cells
+from darkblood.player_management.characters import add_reward_items, free_cells, next_item_uid
 
 
 class BagHandlersMixin:
@@ -44,11 +45,19 @@ class BagHandlersMixin:
                              note=f'open bag fail ({reason}, uid={req.item_uid})')
             return
         record = dict(bag_id=req.item_uid, code=item['code'], b28=0, b29=size, w2a=free[0])
-        items.remove(item)
+        count = item.get('count', 1)
+        if count > 1:
+            item['uid'] = next_item_uid(char)
+            item['count'] = count - 1
+        else:
+            items.remove(item)
         bags.append(record)
         self.save_char()
         await self.reply(OpenBagAck(result=0, bag=Bag(**record)), correlation,
                          note=f'open bag ack ({item["code"]} uid={req.item_uid} size={size} slot={free[0]})')
+        if count > 1:
+            await self.send_msg(DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **item)]),
+                                note='refresh remaining bag stack')
 
     @packet_handler(CloseBagReq)
     async def handle_close_bag(self, correlation, body):
