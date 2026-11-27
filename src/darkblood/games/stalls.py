@@ -329,6 +329,15 @@ class BrokerManager:
             return listing
         return next((entry for entry in self.listings.values() if entry.item_uid == key), None)
 
+    @staticmethod
+    def _restore_listing_items(char: dict, listing: BrokerListing, count: int) -> list:
+        items = add_reward_items(char, [(listing.code, count)])
+        attributes = {key: listing.raw_dict[key] for key in ('durability', 'upgrade', 'quality')
+                      if key in listing.raw_dict}
+        for item in items:
+            item.update(attributes)
+        return items
+
     def cancel_listing(self, char: dict, listing_id: int, store: any) -> Tuple[bool, str, list]:
         """Cancel a listing and return item to owner inventory."""
         with self.lock:
@@ -341,7 +350,7 @@ class BrokerManager:
                 return False, "Not the seller", []
 
             # Return item to character inventory
-            returned = add_reward_items(char, [(listing.code, listing.count)])
+            returned = self._restore_listing_items(char, listing, listing.count)
             del self.listings[listing.listing_id]
             _persist_chars(store, [char_uid])
             return True, "Listing cancelled", returned
@@ -374,7 +383,7 @@ class BrokerManager:
                 add_gold(seller_char, total_price)
 
             # Grant item to buyer
-            new_items = add_reward_items(buyer_char, [(listing.code, buy_cnt)])
+            new_items = self._restore_listing_items(buyer_char, listing, buy_cnt)
             bought_uid = listing.item_uid
 
             # Update/remove listing

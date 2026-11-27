@@ -264,7 +264,8 @@ class StallFlowTest(ServerTestCase):
             char['gold'] = 50000
             item_uid = 9200
             char['items'] = [
-                dict(code='Iwpna0002', uid=item_uid, count=1, container=3, slot=0)
+                dict(code='Wlsww0001', uid=item_uid, count=1, container=3, slot=0,
+                     upgrade=7, quality=3, durability=25.0)
             ]
             store.save()
 
@@ -284,7 +285,7 @@ class StallFlowTest(ServerTestCase):
             self.assertEqual(len(BrokerManager.get().listings), 1)
             listing = list(BrokerManager.get().listings.values())[0]
             self.assertEqual(listing.price, 12000)
-            self.assertEqual(listing.code, 'Iwpna0002')
+            self.assertEqual(listing.code, 'Wlsww0001')
 
             # 3. Query My Listings (Opcode 2264 -> 2265)
             client.send_event(2264, BrokerMyListReq().encode())
@@ -294,7 +295,7 @@ class StallFlowTest(ServerTestCase):
 
             # 4. Check market price statistics (Opcode 2272 -> 2273)
             from darkblood.core.hashing import jhash
-            price_req = BrokerPriceReq(item_id=jhash('Iwpna0002')).encode()
+            price_req = BrokerPriceReq(item_id=jhash('Wlsww0001')).encode()
             client.send_event(2272, price_req)
             _, ack2273 = await client.expect_event(2273)
             self.assertEqual(struct.unpack_from('<i', ack2273, 0)[0], 0)
@@ -308,8 +309,11 @@ class StallFlowTest(ServerTestCase):
             # Item returned to inventory
             self.assertEqual(len(BrokerManager.get().listings), 0)
             char_reloaded = store.get('OfflinePlayer', char_id)
-            returned = next((i for i in char_reloaded.get('items', []) if i.get('code') == 'Iwpna0002'), None)
-            self.assertIsNotNone(returned)
+            returned = next(i for i in char_reloaded['items'] if i['code'] == 'Wlsww0001')
+            for field in ('upgrade', 'quality', 'durability'):
+                self.assertEqual(returned.get(field), listing.raw_dict[field], field)
+            _, returned_items = await client.expect_event(2037)
+            self.assertIn(Item(owner=UPDATE_OWNER, **returned).encode(), returned_items)
 
         self.run_async(self.with_server(scenario))
 
