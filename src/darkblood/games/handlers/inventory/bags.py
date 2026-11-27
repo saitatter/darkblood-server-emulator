@@ -126,8 +126,11 @@ class BagHandlersMixin:
         char = self.current_char()
         if char:
             qs = char.setdefault('quickslots', {})
-            qs['%d:%d' % (req.slot_type, req.slot_num)] = dict(
-                type=req.slot_type, slot=req.slot_num, ref_id=req.ref_id, ref_uid=req.ref_uid)
+            key = f'{req.slot_type}:{req.slot_num}'
+            if req.ref_id == -1 and req.ref_uid == -1:
+                qs.pop(key, None)
+            else:
+                qs[key] = dict(type=req.slot_type, slot=req.slot_num, ref_id=req.ref_id, ref_uid=req.ref_uid)
             self.save_char()
         await self.reply(
             AssignQuickslotAck(result=0, slot_type=req.slot_type, slot_num=req.slot_num,

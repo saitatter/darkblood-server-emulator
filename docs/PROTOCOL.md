@@ -173,6 +173,7 @@ Opcode names come from the client's table (`assets/opcodes.tsv`, `tools/codegen/
 | Inventory drag | 2036 `eEGS_DRAG_ITEM_REQ` (i64 uid, i64 container, i32 slot) | 2037 `eEGS_DRAG_ITEM_ACK` | `0x0077F570`: i32 result, tag `0x10` vector of Item structs | Verified |
 | Use item | 2038 `eEGS_USE_ITEM_REQ` (i64 uid, i32 count) | 2039 `eEGS_USE_ITEM_ACK` | `0x0077D4C0`: i32 result, tag `0x10` vector, i32 item_id, i32 use_count | Verified |
 | Delete item | 2040 `eEGS_DELETE_ITEM_REQ` (i64 uid, i32 count) | 2041 `eEGS_DELETE_ITEM_ACK` | `0x00557420`: i32 result, i64 uid, i32 del_amount | Verified |
+| Clear hotbar slot | 2044 `eEGS_ASSIGN_QUICKSLOT_REQ`, reference ID and UID both -1 | 2045 `eEGS_ASSIGN_QUICKSLOT_ACK` | Removes the saved binding from the hotbar. | Headless verified |
 | Equip item | 2042 `eEGS_EQUIP_ITEM_REQ` (i64 uid, i32 slot) | 2043 `eEGS_EQUIP_ITEM_ACK` | `0x007AE940`: i32 result, tag `0x10` vector of items. Unequip uses the first free cell in bag UI order and refuses when all bags are full. | Verified |
 | Quickslot assign | 2044 `eEGS_ASSIGN_QUICKSLOT_REQ` (u8 type, u8 slot, i32 ref_id, i64 ref_uid) | 2045 `eEGS_ASSIGN_QUICKSLOT_ACK` | `0x0078C4A0`: i32 result, echoes slot/ref parameters | Verified |
 | Quickslot switch | 2046 `eEGS_SWITCH_QUCIKSLOT_REQ` (ffffff7f prefix, u8 type, u8 from, u8 to) | 2047 `eEGS_SWITCH_QUCIKSLOT_ACK` | `0x0078C790`: i32 result, u8 type, u8 from, u8 to | Verified |
