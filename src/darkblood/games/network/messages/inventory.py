@@ -800,15 +800,19 @@ class AvatarZamEraseAck(WireMessage):
 class DivideItemReq(WireMessage):
     """Opcode 2250: eEGS_DIVIDE_ITEM_REQ (request).
 
-    Sender 0x007959F0: two 0x00B353D0, 0x00B352B0, 0x00B35190.
+    Sender 0x007959F0 writes its arguments in order: two 0x00B353D0 (i64), 0x00B352B0
+    (i32), 0x00B35190 (i16). Inventory caller 0x0055D5B3 passes the source item UID,
+    the destination bag id, the free cell from 0x005509F0 (-1 when none) and the
+    amount (16-bit, > 0 and below the stack). Live: 9, 3, 3, 1 = split 1 of item 9
+    into bag 3 cell 3.
     """
     OPCODE: ClassVar[int] = 2250
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
     source_item_uid: i64 = 0
-    dest_item_uid: i64 = 0
-    count: i32 = 1
-    slot: i16 = 0
+    dest_container: i64 = 0  # destination bag id
+    dest_slot: i32 = 0  # free cell picked by the client
+    count: i16 = 1  # amount moved to the new stack
 
 
 @dataclass

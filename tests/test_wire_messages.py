@@ -778,10 +778,9 @@ class WireMessagesTest(unittest.TestCase):
         self.assertEqual(not_skill, b'\x01\x10\x80')
 
     def test_divide_item_stack(self):
-        req = messages.DivideItemReq.decode(struct.pack('<qqih', 10, 0, 5, 2))
-        self.assertEqual(req.source_item_uid, 10)
-        self.assertEqual(req.count, 5)
-        self.assertEqual(req.slot, 2)
+        # Live 2250: split 1 of item 9 into bag 3, free cell 3 (sender 0x007959F0 arg order).
+        req = messages.DivideItemReq.decode(bytes.fromhex('09000000000000000300000000000000030000000100'))
+        self.assertEqual((req.source_item_uid, req.dest_container, req.dest_slot, req.count), (9, 3, 3, 1))
         ack = messages.DivideItemAck(result=0, items=[]).encode()
         self.assertEqual(struct.unpack_from('<i', ack[:4])[0], 0)
 

@@ -113,7 +113,7 @@
 | :--- | :--- | ---: | :--- |
 | `ItemDropEntry` | `u16` | inventory.jsch:21 | +0xC (ctor 0xFFFF) |
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
-| `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
+| `AddedItemNotice` | `u32` | inventory.jsch:402 | +8 (u16 zero + 2 bytes struct padding) |
 
 ## lobby (43 of 153 fields)
 

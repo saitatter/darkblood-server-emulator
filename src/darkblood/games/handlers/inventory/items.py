@@ -22,7 +22,7 @@ from darkblood.games.network.messages import (
     EquipItemReq,
 )
 from darkblood.games.game_data.client_dict import item_stack_limit
-from darkblood.player_management.characters import fits_equip_slot, free_cells
+from darkblood.player_management.characters import fits_equip_slot, free_cells, next_item_uid
 
 
 def _amount(record: dict) -> int:
@@ -297,9 +297,46 @@ class ItemHandlersMixin:
     async def handle_divide_item(self, correlation, body):
         """Opcode 2250 (eEGS_DIVIDE_ITEM_REQ) -> 2251 (eEGS_DIVIDE_ITEM_ACK): split a stacked item."""
         req = DivideItemReq.decode(body)
-        self.transport.record('divide-item-req', body, source_uid=req.source_item_uid, count=req.count)
-        await self.reply(DivideItemAck(result=0, items=[]), correlation,
-                         note=f'divide item ack (item={req.source_item_uid})')
+        self.transport.record('divide-item-req', body, source_uid=req.source_item_uid,
+                              container=req.dest_container, slot=req.dest_slot, count=req.count)
+        char = self.current_char()
+        if not char:
+            await self.reply(DivideItemAck(result=results.NO_EXIST_CHAR), correlation, note='divide item fail (no char)')
+            return
+        account_chars = {int(c['id']): c for c in self.store().characters(self.account) if 'id' in c}
+        src_char, source = self._locate_dragged_item(char, account_chars, req.source_item_uid)
+        if source is None or source.get('container') == EQUIPPED:
+            await self.reply(DivideItemAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
+                             note=f'divide item fail (item {req.source_item_uid} not found)')
+            return
+        dest_char, dest_container = self._resolve_drag_destination(char, account_chars, req.dest_container)
+        count = int(req.count)
+        bag = next((b for b in dest_char.get('bags', []) if b.get('bag_id') == dest_container), None)
+        occupied = any(i.get('container') == dest_container and i.get('slot') == req.dest_slot
+                       for i in dest_char.get('items', []))
+        capacity = int(bag['b29']) if bag is not None and 'b29' in bag else None
+        if (not 0 < count < _amount(source) or req.dest_slot < 0 or occupied or dest_container == EQUIPPED
+                or (bag is None and dest_container != DEPOT_CONTAINER)
+                or (capacity is not None and req.dest_slot >= capacity)):
+            await self.reply(DivideItemAck(result=results.INVALID_STATE), correlation,
+                             note=f'divide item fail (uid={req.source_item_uid} count={count} '
+                                  f'to c={dest_container} s={req.dest_slot})')
+            return
+        _set_amount(source, _amount(source) - count)
+        part = {k: v for k, v in source.items() if k not in ('uid', 'container', 'slot', 'count')}
+        part.update(uid=next_item_uid(dest_char), container=dest_container, slot=req.dest_slot)
+        _set_amount(part, count)
+        dest_char.setdefault('items', []).append(part)
+        self._save_drag_chars(src_char, dest_char)
+
+        def owner(container, owner_char):
+            return int(owner_char['id']) if container == DEPOT_CONTAINER else UPDATE_OWNER
+
+        items = [Item(owner=owner(source['container'], src_char), **source),
+                 Item(owner=owner(dest_container, dest_char), **part)]
+        await self.reply(DivideItemAck(result=0, items=items), correlation,
+                         note=f'divide item ack (uid={req.source_item_uid}: {count} -> uid={part["uid"]} '
+                              f'c={dest_container} s={req.dest_slot})')
 
     @packet_handler(CharVerifyStatReq)
     async def handle_char_verify_stat(self, correlation, body):

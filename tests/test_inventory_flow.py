@@ -11,6 +11,47 @@ from darkblood.games.network.messages import (
 
 
 class InventoryFlowTest(ServerTestCase):
+    def test_divide_item_splits_a_stack_into_the_free_cell(self):
+        from darkblood.games.entities.items import UPDATE_OWNER, Item
+        from darkblood.games.network import results
+        from darkblood.games.network.messages import DivideItemReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Splitter', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
+            potions = dict(code='Ihppa0000', uid=9, container=bag, slot=1, count=2)
+            char['items'] = [potions]
+            char['next_item_uid'] = 50
+            session.GameSession.store().save()
+
+            # Live form: 9, bag, free cell 3, amount 1.
+            client.send_event(2250, DivideItemReq(source_item_uid=9, dest_container=bag, dest_slot=3, count=1).encode())
+            _, ack = await client.expect_event(2251)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            part = next(i for i in char['items'] if i['uid'] != 9)
+            self.assertEqual((part['code'], part['container'], part['slot'], part.get('count', 1)),
+                             ('Ihppa0000', bag, 3, 1))
+            self.assertEqual(potions.get('count', 1), 1)
+            self.assertIn(Item(owner=UPDATE_OWNER, **potions).encode(), ack)
+            self.assertIn(Item(owner=UPDATE_OWNER, **part).encode(), ack)
+
+            # The whole stack, an occupied cell or a cell past the bag are refused.
+            for request in (dict(source_item_uid=9, dest_container=bag, dest_slot=4, count=1),
+                            dict(source_item_uid=part['uid'], dest_container=bag, dest_slot=1, count=1),
+                            dict(source_item_uid=9, dest_container=bag, dest_slot=-1, count=1)):
+                client.send_event(2250, DivideItemReq(**request).encode())
+                _, refused = await client.expect_event(2251)
+                self.assertEqual(struct.unpack_from('<i', refused)[0], results.INVALID_STATE)
+            self.assertEqual(len(char['items']), 2)
+
+        self.run_async(self.with_server(scenario))
+
     def test_drag_onto_same_material_merges_stacks(self):
         from darkblood.games.entities.items import UPDATE_OWNER, Item
 
@@ -370,10 +411,11 @@ class InventoryFlowTest(ServerTestCase):
             _, ack2710 = await client.expect_event(2710)
             self.assertEqual(struct.unpack_from('<i', ack2710[:4])[0], 0)
 
-            # 40. Divide item (2250 -> 2251)
+            # 40. Divide item (2250 -> 2251): container 0 is not a bag, so it is refused
+            # (the split itself is covered by test_divide_item_splits_a_stack_into_the_free_cell).
             client.send_event(2250, struct.pack('<qqih', 1, 0, 5, 2))
             _, ack2251 = await client.expect_event(2251)
-            self.assertEqual(struct.unpack_from('<i', ack2251[:4])[0], 0)
+            self.assertNotEqual(struct.unpack_from('<i', ack2251[:4])[0], 0)
 
             # 41. Use learn skill item (2111 -> 2112)
             client.send_event(2111, UseLearnSkillItemReq(item_uid=1, skill_id=105).encode())

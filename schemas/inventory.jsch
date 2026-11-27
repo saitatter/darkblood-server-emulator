@@ -376,11 +376,15 @@ message 2365 AvatarZamEraseAck ok_only
 end
 
 message 2250 DivideItemReq header?
-  ## Sender 0x007959F0: two 0x00B353D0, 0x00B352B0, 0x00B35190.
+  ## Sender 0x007959F0 writes its arguments in order: two 0x00B353D0 (i64), 0x00B352B0
+  ## (i32), 0x00B35190 (i16). Inventory caller 0x0055D5B3 passes the source item UID,
+  ## the destination bag id, the free cell from 0x005509F0 (-1 when none) and the
+  ## amount (16-bit, > 0 and below the stack). Live: 9, 3, 3, 1 = split 1 of item 9
+  ## into bag 3 cell 3.
   i64 source_item_uid
-  i64 dest_item_uid
-  i32 count = 1
-  i16 slot
+  i64 dest_container         # destination bag id
+  i32 dest_slot              # free cell picked by the client
+  i16 count = 1              # amount moved to the new stack
 end
 
 message 2251 DivideItemAck ok_only
