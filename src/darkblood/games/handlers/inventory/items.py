@@ -21,7 +21,20 @@ from darkblood.games.network.messages import (
     EquipItemAck,
     EquipItemReq,
 )
+from darkblood.games.game_data.client_dict import item_stack_limit
 from darkblood.player_management.characters import fits_equip_slot, free_cells
+
+
+def _amount(record: dict) -> int:
+    """Stack amount of an item record (no 'count' key means 1)."""
+    return int(record.get('count', 1))
+
+
+def _set_amount(record: dict, amount: int) -> None:
+    if amount > 1:
+        record['count'] = amount
+    else:
+        record.pop('count', None)
 
 
 class ItemHandlersMixin:
@@ -65,6 +78,15 @@ class ItemHandlersMixin:
         else:
             self.store().save_chars([(self.account, src_char['id']), (self.account, dest_char['id'])])
 
+    @staticmethod
+    def _can_merge_stacks(dragged: dict, target: dict, old_container, dest_container) -> bool:
+        """Same stackable code (item_overlap.lua Count > 1), outside the equipment, target not full."""
+        code = dragged.get('code')
+        if not code or target.get('code') != code or EQUIPPED in (old_container, dest_container):
+            return False
+        limit = item_stack_limit(code)
+        return bool(limit and limit > 1 and _amount(target) < limit)
+
     @packet_handler(DragItemReq)
     async def handle_drag_item(self, correlation, body):
         """Opcode 2036 (eEGS_DRAG_ITEM_REQ) -> 2037 (eEGS_DRAG_ITEM_ACK): move or swap an item between bags/depot."""
@@ -97,6 +119,27 @@ class ItemHandlersMixin:
             await self.reply(
                 DragItemAck(result=0, items=[Item(owner=_wire_owner(dest_container, dest_char), **dragged)]),
                 correlation, note='drag item ack (no move)',
+            )
+            return
+        if target and self._can_merge_stacks(dragged, target, old_container, dest_container):
+            limit = item_stack_limit(dragged['code'])
+            moved = min(limit - _amount(target), _amount(dragged))
+            _set_amount(target, _amount(target) + moved)
+            left = _amount(dragged) - moved
+            if left:
+                _set_amount(dragged, left)
+                source_wire = Item(owner=_wire_owner(old_container, src_char), **dragged)
+            else:
+                src_items.remove(dragged)
+                source_wire = Item(owner=_wire_owner(old_container, src_char), uid=0, code='',
+                                   container=old_container, slot=old_slot, count=0)
+            self._save_drag_chars(src_char, dest_char)
+            await self.reply(
+                DragItemAck(result=0, items=[Item(owner=_wire_owner(dest_container, dest_char), **target),
+                                             source_wire]),
+                correlation,
+                note='drag item ack (merge uid=%d into uid=%d: +%d, %d left)' % (
+                    req.item_uid, target['uid'], moved, left),
             )
             return
         if target:

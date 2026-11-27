@@ -11,6 +11,52 @@ from darkblood.games.network.messages import (
 
 
 class InventoryFlowTest(ServerTestCase):
+    def test_drag_onto_same_material_merges_stacks(self):
+        from darkblood.games.entities.items import UPDATE_OWNER, Item
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('Stacker', char_class=1))
+            _, ack2013 = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', ack2013, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            bag = next(b['bag_id'] for b in char['bags'] if b['bag_id'] != 1)
+            char['items'] = [
+                dict(code='IMnr20N', uid=30, container=bag, slot=1),
+                dict(code='IMnr20N', uid=31, container=bag, slot=0),
+                dict(code='IRid1Cash46', uid=40, container=bag, slot=2, count=8),
+                dict(code='IRid1Cash46', uid=41, container=bag, slot=3, count=5),
+                dict(code='IbagU160', uid=50, container=bag, slot=4),
+            ]
+            session.GameSession.store().save()
+
+            # Ore onto ore (stack 1000): one stack of 2, the source cell is cleared.
+            client.send_event(2036, struct.pack('<qqi', 31, bag, 1))
+            _, ack = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            ore = next(i for i in char['items'] if i['uid'] == 30)
+            self.assertEqual((ore['slot'], ore['count']), (1, 2))
+            self.assertFalse(any(i['uid'] == 31 for i in char['items']))
+            self.assertIn(Item(owner=UPDATE_OWNER, **ore).encode(), ack)
+            self.assertIn(Item(owner=UPDATE_OWNER, uid=0, code='', container=bag, slot=0, count=0).encode(), ack)
+
+            # Stack limit 10: 5 onto 8 fills it to 10 and leaves 3 in place.
+            client.send_event(2036, struct.pack('<qqi', 41, bag, 2))
+            _, ack = await client.expect_event(2037)
+            self.assertEqual(struct.unpack_from('<i', ack)[0], 0)
+            counts = {i['uid']: (i['slot'], i.get('count', 1)) for i in char['items']}
+            self.assertEqual((counts[40], counts[41]), ((2, 10), (3, 3)))
+
+            # A full stack, or a different code, still swaps.
+            client.send_event(2036, struct.pack('<qqi', 41, bag, 2))
+            await client.expect_event(2037)
+            counts = {i['uid']: (i['slot'], i.get('count', 1)) for i in char['items']}
+            self.assertEqual((counts[40], counts[41]), ((3, 10), (2, 3)))
+
+        self.run_async(self.with_server(scenario))
+
     def test_shared_depot_ar_saves_both_balances_in_one_transaction(self):
         from unittest.mock import patch
 
