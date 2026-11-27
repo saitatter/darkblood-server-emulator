@@ -546,6 +546,12 @@ class QuestFlowTest(ServerTestCase):
             expected_qsi = struct.pack('<iHiiI', 1, 0x11, 224, 295, q_hash)
             self.assertIn(expected_qsi, ack2007)
 
+            client.send_event(2073, req_start, compressed=True)
+            await client.expect_event(2051)
+            await client.expect_event(2051)
+            _, retry = await client.expect_event(2074)
+            self.assertEqual(retry[:16], ack2074[:16])
+
             # Abandoning the trial quest removes temp skills and sends action_type=3
             client.send_event(2078, req_giveup, compressed=True)
             _, ack2079 = await client.expect_event(2079)

@@ -23,12 +23,14 @@ class QuestPromotionHandlers:
         if not char or not temp_indices:
             return QuestSpecialInfo()
         skills_map = char.setdefault('skills', {})
-        granted = []
+        previous = char.get('temp_skills') or {}
+        granted = list(previous.get('granted', [])) if previous.get('quest_id') == quest_id else []
         for idx in temp_indices[:2]:
             key = str(idx)
             if key not in skills_map:
                 skills_map[key] = 1
-                granted.append(idx)
+                if idx not in granted:
+                    granted.append(idx)
         char['temp_skills'] = {
             'quest_id': quest_id,
             'target_class': target_class,
