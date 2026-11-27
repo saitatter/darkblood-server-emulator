@@ -534,7 +534,7 @@ message 5053 AgainSelectDungeonAck ok_only
   map<wstr,DungeonHistory> history
   set<wstr> min_citadel_history
   wstr gate_id
-  set<i32> active_quests
+  set<h32> active_quests     # setPerformingQuest: u32 quest id hashes (h32 accepts values >= 2^31)
 end
 
 message 5136 FailDungeonEnterItemNot

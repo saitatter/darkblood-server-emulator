@@ -111,7 +111,7 @@ class StoreHandlers:
     def _repurchase_list(self):
         """Items sold this session, as RepurchaseItem entries (2066 vecRePur)."""
         return [RepurchaseItem(item=Item(owner=0, **record), price=price, sell_time=sold_at)
-                for record, price, sold_at in getattr(self, '_repurchase_items', {}).values()]
+                for record, price, sold_at in self._repurchase_items.values()]
 
     @packet_handler(2065)
     async def handle_get_store_info(self, correlation, body):
@@ -243,10 +243,7 @@ class StoreHandlers:
         from darkblood.player_management.characters import next_item_uid
         repurchase_uid = sold_record['uid'] if curr <= del_cnt else next_item_uid(char)
         sold_record['uid'] = repurchase_uid
-        repurchase_map = getattr(self, '_repurchase_items', None)
-        if repurchase_map is None:
-            repurchase_map = {}
-            self._repurchase_items = repurchase_map
+        repurchase_map = self._repurchase_items
         sold_at = int(time.time())
         repurchase_map[repurchase_uid] = (sold_record, earned, sold_at)
 
@@ -274,7 +271,7 @@ class StoreHandlers:
         if not char:
             await self.reply(RepurchaseItemAck(result=1), correlation, note='repurchase fail (no char)')
             return
-        repurchase_map = getattr(self, '_repurchase_items', {})
+        repurchase_map = self._repurchase_items
         entry = repurchase_map.get(req.item_uid)
         if not entry:
             await self.reply(RepurchaseItemAck(result=1), correlation, note=f'repurchase fail (unknown {req.item_uid})')

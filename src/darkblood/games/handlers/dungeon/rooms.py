@@ -324,6 +324,7 @@ class DungeonRoomHandlers:
         except (WireError, UnicodeDecodeError):
             pass
         char = self.current_char() or {}
+        self.gate_id = gate
         ack = self._select_dungeon_ack(gate, char)
         await self.reply(ack, correlation,
                          note=f'select dungeon ack ({gate}, history {ack.dun_history}, '
@@ -341,20 +342,33 @@ class DungeonRoomHandlers:
                 await self.send_to([member], self._select_dungeon_ack(gate, record), f'select dungeon (party gate {gate})')
 
 
-    def _select_dungeon_ack(self, gate, char):
-        from darkblood.games.game_data.client_dict import gate_dungeons
-        dungeons = set(gate_dungeons().get(gate, []))
-        # Only cleared dungeons get an entry; the others default to Normal.
-        dun_history = {dungeon: DungeonHistory(rec['map'], rec['diff'], 1)
-                       for dungeon, rec in char.get('dungeon_history', {}).items() if dungeon in dungeons}
-        quest_ids = []
+    @staticmethod
+    def _dungeon_history(char, dungeons=None):
+        """dungeon id -> DungeonHistory for cleared dungeons (optionally only `dungeons`).
+
+        Only cleared dungeons get an entry; the others default to Normal. Entries are
+        written by _record_dungeon_clear as {'map': code, 'diff': difficulty}.
+        """
+        return {dungeon: DungeonHistory(rec['map'], rec['diff'], 1)
+                for dungeon, rec in char.get('dungeon_history', {}).items()
+                if isinstance(rec, dict) and 'map' in rec and (dungeons is None or dungeon in dungeons)}
+
+    @staticmethod
+    def _active_quest_ids(char):
+        """Sorted unique u32 ids of the character's active quests."""
+        ids = set()
         for quest_id in char.get('quests_active', {}):
             try:
-                quest_ids.append(int(quest_id))
+                ids.add(int(quest_id) & 0xFFFFFFFF)
             except ValueError:
                 continue
-        return SelectDungeonAck(gate_id=gate, dun_history=dun_history,
-                                quest_ids=sorted({q & 0xFFFFFFFF for q in quest_ids}))
+        return sorted(ids)
+
+    def _select_dungeon_ack(self, gate, char):
+        from darkblood.games.game_data.client_dict import gate_dungeons
+        return SelectDungeonAck(gate_id=gate,
+                                dun_history=self._dungeon_history(char, set(gate_dungeons().get(gate, []))),
+                                quest_ids=self._active_quest_ids(char))
 
 
     def _record_dungeon_clear(self, char, map_code):
@@ -425,8 +439,8 @@ class DungeonRoomHandlers:
         # JAppStateGamePlay__OnBtn_GamePlayExit 0x006CE740), the client sends 5005
         # without 5045 and relies on 5046 (BackToSquareAck) to transition back to town,
         # plus 2085 (ChangeDungeonPenaltyNot) when abandoning before dungeon clear.
-        was_in_dungeon = getattr(self, 'in_dungeon', False)
-        was_cleared = getattr(self, 'dungeon_cleared', False)
+        was_in_dungeon = self.in_dungeon
+        was_cleared = self.dungeon_cleared
         self.in_dungeon = False
         self.dungeon_cleared = False
         await self.leave_room()
@@ -468,22 +482,9 @@ class DungeonRoomHandlers:
     async def handle_again_select_dungeon(self, correlation, body):
         # eERC_AGAIN_SELECT_DUNGEON_REQ (0x007AC480) -> 5053 eERC_AGAIN_SELECT_DUNGEON_ACK (0x00770A80).
         char = self.current_char() or {}
-        gate_id = getattr(self, 'gate_id', '') or 'Act1_G1'
-        history = {}
-        for dun_id, info in (char.get('dungeon_history') or {}).items():
-            if isinstance(info, dict):
-                history[dun_id] = DungeonHistory(
-                    map_id=info.get('map_id', ''),
-                    max_diff=int(info.get('max_diff', 0)) & 0xFF,
-                    cleared=int(info.get('cleared', 1)) & 0xFF,
-                )
-        active_quests = []
-        for qid in char.get('quests_active', {}):
-            try:
-                active_quests.append(int(qid) & 0xFFFFFFFF)
-            except ValueError:
-                continue
-        active_quests = sorted(set(active_quests))
+        gate_id = self.gate_id or 'Act1_G1'
+        history = self._dungeon_history(char)
+        active_quests = self._active_quest_ids(char)
         await self.reply(
             AgainSelectDungeonAck(result=0, history=history, min_citadel_history=[],
                                   gate_id=gate_id, active_quests=active_quests),

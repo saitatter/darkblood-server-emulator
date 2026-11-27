@@ -43,7 +43,7 @@ class DungeonCombatHandlers:
             self.current_dungeon_layer = layer_id
             self.current_dungeon_map_hash = map_hash
             self.transport.record('dungeon-layer', body, layer_id=layer_id, map_hash='0x%08x' % map_hash)
-            visited = getattr(self, 'visited_dungeon_layers', None)
+            visited = self.visited_dungeon_layers
             if visited is None:
                 visited = set()
                 self.visited_dungeon_layers = visited
@@ -79,10 +79,10 @@ class DungeonCombatHandlers:
         if room is None:
             char = self._current_char()
             return [(self.session, char)] if char is not None else []
-        code = getattr(self, 'map_code', '')
+        code = self.map_code
         out = []
         for member in room.members:
-            if member.dungeon.room is room and getattr(member.dungeon, 'map_code', '') == code:
+            if member.dungeon.room is room and member.dungeon.map_code == code:
                 char = member.current_char()
                 if char is not None:
                     out.append((member, char))
@@ -181,7 +181,7 @@ class DungeonCombatHandlers:
                 coins -= 1
                 char['rebirth_coins'] = coins
                 self.save_char()
-        self.die_count = getattr(self, 'die_count', 0) + (1 if req.bDie else 0)
+        self.die_count = self.die_count + (1 if req.bDie else 0)
 
         # On revive (bDie = False), other_uid must match the reviving player UID (0x0055C354)
         # to execute the revival routine (0x00548D80).

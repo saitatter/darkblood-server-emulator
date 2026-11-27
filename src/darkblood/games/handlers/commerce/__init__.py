@@ -16,6 +16,11 @@ class CommerceHandlers(
 ):
     """Store transactions, buybacks, cash packages, Steam integration, trade and stalls."""
 
+    def __init__(self, session):
+        super().__init__(session)
+        # Items sold this session: repurchase uid -> (item record, price, sold_at).
+        self._repurchase_items = {}
+
 __all__ = [
     "CommerceHandlers",
     "MONSTER_CARD_ACKS",

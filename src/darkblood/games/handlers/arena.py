@@ -90,6 +90,11 @@ class ArenaHandlers(BaseDomainService):
     _room_id_counter: int = 1
     _team_id_counter: int = 1
 
+    def __init__(self, session):
+        super().__init__(session)
+        self._current_arena_room_id = None   # arena room this session joined (5145/5147)
+        self._current_arena_team_id = None   # arena team this session created or joined
+
     @classmethod
     def get_leaderboard(cls, season_id: int = 1) -> List[LeagueRankEntry]:
         """Returns or initializes realistic ranked league leaderboard."""
@@ -257,7 +262,7 @@ class ArenaHandlers(BaseDomainService):
         if not room.room_name:
             room.room_name = f"{char_name}'s Colosseum"
         room.host_uid = char_uid
-        room.team_id = getattr(self, '_current_arena_team_id', 0) or 1
+        room.team_id = self._current_arena_team_id or 1
         ArenaHandlers._arena_room_members[room.room_id] = [{
             'uid': char_uid,
             'name': char_name,
@@ -308,7 +313,7 @@ class ArenaHandlers(BaseDomainService):
         Leaves current match room and updates player count.
         """
         char_uid, _, _, _ = self._get_active_char_info()
-        curr_room_id = getattr(self, '_current_arena_room_id', None)
+        curr_room_id = self._current_arena_room_id
         if curr_room_id and curr_room_id in ArenaHandlers._arena_rooms:
             room = ArenaHandlers._arena_rooms[curr_room_id]
             members = [m for m in ArenaHandlers._arena_room_members.get(curr_room_id, [])
@@ -419,7 +424,7 @@ class ArenaHandlers(BaseDomainService):
         Client handler: 0x0049D180 -> 0x00490100.
         Departs from current arena team.
         """
-        curr_team = getattr(self, '_current_arena_team_id', None)
+        curr_team = self._current_arena_team_id
         if curr_team and curr_team in ArenaHandlers._arena_teams:
             team = ArenaHandlers._arena_teams[curr_team]
             team.member_count = max(0, team.member_count - 1)

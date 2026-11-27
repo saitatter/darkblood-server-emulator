@@ -21,9 +21,12 @@ class DungeonHandlers(
     def __init__(self, session):
         super().__init__(session)
         self.room = None
-        self._finish_game_reply = None
-        self.reward_card = None
-        self.reward_cards_claimed = set()
+        self.gate_id = ''             # last gate opened with 5043 (5052 reopens it)
+        self.map_code = ''            # map of the current or last run (5009/5013)
+        self.in_dungeon = False
+        self.dungeon_cleared = False
+        self.die_count = 0
+        self._reset_dungeon_stats()   # per-run score, kills, EXP, layers, reward cards
 
 
 __all__ = [

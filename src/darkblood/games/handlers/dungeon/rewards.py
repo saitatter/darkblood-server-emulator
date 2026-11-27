@@ -134,7 +134,7 @@ class DungeonRewardsHandlers:
         # eERC_FINISH_GAME_REQ (sender 0x007AD380) -> 5018 eERC_FINISH_GAME_ACK (handler 0x007ADB60).
         req = FinishGameReq.decode(body)
         self.transport.record('finish-game-req', body, is_clear=req.is_clear)
-        run_char_id = self.char_id if getattr(self, 'in_dungeon', False) else None
+        run_char_id = self.char_id if self.in_dungeon else None
         if run_char_id and self._finish_game_reply is not None:
             finished_char_id, finished_ack = self._finish_game_reply
             if finished_char_id == run_char_id:
@@ -142,7 +142,7 @@ class DungeonRewardsHandlers:
                                                 note='repeat finish game ack')
                 return
 
-        map_code = getattr(self, 'map_code', '')
+        map_code = self.map_code
         room = self._shared_run()
         # Only the host's client sends 5017 in a party run (live 2026-11-21): its
         # result goes to every member. A member's own 5017 stays a solo result.
@@ -154,8 +154,8 @@ class DungeonRewardsHandlers:
 
         party_scores, total_monster_hp = _parse_finish_game_tail(req.tail)
         fallback_rank = _fallback_rank_from_stats(
-            getattr(self, 'dungeon_score', 0),
-            getattr(self, 'dungeon_kill_count', 0),
+            self.dungeon_score,
+            self.dungeon_kill_count,
         )
 
         # The player's UID is the character id (2007 details +0x1C, copied to
@@ -172,7 +172,7 @@ class DungeonRewardsHandlers:
                 await dungeon._update_quest_dungeon_clear(map_code, char)
                 await self._count_daily_clear(member, char, map_code)
             uid = int(char.get('id', 0))
-            gained = getattr(dungeon, 'dungeon_exp', 0)
+            gained = dungeon.dungeon_exp
             if total_monster_hp > 0 and uid in party_scores:
                 user_rank = _ratio_to_rank(party_scores[uid] / total_monster_hp)
             else:
@@ -182,7 +182,7 @@ class DungeonRewardsHandlers:
             member_extra_cost = max(500, int(char.get('level', 1)) * 200) if req.is_clear else 0
             if member_extra_cost > extra_box_cost:
                 extra_box_cost = member_extra_cost
-            if req.is_clear and getattr(dungeon, 'in_dungeon', False) and dungeon.reward_card is None:
+            if req.is_clear and dungeon.in_dungeon and dungeon.reward_card is None:
                 dungeon.reward_card = (uid, map_code, extra_boxes, member_extra_cost)
                 dungeon.reward_cards_claimed = set()
             bonus_exp = round(gained * _RANK_EXP_BONUS.get(user_rank, 0.0)) if (req.is_clear and gained > 0) else 0
@@ -262,7 +262,7 @@ class DungeonRewardsHandlers:
         are rolled once, kept in the room and shown to every member; the first
         to pick one up gets it (free for all; random looting is not applied yet).
         """
-        codes = loot.roll_drops(getattr(self, 'map_code', ''), monster, int(char.get('char_class', 0)))
+        codes = loot.roll_drops(self.map_code, monster, int(char.get('char_class', 0)))
         if not codes:
             return
         holder = self._loot_holder()
@@ -292,14 +292,14 @@ class DungeonRewardsHandlers:
         char = self._current_char()
         card = self.reward_card
         if (char is None or card is None or card[0] != char['id']
-                or not getattr(self, 'in_dungeon', False) or not getattr(self, 'dungeon_cleared', False)):
+                or not self.in_dungeon or not self.dungeon_cleared):
             await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,
                              note='reward card unavailable')
             return
 
         char_id, map_code, extra_boxes, extra_box_cost = card
         idx = int(req.card_index)
-        claimed = getattr(self, 'reward_cards_claimed', set())
+        claimed = self.reward_cards_claimed
         valid_extra = 2 <= idx < 2 + extra_boxes
         if idx in claimed or (idx not in (0, 1) and not valid_extra):
             await self.reply(ChoiceRewardPartyRankAck(result=results.INVALID_STATE), correlation,

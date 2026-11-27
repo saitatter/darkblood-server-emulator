@@ -1033,7 +1033,7 @@ class AgainSelectDungeonAck(WireMessage):
     history: Map[wstr, DungeonHistory] = field(default_factory=dict)
     min_citadel_history: Set[wstr] = field(default_factory=list)
     gate_id: wstr = ''
-    active_quests: Set[i32] = field(default_factory=list)
+    active_quests: Set[h32] = field(default_factory=list)  # setPerformingQuest: u32 quest id hashes (h32 accepts values >= 2^31)
 
 
 @dataclass
