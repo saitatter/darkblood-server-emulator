@@ -299,7 +299,7 @@ class SqliteCharacterStore(ICharacterStore):
             if conn.execute('SELECT id FROM characters WHERE name = ?', (name,)).fetchone():
                 return None
             char_id = self._get_next_id(conn)
-            char = dict(request, id=char_id, level=1, tutorial_cleared=False)
+            char = dict(request, id=char_id, name=name, level=1, tutorial_cleared=False)
             ensure_inventory(char)
             conn.execute(
                 'INSERT INTO characters (id, account, name, char_class, level, data_json) VALUES (?, ?, ?, ?, ?, ?)',
