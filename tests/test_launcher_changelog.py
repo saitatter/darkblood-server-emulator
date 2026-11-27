@@ -56,6 +56,16 @@ class LauncherChangelogTest(unittest.TestCase):
             {'sha': '88888880000000', 'commit': {'message': ''}},
             {'sha': '99999990000000', 'commit': {'message': '  \n\t'}},
             {'sha': 'aaaaaaa0000000', 'commit': {'message': 'fix: keep later entries\n\nDetails'}},
+            {
+                'sha': 'bbbbbbb0000000', 'parents': [{'sha': 'p1'}, {'sha': 'p2'}],
+                'commit': {'message': 'Merge PR #90: Use carried bait', 'author': {'name': 'Dev'}},
+            },
+            {
+                'sha': 'ccccccc0000000', 'parents': [{'sha': 'p1'}],
+                'commit': {'message': 'fix(fishing): look for bait only in carried inventory',
+                           'author': {'name': 'Cristian', 'email': 'vitacristian24@gmail.com'}},
+                'author': {},
+            },
         ]
 
         parsed = changelog._parse_github_commit_items(items)
@@ -67,7 +77,9 @@ class LauncherChangelogTest(unittest.TestCase):
             'docs: update handoff',
             'test(pets): add coverage',
             'fix: keep later entries',
+            'fix(fishing): look for bait only in carried inventory',
         ])
+        self.assertEqual(parsed[-1]['author'], 'CristianVita')
 
     def test_changelog_ignores_tags_from_another_branch(self):
         import os

@@ -14,6 +14,7 @@ _GITHUB_USERNAMES = {
     'andrei.voicu133@gmail.com': 'saitatter',
     'voicu andrei-daniel': 'saitatter',
     'cri999sti@gmail.com': 'CristianVita',
+    'vitacristian24@gmail.com': 'CristianVita',
 }
 
 
@@ -99,6 +100,10 @@ def _parse_github_commit_items(items, limit=None):
         c_author = c.get('author') or {}
         message = (c.get('message') or '').strip()
         if not message:
+            continue
+        # PR merge commits ("Merge PR #N: ...") are skipped like `git log --no-merges`;
+        # the PR's own conventional commits carry the changelog entries.
+        if len(item.get('parents') or []) > 1:
             continue
         subject = message.splitlines()[0]
         if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
