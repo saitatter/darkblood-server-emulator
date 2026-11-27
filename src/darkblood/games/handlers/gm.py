@@ -8,7 +8,6 @@ from __future__ import annotations
 import struct
 
 from darkblood.games.network import results
-from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
@@ -305,7 +304,7 @@ class GmHandlers(BaseDomainService):
             granted = apply_item_call(char, code, req.count, owner=char['id'])
             self.save_char()
         await self.reply(
-            CheatItemCallAck(result=0 if code else 1, char_uid=char['id'], items=granted),
+            CheatItemCallAck(result=results.OK if code else results.INVALID_STATE, char_uid=char['id'], items=granted),
             correlation,
             note=f'cheat itemcall ack (id={req.item_id} code={code} count={req.count})',
         )

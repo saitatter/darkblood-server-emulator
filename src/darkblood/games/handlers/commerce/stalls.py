@@ -42,12 +42,13 @@ from darkblood.games.world import GameWorldManager
 
 class StallHandlers:
     async def _broadcast_square(self, evt_data: bytes):
-        """Broadcast an event to all players in the square."""
-        try:
-            world = GameWorldManager.get()
-            await world.broadcast_to_square(1, evt_data, exclude_char_id=self.char_id)
-        except Exception:
-            pass
+        """Broadcast an event to the other players on the seller's square layer."""
+        world = GameWorldManager.get()
+        player = world.players.get(self.char_id)
+        if player is None:
+            return
+        await world.broadcast_to_square(player.square_id, evt_data, exclude_char_id=self.char_id,
+                                        layer_id=player.layer_id)
 
 
     @packet_handler(PersonalShopOpenReq)
@@ -127,7 +128,7 @@ class StallHandlers:
         char_uid = char.get('id', self.char_id) if char else self.char_id
         mgr = PersonalShopManager.get()
         success, returned = mgr.close_stall(char_uid, char, self.store())
-        ack = PersonalShopCloseAck(result=0 if success else 1, owner_uid=char_uid)
+        ack = PersonalShopCloseAck(result=results.OK if success else results.INVALID_STATE, owner_uid=char_uid)
         await self.reply(ack, correlation, note=f'personal shop close ack (uid={char_uid})')
         if success:
             notif = event(5255, PersonalShopCloseNot(seller_uid=char_uid).encode())
@@ -198,7 +199,7 @@ class StallHandlers:
             ))
         char_uid = char.get('id', self.char_id)
         ack = BrokerRegistItemAck(
-            result=0 if success else 1,
+            result=results.OK if success else results.INVALID_STATE,
             cur_ar=gold_of(char),
             items=wire_items,
             my_products=mgr.get_my_listings(char_uid) if success else [],
@@ -221,7 +222,7 @@ class StallHandlers:
             char, req.listing_id, None, self.store()
         )
         gold = gold_of(char)
-        ack = BrokerBuyItemAck(result=0 if success else 1, gold=gold, item_uid=bought_uid)
+        ack = BrokerBuyItemAck(result=results.OK if success else results.INVALID_STATE, gold=gold, item_uid=bought_uid)
         await self.reply(ack, correlation, note=f'broker buy item ack (success={success} cost={total_cost} gold={gold})')
         if success and new_items:
             wire_items = [Item(owner=UPDATE_OWNER, **i) for i in new_items]
@@ -240,7 +241,7 @@ class StallHandlers:
 
         mgr = BrokerManager.get()
         success, msg, returned = mgr.cancel_listing(char, req.listing_id, self.store())
-        ack = BrokerCancelAck(result=0 if success else 1, item_uid=req.listing_id)
+        ack = BrokerCancelAck(result=results.OK if success else results.INVALID_STATE, item_uid=req.listing_id)
         await self.reply(ack, correlation, note=f'broker cancel ack (success={success} msg={msg})')
         if success and returned:
             wire_items = [Item(owner=UPDATE_OWNER, **i) for i in returned]

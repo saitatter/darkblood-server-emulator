@@ -217,12 +217,9 @@ class FrontendHandlers(BaseDomainService):
                 )
         self.session.start_timer_loop()
         # Register in GameWorldManager and broadcast mutual character spawns
-        try:
-            player = world.register_player(self.session, char_id, char, square_id=self.session.square_id)
-            player.loading = True  # town load starts now; peers follow its 5124
-            await world.broadcast_player_spawn(player)
-        except Exception:
-            pass
+        player = world.register_player(self.session, char_id, char, square_id=self.session.square_id)
+        player.loading = True  # town load starts now; peers follow its 5124
+        await world.broadcast_player_spawn(player)
 
     @packet_handler(2012)
     async def handle_create_character(self, correlation: int, body: bytes):
@@ -265,7 +262,7 @@ class FrontendHandlers(BaseDomainService):
                 char['delete_time'] = int(time.time()) + CHAR_DELETE_DELAY
                 self.save_char()
             complete_time = delete_seconds_left(char['delete_time'])
-        ack = DeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid,
+        ack = DeleteCharacterAck(result=results.OK if char else results.NO_EXIST_CHAR, char_uid=req.char_uid,
                                  complete_time=complete_time)
         await self.reply(ack, correlation, note=f'delete character ack ({req.char_uid}, {complete_time} s left)')
 
@@ -282,7 +279,7 @@ class FrontendHandlers(BaseDomainService):
         if deleted and self.char_id == req.char_uid:
             self.char_id = None
         await self.reply(
-            CheatSystemDeleteCharacterAck(result=0 if deleted else 1, char_uid=req.char_uid),
+            CheatSystemDeleteCharacterAck(result=results.OK if deleted else results.NO_EXIST_CHAR, char_uid=req.char_uid),
             correlation,
             note=f'cheat system delete character ack ({req.char_uid}, deleted={deleted})',
         )
@@ -300,7 +297,7 @@ class FrontendHandlers(BaseDomainService):
         if char:
             char.pop('delete_time', None)
             self.save_char()
-        ack = UndeleteCharacterAck(result=0 if char else 1, char_uid=req.char_uid)
+        ack = UndeleteCharacterAck(result=results.OK if char else results.NO_EXIST_CHAR, char_uid=req.char_uid)
         await self.reply(ack, correlation, note=f'undelete character ack ({req.char_uid})')
 
     @packet_handler(2323)
@@ -325,7 +322,7 @@ class FrontendHandlers(BaseDomainService):
         req = EventDeleteCharacterReq.decode(body)
         deleted = self.store().delete(self.account, req.char_uid)
         await self.reply(
-            EventDeleteCharacterAck(result=0 if deleted else 1, delete_char_uid=req.char_uid),
+            EventDeleteCharacterAck(result=results.OK if deleted else results.NO_EXIST_CHAR, delete_char_uid=req.char_uid),
             correlation, note=f'event delete character ack ({req.char_uid}, deleted={deleted})',
         )
 

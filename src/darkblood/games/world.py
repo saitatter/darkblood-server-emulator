@@ -144,7 +144,7 @@ class GameWorldManager:
             if p and p.session and getattr(p.session, 'transport', None):
                 try:
                     await p.session.transport.send_event(ev, note=note)
-                except Exception as e:
+                except (ConnectionError, OSError) as e:
                     logger.debug("Failed broadcast to char %d: %s", p.char_id, e)
 
     async def broadcast_player_spawn(self, new_player: WorldPlayer):
@@ -234,7 +234,7 @@ class GameWorldManager:
                     event(5027, JoinLayerNot(players=[PageCharTemp(**p) for p in ex_data_list]).encode()),
                     note=f"join layer not 5027 with {len(ex_data_list)} players for newcomer"
                 )
-            except Exception as e:
+            except (ConnectionError, OSError) as e:
                 logger.debug("Failed sending 5027 to newcomer: %s", e)
 
             for ep, ec in existing_players:
@@ -244,7 +244,7 @@ class GameWorldManager:
                         event(5096, details),
                         note=f"update char info 5096 for {ec.name} ({ep.char_id}) to newcomer"
                     )
-                except Exception as e:
+                except (ConnectionError, OSError) as e:
                     logger.debug("Failed sending 5096 to newcomer: %s", e)
 
     async def broadcast_layer_leave(self, player: WorldPlayer, layer_id: int):

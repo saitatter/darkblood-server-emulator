@@ -211,5 +211,5 @@ class PartyManager:
             if sess and getattr(sess, 'transport', None):
                 try:
                     await sess.transport.send_event(ev, note=note)
-                except Exception as e:
+                except (ConnectionError, OSError) as e:
                     logger.debug("Failed party broadcast to char %d: %s", cid, e)

@@ -11,7 +11,6 @@ Opcodes handled:
 from __future__ import annotations
 import json
 
-from darkblood.core.serialization.jser import event
 from darkblood.games.entities.items import Item
 from darkblood.games.network import results
 from darkblood.games.network.messages.mail import (
@@ -159,16 +158,10 @@ class MailHandlers(BaseDomainService):
         )
 
         # Notify recipient if online
-        try:
-            rec_id = recipient_char['id']
-            if rec_id in GameWorldManager.get().players:
-                player = GameWorldManager.get().players[rec_id]
-                await player.session.transport.send_event(
-                    event(2227, PostNewArrivalNot().encode()),
-                    note=f'post new arrival not to {recipient_char.get("name")}'
-                )
-        except Exception:
-            pass
+        recipient = GameWorldManager.get().players.get(recipient_char['id'])
+        if recipient is not None:
+            await self.send_to([recipient.session], PostNewArrivalNot(),
+                               note=f'post new arrival not to {recipient_char.get("name")}')
 
         ack = PostSendAck(result=0, items=[], remain_gold=gold_of(char))
         await self.reply(ack, correlation, note=f'post send ack to {req.recipient}')

@@ -85,6 +85,9 @@ class StallFlowTest(ServerTestCase):
                 await lobby_flow(client2)
                 client2.send_event(2006, struct.pack('<iQ', 0x7fffffff, buyer_id))
                 await client2.expect_event(2007)
+                # The buyer's town has loaded (5124), so square broadcasts reach it.
+                client2.send_event(5124, struct.pack('<i', 0x7fffffff))
+                await client2.expect_event(5125)
 
                 # 2. Seller opens stall via Opcode 2340
                 open_req = PersonalShopOpenReq(
@@ -97,6 +100,9 @@ class StallFlowTest(ServerTestCase):
                 _, ack2341 = await client1.expect_event(2341)
                 self.assertEqual(struct.unpack_from('<i', ack2341, 0)[0], 0)  # result 0
                 self.assertIn('Rare Potions Stall'.encode('utf-16le'), ack2341)
+                # The buyer on the same square layer sees the stall open (5254).
+                _, start_not = await client2.expect_event(5254)
+                self.assertEqual(PersonalShopStartNot.decode(start_not).seller_uid, seller_id)
 
                 # Verify stall is active in PersonalShopManager
                 stall = PersonalShopManager.get().get_stall(seller_id)
