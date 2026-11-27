@@ -52,7 +52,7 @@ from darkblood.games.network.messages import (
     TitleChangeReq,
     WatchEventSeenAck,
 )
-from darkblood.games.handlers.arena.league import league_arena_info
+from darkblood.games.handlers.arena.league import league_arena_info, league_ladder, league_rank
 from darkblood.games.world import GameWorldManager, SQUARE_UID_MASK, square_uid
 from darkblood.games import achievements
 from darkblood.games.entities.character import Character
@@ -352,6 +352,8 @@ class FriendsHandlers:
             for gs in target.get('guild_skills', [])
         ]
         league_arena = league_arena_info(target)
+        ladder = league_ladder(char for _, char in self.store().all_characters())
+        league_arena.rank = league_rank(ladder, target['id'])
         raw_prof = list(target.get('proficiencies', []))
         proficiencies = [float(raw_prof[i]) if i < len(raw_prof) else 0.0 for i in range(10)]
         return RequestCharInfoAck(

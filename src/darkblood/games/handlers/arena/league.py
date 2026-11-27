@@ -68,6 +68,10 @@ def league_ladder(characters) -> List[LeagueRankEntry]:
     ]
 
 
+def league_rank(ladder, char_id):
+    return next((entry.rank for entry in ladder if entry.char_uid == char_id), UNRANKED)
+
+
 class LeagueHandlers:
     # League Season Arena Rankings (Opcodes 2550 - 2553)
 
@@ -96,6 +100,6 @@ class LeagueHandlers:
         """
         req = LeagueSeasonArenaGetMyRankReq.decode(body)
         char_uid = self._get_active_char_info()[0]
-        my_rank = next((e.rank for e in self._league_ladder() if e.char_uid == char_uid), UNRANKED)
+        my_rank = league_rank(self._league_ladder(), char_uid)
         ack = LeagueSeasonArenaGetMyRankAck(result=0, my_rank=my_rank)
         await self.reply(ack, correlation, note=f'league season arena get my rank ack (season={req.season_id}, rank={my_rank})')

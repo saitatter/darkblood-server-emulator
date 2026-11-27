@@ -64,7 +64,7 @@ When it fails, note what the client did and keep it here.
 | W9 | Arena relay change (`5135`) | 6-byte address (was 24 bytes); no read error. |
 | W10 | Duel start (`5098`) | Duel begins without a read error; both players' skills/levels are applied (layout was missing seven fields). |
 | W11 | Arena room join (`5146`) and invite list (`2309`) | Join succeeds (relay address now sent); the invite list shows candidates and the page number. After the host leaves, the room list shows the remaining member as host. |
-| W12 | League ranking (`2551`/`2472`) | Ranking pages and the season start date display. |
+| W12 | League ranking (`2551`/`2472`) | Ranking pages and the season start date display. Character inspection shows the same rank as the ladder. |
 | W13 | Paint message (`JAppPagePaint`, `5040 -> 5041`) | A drawing sent through chat reaches the other player (paint data is now echoed). |
 | W14 | Shop repurchase tab (`2066` vecRePur) | Reopening the shop shows the selected character's sales in the Repurchase tab. Switching characters shows the new character's own history. |
 | W15 | Guild bank deposit/withdraw (`2179`-`2182`) | The AR display shows the player's AR after the transfer (it showed the guild bank total); a deposit without enough AR is refused with "Not enough Ar."; the guild bank never grows without paying. |
