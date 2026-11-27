@@ -26,6 +26,17 @@ class DepotHandlersMixin:
                 return char, other
         return char, char
 
+    def _save_depot_ar(self, char, target, previous_gold, previous_depot_gold):
+        characters = [(self.account, char['id'])]
+        if target is not char:
+            characters.append((self.account, target['id']))
+        try:
+            self.store().save_chars(characters)
+        except Exception:
+            char['gold'] = previous_gold
+            target['depot_gold'] = previous_depot_gold
+            raise
+
     @packet_handler(DepotSaveArReq)
     async def handle_depot_save_ar(self, correlation, body):
         """Opcode 2228 (eEGS_DEPOT_SAVE_AR_REQ) -> 2229 (eEGS_DEPOT_SAVE_AR_ACK): deposit AR into depot."""
@@ -37,13 +48,12 @@ class DepotHandlersMixin:
             gold = gold_of(char)
             deposit = min(max(0, req.gold), gold) if gold > 0 else 0
             char['gold'] = gold - deposit
-            target['depot_gold'] = int(target.get('depot_gold', 0)) + deposit
+            stored_gold = int(target.get('depot_gold', 0))
+            target['depot_gold'] = stored_gold + deposit
             current_gold = char['gold']
             target_id = int(target.get('id', self.char_id))
             depot_ar[target_id] = target['depot_gold']
-            self.store().save_char(self.account, char['id'])
-            if target is not char:
-                self.store().save_char(self.account, target['id'])
+            self._save_depot_ar(char, target, gold, stored_gold)
         else:
             current_gold = 0
         await self.reply(DepotSaveArAck(result=0, depot_ar=depot_ar, new_gold=current_gold), correlation,
@@ -57,6 +67,7 @@ class DepotHandlersMixin:
         char, target = self._depot_target_char(req.depot_uid)
         depot_ar = {}
         if char and target:
+            gold = gold_of(char)
             stored_gold = int(target.get('depot_gold', 0))
             withdraw = min(max(0, req.gold), stored_gold)
             target['depot_gold'] = stored_gold - withdraw
@@ -64,9 +75,7 @@ class DepotHandlersMixin:
             current_gold = char['gold']
             target_id = int(target.get('id', self.char_id))
             depot_ar[target_id] = target['depot_gold']
-            self.store().save_char(self.account, char['id'])
-            if target is not char:
-                self.store().save_char(self.account, target['id'])
+            self._save_depot_ar(char, target, gold, stored_gold)
         else:
             current_gold = 0
         await self.reply(DepotLoadArAck(result=0, depot_ar=depot_ar, new_gold=current_gold), correlation,

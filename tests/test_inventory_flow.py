@@ -11,6 +11,40 @@ from darkblood.games.network.messages import (
 
 
 class InventoryFlowTest(ServerTestCase):
+    def test_shared_depot_ar_saves_both_balances_in_one_transaction(self):
+        from unittest.mock import patch
+
+        async def scenario(client):
+            await lobby_flow(client)
+            ids = []
+            for name in ('DepotHolder', 'DepotVisitor'):
+                client.send_event(2012, create_request(name))
+                _, created = await client.expect_event(2013)
+                ids.append(struct.unpack_from('<Q', created, 10)[0])
+            holder_id, visitor_id = ids
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, visitor_id))
+            await client.expect_event(2007)
+
+            store = session.GameSession.store()
+            visitor = store.get('OfflinePlayer', visitor_id)
+            holder = store.get('OfflinePlayer', holder_id)
+            visitor['gold'] = 1000
+            accounts = [('OfflinePlayer', visitor_id), ('OfflinePlayer', holder_id)]
+            with patch.object(store, 'save_chars', wraps=store.save_chars) as save_chars:
+                client.send_event(2228, DepotSaveArReq(depot_uid=holder_id, gold=400).encode())
+                _, deposit = await client.expect_event(2229)
+                self.assertEqual(struct.unpack_from('<qqq', deposit, 7), (holder_id, 400, 600))
+                save_chars.assert_called_once_with(accounts)
+                save_chars.reset_mock()
+
+                client.send_event(2230, DepotLoadArReq(depot_uid=holder_id, gold=100).encode())
+                _, withdrawal = await client.expect_event(2231)
+                self.assertEqual(struct.unpack_from('<qqq', withdrawal, 7), (holder_id, 300, 700))
+                save_chars.assert_called_once_with(accounts)
+            self.assertEqual((visitor['gold'], holder['depot_gold']), (700, 300))
+
+        self.run_async(self.with_server(scenario))
+
     def test_inventory_and_skill_operations(self):
         async def scenario(client):
             await lobby_flow(client)

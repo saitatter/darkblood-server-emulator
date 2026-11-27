@@ -858,6 +858,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `notice: wstring` -> `result: i32 (0)`.
 - `2205 eEGS_GUILD_SKILL_NOT` (`0x00779390`):
   `flag: bool, tag 0x10 vector`.
+- Deposits into and withdrawals from another character's depot save both AR balances in one transaction.
 - `2228 eEGS_DEPOT_SAVE_AR_REQ` -> `2229 eEGS_DEPOT_SAVE_AR_ACK` (`0x00795220`):
   `gold: i64` -> `result: i32 (0), tag 0x17 map, new_gold: i64`.
 - `2230 eEGS_DEPOT_LOAD_AR_REQ` -> `2231 eEGS_DEPOT_LOAD_AR_ACK` (`0x00795490`):

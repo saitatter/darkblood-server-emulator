@@ -327,9 +327,7 @@ class SqliteCharacterStore(ICharacterStore):
 
     def save_chars(self, pairs):
         """Atomically persist a specific set of (account, char_id) pairs in one transaction."""
-        with self.lock:
-            conn = self._get_connection()
-            updated = False
+        with self.lock, self._get_connection() as conn:
             for account, char_id in pairs:
                 char = self._cache.get((account, char_id))
                 if char is None:
@@ -340,9 +338,6 @@ class SqliteCharacterStore(ICharacterStore):
                     (char.get('name', ''), char.get('char_class', 1), char.get('level', 1),
                      json.dumps(char), account, char_id),
                 )
-                updated = True
-            if updated:
-                conn.commit()
 
     def save(self):
         """Persist all active cached character changes to SQLite atomically."""
