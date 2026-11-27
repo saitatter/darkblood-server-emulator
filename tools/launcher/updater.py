@@ -195,19 +195,17 @@ def _fetch_latest_release_api(timeout: int = 10):
     if data.get('draft'):
         return None
     version = (data.get('tag_name') or '').strip()
-    zip_url = ''
-    zip_size = 0
-    sha_url = ''
-    for asset in data.get('assets') or []:
-        name = (asset.get('name') or '').lower()
-        url = asset.get('browser_download_url') or ''
-        if name.endswith('.zip') and not zip_url:
-            zip_url = url
-            zip_size = int(asset.get('size') or 0)
-        elif name.endswith('.zip.sha256') and not sha_url:
-            sha_url = url
-    if not version or not zip_url:
+    assets = {asset['name'].lower(): asset for asset in data.get('assets') or []
+              if asset.get('name') and asset.get('browser_download_url')}
+    archives = [name for name in assets if name.endswith('.zip')]
+    if not version or not archives:
         return None
+    portable = f'DarkBlood-Emulator-{version}-win32.zip'.lower()
+    archive_name = portable if portable in assets else archives[0]
+    archive = assets[archive_name]
+    zip_url = archive['browser_download_url']
+    zip_size = int(archive.get('size') or 0)
+    sha_url = assets.get(f'{archive_name}.sha256', {}).get('browser_download_url')
     zip_sha256 = ''
     if sha_url:
         try:
