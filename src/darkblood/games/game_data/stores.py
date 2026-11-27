@@ -2,7 +2,7 @@
 from functools import lru_cache
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.loader import (
-    ASSETS_DIR, tsv_rows, ITEM_RE, NAME_RE, _entries, _env_override, data_root,
+    ITEM_RE, NAME_RE, _entries, _env_override, bundled_asset, data_root, tsv_rows,
 )
 
 
@@ -10,11 +10,8 @@ from darkblood.games.game_data.loader import (
 def npc_stores():
     """jhash(npc id) -> (npc id, [store ids])."""
     override = _env_override('npc.lua')
-    if override:
-        return {jhash(npc): (npc, stores) for npc, stores in _entries(override, NAME_RE)}
-
-    tsv = ASSETS_DIR / 'npcs.tsv'
-    if tsv.is_file():
+    tsv = bundled_asset('npcs.tsv', override)
+    if tsv:
         out = {}
         for parts in tsv_rows(tsv):
             if parts:
@@ -22,26 +19,25 @@ def npc_stores():
                 stores = parts[1].split(',') if len(parts) > 1 and parts[1] else []
                 out[jhash(nid)] = (nid, stores)
         return out
-    return {jhash(npc): (npc, stores) for npc, stores in _entries(data_root() / 'npc.lua', NAME_RE)}
+
+    path = override or (data_root() / 'npc.lua')
+    return {jhash(npc): (npc, stores) for npc, stores in _entries(path, NAME_RE)}
 
 
 @lru_cache(maxsize=None)
 def store_items():
     """store id -> [(item id, count)] (count -1 = unlimited)."""
     override = _env_override('storelist.lua')
-    if override:
-        return {store: [(item, int(n)) for item, n in items]
-                for store, items in _entries(override, ITEM_RE)}
-
-    tsv = ASSETS_DIR / 'stores.tsv'
-    if tsv.is_file():
+    tsv = bundled_asset('stores.tsv', override)
+    if tsv:
         out = {}
         for parts in tsv_rows(tsv):
             if len(parts) >= 3:
                 out.setdefault(parts[0], []).append((parts[1], int(parts[2])))
         return out
-    return {store: [(item, int(n)) for item, n in items]
-            for store, items in _entries(data_root() / 'storelist.lua', ITEM_RE)}
+
+    path = override or (data_root() / 'storelist.lua')
+    return {store: [(item, int(n)) for item, n in items] for store, items in _entries(path, ITEM_RE)}
 
 
 def items_for_npc(npc_hash):
