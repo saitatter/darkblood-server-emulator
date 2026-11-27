@@ -207,6 +207,50 @@ class ArenaFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_arena_join_waits_until_a_room_slot_is_free(self):
+        from darkblood.games.network import results
+        from headless_client import HeadlessClient
+
+        async def select_character(client, name):
+            await lobby_flow(client)
+            client.send_event(2012, create_request(name))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+
+        async def scenario(host):
+            await select_character(host, 'CapacityHost')
+            room = messages.ArenaRoomInfo(room_name='Two seats', max_players=2)
+            host.send_event(5153, messages.ArenaCreateRoomReq(room=room).encode())
+            _, created = await host.expect_event(5154)
+            room_id = messages.ArenaCreateRoomAck.decode(created).room.room_id
+            request = messages.ArenaJoinRoomReq(room_id=room_id).encode()
+            guest = HeadlessClient(port=host.port)
+            later = HeadlessClient(port=host.port)
+            try:
+                await select_character(guest, 'CapacityGuest')
+                guest.send_event(5145, request)
+                _, joined = await guest.expect_event(5146)
+                self.assertEqual(messages.ArenaJoinRoomAck.decode(joined).result, 0)
+
+                await select_character(later, 'CapacityLater')
+                later.send_event(5145, request)
+                _, refused = await later.expect_event(5146)
+                self.assertEqual(messages.ArenaJoinRoomAck.decode(refused).result,
+                                 results.JOIN_FAIL_ROOM_FULL)
+
+                guest.send_event(5148, messages.ArenaLeaveRoomReq().encode())
+                await guest.expect_event(5149)
+                later.send_event(5145, request)
+                _, admitted = await later.expect_event(5146)
+                self.assertEqual(messages.ArenaJoinRoomAck.decode(admitted).result, 0)
+            finally:
+                await later.close()
+                await guest.close()
+
+        self.run_async(self.with_server(scenario))
+
     def test_arena_teams_switch_and_management_flow(self):
         """End-to-end team management: create team, leave, join team, switch teams."""
         async def scenario(client):
