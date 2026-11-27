@@ -300,8 +300,24 @@ class StallFlowTest(ServerTestCase):
             _, ack2273 = await client.expect_event(2273)
             self.assertEqual(struct.unpack_from('<i', ack2273, 0)[0], 0)
 
-            # 5. Cancel listing (Opcode 2270 -> 2271)
+            # 5. A full inventory postpones both purchases and returns.
+            from darkblood.player_management.characters import add_reward_items, free_cells
+
+            buyer = store.create('OfflinePlayer', {'name': 'FullBrokerBuyer', 'char_class': 1})
+            buyer['gold'] = 50000
+            add_reward_items(buyer, [('Ihppa0000', 1)] * len(free_cells(buyer)))
+            purchased = BrokerManager.get().buy_listing(buyer, listing.listing_id, None, store)
+            self.assertFalse(purchased[0])
+            self.assertEqual((buyer['gold'], char['gold']), (50000, 50000))
+
+            fillers = add_reward_items(char, [('Ihppa0000', 1)] * len(free_cells(char)))
             cancel_req = BrokerCancelReq(listing_id=listing.listing_id).encode()
+            client.send_event(2270, cancel_req)
+            _, blocked = await client.expect_event(2271)
+            self.assertNotEqual(struct.unpack_from('<i', blocked)[0], 0)
+            self.assertIn(listing.listing_id, BrokerManager.get().listings)
+            char['items'].remove(fillers[-1])
+
             client.send_event(2270, cancel_req)
             _, ack2271 = await client.expect_event(2271)
             self.assertEqual(struct.unpack_from('<i', ack2271, 0)[0], 0)

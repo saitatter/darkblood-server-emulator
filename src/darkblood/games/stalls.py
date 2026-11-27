@@ -348,6 +348,8 @@ class BrokerManager:
             char_uid = char.get('id', 1)
             if listing.seller_uid != char_uid:
                 return False, "Not the seller", []
+            if len(free_cells(char)) < slots_needed([(listing.code, listing.count)]):
+                return False, "Inventory full", []
 
             # Return item to character inventory
             returned = self._restore_listing_items(char, listing, listing.count)
@@ -372,6 +374,9 @@ class BrokerManager:
             buyer_gold = gold_of(buyer_char)
             if buyer_gold < total_price:
                 return False, "Insufficient gold", 0, [], 0
+
+            if len(free_cells(buyer_char)) < slots_needed([(listing.code, buy_cnt)]):
+                return False, "Inventory full", 0, [], 0
 
             # Credit seller
             seller_char = _find_char_by_id(store, listing.seller_uid)
