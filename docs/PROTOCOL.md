@@ -894,6 +894,9 @@ opened. The card entries arrive together in `2603`.
   the `2037` inventory delta for successful `DictRandomBox` rolls; `is_jackpot` remains false until its
   client meaning is recovered. Live confirmation of the success UI is pending.
 
+An arena room join (`5145`) returns `JOIN_FAIL_ROOM_FULL` if the advertised
+capacity is occupied. Retrying after a member leaves can use the freed seat.
+
 ## 7. App states and tutorial exit (static, 2026-11-16, saitatter machine)
 
 App-state enum (registered at `0x00705CD0` as `eAS_* = %d`): 0 SelectChar,

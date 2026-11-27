@@ -104,6 +104,10 @@ class ArenaRoomHandlers:
         member_entry = {'uid': char_uid, 'name': char_name, 'class': char_class, 'level': char_level}
         members = self.arena.room_members.setdefault(room.room_id, [])
         if not any(m.get('uid') == char_uid for m in members):
+            if room.max_players and len(members) >= room.max_players:
+                await self.reply(ArenaJoinRoomAck(result=results.JOIN_FAIL_ROOM_FULL), correlation,
+                                 note=f'arena join room refused (room={req.room_id} full)')
+                return
             members.append(member_entry)
         self._current_arena_room_id = room.room_id
         member = next(member for member in members if member['uid'] == char_uid)
