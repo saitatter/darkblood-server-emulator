@@ -201,7 +201,7 @@ class MailHandlers(BaseDomainService):
         new_items = []
         for it, (container, slot) in zip(claimed_items, cells):
             it['uid'] = next_item_uid(char)
-            it['owner'] = char['id']
+            it.pop('owner', None)
             it['container'] = container
             it['slot'] = slot
             char.setdefault('items', []).append(it)

@@ -62,6 +62,15 @@ class SqliteCharacterStoreTest(unittest.TestCase):
         chars = self.store.characters('PlayerAccount')
         self.assertEqual(len(chars), 1)
 
+    def test_loading_old_mailed_items_removes_the_wire_owner(self):
+        char = self.store.create('MailAccount', {'name': 'LegacyMail', 'char_class': 1})
+        char['items'].append(dict(code='Ihppa0001', uid=90, container=3, slot=0, owner=char['id']))
+        self.store.save_char('MailAccount', char['id'])
+
+        with SqliteCharacterStore(db_path=self.db_path) as reopened:
+            item = reopened.get('MailAccount', char['id'])['items'][-1]
+            self.assertEqual(item, dict(code='Ihppa0001', uid=90, container=3, slot=0))
+
     def test_sqlite_duplicate_name_case_insensitive_rejected(self):
         self.store.create('Account1', {'name': 'Paladin', 'char_class': 1})
         dup = self.store.create('Account2', {'name': 'paladin', 'char_class': 2})
