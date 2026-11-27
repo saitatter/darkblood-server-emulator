@@ -116,7 +116,18 @@ class StallFlowTest(ServerTestCase):
                 self.assertIn('Rare Potions Stall'.encode('utf-16le'), ack6022)
 
                 # 5. Buyer purchases 1 item from seller stall via Opcode 5242
+                from darkblood.player_management.characters import add_reward_items, free_cells
+
                 buy_req = PersonalShopBuyReq(seller_uid=seller_id, item_uid=item_uid, count=1).encode()
+                fillers = add_reward_items(buyer_char, [('Ihppa0000', 1)] * len(free_cells(buyer_char)))
+                client2.send_event(5242, buy_req)
+                _, refused = await client2.expect_event(5243)
+                self.assertNotEqual(struct.unpack_from('<i', refused)[0], 0)
+                self.assertEqual((buyer_char['gold'], seller_char['gold'], stall.items[item_uid].count),
+                                 (25000, 1000, 2))
+                for filler in fillers:
+                    buyer_char['items'].remove(filler)
+
                 client2.send_event(5242, buy_req)
 
                 # Expect Opcode 5243 (eERC_PERSONALSHOP_BUYITEM_ACK)

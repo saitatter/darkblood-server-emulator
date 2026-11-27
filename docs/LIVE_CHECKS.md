@@ -56,7 +56,7 @@ When it fails, note what the client did and keep it here.
 | W1 | Login (`2007`) with completed achievements | The achievement window shows them right after login, before any `2328` request. |
 | W2 | Pet evolution (`2485`) | AR display shows the player's real AR afterwards (the field was sent as a pet UID before). |
 | W3 | Tame monster insert/delete (`2349`/`2351`) | The tamed list window shows the stored list. The two-i32 entry split is a guess: check the monster names/slots. |
-| W4 | Personal shop open/buy (`2341`/`5243`) | Shop title shows correctly; the shop lists items and expiry (layout corrected: address, `vector<u32>`, trailing 4 bytes). |
+| W4 | Personal shop open/buy (`2341`/`5243`) | Shop title shows correctly and the shop lists items and expiry. When the buyer's bags are full, the purchase leaves AR and stall stock unchanged. |
 | W5 | Pet feeding (`2481`) | Satiety updates; no inventory refresh issue (the vector is now `vector<Item>`, sent empty). |
 | W6 | Item link / remote item info (`6028 -> 6029`) | Clicking another player's item shows its tooltip (full Item record); an unknown item shows `JERI_INVEN_01`. Confirms that `nItemInfoID` is the item UID's low 32 bits (assumption). |
 | W7 | Gold goblin kill (`5366`) | Drop position uses the float `fX`/`fY` (earlier i16 layout was 4 bytes short). |
