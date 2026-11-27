@@ -16,6 +16,7 @@ from dataclasses import dataclass
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -258,6 +259,23 @@ def check_for_updates(root: Path = ROOT, timeout: int = 10) -> UpdateStatus:
         zip_sha256=info.zip_sha256,
         zip_size=info.zip_size,
     )
+
+
+def relaunch_env(environ=None) -> dict:
+    """Environment for starting a new, independent launcher instance after an update.
+
+    A PyInstaller one-file launcher unpacks itself into a temporary `_MEI...`
+    directory that is deleted when the process exits. A child started from it
+    inherits the bootloader's variables and reuses that directory, so a
+    restarted launcher failed once its parent closed ("DLL load failed while
+    importing _sqlite3"). PYINSTALLER_RESET_ENVIRONMENT (PyInstaller 6.10+)
+    makes the child unpack its own copy; `_MEIPASS2` is the variable older
+    bootloaders used for the same purpose.
+    """
+    env = dict(os.environ if environ is None else environ)
+    env.pop('_MEIPASS2', None)
+    env['PYINSTALLER_RESET_ENVIRONMENT'] = '1'
+    return env
 
 
 def cleanup_old_binaries(root: Path = ROOT) -> int:

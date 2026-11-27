@@ -40,6 +40,16 @@ class SemverTest(unittest.TestCase):
         self.assertTrue(updater.is_newer_version('v0.2.0-rc.1+build.5', 'v0.2.0+build.6'))
 
 
+class RelaunchEnvTest(unittest.TestCase):
+    def test_restarted_launcher_unpacks_its_own_bundle(self):
+        parent = {'PATH': 'C:\Windows', '_MEIPASS2': 'C:\Temp\_MEI123', '_PYI_PARENT_PROCESS_LEVEL': '1'}
+        env = updater.relaunch_env(parent)
+        self.assertEqual(env['PYINSTALLER_RESET_ENVIRONMENT'], '1')
+        self.assertNotIn('_MEIPASS2', env)
+        self.assertEqual(env['PATH'], 'C:\Windows')
+        self.assertIn('_MEIPASS2', parent)  # the launcher's own environment is untouched
+
+
 class ReleaseUpdaterTest(unittest.TestCase):
     def test_zip_update_preserves_user_data_and_blocks_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1241,7 +1241,7 @@ class DarkBloodLauncher(tk.Tk):
             if messagebox.askyesno('Launcher Updated',
                                    f'{res.message}\n\nThe launcher itself was updated. Restart now?'):
                 restart_cmd = [sys.executable] if IS_FROZEN else [sys.executable, str(Path(__file__).resolve())]
-                subprocess.Popen(restart_cmd, cwd=str(ROOT))
+                subprocess.Popen(restart_cmd, cwd=str(ROOT), env=updater.relaunch_env())
                 self.destroy()
                 return
         messagebox.showinfo('Update Complete', res.message)
