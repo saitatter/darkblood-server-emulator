@@ -38,6 +38,9 @@ This tab also shows server settings (`host`, `port`,
 The self-updater checks the downloaded byte count when the release or server
 reports a size. A download with a different size leaves the current installation intact.
 
+Invalid toggle values in `darkblood_options.ini` use that toggle's default.
+Other valid settings are still loaded.
+
 ### Patches & Hacks
 Configure individual modular client hooks (`client_hook/patches/*.c`) and server-side toggles (borderless fullscreen, auto-reconnect to lobby on disconnect, 100 ms town peer sync, skip logos/tutorial, adult blood effect, native GM console, and diagnostics) without editing INI files by hand.
 

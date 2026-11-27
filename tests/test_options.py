@@ -39,6 +39,18 @@ class OptionsTest(unittest.TestCase):
         self.assertEqual(options.read()['borderless_fullscreen'], False)
         self.assertEqual(options.read()['auto_reconnect'], True)
 
+    def test_invalid_toggle_uses_its_own_default(self):
+        options.OPTIONS_PATH.write_text(
+            '[client]\nborderless_fullscreen = typo\nskip_logos = 1\n'
+            '[network]\nport = 9500\n',
+            encoding='utf-8',
+        )
+        config = options.read_all()
+        self.assertEqual(config['options']['borderless_fullscreen'],
+                         options.OPTIONS['borderless_fullscreen'][1])
+        self.assertTrue(config['options']['skip_logos'])
+        self.assertEqual(config['network']['port'], 9500)
+
     def test_network_and_launcher_round_trip_and_preservation(self):
         options.write_all(
             values={'skip_logos': True},
