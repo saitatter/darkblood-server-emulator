@@ -989,7 +989,7 @@ Element tag `0x1E` preceding each mail record:
   - `i32 result` (0 = success)
   - `i64 mail_uid`
   - `i64 gold`: claimed AR credited to player
-  - `tag 0x10 vector<Item>`: claimed items added into player inventory bags.
+  - `tag 0x10 vector<Item>`: claimed items added into player inventory bags. The item owner is set on the wire and omitted from the saved inventory record.
   Transfers attachments atomically, clears `gold = 0, items = [], has_item = 0` on the mail record.
 
 ### Post Return & Delete (2234 → 2235, 2236 → 2237)

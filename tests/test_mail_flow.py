@@ -109,6 +109,11 @@ class MailFlowTest(ServerTestCase):
             self.assertEqual(char2_after.get('gold', 0), char2_gold_before + 15000)
             self.assertEqual(len(char2_after.get('items', [])), char2_items_before + 1)
 
+            self.assertNotIn('owner', char2_after['items'][-1])
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char2_id))
+            _, selected = await client.expect_event(2007)
+            self.assertEqual(struct.unpack_from('<i', selected)[0], 0)
+
             # 7. Delete mail
             client.send_event(2236, PostDeleteReq(mail_uids=[mail_uid]).encode())
             _, ack2237 = await client.expect_event(2237)

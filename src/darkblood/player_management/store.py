@@ -12,6 +12,13 @@ from darkblood import DATA
 from darkblood.player_management.characters import ensure_inventory
 
 
+def _decode_character(data_json):
+    character = json.loads(data_json)
+    for item in character.get('items', []):
+        item.pop('owner', None)
+    return character
+
+
 class ICharacterStore(ABC):
     """Abstract interface contract for character storage backends."""
 
@@ -130,7 +137,7 @@ class SqliteCharacterStore(ICharacterStore):
                 if key in self._cache:
                     result.append((r['account'], self._cache[key]))
                 else:
-                    char_dict = json.loads(r['data_json'])
+                    char_dict = _decode_character(r['data_json'])
                     self._cache[key] = char_dict
                     result.append((r['account'], char_dict))
             return result
@@ -226,7 +233,7 @@ class SqliteCharacterStore(ICharacterStore):
                 if key in self._cache:
                     result.append(self._cache[key])
                 else:
-                    char_dict = json.loads(r['data_json'])
+                    char_dict = _decode_character(r['data_json'])
                     self._cache[key] = char_dict
                     result.append(char_dict)
             return result
@@ -241,7 +248,7 @@ class SqliteCharacterStore(ICharacterStore):
                 'SELECT data_json FROM characters WHERE account = ? AND id = ?', (account, char_id)
             ).fetchone()
             if row:
-                char_dict = json.loads(row['data_json'])
+                char_dict = _decode_character(row['data_json'])
                 self._cache[key] = char_dict
                 return char_dict
             return None
@@ -259,7 +266,7 @@ class SqliteCharacterStore(ICharacterStore):
             if not row:
                 return None, None
             key = (row['account'], row['id'])
-            char_dict = json.loads(row['data_json'])
+            char_dict = _decode_character(row['data_json'])
             self._cache[key] = char_dict
             return row['account'], char_dict
 
@@ -281,7 +288,7 @@ class SqliteCharacterStore(ICharacterStore):
             key = (row['account'], row['id'])
             if key in self._cache:
                 return row['account'], self._cache[key]
-            char_dict = json.loads(row['data_json'])
+            char_dict = _decode_character(row['data_json'])
             self._cache[key] = char_dict
             return row['account'], char_dict
 
