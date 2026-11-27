@@ -73,8 +73,20 @@ class QuestFlowTest(ServerTestCase):
             char_id = struct.unpack_from('<Q', created, 10)[0]
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             await client.expect_event(2007)
+            from darkblood.games.network import results
+            from darkblood.player_management.characters import add_reward_items, free_cells
+
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            fillers = add_reward_items(char, [('Ihppa0001', 1)] * len(free_cells(char)))
             client.send_event(2073, req, compressed=True)
-            await client.expect_event(2074)
+            _, refused = await client.expect_event(2074)
+            self.assertEqual(struct.unpack_from('<I', refused)[0], results.INVEN_FULL)
+            self.assertNotIn(str(hashing.jhash('Q0008S01')), char.get('quests_active', {}))
+
+            char['items'].remove(fillers[-1])
+            client.send_event(2073, req, compressed=True)
+            _, accepted = await client.expect_event(2074)
+            self.assertEqual(struct.unpack_from('<I', accepted)[0], 0)
             _, items = await client.expect_event(2037)
             self.assertEqual(items[4:6], b'\x10\x81')
             char = session.GameSession.store().get('OfflinePlayer', char_id)

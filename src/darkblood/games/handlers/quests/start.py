@@ -4,8 +4,9 @@ from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.game_data.client_dict import item_groups, quest_mission_counts, quests
 from darkblood.games.handlers.quests.wire import parse_quest_start_body, quest_id_after_tag
 from darkblood.games.missions.quests import ActiveQuest
+from darkblood.games.network import results
 from darkblood.games.network.messages import DragItemAck, QuestStartAck, TutorialQuestStartAck
-from darkblood.player_management.characters import add_reward_items
+from darkblood.player_management.characters import add_reward_items, free_cells, slots_needed
 
 
 class QuestStartHandlers:
@@ -23,29 +24,33 @@ class QuestStartHandlers:
         quest_id, target_class, skill_hashes = parse_quest_start_body(body)
         char = self.store().get(self.account, self.char_id)
         is_new = bool(char) and str(quest_id) not in char.get('quests_active', {})
+        offered = []
+        if is_new:
+            group = (quests().get(quest_id) or {}).get('offer')
+            offered = [(code, count) for code, _, count in item_groups().get(group or '', [])]
+            if offered and len(free_cells(char)) < slots_needed(offered):
+                await self.reply(QuestStartAck(result=results.INVEN_FULL, quest_id=quest_id), correlation,
+                                 note=f'quest start refused ({quest_id:08x}, bags full)')
+                return
         uid = self._activate_quest(quest_id)
         special_info = await self._grant_temp_skills(char, quest_id, target_class, skill_hashes)
 
         ack = QuestStartAck(quest_id=quest_id, quest_uid=uid, info=special_info)
         await self.reply(ack, correlation, note='quest start ack (%08x)' % quest_id)
-        if is_new:
-            await self._give_offer_items(char, quest_id)
+        if offered:
+            await self._give_offer_items(char, offered)
         await self.check_quest_item_objectives(char)
 
-    async def _give_offer_items(self, char, quest_id):
+    async def _give_offer_items(self, char, offered):
         """Hand over the quest's OfferItemG items (e.g. a letter to deliver).
 
         2074's own item vector (reader 0x4B9210) is not recovered, so the items
         go out as an unsolicited 2037 like floor pick-ups.
         """
-        group = (quests().get(quest_id) or {}).get('offer')
-        offered = [(code, count) for code, _, count in item_groups().get(group or '', [])]
-        if not offered:
-            return
         stored = add_reward_items(char, offered)
         self.save_char()
-        await self.send_msg(DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]), note='quest offer items (%s: %s)' % (group, ', '.join(c for c, _ in offered)))
-        await self.check_quest_item_objectives(char)
+        await self.send_msg(DragItemAck(result=0, items=[Item(owner=UPDATE_OWNER, **i) for i in stored]),
+                            note='quest offer items (%s)' % ', '.join(i['code'] for i in stored))
 
     def _activate_quest(self, quest_id: int) -> int:
         """Add quest_id to the selected character's active quests; return its UID."""

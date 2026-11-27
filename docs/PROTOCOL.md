@@ -740,6 +740,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
   `team_id: i32` -> `result: i32 (0), team_id: i32`.
 - `5040 eERC_CHAT_REQ` (`0x007AC5E0`) -> `5041 eERC_CHAT_ACK` (`0x007AC890`):
   Tag `0x1E` chat struct (`channel: u8, sender: wstring, target: wstring, message: wstring`).
+- A quest that grants an item on acceptance (`2073`) stays available when the bags are full. Retrying with space activates the quest and grants its item.
 - Repeating an acknowledged quest completion (`2076`) leaves collection items acquired after the first turn-in in the bag.
 - `2078 eEGS_QUEST_GIVEUP_REQ` -> `2079 eEGS_QUEST_GIVEUP_ACK` (`0x006223B0`, reader `0x00A559F0`):
   observed request `J-wstring (timestamp text, meaning unknown), u32 quest_id` (same shape as 2073) -> `result: i32 (0)`, tag `0x10` i32 quest-id vector, 18-byte jInfo, tag `0x10` i32 vector, tag `0x10` item vector. Removes quest from active storage. The client looks each id up (`0x00A7B390`) and drops the ack if it is unknown.
