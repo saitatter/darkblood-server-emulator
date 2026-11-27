@@ -122,6 +122,11 @@ class CraftingHandlersMixin:
         gold = gold_of(char)
         items = char.get('items', [])
         items_by_uid = {int(it.get('uid', -1)): it for it in items}
+        kit = items_by_uid.get(int(req.repair_item_uid))
+        if req.repair_items and kit is None:
+            await self.reply(DurabilityRepairAck(result=results.INVEN_ITEM_NOT_FOUND), correlation,
+                             note='durability repair by item refused (kit unavailable)')
+            return
         repaired = {}
         for item_uid in req.repair_items:
             item = items_by_uid.get(int(item_uid))
@@ -131,7 +136,6 @@ class CraftingHandlersMixin:
             target_dur = float(int(max_dur)) if max_dur is not None else 100.0
             item['durability'] = target_dur
             repaired[int(item_uid)] = target_dur
-        kit = items_by_uid.get(int(req.repair_item_uid))
         if kit is not None and repaired:
             cnt = int(kit.get('count', 1))
             if cnt > 1:
