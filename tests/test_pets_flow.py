@@ -640,6 +640,14 @@ class PetsFlowTest(ServerTestCase):
         self.assertIn('pet level up not', sent[1][1])
         self.assertIn(struct.pack('<qqBi', 7, 42, 2, 26), sent[1][0])
 
+        from darkblood.games.progression import MAX_LEVEL
+
+        pet = char['pets'][0]
+        pet.update(level=MAX_LEVEL, exp=0)
+        self.assertFalse(self.run_async(grant_pet_exp(_FakeSession(), char, 50)))
+        self.assertEqual((pet['level'], pet['exp']), (MAX_LEVEL, 0))
+        self.assertEqual(len(sent), 2)
+
 
 if __name__ == '__main__':
     unittest.main()
