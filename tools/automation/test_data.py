@@ -23,6 +23,7 @@ sys.path.insert(0, sys.argv[1])
 spec = json.loads(sys.argv[2])
 from darkblood.games.session import GameSession
 from darkblood.games.entities.character import layer_net_id
+from darkblood.games.handlers.skills import learned_proficiencies_for_char
 from darkblood.player_management.characters import add_reward_items
 store = GameSession.store()
 char = store.create(spec['account'], {'name': spec['name'], 'char_class': spec['char_class']})
@@ -33,9 +34,7 @@ if spec.get('layer'):
     square, layer = spec['layer']
     char['join_layer_net_id'] = layer_net_id(square, layer)
 char.setdefault('skills', {}).update({str(k): int(v) for k, v in spec['skills'].items()})
-life = [int(k) for k in spec['skills'] if int(k) in (9007, 9008)]
-if life:
-    char['learned_proficiencies'] = sorted({0 if k == 9007 else 1 for k in life})
+char['learned_proficiencies'] = learned_proficiencies_for_char({'skills': char['skills']})
 add_reward_items(char, [(code, int(n)) for code, n in spec['items']])
 store.save_char(spec['account'], char['id'])
 print(json.dumps({'id': char['id'], 'name': char['name'], 'account': spec['account'],

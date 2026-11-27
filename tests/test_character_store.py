@@ -49,6 +49,14 @@ class SqliteCharacterStoreTest(unittest.TestCase):
         self.store.close()
         self.tmp.cleanup()
 
+    def test_scratch_character_registers_chosen_crafting_profession(self):
+        from test_data import create_character
+
+        created = create_character(self.tmp.name, 'ScratchCrafter', skills={9000: 1, 9007: 0, 9009: 1})
+        char = self.store.get('OfflinePlayer', created['id'])
+        self.assertEqual(char['skills']['9000'], 1)
+        self.assertEqual(char['learned_proficiencies'], [2])
+
     def test_sqlite_create_and_get_character(self):
         req = {'name': '  SqlHero  ', 'char_class': 2}
         char = self.store.create('PlayerAccount', req)
