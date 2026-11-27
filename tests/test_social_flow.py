@@ -181,6 +181,10 @@ class SocialFlowTest(ServerTestCase):
             client.send_event(2314, gname_payload)
             _, ack2315 = await client.expect_event(2315)
             self.assertEqual(struct.unpack_from('<i', ack2315)[0], 0)
+            from darkblood.player_management.store import SqliteCharacterStore
+
+            with SqliteCharacterStore(db_path=GameSession.store().path) as reopened:
+                self.assertEqual(reopened.get('OfflinePlayer', char_id).get('guild_name'), 'RenamedGuild')
 
             # 33. Keyboard custom key set (2319 -> 2320) + 2007 relog persistence
             from darkblood.games.network.messages.system import KeyboardSetCustomKeyAck, KeyboardSetCustomKeyReq
