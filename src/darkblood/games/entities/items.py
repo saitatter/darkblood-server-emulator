@@ -92,12 +92,13 @@ class Bag(WireMessage):
     f2c: bool = False
     f2d: bool = False
     f2e: bool = True
+    name: wstr = ''
 
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'bag_id',
         Computed(i32, lambda s: _i32(jhash(s.code)) if isinstance(s.code, str)
                  else (_i32(s.code) if s.code != -1 else -1)),
-        Const(wstr, ''),
+        'name',
         'b28',
         'b29',
         'w2a',

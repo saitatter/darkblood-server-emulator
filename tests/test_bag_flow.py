@@ -67,6 +67,14 @@ class BagFlowTest(ServerTestCase):
             await client.expect_event(2031)
             moved = next(b for b in char['bags'] if b['bag_id'] == 38)
             self.assertEqual(moved['w2a'], 4)
+            from darkblood.games.network.messages import ChangeBagNameReq
+
+            bag_name = 'Potions and gems'
+            client.send_event(2032, ChangeBagNameReq(bag_uid=38, name=bag_name).encode())
+            _, renamed = await client.expect_event(2033)
+            self.assertEqual(struct.unpack_from('<i', renamed)[0], 0)
+            self.assertEqual(moved['name'], bag_name)
+            self.assertIn(bag_name.encode('utf-16le'), Bag(**moved).encode())
             client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
             _, selected = await client.expect_event(2007)
             self.assertIn(Bag(**moved).encode(), selected)
