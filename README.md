@@ -163,6 +163,7 @@ Every unmapped field, with the reader-address note recorded next to it, is in [d
 * **Skill State**: Skill lock/unlock toggles (`2117`/`2118`), skill speech macros (`2053`/`2055`), and skill book consumption (`2111`).
 
 ### 7. Commerce, Cash Shop & Social
+* **Inventory Bags**. Closing an empty equipped bag requires a free slot in another bag.
 * **NPC Stores & Buyback**: Store info catalogs (`2065`), item purchases with gold verification (`2067`), item selling (`2069`), and buyback (`2071`).
 * **Offline Steam Cash Shop**: In-game cash shop purchases (`2712` -> unsolicited `2037` items + `2714`), cash packages (Type 36) and random boxes opening into bag slots.
 * **Player-to-Player Trade**: Request, accept, item placement, gold stakes, lock, and completion (`5069`–`5084`).

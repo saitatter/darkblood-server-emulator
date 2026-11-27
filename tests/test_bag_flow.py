@@ -79,5 +79,41 @@ class BagFlowTest(ServerTestCase):
         self.run_async(self.with_server(scenario))
 
 
+    def test_close_bag_keeps_it_equipped_until_another_bag_has_space(self):
+        from darkblood.games.network import results
+        from darkblood.games.network.messages import CloseBagReq
+        from darkblood.player_management.characters import add_reward_items, free_cells
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('CloseBagHero'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+
+            fillers = add_reward_items(char, [('Ihppa0001', 1)] * len(free_cells(char)))
+            bag = dict(bag_id=38, code='Ibaga0004', b28=0, b29=5, w2a=1)
+            char['bags'].append(bag)
+            close = CloseBagReq(bag_id=bag['bag_id']).encode()
+            client.send_event(2028, close)
+            _, blocked = await client.expect_event(2029)
+            self.assertEqual(blocked, struct.pack('<i', results.INVEN_FULL))
+            self.assertIn(bag, char['bags'])
+            self.assertFalse(any(item['uid'] == bag['bag_id'] for item in char['items']))
+
+            freed = fillers[-1]
+            char['items'].remove(freed)
+            client.send_event(2028, close)
+            _, closed = await client.expect_event(2029)
+            self.assertEqual(struct.unpack_from('<i', closed)[0], 0)
+            self.assertNotIn(bag, char['bags'])
+            returned = next(item for item in char['items'] if item['uid'] == bag['bag_id'])
+            self.assertEqual((returned['container'], returned['slot']), (freed['container'], freed['slot']))
+
+        self.run_async(self.with_server(scenario))
+
+
 if __name__ == '__main__':
     unittest.main()

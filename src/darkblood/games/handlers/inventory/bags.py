@@ -1,6 +1,7 @@
 """Bag management and quickslot handlers (2026, 2028, 2030, 2032, 2044, 2046, 2048)."""
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Bag, Item, UPDATE_OWNER
+from darkblood.games.network import results
 from darkblood.games.network.messages import (
     AssignQuickslotAck,
     AssignQuickslotReq,
@@ -17,7 +18,7 @@ from darkblood.games.network.messages import (
     SwitchQuickslotAck,
     SwitchQuickslotReq,
 )
-from darkblood.player_management.characters import INVENTORY_BAG_CONTAINER, add_reward_items
+from darkblood.player_management.characters import add_reward_items, free_cells
 
 
 class BagHandlersMixin:
@@ -59,14 +60,15 @@ class BagHandlersMixin:
         if not bag or any(i.get('container') == req.bag_id for i in items):
             await self.reply(CloseBagAck(result=1), correlation, note=f'close bag fail (bag_id={req.bag_id})')
             return
+        if not any(container != req.bag_id for container, _ in free_cells(char)):
+            await self.reply(CloseBagAck(result=results.INVEN_FULL), correlation,
+                             note=f'close bag fail (no slot for bag_id={req.bag_id})')
+            return
+
         bags.remove(bag)
-        stored = add_reward_items(char, [(bag.get('code', 'Ibaga0004'), 1)])
-        if stored:
-            stored[0]['uid'] = req.bag_id
-            bag_item = Item(owner=UPDATE_OWNER, **stored[0])
-        else:
-            bag_item = Item(owner=UPDATE_OWNER, uid=req.bag_id, code=bag.get('code', ''),
-                            container=INVENTORY_BAG_CONTAINER, slot=0, count=1)
+        stored, = add_reward_items(char, [(bag.get('code', 'Ibaga0004'), 1)])
+        stored['uid'] = req.bag_id
+        bag_item = Item(owner=UPDATE_OWNER, **stored)
         self.save_char()
         await self.reply(CloseBagAck(result=0, bag_item=bag_item, bags=[Bag(**b) for b in bags]),
                          correlation, note=f'close bag ack (bag_id={req.bag_id})')
