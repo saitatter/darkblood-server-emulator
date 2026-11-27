@@ -174,6 +174,27 @@ class ReleaseUpdaterTest(unittest.TestCase):
                 self.assertFalse(res.ok)
                 self.assertEqual(res.mode, 'dev')
 
+    def test_short_download_leaves_installed_release_intact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.version').write_text('v0.1.0', encoding='utf-8')
+            installed = root / 'README.md'
+            installed.write_bytes(b'original')
+            archive = _make_zip({'DarkBlood-Emulator-v0.2.0/README.md': b'shortened release'})
+            response = io.BytesIO(archive)
+            response.headers = {}
+            info = updater.ReleaseInfo(version='v0.2.0', zip_url='https://example.invalid/release.zip',
+                                       zip_size=len(archive) + 128)
+
+            with patch.object(updater, 'fetch_latest_release', return_value=info), \
+                 patch.object(updater.urllib.request, 'urlopen', return_value=response):
+                result = updater.apply_update(root)
+
+            self.assertFalse(result.ok)
+            self.assertIn('Release download size mismatch', result.message)
+            self.assertEqual(installed.read_bytes(), b'original')
+            self.assertEqual(updater.current_installed_version(root), 'v0.1.0')
+
     def test_manifest_check_and_api_fallback_and_download_progress(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

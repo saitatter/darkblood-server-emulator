@@ -332,6 +332,9 @@ def _download_to_file(url: str, dest: Path, expected_size: int = 0,
                 downloaded += len(chunk)
                 if on_progress is not None:
                     on_progress(downloaded, total)
+    declared_size = expected_size or total
+    if declared_size and downloaded != declared_size:
+        raise OSError(f'Release download size mismatch (expected {declared_size}, got {downloaded} bytes).')
     return hasher.hexdigest()
 
 
