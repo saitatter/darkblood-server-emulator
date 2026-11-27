@@ -945,6 +945,13 @@ element layout is unknown and sent empty. The request body is not recovered.
 Status: static reconstruction plus headless tests. A live run that confirms the
 client enters SquarePlay after skip is still pending.
 
+### Monster Card deck release
+
+The Monster Card deck release reply (`2614`) includes the stored card ID and
+level with the equipped owner cleared. Releasing a card removes only that
+card from its owner's character deck. The card stays in the account collection,
+and the reply lists the requesting character's current deck.
+
 ### Broker item placement
 
 Broker purchases and cancellations require enough free bag cells for the

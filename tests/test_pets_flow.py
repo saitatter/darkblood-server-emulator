@@ -415,6 +415,50 @@ class PetsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_releasing_a_card_from_another_character_keeps_its_details(self):
+        from darkblood.core.hashing import jhash
+        from darkblood.games.network.messages.pets import MonsterCardReleaseAllCharAck, MonsterCardReleaseAllCharReq
+
+        async def scenario(client):
+            client.account = 'ReleaseCardBook'
+            await lobby_flow(client)
+            char_ids = []
+            for name in ('CardBookOwner', 'CardBookAlt'):
+                client.send_event(2012, create_request(name))
+                _, created = await client.expect_event(2013)
+                char_ids.append(struct.unpack_from('<Q', created, 10)[0])
+            owner_id, alt_id = char_ids
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, alt_id))
+            await client.expect_event(2007)
+
+            store = session.GameSession.store()
+            owner, alt = (store.get(client.account, cid) for cid in char_ids)
+            account_book = store.account_data(client.account)
+            selected = dict(uid=1, code='Card001', level=3, owner_uid=owner_id)
+            retained = dict(uid=2, code='Card001', level=1, owner_uid=owner_id)
+            other = dict(uid=3, code='Card001', level=1, owner_uid=alt_id)
+            account_book['monster_cards'] = [selected, retained, other]
+            owner['monster_card_deck'] = [1, 2]
+            alt['monster_card_deck'] = [3]
+            store.save_chars([(client.account, cid) for cid in char_ids])
+            store.save_account_data(client.account)
+
+            client.send_event(2613, MonsterCardReleaseAllCharReq(card_uid=1).encode())
+            _, body = await client.expect_event(2614)
+            released = MonsterCardReleaseAllCharAck.decode(body)
+            self.assertEqual((released.result, released.deck_uids), (0, [3]))
+            self.assertEqual((released.card.card_uid, released.card.card_id, released.card.level,
+                              released.card.owner_uid), (1, jhash('Card001'), 3, 0))
+            self.assertEqual(owner['monster_card_deck'], [2])
+            self.assertEqual(alt['monster_card_deck'], [3])
+            self.assertEqual(account_book['monster_cards'], [
+                dict(uid=1, code='Card001', level=3, owner_uid=0),
+                dict(uid=2, code='Card001', level=1, owner_uid=owner_id),
+                dict(uid=3, code='Card001', level=1, owner_uid=alt_id),
+            ])
+
+        self.run_async(self.with_server(scenario))
+
     def test_monster_card_roulette_cronos_explore_clear_rank(self):
         """Test MonsterCard, Roulette, StorageShare, Cronos, Explore, and ClearRank opcodes."""
         from darkblood.games.network.messages.pets import (
