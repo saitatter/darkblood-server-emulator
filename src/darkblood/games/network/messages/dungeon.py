@@ -495,6 +495,7 @@ class DailyRebirthCoinUseAck(WireMessage):
     owned coin count; 2286 does.
     """
     OPCODE: ClassVar[int] = 2449
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: i32 = 0
     daily_recv_cnt: u16 = 1  # -> player +0x7E
     pcbang_coin_remain: u32 = 5  # passed to page 0x12 0x0054A1E0

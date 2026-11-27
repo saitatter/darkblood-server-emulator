@@ -230,7 +230,7 @@ message 2448 DailyRebirthCoinUseReq header
   u8 coin_type
 end
 
-message 2449 DailyRebirthCoinUseAck
+message 2449 DailyRebirthCoinUseAck ok_only
   ## On_eEGS_DAILY_REBIRTH_COIN_USE_ACK 0x0079DC70. The ack does not change the
   ## owned coin count; 2286 does.
   i32 result

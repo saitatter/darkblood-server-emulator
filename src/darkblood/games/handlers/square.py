@@ -7,10 +7,13 @@ from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network.messages import (
     BackToSquareAck,
     ClearTutorialAck,
+    EnterMaptoolAck,
     FishingStartAck,
     FishingStartReq,
     FishingStopAck,
     GTargetListAck,
+    LeaveLayerAck,
+    LeaveSquareAck,
     NpcFirstMeetAck,
     QuestObjective,
     QuestUpdateNot,
@@ -282,8 +285,8 @@ class SquareHandlers(BaseDomainService):
         Client handler: 0x00757D20.
         Triggers scene transition.
         """
-        await self.transport.send_event(event(2017, struct.pack('<I', 0), correlation),
-                                        note='enter maptool ack')
+        await self.reply(EnterMaptoolAck(), correlation,
+                         note='enter maptool ack')
 
     @packet_handler(2344)
     async def handle_waypoint_insert(self, correlation: int, body: bytes):
@@ -327,8 +330,8 @@ class SquareHandlers(BaseDomainService):
         if self.session.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
-        await self.transport.send_event(event(5038, struct.pack('<I', 0), correlation),
-                                        note='leave layer ack')
+        await self.reply(LeaveLayerAck(), correlation,
+                         note='leave layer ack')
 
     @packet_handler(5032)
     async def handle_leave_square(self, correlation: int, body: bytes):
@@ -343,8 +346,8 @@ class SquareHandlers(BaseDomainService):
         if self.session.active_char_id:
             from darkblood.games.world import GameWorldManager
             await GameWorldManager.get().remove_session_player(self.session)
-        await self.transport.send_event(event(5033, struct.pack('<I', 0), correlation),
-                                        note='leave square ack')
+        await self.reply(LeaveSquareAck(), correlation,
+                         note='leave square ack')
 
     # =========================================================================
     # Fishing System Handlers (2523-2526)

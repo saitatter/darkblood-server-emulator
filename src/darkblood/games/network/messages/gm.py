@@ -15,6 +15,9 @@ from darkblood.games.network.messages.skills import LearnedSkill
 __all__ = [
     'CheatLevelUpReq',
     'CheatLevelUpAck',
+    'CheatInsertCoinAck',
+    'CheatInsertArAck',
+    'CheatInsertApAck',
     'CheatItemDropReq',
     'CheatItemDropAck',
     'CheatLearnAllSkillReq',
@@ -103,6 +106,40 @@ class CheatLevelUpAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)
+
+
+@dataclass
+class CheatInsertCoinAck(WireMessage):
+    """Opcode 2102: eEGS_CHEAT_INSERT_COIN_ACK (reply).
+
+    Handler 0x004ECD30: u32 result, i16 sTotalRebirthCoin.
+    """
+    OPCODE: ClassVar[int] = 2102
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    total_coins: i16 = 0  # sTotalRebirthCoin
+
+
+@dataclass
+class CheatInsertArAck(WireMessage):
+    """Opcode 2104: eEGS_CHEAT_INSERT_AR_ACK (reply).
+
+    Handler 0x004ECEA0: u32 result, i64 nCurAr.
+    """
+    OPCODE: ClassVar[int] = 2104
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cur_ar: i64 = 0  # nCurAr
+
+
+@dataclass
+class CheatInsertApAck(WireMessage):
+    """Opcode 2106: eEGS_CHEAT_INSERT_AP_ACK (reply).
+
+    Handler 0x004CE620: u32 result.
+    """
+    OPCODE: ClassVar[int] = 2106
+    result: u32 = 0
 
 
 @dataclass

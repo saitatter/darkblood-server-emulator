@@ -7,9 +7,11 @@ from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
     AchieveCompleteNot,
     AchieveCompletion,
+    AchieveDivUpdateAck,
     AchieveDivUpdateReq,
     AchieveEntry,
     AchieveGetListAck,
+    AchieveUpdateAck,
     AchieveUpdateReq,
     ArenaBackToSquareAck,
     BanishUserAck,
@@ -266,8 +268,8 @@ class FriendsHandlers:
         if char is not None and report is not None:
             completed = achievements.apply_client_completions(char, report.hashes)
             self.save_char()
-        await self.transport.send_event(event(2445, struct.pack('<I', 0), correlation),
-                                        note='achieve update ack')
+        await self.reply(AchieveUpdateAck(), correlation,
+                         note='achieve update ack')
         if completed:
             entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
             await self.send_msg(AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]), note='achievements completed: %s' % ', '.join(completed))
@@ -288,8 +290,8 @@ class FriendsHandlers:
         if char is not None and report is not None:
             completed = achievements.apply_division_report(char, report.amounts)
             self.save_char()
-        await self.transport.send_event(event(2447, struct.pack('<I', 0), correlation),
-                                        note='achieve div update ack')
+        await self.reply(AchieveDivUpdateAck(), correlation,
+                         note='achieve div update ack')
         if completed:
             entries = [AchieveEntry(h, t) for h, t in achievements.completed_entries(char, completed)]
             await self.send_msg(AchieveCompleteNot(entries, [AchieveCompletion(e.achieve_hash) for e in entries]), note='achievements completed: %s' % ', '.join(completed))

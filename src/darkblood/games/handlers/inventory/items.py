@@ -2,10 +2,13 @@
 import struct
 
 from darkblood.core.serialization.jser import event
+from darkblood.core.serialization.jser import WireError
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, Item, UPDATE_OWNER
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
+    AlarmUpdateAck,
+    AlarmUpdateReq,
     AssignQuickslotAck,
     CharVerifyStatAck,
     CharVerifyStatReq,
@@ -238,9 +241,12 @@ class ItemHandlersMixin:
     @packet_handler(2119)
     async def handle_alarm_update(self, correlation, body):
         """Opcode 2119 (eEGS_ALARM_UPDATE_REQ) -> 2120 (eEGS_ALARM_UPDATE_ACK): acknowledge alarm flags."""
-        rest = body[4:] if len(body) >= 7 else b'\x00\x00\x10\x80'
-        await self.transport.send_event(event(2120, struct.pack('<I', 0) + rest, correlation),
-                                        note='alarm update ack')
+        try:
+            req = AlarmUpdateReq.decode(body)
+            ack = AlarmUpdateAck(alarm_type=req.alarm_type, values=req.values)
+        except (WireError, struct.error):
+            ack = AlarmUpdateAck()
+        await self.reply(ack, correlation, note='alarm update ack')
 
 
     @packet_handler(DivideItemReq)

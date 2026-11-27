@@ -24,8 +24,10 @@ from darkblood.games.network.messages import (
     EventDeleteCharacterReq,
     ImpliedJoinLayerReq,
     JoinSquareAck,
+    KnockSquareListAck,
     QuestHistoryNot,
     RelayAddressNot,
+    SelectCharacterAck,
     UndeleteCharacterAck,
 )
 
@@ -108,8 +110,8 @@ class FrontendHandlers(BaseDomainService):
         Client handler: 0x00757810.
         Pings square cluster before requesting the channel list. Result 0 proceeds.
         """
-        await self.transport.send_event(event(2002, struct.pack('<I', 0), correlation),
-                                        note='knock square list ack')
+        await self.reply(KnockSquareListAck(), correlation,
+                         note='knock square list ack')
 
     @packet_handler(2021)
     async def handle_get_square_list(self, correlation: int, body: bytes):
@@ -186,8 +188,8 @@ class FrontendHandlers(BaseDomainService):
         char_id = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else 0
         char = self.store().get(self.account, char_id)
         if char is None:
-            await self.transport.send_event(event(2007, struct.pack('<I', 1), correlation),
-                                            note='select char fail (no character)')
+            await self.reply(SelectCharacterAck(result=results.NO_EXIST_CHAR), correlation,
+                             note='select char fail (no character)')
             return
         from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()

@@ -21,6 +21,8 @@ __all__ = [
     'DepotSlotInfo',
     'PetDepotSlotInfo',
     'DepotInfo',
+    'KnockSquareListAck',
+    'EnterMaptoolAck',
     'SelectCharacterAck',
     'JoinSquareAck',
     'RelayAddressNot',
@@ -121,6 +123,26 @@ class DepotInfo(WireMessage):
 
 
 @dataclass
+class KnockSquareListAck(WireMessage):
+    """Opcode 2002: eEGS_KNOCK_SQUARELIST_ACK (reply).
+
+    Handler 0x00757810 (reply to 2001); the server sends only the result.
+    """
+    OPCODE: ClassVar[int] = 2002
+    result: u32 = 0
+
+
+@dataclass
+class EnterMaptoolAck(WireMessage):
+    """Opcode 2017: eEGS_ENTER_MAPTOOL_ACK (reply).
+
+    Handler 0x00757D20 (reply to 2016); the server sends only the result.
+    """
+    OPCODE: ClassVar[int] = 2017
+    result: u32 = 0
+
+
+@dataclass
 class SelectCharacterAck(WireMessage):
     """Opcode 2007: eEGS_SELECT_CHAR_ACK (reply).
 
@@ -132,6 +154,7 @@ class SelectCharacterAck(WireMessage):
     (esp-tracked, checked against the bag/item/depot/count/waypoint/pet anchors).
     """
     OPCODE: ClassVar[int] = 2007
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     proficiencies: Array[f32] = field(default_factory=list)  # 0x00A1E840 (+0x395 -> JProficiencyMgr::Init 0x00AC9BD0, 10 floats)
     character: Extern[Character, 'encode_world_details', False] = field(default_factory=Character)

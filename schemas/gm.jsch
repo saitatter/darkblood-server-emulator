@@ -18,6 +18,23 @@ message 2058 CheatLevelUpAck ok_only
   Character character = Character()
 end
 
+message 2102 CheatInsertCoinAck ok_only
+  ## Handler 0x004ECD30: u32 result, i16 sTotalRebirthCoin.
+  u32 result
+  i16 total_coins            # sTotalRebirthCoin
+end
+
+message 2104 CheatInsertArAck ok_only
+  ## Handler 0x004ECEA0: u32 result, i64 nCurAr.
+  u32 result
+  i64 cur_ar                 # nCurAr
+end
+
+message 2106 CheatInsertApAck
+  ## Handler 0x004CE620: u32 result.
+  u32 result
+end
+
 message 2059 CheatItemDropReq header?
   ## Sender 0x004D2AF0 (console: itemdrop <item_id>).
   u32 item_id

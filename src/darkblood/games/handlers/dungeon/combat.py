@@ -218,8 +218,8 @@ class DungeonCombatHandlers:
         req = DailyRebirthCoinUseReq.decode(body)
         char = self._current_char()
         if char is None:
-            await self.transport.send_event(event(2449, struct.pack('<I', 1), correlation),
-                                            note='daily rebirth coin fail (no char)')
+            await self.reply(DailyRebirthCoinUseAck(result=results.NO_EXIST_CHAR), correlation,
+                             note='daily rebirth coin fail (no char)')
             return
         today = time.strftime('%Y-%m-%d')
         if char.get('daily_rebirth_day') != today:

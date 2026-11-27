@@ -66,7 +66,17 @@ struct DepotInfo
   i64 _                      # +0x54 unknown
 end
 
-message 2007 SelectCharacterAck
+message 2002 KnockSquareListAck
+  ## Handler 0x00757810 (reply to 2001); the server sends only the result.
+  u32 result
+end
+
+message 2017 EnterMaptoolAck
+  ## Handler 0x00757D20 (reply to 2016); the server sends only the result.
+  u32 result
+end
+
+message 2007 SelectCharacterAck ok_only
   ## Handler 0x007AA4B0: untagged struct 0x00A40760 starting with the result (the
   ## handler peeks it with 0x00A1EA20(1) and the reader rereads the same word),
   ## nested character details (0x00A52630), then the fields below. Field

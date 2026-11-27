@@ -40,6 +40,7 @@ __all__ = [
     'RequestItemInfoAck',
     'GetInviteListReq',
     'GetInviteListAck',
+    'AlarmUpdateReq',
     'AlarmUpdateAck',
     'ChatNotifyReq',
     'ChatNotifyAck',
@@ -461,6 +462,20 @@ class GetInviteListAck(WireMessage):
     OPCODE: ClassVar[int] = 2025
     result: i32 = 0
     users: Vector[RoomMemberInfo] = field(default_factory=list)
+
+
+@dataclass
+class AlarmUpdateReq(WireMessage):
+    """Opcode 2119: eEGS_ALARM_UPDATE_REQ (request).
+
+    Sender 0x00791D40: 2-byte type (0x00B35190), then a tag 0x10 vector
+    (writer 0x004C7C40; elements assumed to match the ack's u32 reader).
+    """
+    OPCODE: ClassVar[int] = 2119
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    alarm_type: i16 = 0
+    values: Vector[i32] = field(default_factory=list)
 
 
 @dataclass

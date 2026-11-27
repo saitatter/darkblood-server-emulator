@@ -25,6 +25,7 @@ from darkblood.games.network.messages import (
     QuestObjective,
     QuestSpecialInfo,
     QuestStartAck,
+    QuestUpdateMissionAck,
     QuestUpdateNot,
     RoulettePointInsertNot,
     TutorialQuestStartAck,
@@ -412,8 +413,8 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         if updates:
             self.save_char()
             await self.send_msg(QuestUpdateNot(updates=updates), note='quest update not (mission %s: %s)' % (mission, updates))
-        await self.transport.send_event(event(2114, struct.pack('<I', 0), correlation),
-                                        note='quest update mission ack (%s, %d quests)' % (mission, len(updates)))
+        await self.reply(QuestUpdateMissionAck(), correlation,
+                         note='quest update mission ack (%s, %d quests)' % (mission, len(updates)))
 
     def _clear_temp_skills_for_quest(self, char, quest_id: int) -> QuestSpecialInfo:
         """Remove promotion trial temporary skills if `quest_id` owns them."""

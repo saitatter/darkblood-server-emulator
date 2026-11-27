@@ -116,54 +116,54 @@
 | `2256 MagicEnchantEraseOptionReq` | `i32` | inventory.jsch:267 |  |
 | `AddedItemNotice` | `u32` | inventory.jsch:398 | +8 (u16 zero + 2 bytes struct padding) |
 
-## lobby (44 of 151 fields)
+## lobby (44 of 153 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `PetDepotSlotInfo` | `u64` | lobby.jsch:55 |  |
 | `DepotInfo` | `i64` | lobby.jsch:66 | +0x54 unknown |
-| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:77 | 0x00A3ED30, max 3 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:80 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:81 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:82 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:83 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:84 |  |
-| `2007 SelectCharacterAck` | `u8` | lobby.jsch:85 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:90 | 0x00A3EEC0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:92 | 0x0076E560 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:94 | 0x00A3E410 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:95 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:96 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:97 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:102 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:103 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:104 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:106 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:107 |  |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:108 | 0x004B1A60 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:109 | +0x255 -> JGuildManager (singleton 0x0049F7F0) +0xC4 |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:110 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:111 |  |
-| `2007 SelectCharacterAck` | `f32` | lobby.jsch:112 | +0x3BD -> player +0xB0 |
-| `2007 SelectCharacterAck` | `i64` | lobby.jsch:113 | +0x3C1 -> player 0x009465D0: seconds, end = now_ms + s*1000 at player +0xC0 |
+| `2007 SelectCharacterAck` | `array<?>` | lobby.jsch:87 | 0x00A3ED30, max 3 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:90 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:91 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:92 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:93 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:94 |  |
+| `2007 SelectCharacterAck` | `u8` | lobby.jsch:95 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:100 | 0x00A3EEC0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:102 | 0x0076E560 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:104 | 0x00A3E410 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:105 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:106 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:107 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:112 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:113 |  |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:114 |  |
-| `2007 SelectCharacterAck` | `bool` | lobby.jsch:120 | +0x403, read but unused by 0x00481760 (as in 2328) |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:122 |  |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:124 | +0x414 first SetExpire argument, only logged |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:127 | +0x438 -> JAppPageInitLifeSkill (AppPage 0x46) +0x120 via 0x005A3FE0 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:129 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:135 | +0x15 unknown |
-| `2007 SelectCharacterAck` | `u32` | lobby.jsch:137 | +0x48F 0x00A1EEA0: u32, 3 x u64 -> AppPage(0x8A).0x00529110 |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:138 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:116 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:117 |  |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:118 | 0x004B1A60 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:119 | +0x255 -> JGuildManager (singleton 0x0049F7F0) +0xC4 |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:120 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:121 |  |
+| `2007 SelectCharacterAck` | `f32` | lobby.jsch:122 | +0x3BD -> player +0xB0 |
+| `2007 SelectCharacterAck` | `i64` | lobby.jsch:123 | +0x3C1 -> player 0x009465D0: seconds, end = now_ms + s*1000 at player +0xC0 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:124 |  |
+| `2007 SelectCharacterAck` | `bool` | lobby.jsch:130 | +0x403, read but unused by 0x00481760 (as in 2328) |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:132 |  |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:134 | +0x414 first SetExpire argument, only logged |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:137 | +0x438 -> JAppPageInitLifeSkill (AppPage 0x46) +0x120 via 0x005A3FE0 |
 | `2007 SelectCharacterAck` | `u64` | lobby.jsch:139 |  |
-| `2007 SelectCharacterAck` | `u64` | lobby.jsch:140 |  |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:141 | +0x303 0x00A1E900: map + vector -> AppPage(0x2A).0x0058DFB0 |
-| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:142 |  |
-| `2007 SelectCharacterAck` | `u16` | lobby.jsch:143 | +0x4AB -> AppPage(0x93).0x005DE1B0 |
-| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:147 | +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640 |
-| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:172 | vecTargetState (0x00773870), element layout unknown |
-| `RelayJoinGroupAck` | `u16` | lobby.jsch:180 | RMI id |
-| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:201 | vecDuel |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:145 | +0x15 unknown |
+| `2007 SelectCharacterAck` | `u32` | lobby.jsch:147 | +0x48F 0x00A1EEA0: u32, 3 x u64 -> AppPage(0x8A).0x00529110 |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:148 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:149 |  |
+| `2007 SelectCharacterAck` | `u64` | lobby.jsch:150 |  |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:151 | +0x303 0x00A1E900: map + vector -> AppPage(0x2A).0x0058DFB0 |
+| `2007 SelectCharacterAck` | `vector<?>` | lobby.jsch:152 |  |
+| `2007 SelectCharacterAck` | `u16` | lobby.jsch:153 | +0x4AB -> AppPage(0x93).0x005DE1B0 |
+| `2007 SelectCharacterAck` | `map<?>` | lobby.jsch:157 | +0x4C9 0x00485220: map<wstr,i16> (as the daily counts) -> 0x00F45E18.0x006B6640 |
+| `5046 BackToSquareAck` | `vector<?>` | lobby.jsch:182 | vecTargetState (0x00773870), element layout unknown |
+| `RelayJoinGroupAck` | `u16` | lobby.jsch:190 | RMI id |
+| `5027 JoinLayerNot` | `vector<?>` | lobby.jsch:211 | vecDuel |
 
 ## party (6 of 93 fields)
 
@@ -197,7 +197,7 @@
 | `QuickSlot` | `i64` | skills.jsch:17 | meaning unknown |
 | `QuickSlot` | `u16` | skills.jsch:18 | meaning unknown |
 
-## social (10 of 137 fields)
+## social (10 of 139 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |

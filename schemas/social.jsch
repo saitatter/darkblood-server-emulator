@@ -231,6 +231,13 @@ message 2025 GetInviteListAck
   vector<RoomMemberInfo> users
 end
 
+message 2119 AlarmUpdateReq header?
+  ## Sender 0x00791D40: 2-byte type (0x00B35190), then a tag 0x10 vector
+  ## (writer 0x004C7C40; elements assumed to match the ack's u32 reader).
+  i16 alarm_type
+  vector<i32> values
+end
+
 message 2120 AlarmUpdateAck ok_only
   ## Handler 0x00771150 (assert: sType >> vecValue; vector reader 0x004D6E60).
   i32 result

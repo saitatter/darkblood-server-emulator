@@ -23,7 +23,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | Opcode | Enum name | Client handler | Server handler | Messages | Notes |
 | ---: | :--- | :--- | :--- | :--- | :--- |
 | 2001 | `eEGS_KNOCK_SQUARELIST_REQ` | — | `frontend.py` (`handle_knock_square_list`) | — | Opcode 2001 (eEGS_KNOCK_SQUARELIST_REQ) -> 2002 (eEGS_KNOCK_SQUARELIST_ACK). |
-| 2002 | `eEGS_KNOCK_SQUARELIST_ACK` | 0x00757810 | — | — |  |
+| 2002 | `eEGS_KNOCK_SQUARELIST_ACK` | 0x00757810 | — | `KnockSquareListAck` |  |
 | 2003 | `eEGS_KNOCK_SQUARELIST_NOT` | 0x00757840 | — | — |  |
 | 2006 | `eEGS_SELECT_CHAR_REQ` | — | `frontend.py` (`handle_select_character`) | — | Opcode 2006 (eEGS_SELECT_CHAR_REQ) -> 2007 (eEGS_SELECT_CHAR_ACK). |
 | 2007 | `eEGS_SELECT_CHAR_ACK` | 0x007AA4B0 | — | `SelectCharacterAck` |  |
@@ -36,7 +36,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2014 | `eEGS_DELETE_CHARACTER_REQ` | — | `frontend.py` (`handle_delete_character`) | `DeleteCharacterReq` | Opcode 2014 (eEGS_DELETE_CHARACTER_REQ) -> 2015 (eEGS_DELETE_CHARACTER_ACK). |
 | 2015 | `eEGS_DELETE_CHARACTER_ACK` | 0x00758370 | — | `DeleteCharacterAck` |  |
 | 2016 | `eEGS_ENTER_MAPTOOL_REQ` | — | `square.py` (`handle_enter_maptool`) | — | Opcode 2016 (eEGS_ENTER_MAPTOOL_REQ) -> 2017 (eEGS_ENTER_MAPTOOL_ACK). |
-| 2017 | `eEGS_ENTER_MAPTOOL_ACK` | 0x00757D20 | — | — |  |
+| 2017 | `eEGS_ENTER_MAPTOOL_ACK` | 0x00757D20 | — | `EnterMaptoolAck` |  |
 | 2019 | `eEGS_LEAVE_MAPTOOL_ACK` | 0x00757EC0 | — | — |  |
 | 2020 | `eEGS_CLOSE_CONNECTION_NOT` | 0x007536A0 | — | `CloseConnectionNot` |  |
 | 2021 | `eEGS_SQUARELIST_REQ` | — | `frontend.py` (`handle_get_square_list`) | — | Opcode 2021 (eEGS_SQUARELIST_REQ) -> 2022 (eEGS_SQUARELIST_ACK). |
@@ -117,11 +117,11 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2099 | `eEGS_CHEAT_QUEST_START_REQ` | — | `gm.py` (`handle_cheat_quest_start`) | `CheatQuestStartReq` | 2099 -> 2074: queststart |
 | 2100 | `eEGS_CHEAT_QUEST_START_ACK` | — | `social/party.py` (`handle_legacy_party_invite`) | — | Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK). |
 | 2101 | `eEGS_CHEAT_INSERT_COIN_REQ` | — | `gm.py` (`handle_cheat_insert_coin`) | `CheatInsertCoinReq` | 2101 -> 2102 (0x004ECD30: u32 result, i16 sTotalRebirthCoin) + 2286 |
-| 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | `social/party.py` (`handle_party_join`) | — | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
+| 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | `social/party.py` (`handle_party_join`) | `CheatInsertCoinAck` | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
 | 2103 | `eEGS_CHEAT_INSERT_AR_REQ` | — | `gm.py` (`handle_cheat_insert_ar`) | `CheatInsertArReq` | 2103 -> 2104 (0x004ECEA0: u32 result, i64 nCurAr): ar <amount> |
-| 2104 | `eEGS_CHEAT_INSERT_AR_ACK` | — | `social/party.py` (`handle_party_leave`) | — | Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK). |
+| 2104 | `eEGS_CHEAT_INSERT_AR_ACK` | — | `social/party.py` (`handle_party_leave`) | `CheatInsertArAck` | Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK). |
 | 2105 | `eEGS_CHEAT_INSERT_AP_REQ` | — | `gm.py` (`handle_cheat_insert_ap`) | `CheatInsertApReq` | 2105 -> 2106 (0x004CE620: u32 result): ap <amount> |
-| 2106 | `eEGS_CHEAT_INSERT_AP_ACK` | — | `social/party.py` (`handle_party_kick`) | — | Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK). |
+| 2106 | `eEGS_CHEAT_INSERT_AP_ACK` | — | `social/party.py` (`handle_party_kick`) | `CheatInsertApAck` | Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK). |
 | 2107 | `eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_REQ` | — | `gm.py` (`handle_cheat_delete_all_inven_item`) | `CheatDeleteAllInvenItemReq` | 2107 -> 2108 (0x004E4430): clearbag |
 | 2108 | `eEGS_CHEAT_DELETE_ALL_INVEN_ITEM_ACK` | — | — | `CheatDeleteAllInvenItemAck` |  |
 | 2109 | `eEGS_INSERT_AP_NOT` | 0x00790480 | — | `InsertApNot` |  |
@@ -134,7 +134,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2116 | `eEGS_ITEM_UPGRADE_ACK` | 0x007909C0 | — | `ItemUpgradeAck` |  |
 | 2117 | `eEGS_UPDATE_SKILL_LOCKED_REQ` | — | `skills.py` (`handle_update_skill_locked`) | `UpdateSkillLockedReq` | eEGS_UPDATE_SKILL_LOCKED_REQ (0x00790000.c:1390) -> 2118 eEGS_UPDATE_SKILL_LOCKED_ACK (0x00752C70). |
 | 2118 | `eEGS_UPDATE_SKILL_LOCKED_ACK` | 0x00752C70 | — | `UpdateSkillLockedAck` |  |
-| 2119 | `eEGS_ALARM_UPDATE_REQ` | — | `inventory/items.py` (`handle_alarm_update`) | — | Opcode 2119 (eEGS_ALARM_UPDATE_REQ) -> 2120 (eEGS_ALARM_UPDATE_ACK): acknowledge alarm flags. |
+| 2119 | `eEGS_ALARM_UPDATE_REQ` | — | `inventory/items.py` (`handle_alarm_update`) | `AlarmUpdateReq` | Opcode 2119 (eEGS_ALARM_UPDATE_REQ) -> 2120 (eEGS_ALARM_UPDATE_ACK): acknowledge alarm flags. |
 | 2120 | `eEGS_ALARM_UPDATE_ACK` | 0x00771150 | — | `AlarmUpdateAck` |  |
 | 2121 | `eEGS_CONTRACT_UPDATE_REQ` | — | `commerce/cash_shop.py` (`handle_contract_update`) | `ContractUpdateReq` | eEGS_CONTRACT_UPDATE_REQ -> 2122 eEGS_CONTRACT_UPDATE_ACK (0x00752D80). |
 | 2122 | `eEGS_CONTRACT_UPDATE_ACK` | 0x00752D80 | — | `ContractUpdateAck` |  |

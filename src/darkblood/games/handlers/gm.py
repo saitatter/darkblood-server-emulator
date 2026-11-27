@@ -93,6 +93,9 @@ from darkblood.games.network.messages.gm import (
 )
 from darkblood.games.progression import level_up_not
 from darkblood.games.network.messages import (
+    CheatInsertApAck,
+    CheatInsertArAck,
+    CheatInsertCoinAck,
     ItemUpgradeAck,
     MarkItemActiveNot,
     MarkTabActiveNot,
@@ -213,8 +216,8 @@ class GmHandlers(BaseDomainService):
         if char is not None:
             total = apply_rebirth_coins_delta(char, req.coins)
             self.save_char()
-        await self.transport.send_event(event(2102, struct.pack('<Ih', 0, min(total, 32767)), correlation),
-                                        note=f'cheat insert coin ack (total={total})')
+        await self.reply(CheatInsertCoinAck(total_coins=min(total, 32767)), correlation,
+                         note=f'cheat insert coin ack (total={total})')
         await self.send_msg(RebirthCoinChangeNot(result=0, coins=min(total, 32767)),
                             note=f'cheat rebirth coin not ({total})')
 
@@ -227,8 +230,8 @@ class GmHandlers(BaseDomainService):
         if char is not None:
             cur_ar = apply_ar_delta(char, req.amount)
             self.save_char()
-        await self.transport.send_event(event(2104, struct.pack('<Iq', 0, cur_ar), correlation),
-                                        note=f'cheat insert ar ack (ar={cur_ar})')
+        await self.reply(CheatInsertArAck(cur_ar=cur_ar), correlation,
+                         note=f'cheat insert ar ack (ar={cur_ar})')
 
     @packet_handler(CheatInsertApReq)
     async def handle_cheat_insert_ap(self, correlation: int, body: bytes):
@@ -238,8 +241,8 @@ class GmHandlers(BaseDomainService):
         if char is not None:
             apply_ap_delta(char, req.amount)
             self.save_char()
-        await self.transport.send_event(event(2106, struct.pack('<I', 0), correlation),
-                                        note=f'cheat insert ap ack (added={req.amount})')
+        await self.reply(CheatInsertApAck(), correlation,
+                         note=f'cheat insert ap ack (added={req.amount})')
 
     @packet_handler(CheatDeleteAllInvenItemReq)
     async def handle_cheat_delete_all_inven_item(self, correlation: int, body: bytes):
