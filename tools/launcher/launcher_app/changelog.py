@@ -98,7 +98,10 @@ def _parse_github_commit_items(items, limit=None):
         c = item.get('commit', {})
         gh_author = item.get('author') or {}
         c_author = c.get('author') or {}
-        subject = (c.get('message', '') or '').splitlines()[0]
+        message = (c.get('message') or '').strip()
+        if not message:
+            continue
+        subject = message.splitlines()[0]
         if '[skip ci]' in subject or 'github-actions[bot]' in (c_author.get('name', '') or '').lower():
             continue
         author = _resolve_github_username(
