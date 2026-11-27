@@ -468,11 +468,13 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         """
         req = QuestFailReq.decode(body)
         char = self.current_char()
+        special_info = QuestSpecialInfo()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
+            special_info = self._clear_temp_skills_for_quest(char, req.quest_id)
             self.save_char()
         self.transport.record('quest-fail', body, quest_id=req.quest_id)
-        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [])
+        ack = QuestFailAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [], info=special_info)
         await self.reply(ack, correlation, note=f'quest fail ack ({req.quest_id:#010x})')
 
     @packet_handler(QuestDiscardReq)
@@ -480,12 +482,14 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
         """Opcode 2090 (eEGS_QUEST_DISCARD_REQ) -> 2091 (eEGS_QUEST_DISCARD_ACK): discard an active quest."""
         req = QuestDiscardReq.decode(body)
         char = self.current_char()
+        special_info = QuestSpecialInfo()
         if char and str(req.quest_id) in char.get('quests_active', {}):
             del char['quests_active'][str(req.quest_id)]
+            special_info = self._clear_temp_skills_for_quest(char, req.quest_id)
             self.save_char()
         self.transport.record('quest-discard', body, quest_id=req.quest_id)
         await self.reply(
-            QuestDiscardAck(result=0, quest_ids=[req.quest_id] if req.quest_id else []),
+            QuestDiscardAck(result=0, quest_ids=[req.quest_id] if req.quest_id else [], info=special_info),
             correlation, note=f'quest discard ack ({req.quest_id:#010x})',
         )
 
