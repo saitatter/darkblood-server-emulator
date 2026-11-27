@@ -701,7 +701,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2139 eEGS_FRIEND_LIST_ADD_REQ` (`0x00790000.c:1595`) -> `2140 eEGS_FRIEND_LIST_ADD_ACK` (`0x007591A0`):
   `char_name: wstring` -> `result: i32` (0xCE player offline / not found).
 - `2135 eEGS_FRIEND_LIST_DELETE_REQ` (`0x00790000.c:1824`) -> `2136 eEGS_FRIEND_LIST_DELETE_ACK` (`0x00759560`):
-  `char_uid: i64` -> `result: i32, char_uid: i64`.
+  `char_uid: i64` -> `result: i32, char_uid: i64`. Removing a friend clears the memo associated with that entry.
 - `2221 eEGS_POST_SEND_REQ` (`0x00795D70`) -> `2222 eEGS_POST_SEND_ACK` (`0x00795F40`):
   Sends mail: `result: i32 (0), items: tag 0x10 vector`.
 - `2223 eEGS_POST_READ_REQ` (`0x007963C0`) -> `2224 eEGS_POST_READ_ACK` (`0x0075A660`):

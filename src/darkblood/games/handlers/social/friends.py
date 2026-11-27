@@ -188,6 +188,7 @@ class FriendsHandlers:
         char = self.current_char()
         if char and req.char_uid in char.get('friends', []):
             char['friends'].remove(req.char_uid)
+            char.get('friend_memos', {}).pop(str(req.char_uid), None)
             self.save_char()
         ack = FriendListDeleteAck(result=0, char_uid=req.char_uid)
         await self.reply(ack, correlation, note=f'friend delete ack ({req.char_uid})')
