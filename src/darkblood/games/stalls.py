@@ -116,8 +116,6 @@ class PersonalShopManager:
                 if inv_item.get('count', 1) < count:
                     return False, f"Insufficient quantity of item {uid}", None
 
-                # Flag item as listed in stall
-                inv_item['in_stall'] = True
                 stall_items[uid] = StallItemData(
                     item_uid=uid,
                     code=inv_item.get('code', ''),
@@ -150,7 +148,7 @@ class PersonalShopManager:
 
     def close_stall(self, owner_uid: int, char: Optional[dict] = None,
                     store: Optional[any] = None) -> Tuple[bool, list]:
-        """Close stall and unflag unsold items in owner inventory."""
+        """Close the stall and return the unsold inventory items."""
         with self.lock:
             stall = self.stalls.pop(owner_uid, None)
             if not stall:
@@ -159,10 +157,9 @@ class PersonalShopManager:
             returned_items = []
             if char:
                 char_items = char.get('items', [])
-                for uid, item_data in stall.items.items():
+                for uid in stall.items:
                     inv_item = next((i for i in char_items if i.get('uid') == uid), None)
                     if inv_item:
-                        inv_item.pop('in_stall', None)
                         returned_items.append(inv_item)
                 if store:
                     _persist_chars(store, [owner_uid])

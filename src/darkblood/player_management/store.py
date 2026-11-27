@@ -92,7 +92,7 @@ class SqliteCharacterStore(ICharacterStore):
         return False
 
     def refresh_all_timers(self, now=None, refresher=None):
-        """Reconcile persisted wall-clock timers across all characters on DB load / startup."""
+        """Reconcile persisted timers and remove legacy stall flags at startup."""
         fn = refresher or self._timer_refresher
         now = time.time() if now is None else float(now)
         changed = False
@@ -102,6 +102,10 @@ class SqliteCharacterStore(ICharacterStore):
             if del_ts and float(del_ts) <= now:
                 expired_deletes.append((account, char['id']))
                 continue
+            for item in char.get('items', []):
+                if 'in_stall' in item:
+                    del item['in_stall']
+                    changed = True
             if fn is not None and fn(char, now=now):
                 changed = True
         for account, char_id in expired_deletes:

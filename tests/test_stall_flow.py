@@ -104,6 +104,7 @@ class StallFlowTest(ServerTestCase):
                 self.assertEqual(stall.title, 'Rare Potions Stall')
                 self.assertIn(item_uid, stall.items)
                 self.assertEqual(stall.items[item_uid].price, 3000)
+                self.assertNotIn('in_stall', seller_char['items'][0])
 
                 # 4. Buyer browses seller stall products via Opcode 6021
                 browse_req = PersonalShopGetProductsReq(seller_uid=seller_id).encode()
@@ -140,6 +141,9 @@ class StallFlowTest(ServerTestCase):
 
                 # Stall stock reduced: 2 -> 1
                 self.assertEqual(stall.items[item_uid].count, 1)
+                client1.send_event(2006, struct.pack('<iQ', 0x7fffffff, seller_id))
+                _, selected = await client1.expect_event(2007)
+                self.assertEqual(struct.unpack_from('<i', selected)[0], 0)
 
                 # 6. Seller closes stall via Opcode 2342
                 close_req = PersonalShopCloseReq(owner_uid=seller_id).encode()
@@ -152,6 +156,12 @@ class StallFlowTest(ServerTestCase):
 
                 # Stall removed from active manager
                 self.assertIsNone(PersonalShopManager.get().get_stall(seller_id))
+
+                # An older store may still contain a persisted listing flag.
+                seller_updated['items'][0]['in_stall'] = True
+                store.save_char('OfflinePlayer', seller_id)
+                store.refresh_all_timers()
+                self.assertNotIn('in_stall', seller_updated['items'][0])
 
             finally:
                 await client2.close()
