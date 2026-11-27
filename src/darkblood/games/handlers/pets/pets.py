@@ -179,7 +179,12 @@ class PetCoreHandlersMixin:
                 wire_items.append(Item(owner=UPDATE_OWNER, **egg))
 
         pets = char.setdefault('pets', [])
-        new_uid = req.pet_uid if req.pet_uid else (len(pets) + 1)
+        existing_uids = {int(pet['uid']) for pet in pets}
+        new_uid = req.pet_uid
+        if not new_uid or new_uid in existing_uids:
+            new_uid = max(existing_uids, default=0) + 1
+        occupied_slots = {pet.get('slot', -1) for pet in pets}
+        slot = next(index for index in range(-1, len(pets) + 1) if index not in occupied_slots)
         pet_code = 'PetCall001'
         new_pet = {
             'uid': new_uid,
@@ -188,7 +193,7 @@ class PetCoreHandlersMixin:
             'level': 1,
             'exp': 0,
             'satiety': 100,
-            'slot': -1,
+            'slot': slot,
         }
         pets.append(new_pet)
         self.save_char()

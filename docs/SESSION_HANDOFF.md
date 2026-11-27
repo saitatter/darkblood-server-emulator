@@ -116,7 +116,7 @@
 - **Pet Egg hatching (`2464 -> 2465 PetCreateAck`, PR #24 / Issue #15 item 4 — live-verified)**:
   - Recovered `PetInfo` (`0x00A52CF0`, ctor `0x005014D0`) and `2465 PetCreateAck` (`0x0079E620`, assert `0x00CFD628`: `vecItem >> nItemID >> jNewPetInfo`).
   - Previously `PetCreateAck` sent 52 zero bytes (`raw[52]`), causing `0x00A52CF0` to fail deserialization and abort without consuming the egg or creating the pet.
-  - `handle_pet_create` now consumes 1 Pet Egg item (emitting a zero-count tombstone in `vecItem` and `jhash(egg_code)` as `item_id`) and sends a valid `PetInfo` (`PetCall001`), triggering inventory/quickslot/pet UI refresh and opening page `0x7C`.
+  - `handle_pet_create` now consumes 1 Pet Egg item (emitting a zero-count tombstone in `vecItem` and `jhash(egg_code)` as `item_id`) and sends a valid `PetInfo` (`PetCall001`), triggering inventory/quickslot/pet UI refresh and opening page `0x7C`. Hatching multiple eggs from one stack assigns distinct pet UIDs and slots.
 - **Quickslot refresh on item deletion (`2040 -> 2041`, PR #24 — live-verified)**:
   - Client `0x00557420` (`2041 DeleteItemAck`) only refreshes UI `0` (Inventory) and omits UI `7` (Quickslot).
   - `handle_delete_item` (`src/darkblood/games/handlers/inventory/items.py`) now follows successful `2041` replies with an unsolicited empty `2037 DragItemAck(result=0, items=[])` (`0x0077F570` refreshes `[0, 7, 2, 0xc, 0xe]`) and clears UID-bound quickslots (`type == 0, ref_uid == req.item_uid`) on full deletion via `2045 AssignQuickslotAck(ref_id=-1, ref_uid=-1)`.
