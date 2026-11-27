@@ -311,9 +311,11 @@ class QuestHandlers(QuestNpcHandlers, BaseDomainService):
                 done.append(quest_id)
             char['gold'] = total
             await self.grant_exp(char, exp)
-            _take_quest_items(char, quest_id)
-            from darkblood.player_management.characters import add_reward_items
-            reward_items = [] if already else add_reward_items(char, items)
+            reward_items = []
+            if not already:
+                _take_quest_items(char, quest_id)
+                from darkblood.player_management.characters import add_reward_items
+                reward_items = add_reward_items(char, items)
             self.save_char()
         else:
             reward_items = []
