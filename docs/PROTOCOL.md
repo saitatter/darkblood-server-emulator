@@ -660,7 +660,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 
 ### Store, Skills & Social Opcodes (2026-11-16)
 
-- `2032 eEGS_CHANGE_BAG_NAME_REQ` (`0x007528B0`) -> `2033 eEGS_CHANGE_BAG_NAME_ACK`: `bag_uid: i64, name: wstring` -> `result: i32, bag_uid: i64, name: wstring`.
+- `2032 eEGS_CHANGE_BAG_NAME_REQ` (`0x007528B0`) -> `2033 eEGS_CHANGE_BAG_NAME_ACK`: `bag_uid: i64, name: wstring` -> `result: i32, bag_uid: i64, name: wstring`. The saved name is in the bag entry of `2007`.
 - `2117 eEGS_UPDATE_SKILL_LOCKED_REQ` (`0x00790000.c:1390`) -> `2118 eEGS_UPDATE_SKILL_LOCKED_ACK` (`0x00752C70`): `skill_index: i16, locked: bool` -> `result: i32, skill_index: i16, locked: bool`.
 - `2145 eEGS_DURABILITY_REPAIR_REQ` (`0x00790000.c:2123`) -> `2146 eEGS_DURABILITY_REPAIR_ACK` (`0x007930D0`): tag 0x17 map -> `result: i32, b'\x17\x80' (empty map), remain_gold: i64`. An unaffordable repair returns `NOT_ENOUGH_AR` (`168`) and leaves the item unchanged.
 - `2115 eEGS_ITEM_UPGRADE_REQ` (`0x00790000.c:296`) -> `2116 eEGS_ITEM_UPGRADE_ACK` (`0x007909C0`): `target: i64, catalyst: i64, protect: i64` -> `result: i32` (1 rejection).
