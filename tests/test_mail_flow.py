@@ -178,6 +178,39 @@ class MailFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_returned_mail_stays_in_the_inbox(self):
+        from darkblood.games.network import results
+        from darkblood.games.session import GameSession
+
+        async def scenario(client):
+            await lobby_flow(client)
+            ids = []
+            for name in ('ReturnSender', 'ReturnReceiver'):
+                client.send_event(2012, create_request(name))
+                _, created = await client.expect_event(2013)
+                ids.append(struct.unpack_from('<Q', created, 10)[0])
+            sender, receiver = ids
+            store = GameSession.store()
+            mail_uid = store.send_mail(sender, 'ReturnSender', receiver, 'Mail to return', gold=1000)
+            request = PostReturnReq(mail_id=mail_uid).encode()
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, receiver))
+            await client.expect_event(2007)
+            client.send_event(2234, request)
+            _, returned = await client.expect_event(2235)
+            self.assertEqual(struct.unpack_from('<i', returned)[0], 0)
+
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, sender))
+            await client.expect_event(2007)
+            client.send_event(2234, request)
+            _, refused = await client.expect_event(2235)
+            self.assertEqual(refused, struct.pack('<i', results.INVALID_STATE))
+            inbox = store.get_mail_inbox(sender)
+            self.assertEqual([(mail['uid'], mail['gold']) for mail in inbox], [(mail_uid, 1000)])
+            self.assertFalse(store.get_mail_inbox(receiver))
+
+        self.run_async(self.with_server(scenario))
+
     def test_mail_multi_item_and_error_handling(self):
         """Test mail with multiple items, error cases (unknown recipient, insufficient gold)."""
         async def scenario(client):

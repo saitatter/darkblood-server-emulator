@@ -282,10 +282,12 @@ class SocialFlowTest(ServerTestCase):
             _, ack2186 = await client.expect_event(2186)
             self.assertEqual(struct.unpack_from('<i', ack2186)[0], 0)
 
-            # 48. Post return (2234 -> 2235)
+            # 48. Post return after the message is gone (2234 -> 2235).
+            from darkblood.games.network import results
+
             client.send_event(2234, PostReturnReq(mail_id=12345).encode())
             _, ack2235 = await client.expect_event(2235)
-            self.assertEqual(struct.unpack_from('<i', ack2235[:4])[0], 0)
+            self.assertEqual(ack2235, struct.pack('<i', results.INVALID_STATE))
 
         self.run_async(self.with_server(scenario))
 

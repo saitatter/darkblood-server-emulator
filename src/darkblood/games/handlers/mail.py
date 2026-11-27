@@ -228,7 +228,10 @@ class MailHandlers(BaseDomainService):
         # eEGS_POST_RETURN_REQ (0x00A33907) -> 2235 eEGS_POST_RETURN_ACK (0x00771470).
         req = PostReturnReq.decode(body)
         self.transport.record('post-return-req', body, mail_id=req.mail_id)
-        self.store().return_mail(req.mail_id)
+        if not self.store().return_mail(req.mail_id, self.char_id):
+            await self.reply(PostReturnAck(result=results.INVALID_STATE), correlation,
+                             note=f'post return refused (mail={req.mail_id})')
+            return
         ack = PostReturnAck(result=0, mail_uids=[req.mail_id])
         await self.reply(ack, correlation, note=f'post return ack (mail={req.mail_id})')
 
