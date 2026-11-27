@@ -379,19 +379,22 @@ class SkillHandlers(BaseDomainService):
         old_idx = str(char.get('dual_skill_index', 0))
         new_idx = str(req.dual_skill_index)
         sets = char.setdefault('dual_skill_sets', {})
-        # Save current active build into its slot before switching
+        active_skills = char.get('skills', {})
+        # Life skills are character-wide. Each page stores only its own skills.
         sets[old_idx] = {
-            'skills': dict(char.get('skills', {})),
+            'skills': {k: v for k, v in active_skills.items()
+                       if int(k) not in LIFE_SKILL_TO_PROFICIENCY},
             'quickslots': dict(char.get('quickslots', {})),
             'sp': int(char.get('sp', 0)),
         }
         life_skills = {
-            k: v for k, v in char.get('skills', {}).items()
+            k: v for k, v in active_skills.items()
             if int(k) in LIFE_SKILL_TO_PROFICIENCY
         }
         if new_idx in sets:
             target = sets[new_idx]
-            merged = dict(target.get('skills', {}))
+            merged = {k: v for k, v in target.get('skills', {}).items()
+                      if int(k) not in LIFE_SKILL_TO_PROFICIENCY}
             merged.update(life_skills)
             char['skills'] = merged
             char['quickslots'] = dict(target.get('quickslots', {}))
