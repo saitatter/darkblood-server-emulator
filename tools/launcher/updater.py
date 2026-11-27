@@ -533,7 +533,7 @@ def apply_update(root: Path = ROOT, on_progress=None) -> UpdateResult:
         current_ver = current_installed_version(root)
         if not is_newer_version(current_ver, info.version):
             return UpdateResult(
-                ok=True, mode='release', old_version=current_ver, new_version=info.version,
+                ok=True, mode='release', old_version=current_ver, new_version=current_ver,
                 message=f'Already up to date ({current_ver or info.version}).',
             )
         with tempfile.TemporaryDirectory(prefix='darkblood_update_') as tmp_dir:

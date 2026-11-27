@@ -162,6 +162,22 @@ class ReleaseUpdaterTest(unittest.TestCase):
             self.assertEqual(updater.cleanup_old_binaries(root), 1)
             self.assertFalse((root / f'{updater.LAUNCHER_EXE_NAME}.old').exists())
 
+    def test_older_release_keeps_the_reported_installed_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            version_file = root / '.version'
+            version_file.write_text('v0.2.0', encoding='utf-8')
+            info = updater.ReleaseInfo(version='v0.1.0', zip_url='https://example.invalid/release.zip')
+
+            with patch.object(updater, 'fetch_latest_release', return_value=info), \
+                 patch.object(updater, '_download_to_file') as download:
+                result = updater.apply_update(root)
+
+            download.assert_not_called()
+            self.assertTrue(result.ok)
+            self.assertEqual((result.old_version, result.new_version), ('v0.2.0', 'v0.2.0'))
+            self.assertEqual(version_file.read_text(encoding='utf-8'), 'v0.2.0')
+
     def test_dev_checkout_disables_self_updater(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
