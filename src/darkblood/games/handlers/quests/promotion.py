@@ -1,6 +1,7 @@
 """Class-promotion trial quests: temporary skills on start, removal on give-up, class switch on completion."""
 from darkblood.games.game_data.client_dict import quest_promotion_class, quest_temp_skill_index
 from darkblood.games.handlers.quests.wire import to_i32
+from darkblood.games.handlers.skills import LIFE_SKILL_TO_PROFICIENCY, learned_skill_map
 from darkblood.games.network.messages import LearnSkillAck, PromotionNot, QuestSpecialInfo
 from darkblood.games.progression import total_ap
 from darkblood.player_management.characters import gold_of
@@ -78,15 +79,21 @@ class QuestPromotionHandlers:
         return info
 
     async def _promote_after_quest(self, char, quest_id):
-        """Final class-promotion quests switch the class, reset skills and refund AP (2283)."""
+        """Final class-promotion quests switch the class, reset combat skills and refund AP (2283).
+
+        Life skills (professions) are kept and sent back in the learned-skill map.
+        """
         promo_class = quest_promotion_class(quest_id)
         cur_class = int(char.get('char_class', 0))
         if promo_class is None or (cur_class & 0x0F) != (promo_class & 0x0F) or cur_class == promo_class:
             return
         new_sp = total_ap(char)
-        char.update(char_class=promo_class, sp=new_sp, total_ap=new_sp, skills={}, locked_skills=[],
-                    skill_show_cooltime=[])
+        life_skills = {key: level for key, level in char.get('skills', {}).items()
+                       if int(key) in LIFE_SKILL_TO_PROFICIENCY}
+        char.update(char_class=promo_class, sp=new_sp, total_ap=new_sp, skills=life_skills,
+                    locked_skills=[], skill_show_cooltime=[])
         char.pop('temp_skills', None)
         self.save_char()
-        await self.send_msg(PromotionNot(result=0, new_class=promo_class, sp=new_sp, skills={}),
+        await self.send_msg(PromotionNot(result=0, new_class=promo_class, sp=new_sp,
+                                         skills=learned_skill_map(life_skills)),
                             note=f'promotion not (class {cur_class:#x} -> {promo_class:#x}, sp={new_sp})')
