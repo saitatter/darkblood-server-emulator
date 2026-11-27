@@ -3,7 +3,53 @@ import struct
 
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.network.messages import FriendBlockListRequestAck, FriendEntry, FriendListAck
+from darkblood.games.network.messages import (
+    AchieveCompleteNot,
+    AchieveCompletion,
+    AchieveDivUpdateReq,
+    AchieveEntry,
+    AchieveGetListAck,
+    AchieveUpdateReq,
+    ArenaBackToSquareAck,
+    BanishUserAck,
+    BanishUserReq,
+    CharNickChangeAck,
+    CharNickChangeReq,
+    FriendBlockEntry,
+    FriendBlockListAddAck,
+    FriendBlockListAddReq,
+    FriendBlockListDeleteAck,
+    FriendBlockListDeleteReq,
+    FriendBlockListRequestAck,
+    FriendBlockListUpdateAck,
+    FriendBlockListUpdateReq,
+    FriendEntry,
+    FriendListAck,
+    FriendListAddAck,
+    FriendListAddReq,
+    FriendListDeleteAck,
+    FriendListDeleteReq,
+    FriendListUpdateAck,
+    FriendListUpdateReq,
+    GetInviteListAck,
+    GetInviteListReq,
+    GuildSkillEntry,
+    KeyboardSetCustomKeyAck,
+    KeyboardSetCustomKeyReq,
+    LeagueArenaCharInfo,
+    RequestCharInfoAck,
+    RequestCharInfoByNickReq,
+    RequestCharInfoReq,
+    RequestItemInfoAck,
+    RequestItemInfoReq,
+    RoomMemberInfo,
+    SecondPassAuthAck,
+    SecondPassCreateAck,
+    SecondPassModifyAck,
+    TitleChangeAck,
+    TitleChangeReq,
+    WatchEventSeenAck,
+)
 
 
 class FriendsHandlers:
@@ -24,7 +70,6 @@ class FriendsHandlers:
 
     def _friend_entry(self, uid):
         """FriendEntry for a character of any account, or None."""
-        from darkblood.games.network.messages import FriendEntry
         from darkblood.games.world import GameWorldManager
         world = GameWorldManager.get()
         owner = self.current_char() or {}
@@ -83,7 +128,6 @@ class FriendsHandlers:
     async def handle_get_invite_list(self, correlation, body):
         # eEGS_GET_INVITELIST_REQ (Find user) -> 2025 eEGS_GET_INVITELIST_ACK
         # (0x006A2E10): the other online players that match the search.
-        from darkblood.games.network.messages import GetInviteListAck, GetInviteListReq, RoomMemberInfo
         from darkblood.games.world import SQUARE_UID_MASK, GameWorldManager, square_uid
         try:
             req = GetInviteListReq.decode(body)
@@ -118,7 +162,6 @@ class FriendsHandlers:
     @packet_handler(2139)
     async def handle_friend_list_add(self, correlation, body):
         # eEGS_FRIEND_LIST_ADD_REQ (0x00790000.c:1595) -> 2140 eEGS_FRIEND_LIST_ADD_ACK (0x007591A0).
-        from darkblood.games.network.messages import FriendListAddAck, FriendListAddReq
         req = FriendListAddReq.decode(body)
         self.transport.record('friend-add', body, name=req.char_name)
         char = self.current_char()
@@ -137,7 +180,6 @@ class FriendsHandlers:
     @packet_handler(2135)
     async def handle_friend_list_delete(self, correlation, body):
         # eEGS_FRIEND_LIST_DELETE_REQ (0x00790000.c:1824) -> 2136 eEGS_FRIEND_LIST_DELETE_ACK (0x00759560).
-        from darkblood.games.network.messages import FriendListDeleteAck, FriendListDeleteReq
         req = FriendListDeleteReq.decode(body)
         self.transport.record('friend-delete', body, char_uid=req.char_uid)
         char = self.current_char()
@@ -151,7 +193,6 @@ class FriendsHandlers:
     @packet_handler(2133)
     async def handle_friend_list_update(self, correlation, body):
         # eEGS_FRIEND_LIST_UPDATE_REQ (0x00790000.c:1735) -> 2134 eEGS_FRIEND_LIST_UPDATE_ACK (0x00752E80).
-        from darkblood.games.network.messages import FriendListUpdateAck, FriendListUpdateReq
         req = FriendListUpdateReq.decode(body)
         self.transport.record('friend-update-req', body, char_uid=req.char_uid, comment=req.comment)
         char = self.current_char()
@@ -165,7 +206,6 @@ class FriendsHandlers:
     @packet_handler(2310)
     async def handle_char_nick_change(self, correlation, body):
         # eEGS_CHAR_NICK_CHANGE_REQ -> 2311 eEGS_CHAR_NICK_CHANGE_ACK (0x00780200).
-        from darkblood.games.network.messages import CharNickChangeAck, CharNickChangeReq
         req = CharNickChangeReq.decode(body)
         new_name = req.new_name.strip()
         self.transport.record('char-nick-change-req', body, new_name=new_name)
@@ -180,7 +220,6 @@ class FriendsHandlers:
     @packet_handler(2319)
     async def handle_keyboard_set_custom_key(self, correlation, body):
         # eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ (0x0045FC10) -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960).
-        from darkblood.games.network.messages import KeyboardSetCustomKeyAck, KeyboardSetCustomKeyReq
         req = KeyboardSetCustomKeyReq.decode(body)
         self.transport.record('keyboard-set-custom-key-req', body, keys=req.keys)
         char = self.store().get(self.account, self.char_id)
@@ -194,7 +233,6 @@ class FriendsHandlers:
     @packet_handler(2335)
     async def handle_title_change(self, correlation, body):
         # eEGS_TITLE_CHANGE_REQ -> 2336 eEGS_TITLE_CHANGE_ACK (0x007751C0).
-        from darkblood.games.network.messages import TitleChangeAck, TitleChangeReq
         req = TitleChangeReq.decode(body)
         self.transport.record('title-change-req', body, title_id=req.title_id)
         ack = TitleChangeAck(result=0, title_id=req.title_id)
@@ -205,7 +243,6 @@ class FriendsHandlers:
     async def handle_achieve_get_list(self, correlation, body):
         # eEGS_ACHIEVE_GET_LIST_REQ -> 2328 eEGS_ACHIEVE_GET_LIST_ACK (0x0079D650).
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveCompletion, AchieveGetListAck
         char = self.current_char() or {}
         divisions, completed = achievements.total_info(char)
         ack = AchieveGetListAck(divisions=divisions, completed=completed,
@@ -218,7 +255,6 @@ class FriendsHandlers:
         # eEGS_ACHIEVE_UPDATE_REQ (sender 0x007992D0): vector of u32 achievement
         # hashes completed client-side -> 2445 (u32 result, 0x0074B830), then 2330.
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveCompleteNot, AchieveCompletion, AchieveEntry, AchieveUpdateReq
         self.transport.record('achieve-update', body)
         char = self.current_char()
         completed = []
@@ -241,7 +277,6 @@ class FriendsHandlers:
         # eEGS_ACHIEVE_DIV_UPDATE_REQ (per-run division amounts) -> 2447
         # (0x0074B830 reads only the u32 result), then 2330 for completions.
         from darkblood.games import achievements
-        from darkblood.games.network.messages import AchieveCompleteNot, AchieveCompletion, AchieveDivUpdateReq, AchieveEntry
         self.transport.record('achieve-div-update', body)
         char = self.current_char()
         completed = []
@@ -262,7 +297,6 @@ class FriendsHandlers:
     @packet_handler(5165)
     async def handle_arena_back_to_square(self, correlation, body):
         # eERC_ARENA_BACK_TO_SQUARE_REQ -> 5166 eERC_ARENA_BACK_TO_SQUARE_ACK (0x00758550).
-        from darkblood.games.network.messages import ArenaBackToSquareAck
         ack = ArenaBackToSquareAck(result=0)
         await self.reply(ack, correlation, note='arena back to square ack')
 
@@ -270,7 +304,6 @@ class FriendsHandlers:
     @packet_handler(5256)
     async def handle_second_pass_create(self, correlation, body):
         # eERC_SECOND_PASS_CREATE_REQ -> 5257 eERC_SECOND_PASS_CREATE_ACK (0x0075B020).
-        from darkblood.games.network.messages import SecondPassCreateAck
         ack = SecondPassCreateAck(result=0)
         await self.reply(ack, correlation, note='second pass create ack')
 
@@ -278,7 +311,6 @@ class FriendsHandlers:
     @packet_handler(5258)
     async def handle_second_pass_modify(self, correlation, body):
         # eERC_SECOND_PASS_MODIFY_REQ -> 5259 eERC_SECOND_PASS_MODIFY_ACK (0x0075B050).
-        from darkblood.games.network.messages import SecondPassModifyAck
         ack = SecondPassModifyAck(result=0)
         await self.reply(ack, correlation, note='second pass modify ack')
 
@@ -286,7 +318,6 @@ class FriendsHandlers:
     @packet_handler(5260)
     async def handle_second_pass_auth(self, correlation, body):
         # eERC_SECOND_PASS_AUTH_REQ -> 5261 eERC_SECOND_PASS_AUTH_ACK (0x0075B080).
-        from darkblood.games.network.messages import SecondPassAuthAck
         ack = SecondPassAuthAck(result=0)
         await self.reply(ack, correlation, note='second pass auth ack')
 
@@ -295,11 +326,6 @@ class FriendsHandlers:
         from darkblood.games.entities.character import Character
         from darkblood.games.entities.items import Item
         from darkblood.games.handlers.skills import learned_skill_map
-        from darkblood.games.network.messages import (
-            GuildSkillEntry,
-            LeagueArenaCharInfo,
-            RequestCharInfoAck,
-        )
         if target is None:
             return RequestCharInfoAck(result=0xCE)
         equipped = [Item.from_dict(it) for it in target.get('items', []) if it.get('container', 0) == 0]
@@ -354,7 +380,6 @@ class FriendsHandlers:
     @packet_handler(6011)
     async def handle_request_char_info(self, correlation, body):
         # eERT_REQUEST_CHAR_INFO_REQ -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0).
-        from darkblood.games.network.messages import RequestCharInfoReq
         req = RequestCharInfoReq.decode(body)
         self.transport.record('request-char-info-req', body, char_uid=req.char_uid)
         target_id = self.char_id_from_uid(req.char_uid)
@@ -366,7 +391,6 @@ class FriendsHandlers:
     @packet_handler(6028)
     async def handle_request_item_info(self, correlation, body):
         # eERT_REQUEST_ITEM_INFO_REQ -> 6029 eERT_REQUEST_ITEM_INFO_ACK (0x00766C20).
-        from darkblood.games.network.messages import RequestItemInfoAck, RequestItemInfoReq
         from darkblood.games.entities.items import Item
         from darkblood.games.network import results
         req = RequestItemInfoReq.decode(body)
@@ -387,9 +411,6 @@ class FriendsHandlers:
     @packet_handler(2565)
     async def handle_friend_block_list_add(self, correlation, body):
         # eEGS_FRIEND_BLOCK_LIST_ADD_REQ (0x007A2930) -> 2566 eEGS_FRIEND_BLOCK_LIST_ADD_ACK (0x0075B640).
-        from darkblood.games.network.messages.social import (
-            FriendBlockEntry, FriendBlockListAddAck, FriendBlockListAddReq,
-        )
         req = FriendBlockListAddReq.decode(body)
         self.transport.record('friend-block-add', body, name=req.char_name)
         char = self.current_char()
@@ -417,7 +438,6 @@ class FriendsHandlers:
     @packet_handler(2567)
     async def handle_friend_block_list_delete(self, correlation, body):
         # eEGS_FRIEND_BLOCK_LIST_DELETE_REQ (0x007A2C70) -> 2568 eEGS_FRIEND_BLOCK_LIST_DELETE_ACK (0x0075B9B0).
-        from darkblood.games.network.messages.social import FriendBlockListDeleteAck, FriendBlockListDeleteReq
         req = FriendBlockListDeleteReq.decode(body)
         self.transport.record('friend-block-delete', body, char_uid=req.char_uid)
         char = self.current_char()
@@ -431,7 +451,6 @@ class FriendsHandlers:
     @packet_handler(2571)
     async def handle_friend_block_list_update(self, correlation, body):
         # eEGS_FRIEND_BLOCK_LIST_UPDATE_REQ (0x007A2F20) -> 2572 eEGS_FRIEND_BLOCK_LIST_UPDATE_ACK (0x00753C80).
-        from darkblood.games.network.messages.social import FriendBlockListUpdateAck, FriendBlockListUpdateReq
         req = FriendBlockListUpdateReq.decode(body)
         self.transport.record('friend-block-update', body, char_uid=req.char_uid, memo=req.memo)
         char = self.current_char()
@@ -445,7 +464,6 @@ class FriendsHandlers:
     @packet_handler(2693)
     async def handle_watch_event_seen(self, correlation, body):
         # eEGS_WATCH_EVENTSEEN_REQ -> 2694 eEGS_WATCH_EVENTSEEN_ACK (0x00655800).
-        from darkblood.games.network.messages.social import WatchEventSeenAck
         self.transport.record('watch-event-seen-req', body)
         await self.reply(WatchEventSeenAck(result=0), correlation, note='watch event seen ack')
 
@@ -453,7 +471,6 @@ class FriendsHandlers:
     @packet_handler(5007)
     async def handle_banish_user(self, correlation, body):
         # eERC_BANISH_USER_REQ (0x005975D0) -> 5008 eERC_BANISH_USER_ACK (0x005999A0).
-        from darkblood.games.network.messages.social import BanishUserAck, BanishUserReq
         req = BanishUserReq.decode(body)
         target_id = self.char_id_from_uid(req.target_uid)
         self.transport.record('banish-user-req', body, target_uid=target_id)
@@ -485,7 +502,6 @@ class FriendsHandlers:
     @packet_handler(6018)
     async def handle_request_char_info_by_nick(self, correlation, body):
         # eERT_REQUEST_CHAR_INFO_BY_NICK_REQ (0x00790E10) -> 6012 eERT_REQUEST_CHAR_INFO_ACK (0x00790FA0).
-        from darkblood.games.network.messages.social import RequestCharInfoByNickReq
         req = RequestCharInfoByNickReq.decode(body)
         self.transport.record('request-char-info-by-nick', body, target_nick=req.target_nick)
         _, target = self.store().get_by_name(req.target_nick)

@@ -2,7 +2,6 @@
 import struct
 
 from darkblood.core.serialization.jser import WireError, event, read_varuint
-from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.game_data.client_dict import char_level_stat
 from darkblood.games.missions.quests import ActiveQuest
@@ -11,10 +10,13 @@ from darkblood.games.network.messages import (
     ActKairoAck,
     ActKairoReq,
     ChangeExpNot,
+    DragItemAck,
     GetQuestTagAck,
     GetQuestTagReq,
     KairoResult,
     LearnSkillAck,
+    MarkItemActiveNot,
+    MarkTabActiveNot,
     NpcMakingKairoAck,
     NpcMakingKairoReq,
     NpcSealItemAck,
@@ -30,8 +32,11 @@ from darkblood.games.network.messages import (
     QuestGiveupReq,
     QuestItemDropAck,
     QuestItemDropReq,
+    QuestObjective,
     QuestSpecialInfo,
     QuestStartAck,
+    QuestUpdateNot,
+    RoulettePointInsertNot,
     TutorialQuestStartAck,
 )
 from darkblood.games.progression import MAX_LEVEL, advance_level, level_up_not, total_ap
@@ -150,7 +155,6 @@ class QuestHandlers(BaseDomainService):
         go out as an unsolicited 2037 like floor pick-ups.
         """
         from darkblood.games.game_data.client_dict import item_groups, quests
-        from darkblood.games.network.messages import DragItemAck
         from darkblood.player_management.characters import add_reward_items
         group = (quests().get(quest_id) or {}).get('offer')
         offered = [(code, count) for code, _, count in item_groups().get(group or '', [])]
@@ -173,7 +177,6 @@ class QuestHandlers(BaseDomainService):
         if not char:
             return
         from darkblood.games.game_data.client_dict import quest_item_objectives, quest_mission_counts
-        from darkblood.games.network.messages import QuestObjective, QuestUpdateNot
         active = char.get('quests_active', {})
         if not active:
             return
@@ -253,7 +256,6 @@ class QuestHandlers(BaseDomainService):
                                 note=f'level up not (level={level_not.new_level})')
         if level_notifications and level >= 30:
             from darkblood.games.entities.character import mark_base_count
-            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
             new_base = max(int(char.get('mark_base_cnt', 0)), mark_base_count(level))
             if not char.get('mark_active') or new_base > int(char.get('mark_base_cnt', 0)):
                 char['mark_active'] = True
@@ -329,7 +331,6 @@ class QuestHandlers(BaseDomainService):
                 add_roulette_points,
                 contribute_roulette_jackpot,
             )
-            from darkblood.games.network.messages.commerce import RoulettePointInsertNot
             new_pts = add_roulette_points(char, 2)
             if gold > 0:
                 contribute_roulette_jackpot(gold)
@@ -396,7 +397,6 @@ class QuestHandlers(BaseDomainService):
         reported like kill counters: 2075 with (quest, objective, count).
         """
         from darkblood.games.game_data.client_dict import quest_mission_objectives
-        from darkblood.games.network.messages import QuestObjective, QuestUpdateNot
         from darkblood.core.serialization.jser import strip_prefix
         mission = ''
         try:

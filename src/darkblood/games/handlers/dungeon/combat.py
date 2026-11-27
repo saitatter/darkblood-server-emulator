@@ -19,6 +19,7 @@ from darkblood.games.network.messages import (
     QuestObjective,
     QuestUpdateNot,
     RebirthCoinChangeNot,
+    RoulettePointInsertNot,
 )
 from darkblood.games.network.messages.dungeon import (
     MonsterRegenAck,
@@ -117,7 +118,6 @@ class DungeonCombatHandlers:
         # Every member of the run gets the kill's EXP, score, roulette points and quest progress.
         from darkblood.games.handlers.commerce.stores import add_roulette_points
         from darkblood.games.handlers.pets.pets import grant_pet_exp
-        from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         for member, char in members:
             run = member.dungeon
             run.dungeon_kill_count = getattr(run, 'dungeon_kill_count', 0) + 1

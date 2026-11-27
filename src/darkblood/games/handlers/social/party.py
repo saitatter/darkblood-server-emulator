@@ -1,13 +1,49 @@
 """Party invites, joins, kicks and teaching/guide/summon handlers."""
 from darkblood.core.serialization.jser import WireError, event
 from darkblood.games.dispatcher import packet_handler
+from darkblood.games.network.messages import (
+    AcceptRequestTeachingAck,
+    AcceptRequestTeachingReq,
+    CreateRoomAck,
+    GuideDonelistUpdateAck,
+    GuideDonelistUpdateReq,
+    GuideWaitlistUpdateAck,
+    GuideWaitlistUpdateReq,
+    InviteUseNickReq,
+    LegacyPartyInviteReq,
+    PartyAcceptInviteAck,
+    PartyAcceptInviteNot,
+    PartyAcceptInviteReq,
+    PartyInviteAck,
+    PartyInviteNot,
+    PartyInviteReq,
+    PartyJoinAck,
+    PartyJoinReq,
+    PartyKickAck,
+    PartyKickReq,
+    PartyLeaveAck,
+    RequestTeachingAck,
+    RequestTeachingReq,
+    RoomInfo,
+    SummonAcknowledgeAck,
+    SummonAcknowledgeReq,
+    TeachingDeleteAck,
+    TeachingDeleteReq,
+    TeachingGraduationRewardAck,
+    TeachingGraduationRewardReq,
+    TeachingStressRewardAck,
+    TeachingStressRewardReq,
+    TeachingSummonAcceptAck,
+    TeachingSummonAcceptReq,
+    TeachingSummonRequestAck,
+    TeachingSummonRequestReq,
+)
 
 
 class PartyHandlers:
     @packet_handler(5351)
     async def handle_request_teaching(self, correlation, body):
         # eERC_REQUEST_TEACHING_REQ -> 5352 eERC_REQUEST_TEACHING_ACK (0x0075C200).
-        from darkblood.games.network.messages import RequestTeachingAck, RequestTeachingReq
         req = RequestTeachingReq.decode(body)
         self.transport.record('request-teaching-req', body, target_uid=req.target_uid)
         target = self.find_char(req.target_uid) or {}
@@ -19,7 +55,6 @@ class PartyHandlers:
     @packet_handler(5353)
     async def handle_accept_request_teaching(self, correlation, body):
         # eERC_ACCEPT_REQUEST_TEACHING_REQ -> 5354 eERC_ACCEPT_REQUEST_TEACHING_ACK (0x0075C430).
-        from darkblood.games.network.messages import AcceptRequestTeachingAck, AcceptRequestTeachingReq
         req = AcceptRequestTeachingReq.decode(body)
         self.transport.record('accept-request-teaching-req', body, mentor_uid=req.mentor_uid)
         ack = AcceptRequestTeachingAck(result=0, accepted=True, mentor_uid=req.mentor_uid, mentor_name='Master')
@@ -32,7 +67,6 @@ class PartyHandlers:
 
         Client handler: 0x00758700. Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import LegacyPartyInviteReq
         req = LegacyPartyInviteReq.decode(body)
         await self._invite_to_party(2101, correlation, req.target_uid, '')
 
@@ -43,7 +77,6 @@ class PartyHandlers:
 
         Client handler: 0x00758700. Invites target player to co-op party.
         """
-        from darkblood.games.network.messages.party import PartyInviteReq
         req = PartyInviteReq.decode(body)
         await self._invite_to_party(5050, correlation, req.target_uid, '')
 
@@ -55,7 +88,6 @@ class PartyHandlers:
         The sender (0x007ABAA0) waits for no dedicated ack; the result goes
         out as 5050, like a 5049 invite.
         """
-        from darkblood.games.network.messages.party import InviteUseNickReq
         try:
             req = InviteUseNickReq.decode(body)
         except (WireError, UnicodeDecodeError):
@@ -69,7 +101,6 @@ class PartyHandlers:
     async def _invite_to_party(self, ack_opcode, correlation, target_id, target_name):
         """Shared invite path for 2100, 5049 and 5092 (target by id or name)."""
         target_id = self.char_id_from_uid(target_id)
-        from darkblood.games.network.messages.party import PartyInviteAck
         from darkblood.games.world import PartyManager
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
@@ -107,7 +138,6 @@ class PartyHandlers:
 
 
     async def _send_party_invite_notice(self, char_id, char_name, target_id):
-        from darkblood.games.network.messages.party import PartyInviteNot
         from darkblood.games.world import GameWorldManager, square_uid
 
         world = GameWorldManager.get()
@@ -134,7 +164,6 @@ class PartyHandlers:
     @packet_handler(2102)
     async def handle_party_join(self, correlation, body):
         """Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK)."""
-        from darkblood.games.network.messages.party import PartyAcceptInviteNot, PartyJoinAck, PartyJoinReq
         from darkblood.games.world import PartyManager
         req = PartyJoinReq.decode(body)
         char = self.current_char()
@@ -162,7 +191,6 @@ class PartyHandlers:
     @packet_handler(5054)
     async def handle_party_accept_invite(self, correlation, body):
         """Opcode 5054 (eERC_ACCEPT_INVITE_REQ) -> 5055 (eERC_ACCEPT_INVITE_ACK)."""
-        from darkblood.games.network.messages.party import PartyAcceptInviteAck, PartyAcceptInviteNot, PartyAcceptInviteReq
         from darkblood.games.world import PartyManager
         req = PartyAcceptInviteReq.decode(body)
         char = self.current_char()
@@ -196,7 +224,6 @@ class PartyHandlers:
             # If the host had no room yet, create one on the host (5002) and join it (5004 + 5035).
             if host and host.session and getattr(host.session, 'dungeon', None) and host.session.dungeon.room is None:
                 from darkblood.games.handlers.dungeon import DungeonRoom, relay_address
-                from darkblood.games.network.messages.dungeon import CreateRoomAck, RoomInfo
                 server = host.session.transport.server
                 host_char = host.session.dungeon.current_char() or host.char_data
                 info = RoomInfo(room_id=next(server.room_ids), name=f"{host_char.get('name', 'Party')}'s Party",
@@ -214,7 +241,6 @@ class PartyHandlers:
     @packet_handler(2104)
     async def handle_party_leave(self, correlation, body):
         """Opcode 2104 (eEGS_PARTY_LEAVE_REQ) -> 2105 (eEGS_PARTY_LEAVE_ACK)."""
-        from darkblood.games.network.messages.party import PartyLeaveAck, PartyLeaveReq
         from darkblood.games.world import PartyManager
         char = self.current_char()
         char_id = char.get('id', 0) if char else self.session.active_char_id or 0
@@ -227,7 +253,6 @@ class PartyHandlers:
     @packet_handler(2106)
     async def handle_party_kick(self, correlation, body):
         """Opcode 2106 (eEGS_PARTY_KICK_REQ) -> 2107 (eEGS_PARTY_KICK_ACK)."""
-        from darkblood.games.network.messages.party import PartyKickAck, PartyKickReq
         from darkblood.games.world import GameWorldManager, PartyManager
         req = PartyKickReq.decode(body)
         char = self.current_char()
@@ -241,7 +266,6 @@ class PartyHandlers:
         if res == 0:
             target_player = GameWorldManager.get().get_player(req.target_uid)
             if target_player and target_player.session and getattr(target_player.session, 'transport', None):
-                from darkblood.games.network.messages.party import PartyLeaveAck
                 await target_player.session.transport.send_event(
                     event(2105, PartyLeaveAck(result=0).encode()),
                     note=f'kicked from party {party.party_id if party else 0}'
@@ -251,7 +275,6 @@ class PartyHandlers:
     @packet_handler(2356)
     async def handle_guide_waitlist_update(self, correlation, body):
         # eEGS_GUIDE_WAITLIST_UPDATE_REQ (0x0079A260) -> 2357 eEGS_GUIDE_WAITLIST_UPDATE_ACK.
-        from darkblood.games.network.messages.party import GuideWaitlistUpdateAck, GuideWaitlistUpdateReq
         req = GuideWaitlistUpdateReq.decode(body)
         char = self.current_char()
         if char is not None:
@@ -264,7 +287,6 @@ class PartyHandlers:
     @packet_handler(2360)
     async def handle_guide_donelist_update(self, correlation, body):
         # eEGS_GUIDE_DONELIST_UPDATE_REQ (0x0079A110) -> 2361 eEGS_GUIDE_DONELIST_UPDATE_ACK.
-        from darkblood.games.network.messages.party import GuideDonelistUpdateAck, GuideDonelistUpdateReq
         req = GuideDonelistUpdateReq.decode(body)
         char = self.current_char()
         if char is not None:
@@ -277,7 +299,6 @@ class PartyHandlers:
     @packet_handler(2648)
     async def handle_teaching_stress_reward(self, correlation, body):
         # eEGS_TEACHING_STRESS_REWARD_REQ (0x007A60E0) -> 2649 eEGS_TEACHING_STRESS_REWARD_ACK (0x0075C7B0).
-        from darkblood.games.network.messages.party import TeachingStressRewardAck, TeachingStressRewardReq
         req = TeachingStressRewardReq.decode(body)
         self.transport.record('teaching-stress-reward-req', body, reward_idx=req.reward_idx)
         await self.reply(TeachingStressRewardAck(result=0), correlation,
@@ -287,7 +308,6 @@ class PartyHandlers:
     @packet_handler(2658)
     async def handle_teaching_graduation_reward(self, correlation, body):
         # eEGS_TEACHING_GRADUATION_REWARD_REQ (0x007A6180) -> 2659 eEGS_TEACHING_GRADUATION_REWARD_ACK (0x0075C8E0).
-        from darkblood.games.network.messages.party import TeachingGraduationRewardAck, TeachingGraduationRewardReq
         req = TeachingGraduationRewardReq.decode(body)
         self.transport.record('teaching-graduation-reward-req', body, reward_idx=req.reward_idx)
         await self.reply(TeachingGraduationRewardAck(result=0), correlation,
@@ -297,7 +317,6 @@ class PartyHandlers:
     @packet_handler(5130)
     async def handle_summon_acknowledge(self, correlation, body):
         # eERC_SUMMON_ACKNOWLEDGE_REQ (0x004D31D0) -> 5131 eERC_SUMMON_ACKNOWLEDGE_ACK.
-        from darkblood.games.network.messages.party import SummonAcknowledgeAck, SummonAcknowledgeReq
         req = SummonAcknowledgeReq.decode(body)
         self.transport.record('summon-acknowledge-req', body, accept=req.accept)
         await self.reply(SummonAcknowledgeAck(result=0), correlation,
@@ -307,7 +326,6 @@ class PartyHandlers:
     @packet_handler(5356)
     async def handle_teaching_summon_accept(self, correlation, body):
         # eERC_TEACHING_SUMMON_ACCEPT_REQ (0x007A6490) -> 5357 eERC_TEACHING_SUMMON_ACCEPT_ACK (0x0077B780).
-        from darkblood.games.network.messages.party import TeachingSummonAcceptAck, TeachingSummonAcceptReq
         req = TeachingSummonAcceptReq.decode(body)
         char = self.current_char()
         nick = char.get('name', '') if char else ''
@@ -318,7 +336,6 @@ class PartyHandlers:
     @packet_handler(6030)
     async def handle_teaching_delete(self, correlation, body):
         # eERT_TEACHING_DELETE_REQ (0x007A5CB0) -> 6031 eERT_TEACHING_DELETE_ACK (0x007A5D60).
-        from darkblood.games.network.messages.party import TeachingDeleteAck, TeachingDeleteReq
         req = TeachingDeleteReq.decode(body)
         target_id = self.char_id_from_uid(req.target_uid)
         _, target = self.store().get_by_id(target_id)
@@ -331,7 +348,6 @@ class PartyHandlers:
     async def handle_teaching_summon_request(self, correlation, body):
         # eERT_TEACHING_SUMMON_REQUEST_REQ (0x007A6240) -> 6033 eERT_TEACHING_SUMMON_REQUEST_ACK (0x0075CA40).
         from darkblood.games.entities.character import layer_net_id
-        from darkblood.games.network.messages.party import TeachingSummonRequestAck, TeachingSummonRequestReq
         from darkblood.games.world import GameWorldManager
         req = TeachingSummonRequestReq.decode(body)
         char = self.current_char()

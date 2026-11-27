@@ -13,20 +13,39 @@ from __future__ import annotations
 from typing import Dict, List
 
 from darkblood.games.network.messages import (
+    ArenaBanishUserAck,
+    ArenaBanishUserReq,
+    ArenaChangeRoomCharInfoAck,
+    ArenaChangeRoomCharInfoReq,
+    ArenaChangeRoomHostAck,
+    ArenaChangeRoomHostReq,
+    ArenaChangeSlotCharInfoAck,
+    ArenaChangeTeamInfoAck,
+    ArenaChangeTeamInfoReq,
     ArenaCreateRoomAck,
     ArenaCreateRoomReq,
     ArenaGetInviteListAck,
     ArenaGetInviteListReq,
     ArenaGetRoomListAck,
-    ArenaSquare,
     ArenaGetRoomListReq,
+    ArenaJoinLayerAck,
+    ArenaJoinLayerReq,
     ArenaJoinRoomAck,
     ArenaJoinRoomReq,
     ArenaLeaveRoomAck,
     ArenaLeaveRoomReq,
+    ArenaRandomMatchingRequestAck,
+    ArenaReadyGameAck,
+    ArenaReadyGameReq,
     ArenaRoomInfo,
+    ArenaSquare,
     ArenaSquareListAck,
     ArenaSquareListReq,
+    ArenaStartGameAck,
+    ArenaTeamBanishAck,
+    ArenaTeamBanishReq,
+    ArenaTeamChangeHostAck,
+    ArenaTeamChangeHostReq,
     ArenaTeamCreateAck,
     ArenaTeamCreateReq,
     ArenaTeamInfo,
@@ -43,11 +62,18 @@ from darkblood.games.network.messages import (
     DuelStartAck,
     DuelStartNot,
     DuelStartReq,
+    GbbChallengeAck,
+    GbbChallengeReq,
+    GbbGiveupAck,
     LeagueRankEntry,
+    LeagueSeasonArenaCharStatInitAck,
+    LeagueSeasonArenaCharStatUpdateAck,
+    LeagueSeasonArenaCharStatUpdateReq,
     LeagueSeasonArenaGetMyRankAck,
     LeagueSeasonArenaGetMyRankReq,
     LeagueSeasonArenaGetRankAck,
     LeagueSeasonArenaGetRankReq,
+    MinigameGbbStartAck,
 )
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.handlers.base import BaseDomainService
@@ -443,14 +469,12 @@ class ArenaHandlers(BaseDomainService):
     @packet_handler(2715)
     async def handle_minigame_gbb_start(self, correlation: int, body: bytes):
         """Opcode 2715 (eEGS_MINIGAME_GBB_START_REQ, 0x007A8280) -> 2716."""
-        from darkblood.games.network.messages.arena import MinigameGbbStartAck
         await self.reply(MinigameGbbStartAck(result=0), correlation, note='minigame gbb start ack')
 
     @packet_handler(2717)
     async def handle_gbb_challenge(self, correlation: int, body: bytes):
         """Opcode 2717 (eEGS_GBB_CHALLENGE_REQ, 0x007A8300) -> 2718."""
         import random
-        from darkblood.games.network.messages.arena import GbbChallengeAck, GbbChallengeReq
         req = GbbChallengeReq.decode(body)
         server_choice = random.randint(0, 2)
         if req.choice == server_choice:
@@ -465,7 +489,6 @@ class ArenaHandlers(BaseDomainService):
     @packet_handler(2719)
     async def handle_gbb_giveup(self, correlation: int, body: bytes):
         """Opcode 2719 (eEGS_GBB_GIVEUP_REQ, 0x007A83A0) -> 2720."""
-        from darkblood.games.network.messages.arena import GbbGiveupAck
         await self.reply(GbbGiveupAck(result=0), correlation, note='gbb giveup ack')
 
     # ==========================================================================
@@ -474,7 +497,6 @@ class ArenaHandlers(BaseDomainService):
 
     @packet_handler(5142)
     async def handle_arena_join_layer(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaJoinLayerAck, ArenaJoinLayerReq
         req = ArenaJoinLayerReq.decode(body)
         await self.reply(
             ArenaJoinLayerAck(result=0, arena_square_uid=1, join_layer_net_id=req.layer_net_id, join_square_uid=1),
@@ -483,27 +505,23 @@ class ArenaHandlers(BaseDomainService):
 
     @packet_handler(5163)
     async def handle_arena_banish_user(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaBanishUserAck, ArenaBanishUserReq
         req = ArenaBanishUserReq.decode(body)
         await self.reply(ArenaBanishUserAck(result=0), correlation,
                          note=f'arena banish user ack (target={req.target_uid})')
 
     @packet_handler(5168)
     async def handle_arena_change_room_host(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaChangeRoomHostAck, ArenaChangeRoomHostReq
         req = ArenaChangeRoomHostReq.decode(body)
         await self.reply(ArenaChangeRoomHostAck(result=0, new_host_uid=req.new_host_uid), correlation,
                          note=f'arena change room host ack (host={req.new_host_uid})')
 
     @packet_handler(5172)
     async def handle_arena_start_game(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaStartGameAck
         await self.reply(ArenaStartGameAck(result=0, rand_sync=1, played_map_id=1), correlation,
                          note='arena start game ack')
 
     @packet_handler(5182)
     async def handle_arena_ready_game(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaReadyGameAck, ArenaReadyGameReq
         req = ArenaReadyGameReq.decode(body)
         char_uid, _, _, _ = self._get_active_char_info()
         await self.reply(ArenaReadyGameAck(result=0, char_uid=char_uid, is_ready=req.is_ready), correlation,
@@ -511,13 +529,11 @@ class ArenaHandlers(BaseDomainService):
 
     @packet_handler(5202)
     async def handle_arena_random_matching_request(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaRandomMatchingRequestAck
         await self.reply(ArenaRandomMatchingRequestAck(result=0), correlation,
                          note='arena random matching request ack')
 
     @packet_handler(5265)
     async def handle_arena_change_room_char_info(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaChangeRoomCharInfoAck, ArenaChangeRoomCharInfoReq
         req = ArenaChangeRoomCharInfoReq.decode(body)
         char_uid, _, _, _ = self._get_active_char_info()
         await self.reply(
@@ -527,36 +543,29 @@ class ArenaHandlers(BaseDomainService):
 
     @packet_handler(5267)
     async def handle_arena_change_slot_char_info(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaChangeSlotCharInfoAck
         await self.reply(ArenaChangeSlotCharInfoAck(result=0), correlation,
                          note='arena change slot char info ack')
 
     @packet_handler(5282)
     async def handle_arena_team_banish(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaTeamBanishAck, ArenaTeamBanishReq
         req = ArenaTeamBanishReq.decode(body)
         await self.reply(ArenaTeamBanishAck(result=0), correlation,
                          note=f'arena team banish ack (target={req.target_uid})')
 
     @packet_handler(5286)
     async def handle_arena_team_change_host(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaTeamChangeHostAck, ArenaTeamChangeHostReq
         req = ArenaTeamChangeHostReq.decode(body)
         await self.reply(ArenaTeamChangeHostAck(result=0, new_host_uid=req.new_host_uid), correlation,
                          note=f'arena team change host ack (host={req.new_host_uid})')
 
     @packet_handler(5301)
     async def handle_arena_change_team_info(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import ArenaChangeTeamInfoAck, ArenaChangeTeamInfoReq
         req = ArenaChangeTeamInfoReq.decode(body)
         await self.reply(ArenaChangeTeamInfoAck(result=0, team_type=req.team_type, team_name=req.team_name),
                          correlation, note=f'arena change team info ack ({req.team_name})')
 
     @packet_handler(2556)
     async def handle_league_season_arena_charstat_update(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import (
-            LeagueSeasonArenaCharStatUpdateAck, LeagueSeasonArenaCharStatUpdateReq,
-        )
         req = LeagueSeasonArenaCharStatUpdateReq.decode(body)
         char = self.current_char()
         if char is not None:
@@ -567,7 +576,6 @@ class ArenaHandlers(BaseDomainService):
 
     @packet_handler(2561)
     async def handle_league_season_arena_charstat_init(self, correlation: int, body: bytes):
-        from darkblood.games.network.messages.arena import LeagueSeasonArenaCharStatInitAck
         char = self.current_char()
         cur_ar = int(char.get('gold', 0)) if char else 0
         if char is not None:

@@ -25,8 +25,10 @@ from darkblood.games.network.messages import (
     ItemDropEntry,
     PickUpItemReq,
     PickUpItemResultAck,
+    PostNewArrivalNot,
     QuestObjective,
     QuestUpdateNot,
+    RoulettePointInsertNot,
     SingleReward,
 )
 from darkblood.player_management.characters import (
@@ -188,7 +190,6 @@ class DungeonRewardsHandlers:
                 await member.quests.grant_exp(char, bonus_exp)
             if req.is_clear:
                 from darkblood.games.handlers.commerce.stores import add_roulette_points
-                from darkblood.games.network.messages.commerce import RoulettePointInsertNot
                 new_pts = add_roulette_points(char, 1)
                 await member.transport.send_event(
                     event(2389, RoulettePointInsertNot(roulette_points=new_pts).encode()),
@@ -324,7 +325,6 @@ class DungeonRewardsHandlers:
         if bag_full:
             # 0x0078D660 accepts result 0x126 (294 JERI_DUN_REWARD_00) with the full chest payload,
             # opens the chest visually, and shows UI_3329 ("Send via mail as there is not enough space in the inventory.").
-            from darkblood.games.network.messages.mail import PostNewArrivalNot
             from darkblood.player_management.characters import next_item_uid
             mail_item = {'code': reward_code, 'uid': next_item_uid(char), 'count': reward_count}
             self.store().send_mail(

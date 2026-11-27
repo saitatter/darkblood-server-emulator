@@ -91,6 +91,15 @@ from darkblood.games.network.messages.gm import (
     CheatTitleGetAllReq,
 )
 from darkblood.games.progression import level_up_not
+from darkblood.games.network.messages import (
+    ItemUpgradeAck,
+    MarkItemActiveNot,
+    MarkTabActiveNot,
+    QuestCompleteAck,
+    QuestStartAck,
+    RebirthCoinChangeNot,
+    StressChangedNot,
+)
 
 
 class GmHandlers(BaseDomainService):
@@ -113,7 +122,6 @@ class GmHandlers(BaseDomainService):
         )
         await self.send_msg(level_up_not(char), note=f'cheat levelup not (lv={target})')
         if mark_base is not None:
-            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
             await self.send_msg(MarkTabActiveNot(active_mark=True), note=f'mark tab active not (lv={target})')
             await self.send_msg(
                 MarkItemActiveNot(base_count=mark_base, bonus_count=int(char.get('mark_bonus_cnt', 0))),
@@ -162,7 +170,6 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatQuestCompleteReq)
     async def handle_cheat_quest_complete(self, correlation: int, body: bytes):
         # 2093 -> 2077: questclear
-        from darkblood.games.network.messages.quests import QuestCompleteAck
         req = CheatQuestCompleteReq.decode(body)
         char = self.current_char()
         if char is not None:
@@ -186,7 +193,6 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatQuestStartReq)
     async def handle_cheat_quest_start(self, correlation: int, body: bytes):
         # 2099 -> 2074: queststart
-        from darkblood.games.network.messages.quests import QuestStartAck
         req = CheatQuestStartReq.decode(body)
         char = self.current_char()
         if char is not None:
@@ -200,7 +206,6 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatInsertCoinReq)
     async def handle_cheat_insert_coin(self, correlation: int, body: bytes):
         # 2101 -> 2102 (0x004ECD30: u32 result, i16 sTotalRebirthCoin) + 2286
-        from darkblood.games.network.messages.system import RebirthCoinChangeNot
         req = CheatInsertCoinReq.decode(body)
         char = self.current_char()
         total = max(0, int(req.coins))
@@ -249,7 +254,6 @@ class GmHandlers(BaseDomainService):
     @packet_handler(CheatItemUpgradeReq)
     async def handle_cheat_item_upgrade(self, correlation: int, body: bytes):
         # 2123 -> 2116 (ItemUpgradeAck): forceupgrade
-        from darkblood.games.network.messages.inventory import ItemUpgradeAck
         req = CheatItemUpgradeReq.decode(body)
         char = self.current_char()
         if char is not None:
@@ -280,7 +284,6 @@ class GmHandlers(BaseDomainService):
             msg = apply_stress(char, req.stress, req.stress_pcb, req.stress_week)
             self.save_char()
         else:
-            from darkblood.games.network.messages.system import StressChangedNot
             msg = StressChangedNot(stress=req.stress, stress_pcb=req.stress_pcb, stress_week=req.stress_week)
         await self.send_msg(msg, note=f'cheat stress changed not ({msg.stress})')
 

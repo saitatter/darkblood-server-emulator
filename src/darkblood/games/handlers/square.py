@@ -7,11 +7,16 @@ from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network.messages import (
     BackToSquareAck,
     ClearTutorialAck,
+    FishingStartAck,
+    FishingStartReq,
+    FishingStopAck,
     GTargetListAck,
     NpcFirstMeetAck,
     QuestObjective,
     QuestUpdateNot,
     TargetState,
+    WaypointData,
+    WaypointInsertAck,
 )
 
 # Tutorial quest Q0882S01 (0x34c58e7c) objective mappings:
@@ -288,7 +293,6 @@ class SquareHandlers(BaseDomainService):
         layer_net_id, localization name (@LayerName_*), waypoint_id hash (for DictSquarePortal::GetCost),
         and destination (x, y) from the town map file.
         """
-        from darkblood.games.network.messages.quests import WaypointInsertAck
         layer = struct.unpack_from('<Q', body, 4)[0] if len(body) >= 12 else layer_net_id()
         char = self.current_char()
         if char is not None:
@@ -348,7 +352,6 @@ class SquareHandlers(BaseDomainService):
     @packet_handler(2523)
     async def handle_fishing_start(self, correlation: int, body: bytes):
         """Opcode 2523 (eEGS_FISHING_START_REQ, 0x007A1FF0) -> 2524 (0x0075B0B0)."""
-        from darkblood.games.network.messages.fishing import FishingStartAck, FishingStartReq
         req = FishingStartReq.decode(body)
         self.transport.record('fishing-start-req', body, hole=req.fishing_hole_id,
                               rod=req.rod_item_id, bait=req.bait_item_id)
@@ -358,7 +361,6 @@ class SquareHandlers(BaseDomainService):
     @packet_handler(2525)
     async def handle_fishing_stop(self, correlation: int, body: bytes):
         """Opcode 2525 (eEGS_FISHING_STOP_REQ, 0x007A21E0) -> 2526 (0x0075B1C0)."""
-        from darkblood.games.network.messages.fishing import FishingStopAck
         self.transport.record('fishing-stop-req', body)
         await self.reply(FishingStopAck(result=0), correlation, note='fishing stop ack')
 
@@ -373,7 +375,6 @@ def _is_town_layer(layer_id: int) -> bool:
 def waypoint_data(layer_id: int):
     """Build WaypointData (0x00A49700) for a town layer from assets/waypoints.json."""
     from darkblood.games.game_data.world import waypoint_info
-    from darkblood.games.network.messages.quests import WaypointData
     info = waypoint_info(layer_id)
     if info is not None:
         return WaypointData(

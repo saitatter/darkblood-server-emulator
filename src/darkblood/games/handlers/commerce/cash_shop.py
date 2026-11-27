@@ -9,6 +9,8 @@ from darkblood.games.network.messages import (
     DragItemAck,
     HttpNoticeCheckAck,
     PlayOptionUpdateReq,
+    SteamBuyPackageAck,
+    SteamBuyPackageReq,
     SteamFinalizeBuyItemAck,
     SteamInitBuyItemNot,
 )
@@ -99,7 +101,6 @@ class CashShopHandlers:
     @packet_handler(2721)
     async def handle_steam_buy_package(self, correlation, body):
         # eEGS_STEAM_BUY_PACKAGE_REQ (0x007A8420) -> 2722 eEGS_STEAM_BUY_PACKAGE_ACK.
-        from darkblood.games.network.messages.commerce import SteamBuyPackageAck, SteamBuyPackageReq
         req = SteamBuyPackageReq.decode(body)
         self.transport.record('steam-buy-package-req', body, package_id=req.package_id)
         await self.reply(SteamBuyPackageAck(result=0), correlation,

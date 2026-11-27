@@ -8,6 +8,8 @@ from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
 from darkblood.games.network.messages import (
+    AgainSelectDungeonAck,
+    BackToSquareAck,
     ChangeItemObtainAck,
     ChangeItemObtainReq,
     ChangeMapCodeAck,
@@ -23,12 +25,19 @@ from darkblood.games.network.messages import (
     JoinRoomAck,
     JoinRoomReq,
     LeaveRoomAck,
+    RequestJoinRoomAck,
+    RequestJoinRoomReq,
     RoomInfo,
     RoomInfoListAck,
+    RoomMemInfoAck,
+    RoomMemInfoReq,
     RoomMember,
+    RoomMemberInfo,
     RoomMemberJoinedNot,
     RoomMemberLeftNot,
     SelectDungeonAck,
+    TrainingJoinRoomAck,
+    TrainingLeaveRoomAck,
 )
 
 
@@ -83,7 +92,6 @@ class DungeonRoomHandlers:
     async def handle_room_member_info(self, correlation, body):
         # eERC_ROOM_MEM_INFO_REQ (Find party row click) -> 5061. The client
         # waits for it before offering the join; member vectors not recovered.
-        from darkblood.games.network.messages import RoomMemInfoAck, RoomMemInfoReq
         try:
             room_uid = RoomMemInfoReq.decode(body).room_uid
         except (WireError, struct.error):
@@ -99,7 +107,6 @@ class DungeonRoomHandlers:
 
 
     def _member_info(self, session, record):
-        from darkblood.games.network.messages import RoomMemberInfo
         from darkblood.games.world import square_uid
         return RoomMemberInfo(
             square_uid=square_uid(getattr(session, 'square_id', 1) or 1),
@@ -160,7 +167,6 @@ class DungeonRoomHandlers:
         # to the room host as 5048 (requester's member entry); the host's
         # confirmation popup continues the flow: its Accept sends 5049 for the
         # requester (AcceptJoinRoomREQ, 0x0063A6CD), which joins it directly.
-        from darkblood.games.network.messages import RequestJoinRoomAck, RequestJoinRoomReq
         try:
             room_uid = RequestJoinRoomReq.decode(body).room_uid
         except (WireError, struct.error):
@@ -428,7 +434,6 @@ class DungeonRoomHandlers:
         await self.reply(ack, correlation, note='leave room ack')
         if was_in_dungeon:
             from darkblood.games.handlers.square import _wire_square_uid
-            from darkblood.games.network.messages import BackToSquareAck, ChangeDungeonPenaltyNot
             back_ack = BackToSquareAck(
                 square_uid=_wire_square_uid(self.session.square_id),
                 layer_net_id=self.session.square._town_layer(),
@@ -462,7 +467,6 @@ class DungeonRoomHandlers:
     @packet_handler(5052)
     async def handle_again_select_dungeon(self, correlation, body):
         # eERC_AGAIN_SELECT_DUNGEON_REQ (0x007AC480) -> 5053 eERC_AGAIN_SELECT_DUNGEON_ACK (0x00770A80).
-        from darkblood.games.network.messages.dungeon import AgainSelectDungeonAck, DungeonHistory
         char = self.current_char() or {}
         gate_id = getattr(self, 'gate_id', '') or 'Act1_G1'
         history = {}
@@ -490,7 +494,6 @@ class DungeonRoomHandlers:
     @packet_handler(5236)
     async def handle_training_join_room(self, correlation, body):
         # eERC_TRAINING_JOIN_ROOM_REQ (0x00798F80) -> 5237 eERC_TRAINING_JOIN_ROOM_ACK (0x0075AEC0).
-        from darkblood.games.network.messages.dungeon import TrainingJoinRoomAck
         await self.reply(TrainingJoinRoomAck(result=0), correlation, note='training join room ack')
 
 
@@ -500,8 +503,6 @@ class DungeonRoomHandlers:
         # 0x0074B830 only reads result and returns 1 without transitioning back to town;
         # follow with 5046 BackToSquareAck (like 5005 dungeon exit) to return to town.
         from darkblood.games.handlers.square import _wire_square_uid
-        from darkblood.games.network.messages import BackToSquareAck
-        from darkblood.games.network.messages.dungeon import TrainingLeaveRoomAck
         await self.reply(TrainingLeaveRoomAck(result=0), correlation, note='training leave room ack')
         back_ack = BackToSquareAck(
             square_uid=_wire_square_uid(self.session.square_id),

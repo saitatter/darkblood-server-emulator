@@ -27,10 +27,14 @@ from darkblood.games.network.messages import (
     DivideItemReq,
     DragItemAck,
     DragItemReq,
+    DualSkillActiveNot,
     EquipItemAck,
     EquipItemReq,
+    InsertApNot,
     ItemDecomposeAck,
     ItemDecomposeReq,
+    MarkItemActiveNot,
+    MarkTabActiveNot,
     RandomboxResultItemNot,
     SealItemAck,
     SealItemReq,
@@ -164,7 +168,6 @@ class ItemHandlersMixin:
     async def _apply_special_consumable(self, char: dict, item_str_code: str, item_code: int, use_count: int):
         """Apply side effects of special consumable items (Book of AP, Dual Skill, Agreement of Rune, Pets/Mounts)."""
         if item_str_code == 'Ispaa0001':
-            from darkblood.games.network.messages.skills import InsertApNot
             from darkblood.games.progression import add_ap
             add_ap(char, max(1, use_count))
             self.save_char()
@@ -173,7 +176,6 @@ class ItemHandlersMixin:
                 note='book of ap used (+%d AP -> sp=%d total=%d)' % (max(1, use_count), char['sp'], char['total_ap']),
             )
         elif item_str_code in DUAL_SKILL_ITEM_DAYS:
-            from darkblood.games.network.messages.skills import DualSkillActiveNot
             add_days = DUAL_SKILL_ITEM_DAYS[item_str_code] * max(1, int(use_count))
             now = int(time.time())
             base_expire = max(now, int(char.get('dual_skill_expire', 0)))
@@ -193,7 +195,6 @@ class ItemHandlersMixin:
             )
         elif item_str_code == 'IAMk1R190':
             from darkblood.games.entities.character import mark_base_count
-            from darkblood.games.network.messages.inventory import MarkItemActiveNot, MarkTabActiveNot
             char['mark_active'] = True
             base_cnt = max(int(char.get('mark_base_cnt', 0)), mark_base_count(char.get('level', 1)), 3)
             bonus_cnt = min(3, int(char.get('mark_bonus_cnt', 0)) + max(1, int(use_count)))

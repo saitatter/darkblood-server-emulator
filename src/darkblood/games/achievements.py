@@ -9,6 +9,9 @@ import time
 
 from darkblood.core.hashing import jhash
 from darkblood.games.game_data.client_dict import achievement_table, achievements
+from darkblood.games.network.messages import (
+    AchieveEntry,
+)
 
 
 def apply_division_report(char, amounts, now=None):
@@ -61,6 +64,5 @@ def completed_entries(char, ids=None):
 
 def total_info(char):
     """(divisions, completed) of jAchieveTotalInfo, shared by 2007 and 2328 (reader 0x00A3E760)."""
-    from darkblood.games.network.messages import AchieveEntry
     entries = [AchieveEntry(h, t) for h, t in completed_entries(char)]
     return division_totals(char), {e.achieve_hash: e for e in entries}

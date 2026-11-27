@@ -1,6 +1,11 @@
 """Character level, ability point, and stress (fatigue) accounting."""
 import time
 from darkblood.games.game_data.client_dict import char_level_stat, level_up_ap, skill_learn_cost
+from darkblood.games.network.messages import (
+    ChangeDungeonPenaltyNot,
+    LevelUpNot,
+    StressChangedNot,
+)
 
 
 MAX_LEVEL = 60
@@ -48,7 +53,6 @@ def advance_level(char, level, exp):
 
 def level_up_not(char):
     """5087 for a character dict; both AP array entries hold the remaining AP, as in 2007."""
-    from darkblood.games.network.messages import LevelUpNot
     return LevelUpNot(ap_slots=[char['sp'], char['sp']], char_uid=char['id'], new_level=char['level'],
                       exp=char['exp'], total_ap=char['total_ap'])
 
@@ -128,7 +132,6 @@ def set_stress(char, stress, stress_pcb=None, stress_week=None, now=None):
 
 def stress_changed_not(char):
     """Build 2023 StressChangedNot (0x00789E00) for a character dict."""
-    from darkblood.games.network.messages.system import StressChangedNot
     return StressChangedNot(
         stress=max(0, min(MAX_STRESS, int(char.get('stress', 0)))),
         stress_pcb=max(0, min(MAX_STRESS, int(char.get('stress_pcb', 0)))),
@@ -159,7 +162,6 @@ def apply_dungeon_penalty(char, penalty_type: int = 0, now=None):
       end_ms = (total_sec - duration) * 1000 + now_ms
     So duration is ELAPSED seconds (0 on initial application -> full 600s countdown).
     """
-    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
     now = time.time() if now is None else float(now)
     k_cnt, k_start, k_step = _penalty_keys(penalty_type)
     prev_start = float(char.get(k_start, 0) or 0)
@@ -185,7 +187,6 @@ def refresh_dungeon_penalty(char, penalty_type: int = 0, now=None):
 
     Returns (changed: bool, notice: ChangeDungeonPenaltyNot | None).
     """
-    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
     now = time.time() if now is None else float(now)
     k_cnt, k_start, k_step = _penalty_keys(penalty_type)
     cnt = int(char.get(k_cnt, 0) or 0)
@@ -223,7 +224,6 @@ def refresh_dungeon_penalty(char, penalty_type: int = 0, now=None):
 
 def active_penalty_notice(char, penalty_type: int = 0, now=None):
     """Return a silent 2085 notice to restore an active penalty on character login, or None."""
-    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
     now = time.time() if now is None else float(now)
     refresh_dungeon_penalty(char, penalty_type=penalty_type, now=now)
     k_cnt, k_start, k_step = _penalty_keys(penalty_type)
@@ -247,7 +247,6 @@ def active_penalty_notice(char, penalty_type: int = 0, now=None):
 
 def clear_dungeon_penalty(char, penalty_type: int = 0):
     """Immediately clear an active dungeon penalty (e.g. via 2086 BuyLifeWater)."""
-    from darkblood.games.network.messages.dungeon import ChangeDungeonPenaltyNot
     k_cnt, k_start, k_step = _penalty_keys(penalty_type)
     char[k_cnt] = 0
     char[k_start] = 0

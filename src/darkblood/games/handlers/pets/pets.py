@@ -46,6 +46,9 @@ from darkblood.games.network.messages.pets import (
     TamingMonsterDeleteAck,
     TamingMonsterInsertAck,
 )
+from darkblood.games.network.messages import (
+    TamedMonster,
+)
 
 
 async def grant_pet_exp(session, char: dict, exp_amount: int) -> bool:
@@ -471,5 +474,4 @@ class PetCoreHandlersMixin:
 
 def _tamed_list(tamed):
     """vecTameingList for 2349/2351 from the stored tamed monsters."""
-    from darkblood.games.network.messages import TamedMonster
     return [TamedMonster(int(m.get('monster_id', 0)), int(m.get('slot', 0))) for m in tamed]

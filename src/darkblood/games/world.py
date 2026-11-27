@@ -6,7 +6,7 @@ and party management (Opcodes 2100-2107, 5049-5056).
 """
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 from darkblood.core.network.proudnet import SQUARE_UID_MASK, square_uid
 from darkblood.core.serialization.jser import event

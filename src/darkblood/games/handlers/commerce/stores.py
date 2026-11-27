@@ -6,18 +6,27 @@ from darkblood.core.serialization.jser import event, strip_prefix
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network.messages import (
+    BeautyShopCareAck,
+    BeautyShopCareReq,
     BuyItemAck,
     BuyItemReq,
+    DragItemAck,
     DurabilityChangeAck,
     DurabilityChangeReq,
     MonsterCardAlbumAck,
     MonsterCardDeckAck,
     MonsterCardListAck,
+    RepurchaseItem,
     RepurchaseItemAck,
     RepurchaseItemReq,
     RouletteManagerInfoAck,
+    RoulettePointInsertNot,
+    RouletteRollDiceAck,
     SellItemAck,
+    SellItemAllAck,
     SellItemReq,
+    StorageShareAck,
+    StorageShareReq,
     StoreInfoAck,
     StoreRecord,
 )
@@ -101,7 +110,6 @@ class StoreHandlers:
 
     def _repurchase_list(self):
         """Items sold this session, as RepurchaseItem entries (2066 vecRePur)."""
-        from darkblood.games.network.messages.commerce import RepurchaseItem
         return [RepurchaseItem(item=Item(owner=0, **record), price=price, sell_time=sold_at)
                 for record, price, sold_at in getattr(self, '_repurchase_items', {}).values()]
 
@@ -339,7 +347,6 @@ class StoreHandlers:
         # eEGS_ROULETTE_MANAGER_INFO_REQ -> eEGS_ROULETTE_MANAGER_INFO_ACK (2391), handler 0x0062CBC0.
         # Also sync current roulette_points via 2389 now that Page_RoulettePoint (0x0E) is loaded
         # (sending 2389 during 2006/2007 character select crashes at 0x00B01946 with NULL widget).
-        from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         ack = RouletteManagerInfoAck(manager_id=1, active=True, jackpot_ar=_ROULETTE_JACKPOT_AR)
         await self.reply(ack, correlation, note=f'roulette manager info ack (jackpot={_ROULETTE_JACKPOT_AR})')
         char = self.current_char()
@@ -381,7 +388,6 @@ class StoreHandlers:
     @packet_handler(2416)
     async def handle_beauty_shop_care(self, correlation, body):
         # eEGS_BEAUTYSHOP_CARE_REQ (0x0079B730) -> 2417 eEGS_BEAUTYSHOP_CARE_ACK (0x0079B3A0).
-        from darkblood.games.network.messages.commerce import BeautyShopCareAck, BeautyShopCareReq
         req = BeautyShopCareReq.decode(body)
         char = self.current_char()
         cur_ar = int(char.get('gold', 0)) if char else 0
@@ -395,7 +401,6 @@ class StoreHandlers:
     @packet_handler(2590)
     async def handle_sell_item_all(self, correlation, body):
         # eEGS_SELL_ITEM_ALL_REQ (0x007A4BB0) -> 2591 eEGS_SELL_ITEM_ALL_ACK (0x007845B0).
-        from darkblood.games.network.messages.commerce import SellItemAllAck
         char = self.current_char()
         cur_ar = int(char.get('gold', 0)) if char else 0
         await self.reply(SellItemAllAck(result=0, items=[], cur_ar=cur_ar, deleted_item_uids=[]),
@@ -407,8 +412,6 @@ class StoreHandlers:
         # eEGS_ROULETTE_ROLL_DICE_REQ -> 2387 eEGS_ROULETTE_ROLL_DICE_ACK (0x0062C850).
         global _ROULETTE_JACKPOT_AR
         import random
-        from darkblood.games.network.messages.commerce import RoulettePointInsertNot, RouletteRollDiceAck
-        from darkblood.games.network.messages.inventory import DragItemAck
 
         char = self.current_char()
         weights = [entry[3] for entry in ROULETTE_REWARDS]
@@ -467,7 +470,6 @@ class StoreHandlers:
     @packet_handler(2388)
     async def handle_roulette_notice(self, correlation, body):
         # eEGS_ROULETTE_NOTICE_REQ -> 2389 eEGS_ROULETTE_POINT_INSERT_NOT (0x0063C390).
-        from darkblood.games.network.messages.commerce import RoulettePointInsertNot
         char = self.current_char()
         pts = float((char or {}).get('roulette_points', _ROULETTE_SPIN_COST))
         await self.send_msg(RoulettePointInsertNot(roulette_points=pts), note=f'roulette point not (pts={pts:.1f})')
@@ -476,7 +478,6 @@ class StoreHandlers:
     @packet_handler(2530)
     async def handle_storage_share(self, correlation, body):
         # eEGS_STORAGE_SHARE_REQ -> 2531 eEGS_STORAGE_SHARE_ACK (0x0064EFB0).
-        from darkblood.games.network.messages.commerce import StorageShareAck, StorageShareReq
         req = StorageShareReq.decode(body)
         await self.reply(StorageShareAck(result=0, items=[]), correlation,
                          note=f'storage share ack (item={req.item_uid})')

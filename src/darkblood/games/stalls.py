@@ -6,6 +6,10 @@ from typing import Dict, List, Optional, Tuple
 
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.player_management.characters import add_reward_items
+from darkblood.games.network.messages import (
+    BrokerProduct,
+    StallItem,
+)
 
 
 @dataclass
@@ -18,7 +22,6 @@ class StallItemData:
     raw_dict: dict
 
     def to_wire(self) -> 'StallItem':
-        from darkblood.games.network.messages.stalls import StallItem
         wire_item = Item(owner=UPDATE_OWNER, uid=self.item_uid, code=self.code, count=self.count)
         return StallItem(item=wire_item, price=self.price)
 
@@ -244,7 +247,6 @@ class BrokerListing:
     raw_dict: dict
 
     def to_wire(self) -> 'BrokerProduct':
-        from darkblood.games.network.messages.stalls import BrokerProduct
         wire_item = Item(owner=UPDATE_OWNER, uid=self.item_uid, code=self.code, count=self.count)
         return BrokerProduct(
             item=wire_item,

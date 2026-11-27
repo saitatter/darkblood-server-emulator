@@ -1,13 +1,20 @@
 """Town/party/whisper chat and speaker item handlers."""
 from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
+from darkblood.games.network.messages import (
+    ChatAck,
+    ChatNotifyAck,
+    ChatNotifyReq,
+    ChatReq,
+    UseSpeakerItemAck,
+    UseSpeakerItemReq,
+)
 
 
 class ChatHandlers:
     @packet_handler(2128)
     async def handle_use_speaker_item(self, correlation, body):
         # eEGS_USE_SPEAKER_ITEM_REQ (0x00790000.c:1992) -> 2129 eEGS_USE_SPEAKER_ITEM_ACK (0x0077F320).
-        from darkblood.games.network.messages import UseSpeakerItemAck, UseSpeakerItemReq
         req = UseSpeakerItemReq.decode(body)
         self.transport.record('use-speaker-req', body, speaker=req.speaker_uid, msg=req.message)
         ack = UseSpeakerItemAck(result=0, speaker_uid=req.speaker_uid)
@@ -17,7 +24,6 @@ class ChatHandlers:
     @packet_handler(5040)
     async def handle_chat(self, correlation, body):
         # eERC_CHAT_REQ (0x007AC5E0) -> 5041 eERC_CHAT_ACK (0x007AC890).
-        from darkblood.games.network.messages import ChatAck, ChatReq
         req = ChatReq.decode(body)
         msg = req.message.strip()
         self.transport.record('chat-req', body, message=msg)
@@ -61,7 +67,6 @@ class ChatHandlers:
     @packet_handler(2354)
     async def handle_chat_notify(self, correlation, body):
         # eEGS_CHAT_NOTIFY_REQ (0x004E6D30) -> 2355 eEGS_CHAT_NOTIFY_ACK.
-        from darkblood.games.network.messages.social import ChatNotifyAck, ChatNotifyReq
         req = ChatNotifyReq.decode(body)
         self.transport.record('chat-notify-req', body, target=req.target_name, category=req.category)
         await self.reply(ChatNotifyAck(result=0), correlation, note='chat notify ack')

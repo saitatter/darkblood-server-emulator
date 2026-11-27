@@ -5,6 +5,27 @@ import time
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.network.messages import (
     ActiveWarFlagReq,
+    ClearRankHistoryInfoAck,
+    ClearRankHistoryInfoReq,
+    ClearRankInfoAck,
+    ClearRankInfoReq,
+    CronosDateAck,
+    CronosInfoAck,
+    CronosRewardAck,
+    CronosRewardReq,
+    CronosStampAck,
+    CronosTodayTimeAck,
+    DungeonClearRankInfo,
+    ExploreCancelAck,
+    ExploreCancelByUserUidAck,
+    ExploreCancelByUserUidReq,
+    ExploreCancelReq,
+    ExploreGetRewardAck,
+    ExploreGetRewardReq,
+    ExploreJoinAck,
+    ExploreLeaveAck,
+    ExploreStartAck,
+    ExploreStartReq,
     GuideBeginnerUpdateReq,
 )
 
@@ -41,7 +62,6 @@ class DungeonEventsHandlers:
 
     @packet_handler(2289)
     async def handle_cronos_reward(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import CronosRewardAck, CronosRewardReq
         req = CronosRewardReq.decode(body)
         await self.reply(CronosRewardAck(result=0, items=[], index=req.index, reward_select=req.reward_select),
                          correlation, note=f'cronos reward ack (idx={req.index})')
@@ -49,32 +69,27 @@ class DungeonEventsHandlers:
 
     @packet_handler(2292)
     async def handle_cronos_info(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import CronosInfoAck
         await self.reply(CronosInfoAck(result=0), correlation, note='cronos info ack')
 
 
     @packet_handler(2294)
     async def handle_cronos_date(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import CronosDateAck
         await self.reply(CronosDateAck(result=0), correlation, note='cronos date ack')
 
 
     @packet_handler(2296)
     async def handle_cronos_today_time(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import CronosTodayTimeAck
         await self.reply(CronosTodayTimeAck(result=0, today_login_second=60), correlation,
                          note='cronos today time ack')
 
 
     @packet_handler(2299)
     async def handle_cronos_stamp(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import CronosStampAck
         await self.reply(CronosStampAck(result=0, items=[], item_id=0), correlation, note='cronos stamp ack')
 
 
     @packet_handler(2651)
     async def handle_explore_start(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import ExploreStartAck, ExploreStartReq
         req = ExploreStartReq.decode(body)
         await self.reply(
             ExploreStartAck(result=0, explore_char_uid=req.char_uid, explore_time=req.explore_time, items=[], stress=0),
@@ -84,7 +99,6 @@ class DungeonEventsHandlers:
 
     @packet_handler(2653)
     async def handle_explore_cancel(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import ExploreCancelAck, ExploreCancelReq
         req = ExploreCancelReq.decode(body)
         await self.reply(ExploreCancelAck(result=0, explore_char_uid=req.explore_char_uid), correlation,
                          note=f'explore cancel ack (char={req.explore_char_uid})')
@@ -92,7 +106,6 @@ class DungeonEventsHandlers:
 
     @packet_handler(2656)
     async def handle_explore_get_reward(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import ExploreGetRewardAck, ExploreGetRewardReq
         req = ExploreGetRewardReq.decode(body)
         await self.reply(ExploreGetRewardAck(result=0, reward_uid=req.reward_uid, items=[]), correlation,
                          note=f'explore get reward ack (uid={req.reward_uid})')
@@ -100,7 +113,6 @@ class DungeonEventsHandlers:
 
     @packet_handler(2662)
     async def handle_explore_cancel_by_user_uid(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import ExploreCancelByUserUidAck, ExploreCancelByUserUidReq
         req = ExploreCancelByUserUidReq.decode(body)
         await self.reply(ExploreCancelByUserUidAck(result=0, explore_char_uid=req.explore_char_uid), correlation,
                          note=f'explore cancel by uid ack (char={req.explore_char_uid})')
@@ -108,22 +120,17 @@ class DungeonEventsHandlers:
     @packet_handler(5358)
     async def handle_explore_join(self, correlation, body):
         """Opcode 5358 (eERC_EXPLORE_JOIN_REQ) -> 5359 (0x006C35B0, Forest of Oblivion)."""
-        from darkblood.games.network.messages.dungeon import ExploreJoinAck
         await self.reply(ExploreJoinAck(result=0), correlation, note='explore join ack (Forest of Oblivion)')
 
     @packet_handler(5360)
     async def handle_explore_leave(self, correlation, body):
         """Opcode 5360 (eERC_EXPLORE_LEAVE_REQ) -> 5361 (0x006B5F00, return to town)."""
-        from darkblood.games.network.messages.dungeon import ExploreLeaveAck
         await self.reply(ExploreLeaveAck(result=0), correlation, note='explore leave ack')
 
 
     @packet_handler(2539)
     async def handle_clear_rank_history_info(self, correlation, body):
         import time
-        from darkblood.games.network.messages.dungeon import (
-            ClearRankHistoryInfoAck, ClearRankHistoryInfoReq, DungeonClearRankInfo,
-        )
         req = ClearRankHistoryInfoReq.decode(body)
         await self.reply(
             ClearRankHistoryInfoAck(result=0, start_time=int(time.time()), cur_page=req.page,
@@ -134,9 +141,6 @@ class DungeonEventsHandlers:
 
     @packet_handler(5228)
     async def handle_clear_rank_info(self, correlation, body):
-        from darkblood.games.network.messages.dungeon import (
-            ClearRankInfoAck, ClearRankInfoReq, DungeonClearRankInfo,
-        )
         req = ClearRankInfoReq.decode(body)
         await self.reply(
             ClearRankInfoAck(result=0, cur_page=req.page, map_id=req.map_id,

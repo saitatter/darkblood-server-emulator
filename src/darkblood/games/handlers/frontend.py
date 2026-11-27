@@ -17,18 +17,26 @@ from darkblood.games.handlers.skills import (
 from darkblood.games import achievements
 from darkblood.games.config import CHAR_SLOTS, SERVERS, SQUARES, db_entry, square_entry
 from darkblood.games.network.messages import (
+    CharNickChangeByIntegrateAck,
+    CharNickChangeByIntegrateReq,
+    CharSlotExtendAck,
+    CharSlotExtendReq,
     CheatSystemDeleteCharacterAck,
     CheatSystemDeleteCharacterReq,
     DeleteCharacterAck,
     DeleteCharacterReq,
     DepotInfo,
     DepotSlotInfo,
+    EventDeleteCharacterAck,
+    EventDeleteCharacterReq,
+    ImpliedJoinLayerReq,
     JoinSquareAck,
     PetDepotSlotInfo,
+    PetInfo,
     QuestHistoryNot,
     QuestSpecialInfo,
-    RelayAddressNot,
     QuickSlot,
+    RelayAddressNot,
     SelectCharacterAck,
     UndeleteCharacterAck,
 )
@@ -207,7 +215,6 @@ def _build_pet_depot_slots(char: dict) -> list:
 def _build_pets_map(char: dict) -> dict:
     """Build {pet_uid: PetInfo} for 2007 SelectCharacterAck (0x00A1E8C0 -> 0x00A52CF0)."""
     from darkblood.core.hashing import jhash
-    from darkblood.games.network.messages.pets import PetInfo
     out = {}
     for p in char.get('pets') or []:
         if not isinstance(p, dict) or 'uid' not in p:
@@ -472,9 +479,6 @@ class FrontendHandlers(BaseDomainService):
     @packet_handler(2323)
     async def handle_char_nick_change_by_integrate(self, correlation: int, body: bytes):
         """Opcode 2323 (eEGS_CHAR_NICK_CHANGE_BY_INTEGRATE_REQ) -> 2324 (0x0075AD10)."""
-        from darkblood.games.network.messages.lobby import (
-            CharNickChangeByIntegrateAck, CharNickChangeByIntegrateReq,
-        )
         req = CharNickChangeByIntegrateReq.decode(body)
         new_nick = req.new_nick.strip()
         char = self.store().get(self.account, req.char_uid)
@@ -490,7 +494,6 @@ class FrontendHandlers(BaseDomainService):
     @packet_handler(2404)
     async def handle_event_delete_character(self, correlation: int, body: bytes):
         """Opcode 2404 (eEGS_EVENT_DELETE_CHARACTER_REQ) -> 2405 (0x0075AF00)."""
-        from darkblood.games.network.messages.lobby import EventDeleteCharacterAck, EventDeleteCharacterReq
         req = EventDeleteCharacterReq.decode(body)
         deleted = self.store().delete(self.account, req.char_uid)
         await self.reply(
@@ -501,7 +504,6 @@ class FrontendHandlers(BaseDomainService):
     @packet_handler(2441)
     async def handle_char_slot_extend(self, correlation: int, body: bytes):
         """Opcode 2441 (eEGS_CHARSLOT_EXTEND_REQ) -> 2442 (0x00781000)."""
-        from darkblood.games.network.messages.lobby import CharSlotExtendAck, CharSlotExtendReq
         req = CharSlotExtendReq.decode(body)
         self.transport.record('char-slot-extend-req', body, item_uid=req.item_uid)
         await self.reply(CharSlotExtendAck(result=0, limit_create_char=CHAR_SLOTS, items=[]), correlation,
@@ -510,7 +512,6 @@ class FrontendHandlers(BaseDomainService):
     @packet_handler(5128)
     async def handle_implied_join_layer(self, correlation: int, body: bytes):
         """Opcode 5128 (eERC_IMPLIED_JOIN_LAYER_REQ, 0x00797480) -> 5031 JoinLayerAck."""
-        from darkblood.games.network.messages.lobby import ImpliedJoinLayerReq
         req = ImpliedJoinLayerReq.decode(body)
         layer_body = struct.pack('<iq', 0x7FFFFFFF, req.layer_net_id)
         await self.session.square.handle_join_layer(correlation, layer_body)
