@@ -123,6 +123,34 @@ class LifeSkillsFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_fishing_ignores_depot_bait(self):
+        from darkblood.core.hashing import jhash
+        from darkblood.games.entities.items import DEPOT_CONTAINER
+
+        async def scenario(client):
+            char, _ = await enter_town(client, 'DepotAngler', level=10)
+            stored = dict(code='ILurN1', uid=7710, container=DEPOT_CONTAINER, slot=0, count=5)
+            char['items'].append(stored)
+            request = FishingStartReq(fishing_hole_id='Fish_ACT1_N0', bait_item_id=jhash('ILurN1')).encode()
+            client.send_event(2523, request)
+            _, refused = await client.expect_event(2524)
+            self.assertEqual(FishingStartAck.decode(refused).result, life_handlers.FISHING_NEED_BAIT)
+
+            carried = dict(code='ILurN1', uid=7711, container=3, slot=0, count=1)
+            char['items'].append(carried)
+            with patch.object(life_handlers, 'FISHING_TIME_SCALE', 0.001), \
+                 patch.object(life_handlers.LifeSkillHandlers, '_roll_catch', return_value=None):
+                client.send_event(2523, request)
+                _, start = await client.expect_event(2524)
+                self.assertEqual(FishingStartAck.decode(start).result, 0)
+                await client.expect_event(2527)
+                await client.expect_event(2528)
+            self.assertIn(stored, char['items'])
+            self.assertEqual(stored['count'], 5)
+            self.assertNotIn(carried, char['items'])
+
+        self.run_async(self.with_server(scenario))
+
     def test_fishing_loop_casts_until_the_bait_runs_out(self):
         """Live: one 2523 with the Bait slot's ItemID; the server keeps casting (2527 per cast)."""
         from darkblood.core.hashing import jhash

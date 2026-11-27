@@ -3,7 +3,7 @@ import asyncio
 
 from darkblood.core.hashing import jhash
 from darkblood.games.dispatcher import packet_handler
-from darkblood.games.entities.items import UPDATE_OWNER, Item
+from darkblood.games.entities.items import DEPOT_CONTAINER, EQUIPPED, UPDATE_OWNER, Item
 from darkblood.games.game_data.life_skills import (
     FISHING_PROFICIENCY,
     bait_time_reduction,
@@ -166,7 +166,8 @@ class LifeSkillHandlers(BaseDomainService):
         """The inventory item whose ItemID hash is `item_id`, or None."""
         wanted = int(item_id) & 0xFFFFFFFF
         return next((i for i in char.get('items', [])
-                     if jhash(i.get('code', '')) & 0xFFFFFFFF == wanted and i.get('count', 1) > 0), None)
+                     if i.get('container') not in (DEPOT_CONTAINER, EQUIPPED)
+                     and jhash(i.get('code', '')) & 0xFFFFFFFF == wanted and i.get('count', 1) > 0), None)
 
     def _cancel_fishing(self):
         task, self._fishing_task = self._fishing_task, None
