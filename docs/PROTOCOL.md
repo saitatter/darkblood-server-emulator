@@ -15,6 +15,12 @@ unknown product ID. The product list visible in the original client comes
 from its own data. Opening the last box in a stack counts the slot that will
 become free when checking whether the rewards fit.
 
+### Fishing catch capacity
+
+A catch (`2527`) can occupy the inventory slot that the last bait frees. When
+bait remains in its slot and no other cell is free, fishing reports `2528` and
+keeps the bait in the bag.
+
 ## 1. ProudNet framing
 
 Observed format:
