@@ -72,18 +72,11 @@
 | :--- | :--- | ---: | :--- |
 | `5346 CitadelRewardNot` | `map<?>` | events.jsch:68 | mapCitadelRewardItemUnit (0x0077BFB0 -> 0x0076F040), layout not recovered |
 
-## gm (1 of 94 fields)
-
-| Message / struct | Type | Line | Note |
-| :--- | :--- | ---: | :--- |
-| `2060 CheatItemDropAck` | `vector<?>` | gm.jsch:29 | vecDropItem (0x004E3AD0 -> 0x00A509E0: u32, u32, u16, u16, set<i64>, u16), names not recovered |
-
-## guild (32 of 185 fields)
+## guild (31 of 185 fields)
 
 | Message / struct | Type | Line | Note |
 | :--- | :--- | ---: | :--- |
 | `GuildInfo` | `u8` | guild.jsch:144 | +0x28 |
-| `GuildInfo` | `u16` | guild.jsch:145 | +0x29 -> player +0x234 (1 when guildless, ctor in 0x00966730) |
 | `GuildInfo` | `u32` | guild.jsch:146 | +0x2B |
 | `GuildInfo` | `u32` | guild.jsch:147 | +0x2F |
 | `GuildInfo` | `u32` | guild.jsch:148 | +0x33 |

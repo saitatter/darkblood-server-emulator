@@ -385,11 +385,12 @@ class GuildInfo(WireMessage):
     """
     guild_uid: i64 = 0  # +0x00 -> player +0x210
     name: wstr = ''  # +0x0C, assigned to the player with the UID (assumed guild name)
+    my_grade: u16 = 1  # +0x29 -> player +0x234 and JGuildManager +0x10 (read by Lua_TryChangeGrade 0x005A5C30)
     _WIRE_LAYOUT: ClassVar[tuple] = (
         'guild_uid',
         'name',
         Const(u8, 0),
-        Const(u16, 1),
+        'my_grade',
         Const(u32, 0),
         Const(u32, 0),
         Const(u32, 0),

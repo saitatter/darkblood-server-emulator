@@ -9,6 +9,7 @@ from darkblood.core.serialization.jser import REQUEST_HEADER
 from darkblood.core.serialization.wire import *  # noqa: F403
 from darkblood.games.entities.character import Character
 from darkblood.games.entities.items import Item
+from darkblood.games.network.messages.inventory import ItemDropEntry
 from darkblood.games.network.messages.skills import LearnedSkill
 
 __all__ = [
@@ -126,11 +127,7 @@ class CheatItemDropAck(WireMessage):
     _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
     drop_char_uid: i64 = 0
-    _WIRE_LAYOUT: ClassVar[tuple] = (
-        'result',
-        'drop_char_uid',
-        Const(EmptyVector),
-    )
+    drops: Vector[ItemDropEntry] = field(default_factory=list)  # vecDropItem (0x004E3AD0 -> 0x004C7F80 -> 0x00A509E0, the 5064 drop record)
 
 
 @dataclass

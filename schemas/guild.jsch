@@ -142,7 +142,7 @@ struct GuildInfo
   i64 guild_uid              # +0x00 -> player +0x210
   wstr name                  # +0x0C, assigned to the player with the UID (assumed guild name)
   u8 _                       # +0x28
-  u16 _ = 1                  # +0x29 -> player +0x234 (1 when guildless, ctor in 0x00966730)
+  u16 my_grade = 1           # +0x29 -> player +0x234 and JGuildManager +0x10 (read by Lua_TryChangeGrade 0x005A5C30)
   u32 _                      # +0x2B
   u32 _                      # +0x2F
   u32 _                      # +0x33
