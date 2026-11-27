@@ -128,6 +128,14 @@ class DungeonFlowTest(ServerTestCase):
             # 10d. BuyLifeWater (2086 -> 2087 + 2085 clear) deducts exact LoadLifeWater AR and clears penalty
             from darkblood.games.network.messages import BuyLifeWaterAck, BuyLifeWaterReq
             from darkblood.games.progression import life_water_cost
+            char['gold'] = 0
+            cost_before = life_water_cost(char, penalty_type=0)
+            client.send_event(2086, BuyLifeWaterReq(flag=False).encode())
+            _, refused_water = await client.expect_event(2087)
+            refused = BuyLifeWaterAck.decode(refused_water)
+            self.assertEqual((refused.result, refused.remain_currency), (results.NOT_ENOUGH_AR, 0))
+            self.assertEqual(life_water_cost(char, penalty_type=0), cost_before)
+
             char['gold'] = 10000
             expected_lw_cost = life_water_cost(char, penalty_type=0)
             self.assertGreater(expected_lw_cost, 0)

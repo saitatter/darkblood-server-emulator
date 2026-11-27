@@ -661,7 +661,7 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 - `2117 eEGS_UPDATE_SKILL_LOCKED_REQ` (`0x00790000.c:1390`) -> `2118 eEGS_UPDATE_SKILL_LOCKED_ACK` (`0x00752C70`): `skill_index: i16, locked: bool` -> `result: i32, skill_index: i16, locked: bool`.
 - `2145 eEGS_DURABILITY_REPAIR_REQ` (`0x00790000.c:2123`) -> `2146 eEGS_DURABILITY_REPAIR_ACK` (`0x007930D0`): tag 0x17 map -> `result: i32, b'\x17\x80' (empty map), remain_gold: i64`.
 - `2115 eEGS_ITEM_UPGRADE_REQ` (`0x00790000.c:296`) -> `2116 eEGS_ITEM_UPGRADE_ACK` (`0x007909C0`): `target: i64, catalyst: i64, protect: i64` -> `result: i32` (1 rejection).
-- `2086 eEGS_BUY_LIFE_WATER_REQ` (`0x00780000.c:11036`) -> `2087 eEGS_BUY_LIFE_WATER_ACK` (`0x0078FF90`): `flag: bool` -> `result: i32, flag: bool, remain_currency: i64`.
+- `2086 eEGS_BUY_LIFE_WATER_REQ` (`0x00780000.c:11036`) -> `2087 eEGS_BUY_LIFE_WATER_ACK` (`0x0078FF90`): `flag: bool` -> `result: i32, flag: bool, remain_currency: i64`. An unaffordable purchase returns `NOT_ENOUGH_AR` and keeps the penalty active.
 - `2128 eEGS_USE_SPEAKER_ITEM_REQ` (`0x00790000.c:1992`) -> `2129 eEGS_USE_SPEAKER_ITEM_ACK` (`0x0077F320`): `speaker_uid: i64, message: wstring, target_uid: i64` -> `result: i32, speaker_uid: i64, b'\x10\x80'`.
 - `5121 eERC_GUILD_CREATE_PROPOSAL_REQ` (`0x00790000.c:2514`) -> `5122 eERC_GUILD_CREATE_PROPOSAL_ACK` (`0x00759750`): `guild_name: wstring` -> `result: i32` (0).
 - `2150 eEGS_GUILD_CREATE_REQ` -> `2151 eEGS_GUILD_CREATE_ACK` (`0x00793720`): `guild_name: wstring` -> `result: i32, guild_uid: i64, guild_name: wstring, remain_gold: i64`.
