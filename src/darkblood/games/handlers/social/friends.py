@@ -56,7 +56,7 @@ from darkblood.games.handlers.arena.league import league_arena_info
 from darkblood.games.world import GameWorldManager, SQUARE_UID_MASK, square_uid
 from darkblood.games import achievements
 from darkblood.games.entities.character import Character
-from darkblood.games.entities.items import Item
+from darkblood.games.entities.items import EQUIPPED, Item
 from darkblood.games.handlers.skills import learned_skill_map
 
 
@@ -333,7 +333,8 @@ class FriendsHandlers:
     def _build_char_info_ack(self, target, is_other=True):
         if target is None:
             return RequestCharInfoAck(result=0xCE)
-        equipped = [Item.from_dict(it) for it in target.get('items', []) if it.get('container', 0) == 0]
+        equipped = [Item(owner=target['id'], **item) for item in target.get('items', [])
+                    if item.get('container') == EQUIPPED]
         passive_skills = list(learned_skill_map(
             target.get('skills', {}),
             target.get('skill_speeches', {}),
