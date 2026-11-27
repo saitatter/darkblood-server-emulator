@@ -74,12 +74,20 @@ class BagHandlersMixin:
     @packet_handler(SwitchBagReq)
     async def handle_switch_bag(self, correlation, body):
         """Opcode 2030 (eEGS_SWITCH_BAG_REQ) -> 2031 (eEGS_SWITCH_BAG_ACK): swap two equipped bag slots."""
+        from darkblood.player_management.characters import UI_BAG_SLOTS
+
         req = SwitchBagReq.decode(body)
         char = self.current_char()
-        if char:
-            bags = char.get('bags', [])
-            if req.from_index < len(bags) and req.to_index < len(bags):
-                bags[req.from_index], bags[req.to_index] = bags[req.to_index], bags[req.from_index]
+        source_slot, target_slot = req.from_index, req.to_index
+        if char and source_slot != target_slot and max(source_slot, target_slot) < UI_BAG_SLOTS:
+            bags_by_slot = {bag.get('w2a'): bag for bag in char.get('bags', [])}
+            source = bags_by_slot.get(source_slot)
+            target = bags_by_slot.get(target_slot)
+            if source is not None:
+                source['w2a'] = target_slot
+            if target is not None:
+                target['w2a'] = source_slot
+            if source is not None or target is not None:
                 self.save_char()
         await self.reply(SwitchBagAck(result=0, from_index=req.from_index, to_index=req.to_index),
                          correlation, note=f'switch bag ack ({req.from_index} <-> {req.to_index})')

@@ -52,6 +52,25 @@ class BagFlowTest(ServerTestCase):
             self.assertNotIn(38, [i['uid'] for i in char['items']])
             self.assertIn(38, [b['bag_id'] for b in char['bags']])
 
+            from darkblood.games.entities.items import Bag
+            from darkblood.games.network.messages import SwitchBagAck, SwitchBagReq
+
+            bag_slots = {b['bag_id']: b['w2a'] for b in char['bags']}
+            client.send_event(2030, SwitchBagReq(from_index=0, to_index=slot).encode())
+            _, swap_body = await client.expect_event(2031)
+            swap = SwitchBagAck.decode(swap_body)
+            self.assertEqual((swap.result, swap.from_index, swap.to_index), (0, 0, slot))
+            self.assertEqual({b['bag_id']: b['w2a'] for b in char['bags']},
+                             {**bag_slots, bag: slot, 38: 0})
+
+            client.send_event(2030, SwitchBagReq(from_index=0, to_index=4).encode())
+            await client.expect_event(2031)
+            moved = next(b for b in char['bags'] if b['bag_id'] == 38)
+            self.assertEqual(moved['w2a'], 4)
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            _, selected = await client.expect_event(2007)
+            self.assertIn(Bag(**moved).encode(), selected)
+
             # A non-bag item is refused.
             client.send_event(2026, struct.pack('<iq', 0x7fffffff, 999))
             _, ack = await client.expect_event(2027)
