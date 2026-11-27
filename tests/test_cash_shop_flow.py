@@ -238,6 +238,30 @@ class CashShopFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_opening_two_card_boosters_grants_two_cards(self):
+        from darkblood.games.network.messages import UseItemReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('BoosterStack'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            pack = dict(code='IRanCashEtc260', uid=301, container=3, slot=0, count=3)
+            char['items'] = [pack]
+
+            client.send_event(2038, UseItemReq(item_uid=301, use_count=2).encode())
+            _, used = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', used)[0], 0)
+            _, granted = await client.expect_event(2603)
+            self.assertEqual(granted[:2], b'\x10\x82')
+            self.assertEqual(pack['count'], 1)
+            self.assertEqual(len({card['uid'] for card in char['monster_cards']}), 2)
+
+        self.run_async(self.with_server(scenario))
+
     def test_random_box_opens_without_disconnect(self):
         """Using a random box backed by assets/random_boxes.json (e.g. Gem box IRanCashbod1)
         rolls an item and grants it via 2037 without raising TypeError / disconnecting."""

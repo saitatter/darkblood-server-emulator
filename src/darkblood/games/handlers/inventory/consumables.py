@@ -156,8 +156,13 @@ class ConsumableHandlersMixin:
             await self.reply(UseItemAck(result=results.INVALID_STATE), correlation,
                              note='rune agreement refused (all bonus slots unlocked)')
             return
-        contents, box_kind = self._cash_box_contents(item_str_code)
-        count = used_item.get('count', 1) - req.use_count
+        available = used_item.get('count', 1)
+        contents, box_kind = self._cash_box_contents(item_str_code, min(available, req.use_count))
+        if box_kind == 'monster_card' and not contents:
+            await self.reply(UseItemAck(result=results.INVALID_STATE), correlation,
+                             note='monster card booster refused (no card reward)')
+            return
+        count = available - req.use_count
         if contents and box_kind != 'monster_card':
             inventory = char
             if count <= 0:
@@ -243,7 +248,7 @@ class ConsumableHandlersMixin:
                          note='use dyeing item ack (%s target=%d color=%08x)' % (
                              dye_item.get('code'), req.target_uid, req.dye.color))
 
-    def _cash_box_contents(self, code):
+    def _cash_box_contents(self, code, use_count=1):
         info = client_dict.cash_items().get(code)
         if not info or not info['adj']:
             return [], ''
@@ -255,14 +260,16 @@ class ConsumableHandlersMixin:
         if not grades:
             return [], ''
         weights = [p for p, _ in grades]
-        _, names = random.choices(grades, weights=weights)[0]
-        pool = [entry for name in names for entry in groups.get(name, [])]
-        if not pool:
-            return [], ''
-        # Type 58 items (Card Booster Packs) are handled by JAppPageMonsterCard (0x93)
-        # via 2603 MonsterCardChangeListNot(from_random_card=True), not Page_RandomBox (0x41).
+        # Type 58 items are sent to the card collection through 2603.
         kind = 'monster_card' if info.get('type') == 58 else 'random_box'
-        return [random.choice(pool)], kind
+        rewards = []
+        for _ in range(use_count if kind == 'monster_card' else 1):
+            _, names = random.choices(grades, weights=weights)[0]
+            pool = [entry for name in names for entry in groups.get(name, [])]
+            if not pool:
+                return [], kind
+            rewards.append(random.choice(pool))
+        return rewards, kind
 
     @packet_handler(BuyLifeWaterReq)
     async def handle_buy_life_water(self, correlation, body):
