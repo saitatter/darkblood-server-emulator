@@ -97,13 +97,13 @@ class ConsumableHandlersMixin:
 
     async def _grant_opened_box_contents(self, char: dict, box_code: str, contents: list, box_kind: str):
         if box_kind == 'monster_card':
-            cards = char.setdefault('monster_cards', [])
-            album = char.setdefault('monster_card_album', [])
+            acct = self.store().account_data(self.account)
+            cards = acct.setdefault('monster_cards', [])
+            album = acct.setdefault('monster_card_album', [])
             next_uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
             new_cards = []
             new_album_codes = []
             granted_names = []
-            owner_uid = self.char_id or 0
             for item_code, qty in contents:
                 card_code = item_code[1:] if item_code.startswith('MCard') else item_code
                 if card_code not in album:
@@ -112,15 +112,15 @@ class ConsumableHandlersMixin:
                 for _ in range(max(1, int(qty))):
                     uid = next_uid
                     next_uid += 1
-                    cards.append({'uid': uid, 'code': card_code, 'level': 1})
+                    cards.append({'uid': uid, 'code': card_code, 'level': 1, 'owner_uid': 0})
                     new_cards.append(MonsterCardInfo(
                         card_uid=uid,
                         card_id=jhash(card_code),
                         level=1,
-                        owner_uid=owner_uid,
+                        owner_uid=0,
                     ))
                     granted_names.append(card_code)
-            self.save_char()
+            self.store().save_account_data(self.account)
             await self.send_msg(
                 MonsterCardChangeListNot(new_cards=new_cards, del_cards=[], from_random_card=True),
                 note='monster card booster opened (%s -> %s)' % (box_code, ', '.join(granted_names)),

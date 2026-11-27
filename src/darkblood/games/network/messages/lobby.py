@@ -185,6 +185,7 @@ class SelectCharacterAck(WireMessage):
     summoned_pet_uid: i64 = 0  # +0x0C active summoned pet UID (0 if none)
     pet_summoned: bool = False  # +0x14 whether a pet is currently summoned
     pet_depot_slots: Vector[PetDepotSlotInfo] = field(default_factory=list)  # 0x00A3EDD0 -> 0x00A3E920 -> 0x00A1E820 (Page_Pet +0x23C, 0x1B bytes each)
+    monster_card_add_slots: u16 = 0  # +0x4AB -> AppPage(0x93).0x005DE1B0: BaseSlotCount(60) + this
     u32_vec_c: Vector[u32] = field(default_factory=list)  # 0x004DA660
     buff_map_b: Map[u32, Set[u32]] = field(default_factory=dict)  # 0x005F9150 -> 0x005F6640
     citadel_play_count: i16 = 0  # 0x00B351E0 (+0x3E9 -> player +0x304, UI_3408 Left Challenge Opportunity)
@@ -257,7 +258,7 @@ class SelectCharacterAck(WireMessage):
         Const(u64, 0),
         Const(EmptyMap),
         Const(EmptyVector),
-        Const(u16, 0),
+        'monster_card_add_slots',
         'u32_vec_c',
         'buff_map_b',
         'citadel_play_count',

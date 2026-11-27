@@ -182,8 +182,9 @@ class CashShopFlowTest(ServerTestCase):
             self.assertEqual(card2603[:2], b'\x10\x81')
             self.assertEqual(card2603[-3:], b'\x10\x80\x01')
             self.assertEqual(len(char['items']), 0)
-            self.assertEqual(len(char['monster_cards']), 1)
-            card_code = char['monster_cards'][0]['code']
+            acct = session.GameSession.store().account_data('OfflinePlayer')
+            self.assertEqual(len(acct['monster_cards']), 1)
+            card_code = acct['monster_cards'][0]['code']
             self.assertTrue(card_code.startswith('Card'))
             self.assertEqual(struct.unpack_from('<I', card2603, 10)[0], jhash(card_code))
             _, album2619 = await client.expect_event(2619)
@@ -198,6 +199,22 @@ class CashShopFlowTest(ServerTestCase):
             client.send_event(2617)
             _, album2618 = await client.expect_event(2618)
             self.assertEqual(album2618, struct.pack('<I', 0) + b'\x10\x81' + struct.pack('<I', jhash(card_code)))
+
+            # Card Book is shared across characters on the same account
+            client.send_event(2012, create_request('AltReader', char_class=2))
+            _, created_alt = await client.expect_event(2013)
+            alt_id = struct.unpack_from('<Q', created_alt, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, alt_id))
+            await client.expect_event(2007)
+            await client.expect_event(2410)
+
+            client.send_event(2601)
+            _, alt_list2602 = await client.expect_event(2602)
+            self.assertIn(struct.pack('<I', jhash(card_code)), alt_list2602)
+
+            client.send_event(2617)
+            _, alt_album2618 = await client.expect_event(2618)
+            self.assertEqual(alt_album2618, struct.pack('<I', 0) + b'\x10\x81' + struct.pack('<I', jhash(card_code)))
 
         self.run_async(self.with_server(scenario))
 

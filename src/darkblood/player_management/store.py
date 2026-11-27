@@ -52,6 +52,7 @@ class SqliteCharacterStore(ICharacterStore):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock = threading.Lock()
         self._cache = {}  # (account, char_id) -> dict
+        self._account_cache = {}  # account.lower() -> dict
         self._timer_refresher = timer_refresher
         self._conn = self._open_connection()
         self._finalizer = weakref.finalize(self, _close_conn, self._conn)
@@ -162,6 +163,12 @@ class SqliteCharacterStore(ICharacterStore):
                     created REAL NOT NULL
                 )
             ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS account_data (
+                    account TEXT PRIMARY KEY COLLATE NOCASE,
+                    data_json TEXT NOT NULL
+                )
+            ''')
             conn.execute('INSERT OR IGNORE INTO accounts (uid, name, created) '
                          'VALUES (1, "OfflinePlayer", strftime("%s","now"))')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_char_account ON characters(account)')
@@ -212,6 +219,34 @@ class SqliteCharacterStore(ICharacterStore):
         with self.lock:
             conn = self._get_connection()
             return [(r['uid'], r['name']) for r in conn.execute('SELECT uid, name FROM accounts ORDER BY uid')]
+
+    def account_data(self, account: str) -> dict:
+        """Return the shared per-account data dict (e.g. Monster Card book)."""
+        key = (account or '').lower()
+        with self.lock:
+            if key in self._account_cache:
+                return self._account_cache[key]
+            conn = self._get_connection()
+            row = conn.execute(
+                'SELECT data_json FROM account_data WHERE account = ?', (account,)
+            ).fetchone()
+            data = json.loads(row['data_json']) if row else {}
+            self._account_cache[key] = data
+            return data
+
+    def save_account_data(self, account: str):
+        """Persist the shared per-account data dict."""
+        key = (account or '').lower()
+        with self.lock:
+            data = self._account_cache.get(key)
+            if data is None:
+                return
+            conn = self._get_connection()
+            conn.execute(
+                'INSERT OR REPLACE INTO account_data (account, data_json) VALUES (?, ?)',
+                (account, json.dumps(data)),
+            )
+            conn.commit()
 
     def characters(self, account: str) -> list:
         with self.lock:
