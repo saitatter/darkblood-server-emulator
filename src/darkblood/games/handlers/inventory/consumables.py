@@ -7,6 +7,7 @@ from darkblood.core.serialization.jser import event
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network import results
+from darkblood.games.handlers.pets.cards import free_monster_card_slots
 from darkblood.games.network.messages import (
     BuyLifeWaterAck,
     BuyLifeWaterReq,
@@ -178,6 +179,12 @@ class ConsumableHandlersMixin:
             if free is not None and needed > free:
                 await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
                                  note='use item fail (bag full: need %d, free %d)' % (needed, free))
+                return
+        if box_kind == 'monster_card':
+            needed = sum(max(1, int(qty)) for _, qty in contents)
+            if needed > free_monster_card_slots(char):
+                await self.reply(UseItemAck(result=results.INVEN_FULL), correlation,
+                                 note='monster card booster refused (card inventory full)')
                 return
         item_code = jhash(item_str_code)
         updated = []

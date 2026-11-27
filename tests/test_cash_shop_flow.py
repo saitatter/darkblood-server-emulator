@@ -121,6 +121,42 @@ class CashShopFlowTest(ServerTestCase):
 
         self.run_async(self.with_server(scenario))
 
+    def test_full_card_collection_keeps_unopened_items(self):
+        from darkblood.games.network import results
+        from darkblood.games.network.messages import MonsterCardInsertReq, UseItemReq
+
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('FullCardBinder'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            char = session.GameSession.store().get('OfflinePlayer', char_id)
+            char['monster_cards'] = [dict(uid=uid, code='Card001') for uid in range(1, 61)]
+            card = dict(uid=81, code='MCard001', container=3, slot=0, count=1)
+            booster = dict(uid=82, code='IRanCashEtc260', container=3, slot=1, count=1)
+            char['items'] = [card, booster]
+
+            client.send_event(2604, MonsterCardInsertReq(item_uid=81).encode())
+            _, insert = await client.expect_event(2605)
+            self.assertEqual(struct.unpack_from('<i', insert)[0], results.INVEN_FULL)
+            client.send_event(2038, UseItemReq(item_uid=82, use_count=1).encode())
+            _, use = await client.expect_event(2039)
+            self.assertEqual(struct.unpack_from('<i', use)[0], results.INVEN_FULL)
+            self.assertEqual(len(char['monster_cards']), 60)
+            self.assertEqual(char['items'], [card, booster])
+
+            char['monster_cards'].pop()
+            client.send_event(2604, MonsterCardInsertReq(item_uid=81).encode())
+            _, inserted = await client.expect_event(2605)
+            self.assertEqual(struct.unpack_from('<i', inserted)[0], 0)
+            await client.expect_event(2603)
+            self.assertEqual(len(char['monster_cards']), 60)
+            self.assertEqual(char['items'], [booster])
+
+        self.run_async(self.with_server(scenario))
+
     def test_monster_card_requests_get_empty_lists(self):
         async def scenario(client):
             await lobby_flow(client)
