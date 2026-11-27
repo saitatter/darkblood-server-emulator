@@ -129,6 +129,8 @@ class ItemHandlersMixin:
             ]
         await self.reply(DragItemAck(result=0, items=wire_items), correlation,
                          note='drag item ack (uid=%d to c=%d s=%d)' % (req.item_uid, dest_container, req.to_slot))
+        if (old_container == DEPOT_CONTAINER) != (dest_container == DEPOT_CONTAINER):
+            await self.session.quests.check_quest_item_objectives(char)
 
 
     @packet_handler(EquipItemReq)

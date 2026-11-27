@@ -483,6 +483,9 @@ The cropped splash screenshot is preserved locally as `research/splash-local.png
 Agreement of Rune (`IAMk1R190`, issue #26) remains in the bag when all three
 bonus Rune Slate slots are unlocked. The headless test also checks the ordinary unlock.
 
+Moving a collection item between the bag and depot refreshes the quest
+counter (`2075`) in both directions.
+
 ## Tools and reproduction
 
 Verified environment: Windows x64, Python 3.8, MSVC 2022 x86, Ghidra 12.1.4, JDK 21.0.9, REA CLI 6.7.0. The server and tools use only the Python standard library.
