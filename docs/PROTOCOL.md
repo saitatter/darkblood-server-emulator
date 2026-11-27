@@ -658,6 +658,9 @@ Implemented from these drafts (headless-tested): 5124 → 5125
 `eERC_GTARGET_LIST_ACK` (result + empty vector of `{i32,bool,bool}`), 2369 →
 2370 `eEGS_BILLING_GET_CURRENT_CASH_ACK` (result + 12 raw bytes, zero).
 
+A stacked Type 58 booster request (`2038`) rolls one card reward for each pack
+opened. The card entries arrive together in `2603`.
+
 ### Store, Skills & Social Opcodes (2026-11-16)
 
 - `2032 eEGS_CHANGE_BAG_NAME_REQ` (`0x007528B0`) -> `2033 eEGS_CHANGE_BAG_NAME_ACK`: `bag_uid: i64, name: wstring` -> `result: i32, bag_uid: i64, name: wstring`. The saved name is in the bag entry of `2007`.
