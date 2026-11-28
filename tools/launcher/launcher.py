@@ -48,6 +48,7 @@ from launcher_app.client_ops import (  # noqa: E402
     parse_gm_commands_doc,
     probe_tcp,
     query_gm_bridge,
+    run_gm_command,
     stage_client_folder,
 )
 from launcher_app.theme import (  # noqa: E402
@@ -78,10 +79,12 @@ from launcher_app.theme import (  # noqa: E402
     WARN_AMBER,
 )
 from launcher_app.gm_catalogs import (  # noqa: E402
+    join_command_args,
     load_gm_pins,
     move_item,
     parse_command_params,
     save_gm_pins,
+    split_command_args,
     suggest_pin_label,
 )
 from launcher_app.widgets import ScrollFrame, SearchableIdPicker  # noqa: E402
@@ -538,7 +541,7 @@ class DarkBloodLauncher(tk.Tk):
         search_entry.pack(side='left', ipady=3, pady=8)
 
         self.gm_cat_var = tk.StringVar(value='All')
-        cats = ['All', 'Live Executable'] + sorted({c['category'] for c in self._gm_commands})
+        cats = ['All'] + sorted({c['category'] for c in self._gm_commands})
         cat_menu = tk.OptionMenu(hdr, self.gm_cat_var, *cats, command=lambda *_: self._render_gm_list())
         cat_menu.configure(
             bg=BG_INPUT, fg=TEXT_MAIN, activebackground=BORDER, activeforeground=TEXT_MAIN,
@@ -620,8 +623,8 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_detail_body = tk.Label(
             detail_card,
             text='Search any command on the left.\n\n'
-                 '• [LIVE] commands execute directly on the online character from this launcher.\n'
-                 '• [CHAT] commands are client-side cheats — click Copy %cmd and paste in game chat (Enter) or press Ctrl+Shift+C.',
+                 "Send to Game runs the command in the selected character's client, exactly as if it "
+                 'had been typed in chat with %. Arguments shown with commas need the commas.',
             bg=BG_CARD_ALT, fg=TEXT_MAIN, font=('Segoe UI', 9),
             justify='left', wraplength=294, anchor='nw',
         )
@@ -666,7 +669,7 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_send_btn.pack(side='left')
 
         self.gm_result_lbl = tk.Label(
-            card, text='Ready — start local server & log in a character to execute [LIVE] commands.',
+            card, text='Ready — start the game and log in a character to run commands.',
             bg=BG_CARD, fg=TEXT_MUTED, font=('Segoe UI', 8), anchor='w', padx=12, pady=4,
         )
         self.gm_result_lbl.pack(fill='x')
@@ -680,9 +683,7 @@ class DarkBloodLauncher(tk.Tk):
         cat = self.gm_cat_var.get()
         filtered = []
         for c in self._gm_commands:
-            if cat == 'Live Executable' and not c['live']:
-                continue
-            elif cat not in ('All', 'Live Executable') and c['category'] != cat:
+            if cat != 'All' and c['category'] != cat:
                 continue
             if q:
                 hay = f"{c['name']} {c['description']} {c['params']} {c['category']}".lower()
@@ -692,10 +693,8 @@ class DarkBloodLauncher(tk.Tk):
         self._gm_filtered = filtered
         self.gm_listbox.delete(0, 'end')
         for c in filtered:
-            tag = '[LIVE]' if c['live'] else '[CHAT]'
-            self.gm_listbox.insert('end', f" {tag} {c['name']:<18}  {c['description']}")
-        live_cnt = sum(1 for c in filtered if c['live'])
-        self.gm_count_lbl.config(text=f'{len(filtered)} commands shown ({live_cnt} live-executable)')
+            self.gm_listbox.insert('end', f" {c['name']:<18}  {c['description']}")
+        self.gm_count_lbl.config(text=f'{len(filtered)} commands shown')
 
     def _on_gm_select(self, _event=None):
         sel = self.gm_listbox.curselection()
@@ -707,10 +706,7 @@ class DarkBloodLauncher(tk.Tk):
         c = self._gm_filtered[idx]
         self._gm_selected_cmd = c
         self.gm_detail_title.config(text=f"%{c['name']}")
-        if c['live']:
-            self.gm_detail_badge.config(text=f"● SERVER LIVE  •  {c['category']}", fg=OK_GREEN)
-        else:
-            self.gm_detail_badge.config(text=f"● IN-GAME CHAT ONLY  •  {c['category']}", fg=WARN_AMBER)
+        self.gm_detail_badge.config(text=f"● {c['category']}", fg=OK_GREEN)
         body = (
             f"{c['description']}\n\n"
             f"Parameters:\n  {c['params']}\n\n"
@@ -742,9 +738,9 @@ class DarkBloodLauncher(tk.Tk):
             return
 
         # Seed initial parameter values from the example command line
-        ex_line = (self.gm_cmd_var.get() or '').strip()
-        ex_parts = ex_line.split()
-        ex_args = ex_parts[1:] if (ex_parts and ex_parts[0].lower() == cmd['name'].lower()) else []
+        ex_line = (self.gm_cmd_var.get() or '').strip().lstrip('%')
+        ex_name, _, ex_rest = ex_line.partition(' ')
+        ex_args = split_command_args(ex_rest) if ex_name.lower() == cmd['name'].lower() else []
 
         tk.Label(self.gm_params_bar, text='Params:', bg=BG_CARD_ALT, fg=GOLD,
                  font=('Segoe UI', 8, 'bold')).pack(side='left', padx=(0, 8))
@@ -800,13 +796,13 @@ class DarkBloodLauncher(tk.Tk):
         for spec, getter in self._gm_param_controls:
             val = (getter() or '').strip()
             if val:
-                args.append(val)
+                args.append((spec, val))
             elif spec.required:
-                args.append('')
+                args.append((spec, ''))
         # Trim trailing empty optional arguments
-        while args and not args[-1]:
+        while args and not args[-1][1]:
             args.pop()
-        line = cmd['name'] + (' ' + ' '.join(args) if args else '')
+        line = cmd['name'] + (' ' + join_command_args(args) if args else '')
         self.gm_cmd_var.set(line)
 
     def _render_gm_pins(self):
@@ -892,40 +888,31 @@ class DarkBloodLauncher(tk.Tk):
             self.after(0, lambda: self.gm_result_lbl.config(text=text, fg=color))
 
         def worker():
-            done, skipped = 0, []
+            done = 0
             failure = None
             for step, cmd in enumerate(commands, 1):
                 status(f'Macro "{label}" {step}/{total}: %{cmd}...', TEXT_DIM)
-                resp = query_gm_bridge({'action': 'exec', 'command': cmd, 'char_id': char_id})
+                resp = run_gm_command(cmd, char_id)
                 if resp.get('ok'):
                     done += 1
-                elif resp.get('client_only'):
-                    skipped.append(cmd)
                 else:
                     failure = (step, cmd, resp.get('message', 'failed'))
                     break
                 if step < total:
                     time.sleep(GM_MACRO_STEP_DELAY)
-            self.after(0, lambda: self._on_gm_macro_done(label, total, done, skipped, failure))
+            self.after(0, lambda: self._on_gm_macro_done(label, total, done, failure))
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _on_gm_macro_done(self, label, total, done, skipped, failure):
+    def _on_gm_macro_done(self, label, total, done, failure):
         self._gm_macro_running = False
         self.gm_send_btn.config(state='normal')
-        if skipped:
-            text = '\n'.join(f'%{c}' for c in skipped)
-            self.clipboard_clear()
-            self.clipboard_append(text)
-        note = f'  •  {len(skipped)} client-only step(s) copied to clipboard' if skipped else ''
         if failure:
             step, cmd, msg = failure
             self.gm_result_lbl.config(
-                text=f'✗ Macro "{label}" stopped at {step}/{total} (%{cmd}): {msg}{note}', fg=ERR_RED)
+                text=f'✗ Macro "{label}" stopped at {step}/{total} (%{cmd}): {msg}', fg=ERR_RED)
         else:
-            self.gm_result_lbl.config(
-                text=f'✓ Macro "{label}": {done}/{total} step(s) executed{note}',
-                fg=WARN_AMBER if skipped else OK_GREEN)
+            self.gm_result_lbl.config(text=f'✓ Macro "{label}": {done}/{total} step(s) executed', fg=OK_GREEN)
         if done:
             self._refresh_gm_players_async()
 
@@ -1263,11 +1250,11 @@ class DarkBloodLauncher(tk.Tk):
             self.gm_player_var.set('Auto (active character)')
 
         if resp.get('offline'):
-            self.gm_result_lbl.config(text='Local server offline — start server to execute [LIVE] commands.', fg=TEXT_MUTED)
+            self.gm_result_lbl.config(text='Local server offline — start the server and the game to run commands.', fg=TEXT_MUTED)
         elif not resp.get('ok'):
             self.gm_result_lbl.config(text=f"GM bridge error: {resp.get('message', 'unknown')}", fg=ERR_RED)
         elif not clients:
-            self.gm_result_lbl.config(text='Server online — log in a character to execute [LIVE] commands.', fg=WARN_AMBER)
+            self.gm_result_lbl.config(text='Server online — log in a character to run commands.', fg=WARN_AMBER)
         else:
             self.gm_result_lbl.config(
                 text=f'Server online — {len(clients)} client(s) connected.',
@@ -1295,7 +1282,7 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_result_lbl.config(text=f'Executing %{cmd}...', fg=TEXT_DIM)
 
         def worker():
-            resp = query_gm_bridge({'action': 'exec', 'command': cmd, 'char_id': char_id})
+            resp = run_gm_command(cmd, char_id)
             self.after(0, lambda: self._on_gm_result(cmd, resp))
 
         threading.Thread(target=worker, daemon=True).start()
@@ -1304,13 +1291,8 @@ class DarkBloodLauncher(tk.Tk):
         self.gm_send_btn.config(state='normal')
         msg = resp.get('message', 'Done.')
         if resp.get('ok'):
-            self.gm_result_lbl.config(text=f'✓ {msg}', fg=OK_GREEN)
+            self.gm_result_lbl.config(text=f'✓ %{cmd.lstrip("%")}: {msg}', fg=OK_GREEN)
             self._refresh_gm_players_async()
-        elif resp.get('client_only'):
-            text = cmd if cmd.startswith('%') else f'%{cmd}'
-            self.clipboard_clear()
-            self.clipboard_append(text)
-            self.gm_result_lbl.config(text=f'Copied "{text}" — {msg}', fg=WARN_AMBER)
         else:
             self.gm_result_lbl.config(text=f'✗ {msg}', fg=ERR_RED)
 

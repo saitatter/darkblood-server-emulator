@@ -426,8 +426,7 @@ class ReleaseUpdaterTest(unittest.TestCase):
         self.assertIn('lv', names)
         self.assertIn('itemcall', names)
         self.assertIn('dualskill', names)
-        lv_cmd = next(c for c in cmds if c['name'] == 'lv')
-        self.assertTrue(lv_cmd['live'])
+        self.assertTrue(all('live' not in c for c in cmds))
 
 
 if __name__ == '__main__':

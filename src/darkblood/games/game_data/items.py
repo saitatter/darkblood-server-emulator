@@ -49,6 +49,25 @@ def default_equipment():
 
 ITEM_FIELD_RE = re.compile(r'^ {4}(\w+) = (-?\d+),?$')
 
+# Non-item_*.lua files that also hold DictItem:LoadItem tables (crafting
+# materials and ores, fish and bait, arena potions, skill runes, monster
+# cards). Only their LoadItem sections are items; the rest are recipes etc.
+EXTRA_ITEM_FILES = ('making.lua', 'fishing.lua', 'arena.lua', 'mark.lua', 'monstercard.lua')
+
+
+def _load_item_section_lines(lines):
+    """Lines inside `assert(DictItem:LoadItem({ ... }), ...)` sections only."""
+    out, inside = [], False
+    for line in lines:
+        if not inside:
+            inside = 'DictItem:LoadItem({' in line and 'DictItem:LoadItem({})' not in line
+            continue
+        if line.startswith('})'):
+            inside = False
+            continue
+        out.append(line)
+    return out
+
 
 @lru_cache(maxsize=None)
 def item_int_fields():
@@ -70,10 +89,16 @@ def item_int_fields():
     root = data_root()
     if not root.exists():
         return out
-    for path in sorted(root.glob('item_*.lua')):
+    paths = sorted(root.glob('item_*.lua')) + [root / name for name in EXTRA_ITEM_FILES]
+    for path in paths:
+        if not path.is_file():
+            continue
         item_id = None
         fields = {}
-        for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
+        lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
+        if path.name in EXTRA_ITEM_FILES:
+            lines = _load_item_section_lines(lines)
+        for line in lines:
             if line.startswith('  {'):
                 if item_id is not None and fields:
                     out.setdefault(item_id, {}).update(fields)

@@ -83,6 +83,7 @@ static void InstallAllPatches(void) {
     /* Hacks & Gameplay */
     Patch_SkipLogos_Install();
     Patch_SkipTutorialAlways_Install();
+    Patch_GmChannel_Install();
 
     /* Diagnostics & Dev tools */
     Patch_DiagnosticHooks_Install();

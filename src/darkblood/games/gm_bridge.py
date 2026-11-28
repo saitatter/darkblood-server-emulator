@@ -92,8 +92,18 @@ def _list_players() -> list:
             'level': int(c.get('level', 1)),
             'gold': gold_of(c),
             'sp': int(c.get('sp', 0)),
+            'client_port': _client_port(wp.session),
         })
     return out
+
+
+def _client_port(session) -> int:
+    """Local TCP port of the session's client socket (the launcher maps it to the client process)."""
+    peer = getattr(getattr(session, 'transport', None), 'peer', None)
+    try:
+        return int(peer[1])
+    except (TypeError, IndexError, ValueError):
+        return 0
 
 
 def _list_clients() -> list:

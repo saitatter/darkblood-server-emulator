@@ -13,6 +13,8 @@ from pathlib import Path
 from darkblood.games.gm_bridge import GM_BRIDGE_HOST, GM_BRIDGE_PORT, SERVER_LIVE_COMMANDS
 import gamectl
 
+from launcher_app import gm_channel
+
 from launcher_app.theme import CLIENT_DIR, CLIENT_DLL, CLIENT_EXE, HOOK_BUILT_DLL, ROOT
 
 
@@ -200,7 +202,6 @@ def parse_gm_commands_doc(doc_path: Path = None) -> list:
             'description': desc,
             'params': params,
             'example': example,
-            'live': name.lower() in SERVER_LIVE_COMMANDS,
         })
     if not any(c['name'] == 'dualskill' for c in commands):
         commands.append({
@@ -209,7 +210,6 @@ def parse_gm_commands_doc(doc_path: Path = None) -> list:
             'description': 'Activate or extend Dual Skill duration directly',
             'params': '[days=30]',
             'example': '%dualskill 30',
-            'live': True,
         })
     return commands
 
@@ -234,6 +234,40 @@ def query_gm_bridge(payload: dict, host: str = GM_BRIDGE_HOST, port: int = GM_BR
         return {'ok': False, 'offline': True, 'message': f'Server GM bridge offline ({exc}).'}
     except Exception as exc:
         return {'ok': False, 'message': str(exc)}
+
+
+# Commands the client's console does not know; only the server's GM bridge runs them.
+BRIDGE_ONLY_COMMANDS = frozenset({'dualskill'})
+
+
+def _client_port_for(char_id, status: dict) -> int:
+    players = status.get('players', []) if status.get('ok') else []
+    if char_id is not None:
+        match = next((p for p in players if int(p.get('char_id', -1)) == int(char_id)), None)
+    else:
+        match = players[0] if len(players) == 1 else None
+    return int((match or {}).get('client_port') or 0)
+
+
+def run_gm_command(command: str, char_id=None) -> dict:
+    """Run one GM command for the selected character.
+
+    Console commands go through the client's GM channel (as if typed in chat),
+    so client-side cheats and server-backed ones behave the same. Launcher-only
+    commands use the server's GM bridge, which also stands in when the client
+    has no GM channel yet (hook older than the channel) for the commands it knows.
+    """
+    text = (command or '').strip().lstrip('%').strip()
+    if not text:
+        return {'ok': False, 'message': 'Empty command.'}
+    name = text.split(None, 1)[0].lower()
+    if name in BRIDGE_ONLY_COMMANDS:
+        return query_gm_bridge({'action': 'exec', 'command': text, 'char_id': char_id})
+    status = query_gm_bridge({'action': 'status'})
+    resp = gm_channel.send_command(text, _client_port_for(char_id, status))
+    if resp.get('no_channel') and name in SERVER_LIVE_COMMANDS:
+        return query_gm_bridge({'action': 'exec', 'command': text, 'char_id': char_id})
+    return resp
 
 
 def launch_clients(account, count=1):

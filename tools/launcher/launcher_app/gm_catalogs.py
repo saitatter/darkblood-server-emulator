@@ -81,6 +81,7 @@ class ParamSpec:
     default: str = ''
     catalog: Optional[str] = None
     choices: List[str] = field(default_factory=list)
+    sep: str = ' '  # text placed before this argument: ',' when the syntax separates it with a comma
 
 
 def _clean_cell(text: str) -> str:
@@ -302,8 +303,12 @@ def search_catalog(
 def parse_command_params(params_str: str) -> List[ParamSpec]:
     """Parse GM_COMMANDS.md parameter syntax into structured ParamSpec entries.
 
+    A comma between two tokens ('<item_id>,<count>,[minutes]') means the client
+    reads that argument after a comma (getline(',') in JAppPageCheat); the
+    argument's `sep` is then ','.
+
     Examples:
-        '<item_id> [count=1] [expire_min]'
+        '<item_id>,<count>,[minutes]'
         '<buff_id> [monster_id]'
         '<mount_id | off>'
         '<weapon | cloth> <level>'
@@ -311,7 +316,13 @@ def parse_command_params(params_str: str) -> List[ParamSpec]:
     if not params_str or params_str.strip() in ('—', '-'):
         return []
     specs: List[ParamSpec] = []
-    for token in _PARAM_TOKEN_RE.findall(params_str):
+    prev_end = 0
+    for match in _PARAM_TOKEN_RE.finditer(params_str):
+        token = match.group(0)
+        gap = params_str[prev_end:match.start()]
+        prev_end = match.end()
+        sep = ',' if (specs and ',' in gap) else ' '
+        count_before = len(specs)
         required = token.startswith('<')
         inner = token[1:-1].strip()
         if not inner:
@@ -357,7 +368,22 @@ def parse_command_params(params_str: str) -> List[ParamSpec]:
                 default=default,
                 catalog=PARAM_TO_CATALOG.get(key),
             ))
+        if len(specs) > count_before:
+            specs[-1].sep = sep
     return specs
+
+
+def split_command_args(args_text: str) -> List[str]:
+    """Split the argument part of a command line on commas and whitespace."""
+    return [part for part in re.split(r'\s*,\s*|\s+', (args_text or '').strip()) if part]
+
+
+def join_command_args(specs_and_values) -> str:
+    """Build the argument text from (ParamSpec, value) pairs using each argument's separator."""
+    out = ''
+    for index, (spec, value) in enumerate(specs_and_values):
+        out += (spec.sep if index else '') + value
+    return out
 
 
 def suggest_pin_label(command: str, ids_dir: Path = GM_IDS_DIR) -> str:

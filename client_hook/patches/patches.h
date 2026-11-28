@@ -16,6 +16,7 @@ void Patch_CharSlots_Install(void);
 /* Hacks & Gameplay */
 void Patch_SkipLogos_Install(void);
 void Patch_SkipTutorialAlways_Install(void);
+void Patch_GmChannel_Install(void);
 
 /* Diagnostics & Dev tools */
 void Patch_DiagnosticHooks_Install(void);

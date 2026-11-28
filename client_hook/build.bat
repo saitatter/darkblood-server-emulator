@@ -14,6 +14,7 @@ cl.exe /nologo /LD /MD /O1 ^
     patches\char_slots.c ^
     patches\skip_logos.c ^
     patches\skip_tutorial_always.c ^
+    patches\gm_channel.c ^
     patches\diagnostic_hooks.c ^
     patches\debug_tools.c ^
     /Fe:steam_api.dll ws2_32.lib user32.lib || goto fail
