@@ -349,7 +349,13 @@ def _download_to_file(url: str, dest: Path, expected_size: int = 0,
                 hasher.update(chunk)
                 downloaded += len(chunk)
                 if on_progress is not None:
-                    on_progress(downloaded, total)
+                    try:
+                        on_progress(downloaded, total)
+                    except Exception:
+                        # Progress display only: a launcher bug here must not abort the
+                        # update (v0.5's callback raised NameError for `time` and every
+                        # 0.5 -> 0.6 self-update failed).
+                        on_progress = None
     declared_size = expected_size or total
     if declared_size and downloaded != declared_size:
         raise OSError(f'Release download size mismatch (expected {declared_size}, got {downloaded} bytes).')
