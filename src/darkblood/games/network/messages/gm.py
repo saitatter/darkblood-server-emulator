@@ -81,6 +81,37 @@ __all__ = [
     'CheatForceItemDropNot',
     'CheatSecondPassDeleteReq',
     'CheatSecondPassDeleteAck',
+    'CheatDepotShareExpireTimeAddReq',
+    'CheatVisibleChangeReq',
+    'CheatVisibleChangeAck',
+    'CheatRequestTeleportNot',
+    'AcknowledgeTeleportNot',
+    'CheatKickCharReq',
+    'CheatInitSkillReq',
+    'CheatInitProficiencyReq',
+    'CheatInitProficiencyAck',
+    'ArenaGradeInfo',
+    'CheatArenaLevelUpReq',
+    'CheatArenaLevelUpAck',
+    'CheatInsertPvpPointReq',
+    'CheatInsertPvpPointAck',
+    'CheatDungeonCountClearReq',
+    'CheatPersonalShopExpireTimeUpdateReq',
+    'CheatPersonalShopExpireTimeClearReq',
+    'CheatBillingCashChangeReq',
+    'CheatBillingCashChangeAck',
+    'CheatMissionCompleteReq',
+    'CheatForceItemUpgradeReq',
+    'CheatForceItemUpgradeAck',
+    'CheatDungeonMasterReq',
+    'CheatPetLevelReq',
+    'CheatPetLevelAck',
+    'CheatLeagueSeasonArenaStatExpReq',
+    'CheatMonsterCardInsertReq',
+    'CheatTeachingChangeInfoReq',
+    'CheatTeachingChangeInfoAck',
+    'CheatFullItemDropNot',
+    'CheatViewItemDropNot',
 ]
 
 
@@ -257,45 +288,58 @@ class CheatPleaseAck(WireMessage):
 class CheatQuestCompleteReq(WireMessage):
     """Opcode 2093: eEGS_CHEAT_QUEST_COMPLETE_REQ (request).
 
-    Console: questclear.
+    Console: questclear <quest_id> (JAppPageCheat case 0x17). The quest reference
+    is written by 0x004C7950: implicit 0x1E struct (no wire byte) + wstr via
+    0x00A49740; the matching reader 0x00A497B0 hashes the code (JHashString).
     """
     OPCODE: ClassVar[int] = 2093
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    quest_id: u32 = 0
+    quest_code: wstr = ''
 
 
 @dataclass
 class CheatQuestResetReq(WireMessage):
     """Opcode 2096: eEGS_CHEAT_QUEST_RESET_REQ (request).
 
-    Console: questcancel / questreset.
+    Console: questcancel <quest_id> (case 0x18): the quest reference as in 2093.
     """
     OPCODE: ClassVar[int] = 2096
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
+    quest_code: wstr = ''
 
 
 @dataclass
 class CheatQuestResetAck(WireMessage):
     """Opcode 2097: eEGS_CHEAT_QUEST_RESET_ACK (reply).
 
-    Reply to 2096.
+    JAppPageQuestDlg::OneEGS_CHEAT_QUEST_RESET_ACK 0x0061A8E0 (assert: iQuestID).
     """
     OPCODE: ClassVar[int] = 2097
+    _WIRE_OK_INDEX: ClassVar[int] = 1
     result: u32 = 0
+    quest_id: h32 = 0
 
 
 @dataclass
 class CheatQuestStartReq(WireMessage):
     """Opcode 2099: eEGS_CHEAT_QUEST_START_REQ (request).
 
-    Console: queststart.
+    Console: queststart <quest_id> (case 0x19, 0x004F19C3): the dict entry's
+    +0x94 string via 0x00B35A40, then the entry's +0x20. Live (Q0001S01): no
+    header word, wstr "2015-02-23 15:42:11, " (meaning unknown), h32 0xA094458B
+    = JHashString("Q0001S01").
     """
     OPCODE: ClassVar[int] = 2099
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    quest_id: u32 = 0
+    quest_id: h32 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        Const(wstr, ''),
+        'quest_id',
+    )
 
 
 @dataclass
@@ -743,12 +787,17 @@ class CheatIndulgenceTimeChangeReq(WireMessage):
 class CheatExploreCompleteReq(WireMessage):
     """Opcode 2660: eEGS_CHEAT_EXPLORE_COMPLETE_REQ (request).
 
-    Instant-complete explore.
+    Console: exploreclear (case 0x9B): i64 then i32 (writers 0x00B353D0, 0x00B352B0).
     """
     OPCODE: ClassVar[int] = 2660
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
     char_uid: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        'char_uid',
+        Const(i32, 0),
+    )
 
 
 @dataclass
@@ -853,12 +902,11 @@ class CheatSummonRequestNot(WireMessage):
 class CheatForceItemDropNot(WireMessage):
     """Opcode 5252: eERC_CHEAT_FORCE_ITEM_DROP_NOT (reply).
 
-    Console: forcedrop.
+    Console: forcedrop (case 0x7C, 0x004F13FA): an empty event sent with 0x007874A0.
     """
     OPCODE: ClassVar[int] = 5252
     _WIRE_HEADER: ClassVar[str] = 'header?'
     header: i32 = REQUEST_HEADER
-    item_id: i32 = 0
 
 
 @dataclass
@@ -880,3 +928,400 @@ class CheatSecondPassDeleteAck(WireMessage):
     """
     OPCODE: ClassVar[int] = 5263
     result: u32 = 0
+
+
+@dataclass
+class CheatDepotShareExpireTimeAddReq(WireMessage):
+    """Opcode 2240: eEGS_CHEAT_DEPOT_SHARE_EXPIRE_TIME_ADD_REQ (request).
+
+    Console: sharedepot <days> (case 0x3C) -> sender 0x00796A80. No ACK handler
+    in this build; the share expiry is announced with 2400.
+    """
+    OPCODE: ClassVar[int] = 2240
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    days: i16 = 0
+
+
+@dataclass
+class CheatVisibleChangeReq(WireMessage):
+    """Opcode 2260: eEGS_CHEAT_VISIBLE_CHANGE_REQ (request).
+
+    Console: showme (true) / hideme (false), sender 0x004D3120.
+    """
+    OPCODE: ClassVar[int] = 2260
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    visible: bool = False
+
+
+@dataclass
+class CheatVisibleChangeAck(WireMessage):
+    """Opcode 2261: eEGS_CHEAT_VISIBLE_CHANGE_ACK (reply).
+
+    JAppPageCheat::OneEGS_CHEAT_VISIBLE_CHANGE_ACK 0x004CA9A0 (assert: bIsHide).
+    """
+    OPCODE: ClassVar[int] = 2261
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    is_hide: bool = False
+
+
+@dataclass
+class CheatRequestTeleportNot(WireMessage):
+    """Opcode 2274: eEGS_CHEAT_REQUEST_TELEPORT_NOT (reply).
+
+    Console: movetouser <name> (case 0x7B) -> sender 0x004ED960.
+    """
+    OPCODE: ClassVar[int] = 2274
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_nick: wstr = ''
+
+
+@dataclass
+class AcknowledgeTeleportNot(WireMessage):
+    """Opcode 2275: eEGS_ACKNOWLEDGE_TELEPORT_NOT (reply).
+
+    JAppPageCheat::OneEGS_ACKNOWLEDGE_TELEPORT_NOT 0x004DAB80 (assert: nCharUID >>
+    fPosX >> fPosY >> nLayerNetID >> nSquareUID).
+    """
+    OPCODE: ClassVar[int] = 2275
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    char_uid: i64 = 0
+    pos_x: f32 = 0.0
+    pos_y: f32 = 0.0
+    layer_net_id: i64 = 0
+    square_uid: i64 = 0
+
+
+@dataclass
+class CheatKickCharReq(WireMessage):
+    """Opcode 2277: eEGS_CHEAT_KICK_CHAR_REQ (request).
+
+    Console: kick <name> (case 0x3F, 0x004F1076): wstr then bool. No ACK handler.
+    """
+    OPCODE: ClassVar[int] = 2277
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    target_nick: wstr = ''
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        'header',
+        'target_nick',
+        Const(bool, False),
+    )
+
+
+@dataclass
+class CheatInitSkillReq(WireMessage):
+    """Opcode 2279: eEGS_CHEAT_INIT_SKILL_REQ (request).
+
+    Console: skillinit (case 0x40): empty. Reply 2280 InitSkillNot.
+    """
+    OPCODE: ClassVar[int] = 2279
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CheatInitProficiencyReq(WireMessage):
+    """Opcode 2281: eEGS_CHEAT_INIT_PROFICIENCY_REQ (request).
+
+    Console: proficiencyinit <index> (case 0x41).
+    """
+    OPCODE: ClassVar[int] = 2281
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    pf_index: i32 = 0
+
+
+@dataclass
+class CheatInitProficiencyAck(WireMessage):
+    """Opcode 2282: eEGS_CHEAT_INIT_PROFICIENCY_ACK (reply).
+
+    JAppPageCheat::OneEGS_CHEAT_INIT_PROFICIENCY_ACK 0x004EDC60 (assert: iPfIndex >>
+    mapSkill; elements 0x004ACB80 as 2698).
+    """
+    OPCODE: ClassVar[int] = 2282
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pf_index: i32 = 0
+    skills: Map[u16, LearnedSkill] = field(default_factory=dict)
+
+
+@dataclass
+class ArenaGradeInfo(WireMessage):
+    """jInfo, 0x4A raw bytes read by 0x00A48B40. 0x009447C0 copies it to the player
+    (+0x260..): +0x04 EXP, +0x10 level, +0x12 - +0x1A = current PvP points (+0x268).
+    Other bytes are copied but their meaning is not recovered (sent as zero).
+    """
+    exp: u32 = 0
+    level: i16 = 0
+    pvp_point_total: i64 = 0
+    pvp_point_used: i64 = 0
+    _WIRE_LAYOUT: ClassVar[tuple] = (
+        Const(Raw[4], bytes(4)),
+        'exp',
+        Const(Raw[8], bytes(8)),
+        'level',
+        'pvp_point_total',
+        'pvp_point_used',
+        Const(Raw[40], bytes(40)),
+    )
+
+
+@dataclass
+class CheatArenaLevelUpReq(WireMessage):
+    """Opcode 2312: eEGS_CHEAT_ARENA_LEVEL_UP_REQ (request).
+
+    Console: arenagrade <level> <exp_percent> (case 0x44): i16 then f32.
+    """
+    OPCODE: ClassVar[int] = 2312
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    level: i16 = 0
+    exp_percent: f32 = 0.0
+
+
+@dataclass
+class CheatArenaLevelUpAck(WireMessage):
+    """Opcode 2313: eEGS_CHEAT_ARENA_LEVEL_UP_ACK (reply).
+
+    JAppPageCheat::OneEGS_CHEAT_ARENA_LEVEL_UP_ACK 0x004EDF00 (assert: jInfo).
+    """
+    OPCODE: ClassVar[int] = 2313
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    info: ArenaGradeInfo = field(default_factory=ArenaGradeInfo)
+
+
+@dataclass
+class CheatInsertPvpPointReq(WireMessage):
+    """Opcode 2316: eEGS_CHEAT_INSERT_PVP_POINT_REQ (request).
+
+    Console: arenapoint <points> (case 0x45) -> sender 0x004D2E90.
+    """
+    OPCODE: ClassVar[int] = 2316
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    points: i64 = 0
+
+
+@dataclass
+class CheatInsertPvpPointAck(WireMessage):
+    """Opcode 2317: eEGS_CHEAT_INSERT_PVP_POINT_ACK (reply).
+
+    JAppPageCheat::OneEGS_CHEAT_INSERT_PVP_POINT_ACK 0x004EE320 (assert: nCurPVPPoint).
+    """
+    OPCODE: ClassVar[int] = 2317
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cur_pvp_point: i64 = 0
+
+
+@dataclass
+class CheatDungeonCountClearReq(WireMessage):
+    """Opcode 2375: eEGS_CHEAT_DUNGEON_COUNT_CLEAR_REQ (request).
+
+    Console: dungeonenterinit (case 0x46): empty. No ACK handler in this build.
+    """
+    OPCODE: ClassVar[int] = 2375
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CheatPersonalShopExpireTimeUpdateReq(WireMessage):
+    """Opcode 2378: eEGS_CHEAT_PERSONALSHOP_EXPIRE_TIME_UPDATE_REQ (request).
+
+    Console: pstoretime <value> (case 0x47). No ACK.
+    """
+    OPCODE: ClassVar[int] = 2378
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    value: i32 = 0
+
+
+@dataclass
+class CheatPersonalShopExpireTimeClearReq(WireMessage):
+    """Opcode 2379: eEGS_CHEAT_PERSONALSHOP_EXPIRE_TIME_CLEAR_REQ (request).
+
+    Console: pstoreinit (case 0x48): empty. No ACK.
+    """
+    OPCODE: ClassVar[int] = 2379
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CheatBillingCashChangeReq(WireMessage):
+    """Opcode 2396: eEGS_CHEAT_BILLING_CASH_CHANGE_REQ (request).
+
+    Console: cash <amount> (case 0x7D).
+    """
+    OPCODE: ClassVar[int] = 2396
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    amount: i32 = 0
+
+
+@dataclass
+class CheatBillingCashChangeAck(WireMessage):
+    """Opcode 2397: eEGS_CHEAT_BILLING_CASH_CHANGE_ACK (reply).
+
+    JAppPageCashshop::OneEGS_CHEAT_BILLING_CASH_CHANGE_ACK 0x004CD250 (assert: nCurCash).
+    """
+    OPCODE: ClassVar[int] = 2397
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    cur_cash: i64 = 0
+
+
+@dataclass
+class CheatMissionCompleteReq(WireMessage):
+    """Opcode 2412: eEGS_CHEAT_MISSION_COMPLETE_REQ (request).
+
+    Console: missionclear <quest>,<index> (case 0x81, 0x004F1E38): the mission's
+    reference (quest +0x2A4 missions, 0xA4 bytes each, +0x20) written like 2093.
+    """
+    OPCODE: ClassVar[int] = 2412
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    mission_code: wstr = ''
+
+
+@dataclass
+class CheatForceItemUpgradeReq(WireMessage):
+    """Opcode 2414: eEGS_CHEAT_FORCE_ITEM_UPGRADE_REQ (request).
+
+    Console: forceupgrade <weapon|cloth>,<level> -> sender 0x0079B260 (one per item).
+    """
+    OPCODE: ClassVar[int] = 2414
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    item_uid: i64 = 0
+    level: i16 = 0
+
+
+@dataclass
+class CheatForceItemUpgradeAck(WireMessage):
+    """Opcode 2415: eEGS_CHEAT_FORCE_ITEM_UPGRADE_ACK (reply).
+
+    JUserClient::OneEGS_CHEAT_FORCE_ITEM_UPGRADE_ACK 0x00780DD0 (assert: vecItemOut).
+    """
+    OPCODE: ClassVar[int] = 2415
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    items: Vector[Extern[Item, 'encode', False]] = field(default_factory=list)
+
+
+@dataclass
+class CheatDungeonMasterReq(WireMessage):
+    """Opcode 2430: eEGS_CHEAT_DUNGEON_MASTER_REQ (request).
+
+    Console: dungeonmaster (case 0x85): empty. 2431 has no reader (0x004CE980).
+    """
+    OPCODE: ClassVar[int] = 2430
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CheatPetLevelReq(WireMessage):
+    """Opcode 2486: eEGS_CHEAT_PET_LEVEL_REQ (request).
+
+    Console: petlv <level> -> sender 0x004EBCC0.
+    """
+    OPCODE: ClassVar[int] = 2486
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    level: u8 = 0
+
+
+@dataclass
+class CheatPetLevelAck(WireMessage):
+    """Opcode 2487: eEGS_CHEAT_PET_LEVEL_ACK (reply).
+
+    JUserClient::OneEGS_CHEAT_PET_LEVEL_ACK 0x00775AA0 (assert: nPetUID >> ucLv >> nExp).
+    """
+    OPCODE: ClassVar[int] = 2487
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    pet_uid: i64 = 0
+    level: u8 = 0
+    exp: i32 = 0
+
+
+@dataclass
+class CheatLeagueSeasonArenaStatExpReq(WireMessage):
+    """Opcode 2560: eEGS_CHEAT_LEAGUE_SEASON_ARENA_CHASTAT_EXP_REQ (request).
+
+    Console: statexp <exp> (case 0x97). No ACK handler.
+    """
+    OPCODE: ClassVar[int] = 2560
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    exp: i32 = 0
+
+
+@dataclass
+class CheatMonsterCardInsertReq(WireMessage):
+    """Opcode 2612: eEGS_CHEAT_MONSTERCARD_INSERT_REQ (request).
+
+    Console: moncard <card> <grade> (case 0x98). Live ("Card0001 1"):
+    ffffff7f e065f47f 0100 = JHashString of the typed card id, then i16 grade.
+    """
+    OPCODE: ClassVar[int] = 2612
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    card_id: h32 = 0
+    grade: i16 = 0
+
+
+@dataclass
+class CheatTeachingChangeInfoReq(WireMessage):
+    """Opcode 2670: eEGS_CHEAT_TEACHING_CHANGEINFO_REQ (request).
+
+    Console: teachinfo <novice|request>,<on|off> (case 0x9D): i32 then bool.
+    """
+    OPCODE: ClassVar[int] = 2670
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+    kind: i32 = 0
+    on: bool = False
+
+
+@dataclass
+class CheatTeachingChangeInfoAck(WireMessage):
+    """Opcode 2671: eEGS_CHEAT_TEACHING_CHANGEINFO_ACK (reply).
+
+    JAppPageCheat::OneEGS_CHEAT_TEACH_CHANGE_INFO_ACK 0x004EE570 (assert: bNovice >> bRequest).
+    """
+    OPCODE: ClassVar[int] = 2671
+    _WIRE_OK_INDEX: ClassVar[int] = 1
+    result: u32 = 0
+    novice: bool = False
+    request: bool = False
+
+
+@dataclass
+class CheatFullItemDropNot(WireMessage):
+    """Opcode 5115: eERC_CHEAT_FULL_ITEM_DROP_NOT (reply).
+
+    Console: alldrop (case 0x31): empty relay event.
+    """
+    OPCODE: ClassVar[int] = 5115
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER
+
+
+@dataclass
+class CheatViewItemDropNot(WireMessage):
+    """Opcode 5116: eERC_CHEAT_VIEW_ITEM_DROP_NOT (reply).
+
+    Console: viewdrop (case 0x32): empty relay event.
+    """
+    OPCODE: ClassVar[int] = 5116
+    _WIRE_HEADER: ClassVar[str] = 'header?'
+    header: i32 = REQUEST_HEADER

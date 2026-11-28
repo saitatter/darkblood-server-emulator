@@ -113,6 +113,37 @@ def learned_skill_map(skills, speeches=None, locked=(), show_cooltime=()):
     return result
 
 
+def reset_proficiency(char, pf):
+    """Reset proficiency `pf` of `char` (2384 item use and the proficiencyinit cheat 2281).
+
+    Clears the value; a learnable profession is also unlearned with its life
+    skill and the recipes learned through it. Returns the learned-skill map.
+    """
+    if 0 <= pf < 10:
+        profs = proficiency_values_for_char(char)
+        profs[pf] = 0.0
+        char['proficiencies'] = profs
+    if pf not in BASE_SUPPLY_PROFICIENCIES:
+        learned_profs = [p for p in learned_proficiencies_for_char(char) if p != pf]
+        char['learned_proficiencies'] = learned_profs
+        sid = PROFICIENCY_TO_LIFE_SKILL.get(pf)
+        if sid is not None:
+            skills = char.get('skills', {})
+            skills.pop(str(sid), None)
+            # Recipes learned through this profession (DemandSkill) go with it, so a
+            # ReqProficiency 0 recipe cannot be crafted without the profession.
+            # Inferred from the learning rule; the original server's reset is not known.
+            for (recipe, _lv), entry in recipe_skills().items():
+                if any(skill_level_by_id().get(d, (None,))[0] == sid for d in entry['demand_skill']):
+                    skills.pop(str(recipe), None)
+    return learned_skill_map(
+        char.get('skills', {}),
+        char.get('skill_speeches', {}),
+        char.get('locked_skills', []),
+        char.get('skill_show_cooltime', []),
+    )
+
+
 class SkillHandlers(BaseDomainService):
     """Skill learning, skill trees, quickslots and skill custom speech."""
 
@@ -387,31 +418,8 @@ class SkillHandlers(BaseDomainService):
             else:
                 used['count'] = cnt
                 updated.append(Item(owner=UPDATE_OWNER, **used))
-        pf = int(req.pf_index)
-        if 0 <= pf < 10:
-            profs = proficiency_values_for_char(char)
-            profs[pf] = 0.0
-            char['proficiencies'] = profs
-        if pf not in BASE_SUPPLY_PROFICIENCIES:
-            learned_profs = [p for p in learned_proficiencies_for_char(char) if p != pf]
-            char['learned_proficiencies'] = learned_profs
-            sid = PROFICIENCY_TO_LIFE_SKILL.get(pf)
-            if sid is not None:
-                skills = char.get('skills', {})
-                skills.pop(str(sid), None)
-                # Recipes learned through this profession (DemandSkill) go with it, so a
-                # ReqProficiency 0 recipe cannot be crafted without the profession.
-                # Inferred from the learning rule; the original server's reset is not known.
-                for (recipe, _lv), entry in recipe_skills().items():
-                    if any(skill_level_by_id().get(d, (None,))[0] == sid for d in entry['demand_skill']):
-                        skills.pop(str(recipe), None)
+        skills_map = reset_proficiency(char, int(req.pf_index))
         self.save_char()
-        skills_map = learned_skill_map(
-            char.get('skills', {}),
-            char.get('skill_speeches', {}),
-            char.get('locked_skills', []),
-            char.get('skill_show_cooltime', []),
-        )
         await self.reply(
             InitProficiencyAck(result=0, item_uid=req.item_uid, items=updated,
                                pf_index=req.pf_index, skills=skills_map),

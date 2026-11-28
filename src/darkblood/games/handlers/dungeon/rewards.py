@@ -266,7 +266,8 @@ class DungeonRewardsHandlers:
         are rolled once, kept in the room and shown to every member; the first
         to pick one up gets it (free for all; random looting is not applied yet).
         """
-        codes = loot.roll_drops(self.map_code, monster, int(char.get('char_class', 0)))
+        codes = loot.roll_drops(self.map_code, monster, int(char.get('char_class', 0)),
+                                all_drop=getattr(self.session, 'gm_all_drop', False))
         if not codes:
             return
         holder = self._loot_holder()

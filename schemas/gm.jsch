@@ -94,22 +94,30 @@ message 2089 CheatPleaseAck ok_only
 end
 
 message 2093 CheatQuestCompleteReq header?
-  ## Console: questclear.
-  u32 quest_id
+  ## Console: questclear <quest_id> (JAppPageCheat case 0x17). The quest reference
+  ## is written by 0x004C7950: implicit 0x1E struct (no wire byte) + wstr via
+  ## 0x00A49740; the matching reader 0x00A497B0 hashes the code (JHashString).
+  wstr quest_code
 end
 
 message 2096 CheatQuestResetReq header?
-  ## Console: questcancel / questreset.
+  ## Console: questcancel <quest_id> (case 0x18): the quest reference as in 2093.
+  wstr quest_code
 end
 
-message 2097 CheatQuestResetAck
-  ## Reply to 2096.
+message 2097 CheatQuestResetAck ok_only
+  ## JAppPageQuestDlg::OneEGS_CHEAT_QUEST_RESET_ACK 0x0061A8E0 (assert: iQuestID).
   u32 result
+  h32 quest_id
 end
 
 message 2099 CheatQuestStartReq header?
-  ## Console: queststart.
-  u32 quest_id
+  ## Console: queststart <quest_id> (case 0x19, 0x004F19C3): the dict entry's
+  ## +0x94 string via 0x00B35A40, then the entry's +0x20. Live (Q0001S01): no
+  ## header word, wstr "2015-02-23 15:42:11, " (meaning unknown), h32 0xA094458B
+  ## = JHashString("Q0001S01").
+  wstr _
+  h32 quest_id
 end
 
 message 2101 CheatInsertCoinReq header?
@@ -315,8 +323,9 @@ message 2627 CheatIndulgenceTimeChangeReq header?
 end
 
 message 2660 CheatExploreCompleteReq header?
-  ## Instant-complete explore.
+  ## Console: exploreclear (case 0x9B): i64 then i32 (writers 0x00B353D0, 0x00B352B0).
   i64 char_uid
+  i32 _
 end
 
 message 2661 CheatExploreCompleteAck
@@ -365,8 +374,7 @@ message 5129 CheatSummonRequestNot header?
 end
 
 message 5252 CheatForceItemDropNot header?
-  ## Console: forcedrop.
-  i32 item_id
+  ## Console: forcedrop (case 0x7C, 0x004F13FA): an empty event sent with 0x007874A0.
 end
 
 message 5262 CheatSecondPassDeleteReq header?
@@ -376,4 +384,188 @@ end
 message 5263 CheatSecondPassDeleteAck
   ## Reply to 5262.
   u32 result
+end
+
+message 2240 CheatDepotShareExpireTimeAddReq header?
+  ## Console: sharedepot <days> (case 0x3C) -> sender 0x00796A80. No ACK handler
+  ## in this build; the share expiry is announced with 2400.
+  i16 days
+end
+
+message 2260 CheatVisibleChangeReq header?
+  ## Console: showme (true) / hideme (false), sender 0x004D3120.
+  bool visible
+end
+
+message 2261 CheatVisibleChangeAck ok_only
+  ## JAppPageCheat::OneEGS_CHEAT_VISIBLE_CHANGE_ACK 0x004CA9A0 (assert: bIsHide).
+  u32 result
+  bool is_hide
+end
+
+message 2274 CheatRequestTeleportNot header?
+  ## Console: movetouser <name> (case 0x7B) -> sender 0x004ED960.
+  wstr target_nick
+end
+
+message 2275 AcknowledgeTeleportNot ok_only
+  ## JAppPageCheat::OneEGS_ACKNOWLEDGE_TELEPORT_NOT 0x004DAB80 (assert: nCharUID >>
+  ## fPosX >> fPosY >> nLayerNetID >> nSquareUID).
+  u32 result
+  i64 char_uid
+  f32 pos_x
+  f32 pos_y
+  i64 layer_net_id
+  i64 square_uid
+end
+
+message 2277 CheatKickCharReq header?
+  ## Console: kick <name> (case 0x3F, 0x004F1076): wstr then bool. No ACK handler.
+  wstr target_nick
+  bool _
+end
+
+message 2279 CheatInitSkillReq header?
+  ## Console: skillinit (case 0x40): empty. Reply 2280 InitSkillNot.
+end
+
+message 2281 CheatInitProficiencyReq header?
+  ## Console: proficiencyinit <index> (case 0x41).
+  i32 pf_index
+end
+
+message 2282 CheatInitProficiencyAck ok_only
+  ## JAppPageCheat::OneEGS_CHEAT_INIT_PROFICIENCY_ACK 0x004EDC60 (assert: iPfIndex >>
+  ## mapSkill; elements 0x004ACB80 as 2698).
+  u32 result
+  i32 pf_index
+  map<u16,LearnedSkill> skills
+end
+
+struct ArenaGradeInfo
+  ## jInfo, 0x4A raw bytes read by 0x00A48B40. 0x009447C0 copies it to the player
+  ## (+0x260..): +0x04 EXP, +0x10 level, +0x12 - +0x1A = current PvP points (+0x268).
+  ## Other bytes are copied but their meaning is not recovered (sent as zero).
+  raw[4] _
+  u32 exp
+  raw[8] _
+  i16 level
+  i64 pvp_point_total
+  i64 pvp_point_used
+  raw[40] _
+end
+
+message 2312 CheatArenaLevelUpReq header?
+  ## Console: arenagrade <level> <exp_percent> (case 0x44): i16 then f32.
+  i16 level
+  f32 exp_percent
+end
+
+message 2313 CheatArenaLevelUpAck ok_only
+  ## JAppPageCheat::OneEGS_CHEAT_ARENA_LEVEL_UP_ACK 0x004EDF00 (assert: jInfo).
+  u32 result
+  ArenaGradeInfo info = ArenaGradeInfo()
+end
+
+message 2316 CheatInsertPvpPointReq header?
+  ## Console: arenapoint <points> (case 0x45) -> sender 0x004D2E90.
+  i64 points
+end
+
+message 2317 CheatInsertPvpPointAck ok_only
+  ## JAppPageCheat::OneEGS_CHEAT_INSERT_PVP_POINT_ACK 0x004EE320 (assert: nCurPVPPoint).
+  u32 result
+  i64 cur_pvp_point
+end
+
+message 2375 CheatDungeonCountClearReq header?
+  ## Console: dungeonenterinit (case 0x46): empty. No ACK handler in this build.
+end
+
+message 2378 CheatPersonalShopExpireTimeUpdateReq header?
+  ## Console: pstoretime <value> (case 0x47). No ACK.
+  i32 value
+end
+
+message 2379 CheatPersonalShopExpireTimeClearReq header?
+  ## Console: pstoreinit (case 0x48): empty. No ACK.
+end
+
+message 2396 CheatBillingCashChangeReq header?
+  ## Console: cash <amount> (case 0x7D).
+  i32 amount
+end
+
+message 2397 CheatBillingCashChangeAck ok_only
+  ## JAppPageCashshop::OneEGS_CHEAT_BILLING_CASH_CHANGE_ACK 0x004CD250 (assert: nCurCash).
+  u32 result
+  i64 cur_cash
+end
+
+message 2412 CheatMissionCompleteReq header?
+  ## Console: missionclear <quest>,<index> (case 0x81, 0x004F1E38): the mission's
+  ## reference (quest +0x2A4 missions, 0xA4 bytes each, +0x20) written like 2093.
+  wstr mission_code
+end
+
+message 2414 CheatForceItemUpgradeReq header?
+  ## Console: forceupgrade <weapon|cloth>,<level> -> sender 0x0079B260 (one per item).
+  i64 item_uid
+  i16 level
+end
+
+message 2415 CheatForceItemUpgradeAck ok_only
+  ## JUserClient::OneEGS_CHEAT_FORCE_ITEM_UPGRADE_ACK 0x00780DD0 (assert: vecItemOut).
+  u32 result
+  vector<Item> items
+end
+
+message 2430 CheatDungeonMasterReq header?
+  ## Console: dungeonmaster (case 0x85): empty. 2431 has no reader (0x004CE980).
+end
+
+message 2486 CheatPetLevelReq header?
+  ## Console: petlv <level> -> sender 0x004EBCC0.
+  u8 level
+end
+
+message 2487 CheatPetLevelAck ok_only
+  ## JUserClient::OneEGS_CHEAT_PET_LEVEL_ACK 0x00775AA0 (assert: nPetUID >> ucLv >> nExp).
+  u32 result
+  i64 pet_uid
+  u8 level
+  i32 exp
+end
+
+message 2560 CheatLeagueSeasonArenaStatExpReq header?
+  ## Console: statexp <exp> (case 0x97). No ACK handler.
+  i32 exp
+end
+
+message 2612 CheatMonsterCardInsertReq header?
+  ## Console: moncard <card> <grade> (case 0x98). Live ("Card0001 1"):
+  ## ffffff7f e065f47f 0100 = JHashString of the typed card id, then i16 grade.
+  h32 card_id
+  i16 grade
+end
+
+message 2670 CheatTeachingChangeInfoReq header?
+  ## Console: teachinfo <novice|request>,<on|off> (case 0x9D): i32 then bool.
+  i32 kind
+  bool on
+end
+
+message 2671 CheatTeachingChangeInfoAck ok_only
+  ## JAppPageCheat::OneEGS_CHEAT_TEACH_CHANGE_INFO_ACK 0x004EE570 (assert: bNovice >> bRequest).
+  u32 result
+  bool novice
+  bool request
+end
+
+message 5115 CheatFullItemDropNot header?
+  ## Console: alldrop (case 0x31): empty relay event.
+end
+
+message 5116 CheatViewItemDropNot header?
+  ## Console: viewdrop (case 0x32): empty relay event.
 end

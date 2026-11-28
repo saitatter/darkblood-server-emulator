@@ -7,6 +7,7 @@ import unittest
 from tests.common import ServerTestCase, create_request, lobby_flow, wide
 from darkblood.core import options
 from darkblood.core.hashing import jhash
+from darkblood.games import session
 from darkblood.games.game_data import client_dict
 from darkblood.games.network import messages
 
@@ -86,17 +87,27 @@ class GmFlowTest(ServerTestCase):
             self.assertEqual(parsed2089.cheat.int_arg1, 77)
 
             # 2099 -> 2074 (queststart), 2093 -> 2077 (questclear), 2096 -> 2097 (questreset)
-            client.send_event(2099, messages.CheatQuestStartReq(quest_id=9001).encode())
+            # The console sends the quest's code (0x004C7950 / 0x00B35A40), not a hash.
+            quest_id = jhash('Q0001S01')
+            store = session.GameSession.store()
+            client.send_event(2099, messages.CheatQuestStartReq(quest_id=quest_id).encode())
             _, ack2074 = await client.expect_event(2074)
             self.assertEqual(struct.unpack_from('<I', ack2074, 0)[0], 0)
+            self.assertEqual(struct.unpack_from('<I', ack2074, 4)[0], quest_id)
+            self.assertIn(str(quest_id), store.get('OfflinePlayer', char_id)['quests_active'])
 
-            client.send_event(2093, messages.CheatQuestCompleteReq(quest_id=9001).encode())
+            client.send_event(2093, messages.CheatQuestCompleteReq(quest_code='Q0001S01').encode())
             _, ack2077 = await client.expect_event(2077)
             self.assertEqual(struct.unpack_from('<I', ack2077, 0)[0], 0)
+            char = store.get('OfflinePlayer', char_id)
+            self.assertNotIn(str(quest_id), char['quests_active'])
+            self.assertIn(quest_id, char['quests_done'])
 
-            client.send_event(2096, messages.CheatQuestResetReq().encode())
+            client.send_event(2096, messages.CheatQuestResetReq(quest_code='Q0001S01').encode())
             _, ack2097 = await client.expect_event(2097)
-            self.assertEqual(messages.CheatQuestResetAck.decode(ack2097).result, 0)
+            reset = messages.CheatQuestResetAck.decode(ack2097)
+            self.assertEqual((reset.result, reset.quest_id), (0, quest_id))
+            self.assertNotIn(quest_id, store.get('OfflinePlayer', char_id)['quests_done'])
 
             # 2101 -> 2102 + 2286 (coin)
             client.send_event(2101, messages.CheatInsertCoinReq(coins=10).encode())
@@ -180,9 +191,9 @@ class GmFlowTest(ServerTestCase):
             client.send_event(2522, messages.CheatAchieveCompleteReq(achieve_id=1).encode())
             client.send_event(2627, messages.CheatIndulgenceTimeChangeReq(time_val=3600).encode())
             client.send_event(5129, messages.CheatSummonRequestNot(target_nick='Hero', pos_x=1.0, pos_y=2.0).encode())
-            client.send_event(5252, messages.CheatForceItemDropNot(item_id=1234).encode())
+            client.send_event(5252, messages.CheatForceItemDropNot().encode())
             # Verify connection is still alive after fire-and-forget cheats
-            client.send_event(2096, messages.CheatQuestResetReq().encode())
+            client.send_event(2096, messages.CheatQuestResetReq(quest_code='Q0001S01').encode())
             _, ack2097_2 = await client.expect_event(2097)
             self.assertEqual(messages.CheatQuestResetAck.decode(ack2097_2).result, 0)
 
@@ -341,6 +352,111 @@ class GmFlowTest(ServerTestCase):
             self.assertTrue({cid1, cid2}.issubset(roster))
             self.assertTrue(roster[cid1]['active'])
             self.assertFalse(roster[cid2]['active'])
+
+        self.run_async(self.with_server(scenario))
+
+    def test_recovered_console_cheats(self):
+        """Cheats of the client's command table that had no server handler (JAppPageCheat 0x004EF790)."""
+        async def scenario(client):
+            await lobby_flow(client)
+            client.send_event(2012, create_request('CheatTable'))
+            _, created = await client.expect_event(2013)
+            char_id = struct.unpack_from('<Q', created, 10)[0]
+            client.send_event(2006, struct.pack('<iQ', 0x7fffffff, char_id))
+            await client.expect_event(2007)
+            store = session.GameSession.store()
+
+            def char():
+                return store.get('OfflinePlayer', char_id)
+
+            # skillinit -> 2280 InitSkillNot
+            client.send_event(2279, messages.CheatInitSkillReq().encode())
+            await client.expect_event(2280)
+
+            # proficiencyinit -> 2282 (iPfIndex, mapSkill)
+            client.send_event(2281, messages.CheatInitProficiencyReq(pf_index=0).encode())
+            _, ack = await client.expect_event(2282)
+            self.assertEqual(struct.unpack_from('<Ii', ack), (0, 0))
+
+            # showme / hideme -> 2261 bIsHide
+            client.send_event(2260, messages.CheatVisibleChangeReq(visible=False).encode())
+            _, ack = await client.expect_event(2261)
+            self.assertTrue(messages.CheatVisibleChangeAck.decode(ack).is_hide)
+
+            # arenapoint -> 2317, kept as the store's PvP points
+            client.send_event(2316, messages.CheatInsertPvpPointReq(points=500).encode())
+            _, ack = await client.expect_event(2317)
+            self.assertEqual(messages.CheatInsertPvpPointAck.decode(ack).cur_pvp_point, 500)
+            self.assertEqual(char()['pvp_points'], 500)
+
+            # arenagrade -> 2313 jInfo (74 bytes: level at +0x10, PvP points at +0x12)
+            client.send_event(2312, messages.CheatArenaLevelUpReq(level=7, exp_percent=40.0).encode())
+            _, ack = await client.expect_event(2313)
+            self.assertEqual(len(ack), 4 + 74)
+            self.assertEqual(struct.unpack_from('<h', ack, 4 + 0x10)[0], 7)
+            self.assertEqual(struct.unpack_from('<q', ack, 4 + 0x12)[0], 500)
+
+            # cash -> 2397 nCurCash (account balance)
+            client.send_event(2396, messages.CheatBillingCashChangeReq(amount=1500).encode())
+            _, ack = await client.expect_event(2397)
+            self.assertEqual(messages.CheatBillingCashChangeAck.decode(ack).cur_cash, 1500)
+
+            # teachinfo novice,on -> 2671
+            client.send_event(2670, messages.CheatTeachingChangeInfoReq(kind=0, on=True).encode())
+            _, ack = await client.expect_event(2671)
+            info = messages.CheatTeachingChangeInfoAck.decode(ack)
+            self.assertEqual((info.novice, info.request), (True, False))
+
+            # moncard Card001 1 -> the hash of the typed id; the card reaches the book (2603)
+            client.send_event(2612, messages.CheatMonsterCardInsertReq(card_id=jhash('Card001'), grade=1).encode())
+            await client.expect_event(2603)
+            book = store.account_data('OfflinePlayer')['monster_cards']
+            self.assertIn('Card001', [c['code'] for c in book])
+
+            # movetouser to an offline name -> 2275 refused
+            client.send_event(2274, messages.CheatRequestTeleportNot(target_nick='Nobody').encode())
+            _, ack = await client.expect_event(2275)
+            self.assertNotEqual(struct.unpack_from('<I', ack)[0], 0)
+
+            # petlv without a summoned pet -> refused
+            client.send_event(2486, messages.CheatPetLevelReq(level=10).encode())
+            _, ack = await client.expect_event(2487)
+            self.assertNotEqual(struct.unpack_from('<I', ack)[0], 0)
+
+            # forceupgrade on a worn item -> 2415 with the item
+            worn = next(i for i in char()['items'] if i.get('container') == 1)
+            client.send_event(2414, messages.CheatForceItemUpgradeReq(item_uid=worn['uid'], level=9).encode())
+            _, ack = await client.expect_event(2415)
+            self.assertEqual(struct.unpack_from('<I', ack)[0], 0)
+            self.assertEqual(next(i for i in char()['items'] if i['uid'] == worn['uid'])['upgrade'], 9)
+
+            # Requests without an ACK change the stored state only.
+            c = char()
+            c['daily_dun_enter_counts'] = {'Act1_G1': 3}
+            store.save()
+            client.send_event(2375, messages.CheatDungeonCountClearReq().encode())
+            client.send_event(2378, messages.CheatPersonalShopExpireTimeUpdateReq(value=1).encode())
+            client.send_event(2560, messages.CheatLeagueSeasonArenaStatExpReq(exp=33).encode())
+            client.send_event(2430, messages.CheatDungeonMasterReq().encode())
+            client.send_event(2240, messages.CheatDepotShareExpireTimeAddReq(days=3).encode())
+            await client.expect_event(2400)
+            client.send_event(5115, messages.CheatFullItemDropNot().encode())
+            client.send_event(5116, messages.CheatViewItemDropNot().encode())
+            client.send_event(2412, messages.CheatMissionCompleteReq(mission_code='QM807').encode())
+            # Round trip so the fire-and-forget requests above are processed.
+            client.send_event(2396, messages.CheatBillingCashChangeReq(amount=0).encode())
+            await client.expect_event(2397)
+            c = char()
+            self.assertEqual(c['daily_dun_enter_counts'], {})
+            self.assertGreater(c['personal_store_expire_at'], 0)
+            self.assertEqual(c['league_stat_exp'], 33)
+            self.assertTrue(c['dungeon_history'])
+            self.assertGreater(c['share_depot_expire'], 0)
+
+            client.send_event(2379, messages.CheatPersonalShopExpireTimeClearReq().encode())
+            client.send_event(2396, messages.CheatBillingCashChangeReq(amount=0).encode())
+            await client.expect_event(2397)
+            self.assertNotIn('personal_store_expire_at', char())
 
         self.run_async(self.with_server(scenario))
 

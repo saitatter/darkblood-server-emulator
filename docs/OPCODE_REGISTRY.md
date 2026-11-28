@@ -4,9 +4,9 @@
 > from the client (`assets/opcodes.tsv`), client handler addresses from the shim's
 > `handler_map.txt` when present, server handlers from the startup dispatcher.
 
-**Tracked opcodes**: 838  
+**Tracked opcodes**: 866  
 **Client handlers mapped**: 298  
-**Server handlers**: 367  
+**Server handlers**: 388  
 
 Wire rules are in `docs/PROTOCOL.md`.
 
@@ -108,13 +108,13 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2090 | `eEGS_QUEST_DISCARD_REQ` | — | `quests/journal.py` (`handle_quest_discard`) | `QuestDiscardReq` | Opcode 2090 (eEGS_QUEST_DISCARD_REQ) -> 2091 (eEGS_QUEST_DISCARD_ACK): discard an active quest. |
 | 2091 | `eEGS_QUEST_DISCARD_ACK` | — | — | `QuestDiscardAck` |  |
 | 2092 | `eEGS_INVENTORY_UPDATED_NOT` | 0x0077F070 | — | `InventoryUpdatedNot` |  |
-| 2093 | `eEGS_CHEAT_QUEST_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_quest_complete`) | `CheatQuestCompleteReq` | 2093 -> 2077: questclear |
+| 2093 | `eEGS_CHEAT_QUEST_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_quest_complete`) | `CheatQuestCompleteReq` | questclear <quest_id> (2093 -> 2077): the quest leaves the active set and |
 | 2094 | `eEGS_NPC_FIRST_MEET_REQ` | — | `square.py` (`handle_npc_first_meet`) | `NpcFirstMeetReq` | Opcode 2094 (eEGS_NPC_FIRST_MEET_REQ) -> 2095 (eEGS_NPC_FIRST_MEET_ACK). |
 | 2095 | `eEGS_NPC_FIRST_MEET_ACK` | 0x00752B60 | — | `NpcFirstMeetAck` |  |
-| 2096 | `eEGS_CHEAT_QUEST_RESET_REQ` | — | `gm.py` (`handle_cheat_quest_reset`) | `CheatQuestResetReq` | 2096 -> 2097: questcancel / questreset |
+| 2096 | `eEGS_CHEAT_QUEST_RESET_REQ` | — | `gm.py` (`handle_cheat_quest_reset`) | `CheatQuestResetReq` | questcancel <quest_id> (2096 -> 2097): forget the quest's completion and |
 | 2097 | `eEGS_CHEAT_QUEST_RESET_ACK` | — | — | `CheatQuestResetAck` |  |
 | 2098 | `eEGS_QUEST_ALIMI_CHANGE_NOT` | — | `quests/journal.py` (`handle_quest_alimi_change`) | `QuestAlimiChangeNot` | Opcode 2098 (eEGS_QUEST_ALIMI_CHANGE_NOT): persist quest tracker (Alimi) checkbox state. |
-| 2099 | `eEGS_CHEAT_QUEST_START_REQ` | — | `gm.py` (`handle_cheat_quest_start`) | `CheatQuestStartReq` | 2099 -> 2074: queststart |
+| 2099 | `eEGS_CHEAT_QUEST_START_REQ` | — | `gm.py` (`handle_cheat_quest_start`) | `CheatQuestStartReq` | queststart <quest_id> (2099 -> 2074, as a normal quest start). |
 | 2100 | `eEGS_CHEAT_QUEST_START_ACK` | — | `social/party.py` (`handle_legacy_party_invite`) | — | Opcode 2100 (eEGS_PARTY_INVITE_REQ) -> 2101 (eEGS_PARTY_INVITE_ACK). |
 | 2101 | `eEGS_CHEAT_INSERT_COIN_REQ` | — | `gm.py` (`handle_cheat_insert_coin`) | `CheatInsertCoinReq` | 2101 -> 2102 (0x004ECD30: u32 result, i16 sTotalRebirthCoin) + 2286 |
 | 2102 | `eEGS_CHEAT_INSERT_COIN_ACK` | — | `social/party.py` (`handle_party_join`) | `CheatInsertCoinAck` | Opcode 2102 (eEGS_PARTY_JOIN_REQ) -> 2103 (eEGS_PARTY_JOIN_ACK). |
@@ -250,6 +250,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2237 | `eEGS_POST_DELETE_ACK` | 0x007715F0 | — | `PostDeleteAck` |  |
 | 2238 | `eEGS_CHEAT_PROFICIENCY_CHANGE_REQ` | — | `gm.py` (`handle_cheat_proficiency_change`) | `CheatProficiencyChangeReq` |  |
 | 2239 | `eEGS_CHEAT_PROFICIENCY_CHANGE_ACK` | — | — | `CheatProficiencyChangeAck` |  |
+| 2240 | `eEGS_CHEAT_DEPOT_SHARE_EXPIRE_TIME_ADD_REQ` | — | `gm.py` (`handle_cheat_depot_share_expire_add`) | `CheatDepotShareExpireTimeAddReq` | sharedepot <days> (2240). The client has no 2241 handler; 2400 announces the |
 | 2242 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ` | — | `inventory/depot.py` (`handle_depot_share_expire_time`) | — | Opcode 2242 (eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_REQ) -> 2243: return shared depot expiration map. |
 | 2243 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_GET_ACK` | 0x0076C040 | — | `DepotShareExpireTimeGetAck` |  |
 | 2244 | `eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_REQ` | — | `frontend.py` (`handle_cheat_system_delete_character`) | `CheatSystemDeleteCharacterReq` | Opcode 2244 (eEGS_CHEAT_SYSTEM_DELETE_CHARACTER_REQ) -> 2245 (0x0075A9C0). |
@@ -268,6 +269,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2257 | `eEGS_MAGICENCHANT_ERASE_OPTION_ACK` | 0x00797120 | — | `MagicEnchantEraseOptionAck` |  |
 | 2258 | `eEGS_MAGICENCHANT_EXPEND_SLOT_REQ` | — | `inventory/crafting.py` (`handle_magic_enchant_expand_slot`) | `MagicEnchantExpendSlotReq` | Opcode 2258 (eEGS_MAGICENCHANT_EXPEND_SLOT_REQ) -> 2259: unlock an extra magic enchant slot. |
 | 2259 | `eEGS_MAGICENCHANT_EXPEND_SLOT_ACK` | 0x0077FC60 | — | `MagicEnchantExpendSlotAck` |  |
+| 2260 | `eEGS_CHEAT_VISIBLE_CHANGE_REQ` | — | `gm.py` (`handle_cheat_visible_change`) | `CheatVisibleChangeReq` | showme / hideme (2260 -> 2261 bIsHide). |
+| 2261 | `eEGS_CHEAT_VISIBLE_CHANGE_ACK` | — | — | `CheatVisibleChangeAck` |  |
 | 2262 | `eEGS_BROKER_LIST_REQ` | — | `commerce/stalls.py` (`handle_broker_list`) | `BrokerListReq` | eEGS_BROKER_LIST_REQ -> 2263 eEGS_BROKER_LIST_ACK (0x005ADAC0) |
 | 2263 | `eEGS_BROKER_LIST_ACK` | — | — | `BrokerListAck` |  |
 | 2264 | `eEGS_BROKER_MYLIST_REQ` | — | `commerce/stalls.py` (`handle_broker_my_list`) | `BrokerMyListReq` | eEGS_BROKER_MYLIST_REQ -> 2265 eEGS_BROKER_MYLIST_ACK (0x005ADFF0) |
@@ -280,7 +283,13 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2271 | `eEGS_BROKER_CANCEL_ACK` | — | — | `BrokerCancelAck` |  |
 | 2272 | `eEGS_BROKER_PRICE_REQ` | — | `commerce/stalls.py` (`handle_broker_price`) | `BrokerPriceReq` | eEGS_BROKER_PRICE_REQ -> 2273 eEGS_BROKER_PRICE_ACK |
 | 2273 | `eEGS_BROKER_PRICE_ACK` | — | — | `BrokerPriceAck` |  |
+| 2274 | `eEGS_CHEAT_REQUEST_TELEPORT_NOT` | — | `gm.py` (`handle_cheat_request_teleport`) | `CheatRequestTeleportNot` | movetouser <name> (2274 -> 2275 with the target's position and layer). |
+| 2275 | `eEGS_ACKNOWLEDGE_TELEPORT_NOT` | — | — | `AcknowledgeTeleportNot` |  |
+| 2277 | `eEGS_CHEAT_KICK_CHAR_REQ` | — | `gm.py` (`handle_cheat_kick_char`) | `CheatKickCharReq` | kick <name> (2277): close the target's connection. No ACK in the client. |
+| 2279 | `eEGS_CHEAT_INIT_SKILL_REQ` | — | `gm.py` (`handle_cheat_init_skill`) | `CheatInitSkillReq` | skillinit (2279 -> 2280 eEGS_INIT_SKILL_NOT: refunded AP and the skill map). |
 | 2280 | `eEGS_INIT_SKILL_NOT` | 0x00797740 | — | `InitSkillNot` |  |
+| 2281 | `eEGS_CHEAT_INIT_PROFICIENCY_REQ` | — | `gm.py` (`handle_cheat_init_proficiency`) | `CheatInitProficiencyReq` | proficiencyinit <index> (2281 -> 2282), same reset as the 2384 item. |
+| 2282 | `eEGS_CHEAT_INIT_PROFICIENCY_ACK` | — | — | `CheatInitProficiencyAck` |  |
 | 2283 | `eEGS_PROMOTION_NOT` | 0x00797F00 | — | `PromotionNot` |  |
 | 2284 | `eEGS_RANDOM_ITEM_UPGRADE_REQ` | — | `inventory/crafting.py` (`handle_random_item_upgrade`) | `RandomItemUpgradeReq` | Opcode 2284 (eEGS_RANDOM_ITEM_UPGRADE_REQ) -> 2285: perform a random upgrade roll. |
 | 2285 | `eEGS_RANDOM_ITEM_UPGRADE_ACK` | 0x0077FED0 | — | `RandomItemUpgradeAck` |  |
@@ -310,8 +319,12 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2309 | `eEGS_ARENA_GET_INVITELIST_ACK` | — | — | `ArenaGetInviteListAck` |  |
 | 2310 | `eEGS_CHAR_NICK_CHANGE_REQ` | — | `social/friends.py` (`handle_char_nick_change`) | `CharNickChangeReq` | eEGS_CHAR_NICK_CHANGE_REQ -> 2311 eEGS_CHAR_NICK_CHANGE_ACK (0x00780200). |
 | 2311 | `eEGS_CHAR_NICK_CHANGE_ACK` | 0x00780200 | — | `CharNickChangeAck` |  |
+| 2312 | `eEGS_CHEAT_ARENA_LEVEL_UP_REQ` | — | `gm.py` (`handle_cheat_arena_level_up`) | `CheatArenaLevelUpReq` | arenagrade <level> <exp_percent> (2312 -> 2313 jInfo). EXP is stored as the |
+| 2313 | `eEGS_CHEAT_ARENA_LEVEL_UP_ACK` | — | — | `CheatArenaLevelUpAck` |  |
 | 2314 | `eEGS_GUILD_NAME_CHANGE_REQ` | — | `social/guild.py` (`handle_guild_name_change`) | `GuildNameChangeReq` | eEGS_GUILD_NAME_CHANGE_REQ -> 2315 eEGS_GUILD_NAME_CHANGE_ACK (0x00780590). |
 | 2315 | `eEGS_GUILD_NAME_CHANGE_ACK` | 0x00780590 | — | `GuildNameChangeAck` |  |
+| 2316 | `eEGS_CHEAT_INSERT_PVP_POINT_REQ` | — | `gm.py` (`handle_cheat_insert_pvp_point`) | `CheatInsertPvpPointReq` | arenapoint <points> (2316 -> 2317 nCurPVPPoint); the same total 2068 sends. |
+| 2317 | `eEGS_CHEAT_INSERT_PVP_POINT_ACK` | — | — | `CheatInsertPvpPointAck` |  |
 | 2318 | `eEGS_DAILY_DUN_ENTER_COUNT_UPDATE_NOT` | 0x00798D20 | — | `DailyDunEnterCountUpdateNot` |  |
 | 2319 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ` | — | `social/friends.py` (`handle_keyboard_set_custom_key`) | `KeyboardSetCustomKeyReq` | eEGS_KEYBOARD_SET_CUSTOM_KEY_REQ (0x0045FC10) -> 2320 eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK (0x00753960). |
 | 2320 | `eEGS_KEYBOARD_SET_CUSTOM_KEY_ACK` | 0x00753960 | — | `KeyboardSetCustomKeyAck` |  |
@@ -355,6 +368,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2365 | `eEGS_AVATAR_ZAM_ERASE_ACK` | 0x00782F40 | — | `AvatarZamEraseAck` |  |
 | 2369 | `eEGS_BILLING_GET_CURRENT_CASH_REQ` | — | `commerce/cash_shop.py` (`handle_get_current_cash`) | — | eEGS_BILLING_GET_CURRENT_CASH_REQ -> 2370: result, u64 cash, u32 mileage. |
 | 2370 | `eEGS_BILLING_GET_CURRENT_CASH_ACK` | — | — | `CurrentCashAck` |  |
+| 2375 | `eEGS_CHEAT_DUNGEON_COUNT_CLEAR_REQ` | — | `gm.py` (`handle_cheat_dungeon_count_clear`) | `CheatDungeonCountClearReq` | dungeonenterinit (2375): reset the daily dungeon entry/clear counts (2007 sends them). |
+| 2378 | `eEGS_CHEAT_PERSONALSHOP_EXPIRE_TIME_UPDATE_REQ` | — | `gm.py` (`handle_cheat_personal_shop_time`) | `CheatPersonalShopExpireTimeUpdateReq` | pstoretime <value> (2378): extend the personal store time by <value> days |
+| 2379 | `eEGS_CHEAT_PERSONALSHOP_EXPIRE_TIME_CLEAR_REQ` | — | `gm.py` (`handle_cheat_personal_shop_time_clear`) | `CheatPersonalShopExpireTimeClearReq` | pstoreinit (2379): reset the personal store time. |
 | 2384 | `eEGS_INIT_PROFICIENCY_REQ` | — | `skills.py` (`handle_init_proficiency`) | `InitProficiencyReq` | Opcode 2384 (eEGS_INIT_PROFICIENCY_REQ) -> 2385 (eEGS_INIT_PROFICIENCY_ACK): reset a proficiency. |
 | 2385 | `eEGS_INIT_PROFICIENCY_ACK` | 0x00797B10 | — | `InitProficiencyAck` |  |
 | 2386 | `eEGS_ROULETTE_ROLL_DICE_REQ` | — | `commerce/stores.py` (`handle_roulette_roll_dice`) | `RouletteRollDiceReq` | eEGS_ROULETTE_ROLL_DICE_REQ -> 2387 eEGS_ROULETTE_ROLL_DICE_ACK (0x0062C850). |
@@ -367,6 +383,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2393 | `eEGS_BILLING_GET_ITEMLIST_ACK` | — | — | `BillingGetItemListAck` |  |
 | 2394 | `eEGS_BILLING_USE_ITEM_REQ` | — | `commerce/cash_shop.py` (`handle_billing_use_item`) | `BillingUseItemReq` | eEGS_BILLING_USE_ITEM_REQ (0x0054EA30: m_nUnlockCashID = ProductID) |
 | 2395 | `eEGS_BILLING_USE_ITEM_ACK` | — | — | `BillingUseItemAck` |  |
+| 2396 | `eEGS_CHEAT_BILLING_CASH_CHANGE_REQ` | — | `gm.py` (`handle_cheat_billing_cash_change`) | `CheatBillingCashChangeReq` | cash <amount> (2396 -> 2397 nCurCash): the account's Cash Shop balance. |
+| 2397 | `eEGS_CHEAT_BILLING_CASH_CHANGE_ACK` | — | — | `CheatBillingCashChangeAck` |  |
 | 2398 | `eEGS_BROKER_CHANGE_REGIST_COUNT` | 0x0077B2D0 | — | `BrokerChangeRegistCountNot` |  |
 | 2399 | `eEGS_POST_DAILY_SEND_RECOVER_NOT` | 0x0079A880 | — | `PostDailySendRecoverNot` |  |
 | 2400 | `eEGS_DEPOT_SHARE_EXPIRE_TIME_ADD_NOT` | 0x0076BE80 | — | `DepotShareExpireTimeAddNot` |  |
@@ -380,7 +398,9 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2408 | `eEGS_AVATAR_ZAM_MERGE_REQ` | — | `inventory/crafting.py` (`handle_avatar_zam_merge`) | `AvatarZamMergeReq` | Opcode 2408 (eEGS_AVATAR_ZAM_MERGE_REQ) -> 2409: merge two Avatar Zam gems. |
 | 2409 | `eEGS_AVATAR_ZAM_MERGE_ACK` | 0x00780AF0 | — | `AvatarZamMergeAck` |  |
 | 2410 | `eEGS_QUEST_HISTORY_REFRESH_NOT` | 0x0076C1E0 | — | `QuestHistoryNot` |  |
-| 2415 | `eEGS_CHEAT_FORCE_ITEM_UPGRADE_ACK` | 0x00780DD0 | — | — |  |
+| 2412 | `eEGS_CHEAT_MISSION_COMPLETE_REQ` | — | `gm.py` (`handle_cheat_mission_complete`) | `CheatMissionCompleteReq` | missionclear <quest>,<index> (2412): fill the mission's objective like 2113 does. |
+| 2414 | `eEGS_CHEAT_FORCE_ITEM_UPGRADE_REQ` | — | `gm.py` (`handle_cheat_force_item_upgrade`) | `CheatForceItemUpgradeReq` | forceupgrade <weapon\|cloth>,<level> (2414 per item -> 2415 vecItemOut). |
+| 2415 | `eEGS_CHEAT_FORCE_ITEM_UPGRADE_ACK` | 0x00780DD0 | — | `CheatForceItemUpgradeAck` |  |
 | 2416 | `eEGS_BEAUTYSHOP_CARE_REQ` | — | `commerce/stores.py` (`handle_beauty_shop_care`) | `BeautyShopCareReq` | eEGS_BEAUTYSHOP_CARE_REQ (0x0079B730) -> 2417 eEGS_BEAUTYSHOP_CARE_ACK (0x0079B3A0). |
 | 2417 | `eEGS_BEAUTYSHOP_CARE_ACK` | 0x0079B3A0 | — | `BeautyShopCareAck` |  |
 | 2418 | `eEGS_SERVERBUFF_ADD_NOT` | 0x0079B880 | — | `ServerBuffAddNot` |  |
@@ -391,6 +411,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2427 | `eEGS_GUILD_PERSON_ARENA_GRADE_MODIFY_ACK` | 0x00771D70 | — | `GuildPersonArenaGradeModifyAck` |  |
 | 2428 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ` | — | `inventory/consumables.py` (`handle_use_selected_skill_change_item`) | `UseSelectedSkillChangeItemReq` | Opcode 2428 (eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_REQ) -> 2429: reset/change a selected skill via item. |
 | 2429 | `eEGS_USE_SELECTED_SKILL_CHANGE_ITEM_ACK` | 0x0079C5E0 | — | `UseSelectedSkillChangeItemAck` |  |
+| 2430 | `eEGS_CHEAT_DUNGEON_MASTER_REQ` | — | `gm.py` (`handle_cheat_dungeon_master`) | `CheatDungeonMasterReq` | dungeonmaster (2430): record every dungeon as cleared at its highest |
 | 2432 | `eEGS_AVATAR_MERGE_REQ` | — | `inventory/crafting.py` (`handle_avatar_merge`) | `AvatarMergeReq` | Opcode 2432 (eEGS_AVATAR_MERGE_REQ) -> 2433: combine two avatar pieces. |
 | 2433 | `eEGS_AVATAR_MERGE_ACK` | — | — | `AvatarMergeAck` |  |
 | 2434 | `eEGS_RIDING_GET_LIST_REQ` | — | `pets/mounts.py` (`handle_riding_get_list`) | `RidingGetListReq` | eEGS_RIDING_GET_LIST_REQ -> 2435 eEGS_RIDING_GET_LIST_ACK (0x0076C5A0) |
@@ -439,7 +460,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2483 | `eEGS_PET_EAT_CASH_ACK` | 0x007815F0 | — | `PetEatCashAck` |  |
 | 2484 | `eEGS_PET_EVOLUTION_REQ` | — | `pets/pets.py` (`handle_pet_evolution`) | `PetEvolutionReq` | eEGS_PET_EVOLUTION_REQ (0x0079FE20) -> 2485 eEGS_PET_EVOLUTION_ACK (0x0079FEF0) |
 | 2485 | `eEGS_PET_EVOLUTION_ACK` | 0x0079FEF0 | — | `PetEvolutionAck` |  |
-| 2487 | `eEGS_CHEAT_PET_LEVEL_ACK` | 0x00775AA0 | — | — |  |
+| 2486 | `eEGS_CHEAT_PET_LEVEL_REQ` | — | `gm.py` (`handle_cheat_pet_level`) | `CheatPetLevelReq` | petlv <level> (2486 -> 2487 nPetUID >> ucLv >> nExp) on the summoned pet. |
+| 2487 | `eEGS_CHEAT_PET_LEVEL_ACK` | 0x00775AA0 | — | `CheatPetLevelAck` |  |
 | 2488 | `eEGS_CHEAT_PET_SATIETY_REQ` | — | `gm.py` (`handle_cheat_pet_satiety`) | `CheatPetSatietyReq` |  |
 | 2489 | `eEGS_CHEAT_PET_SATIETY_ACK` | 0x007A0280 | — | `CheatPetSatietyAck` |  |
 | 2490 | `eEGS_CHEAT_PET_EVOLUTION_REQ` | — | `gm.py` (`handle_cheat_pet_evolution`) | `CheatPetEvolutionReq` |  |
@@ -494,6 +516,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2553 | `eEGS_LEAGUE_SEASON_ARENA_GET_MY_RANK_ACK` | — | — | `LeagueSeasonArenaGetMyRankAck` |  |
 | 2556 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_REQ` | — | `arena/extended.py` (`handle_league_season_arena_charstat_update`) | `LeagueSeasonArenaCharStatUpdateReq` |  |
 | 2557 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_UPDATE_ACK` | — | — | `LeagueSeasonArenaCharStatUpdateAck` |  |
+| 2560 | `eEGS_CHEAT_LEAGUE_SEASON_ARENA_CHASTAT_EXP_REQ` | — | `gm.py` (`handle_cheat_league_stat_exp`) | `CheatLeagueSeasonArenaStatExpReq` | statexp <exp> (2560): stored; no ACK in the client. |
 | 2561 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_REQ` | — | `arena/extended.py` (`handle_league_season_arena_charstat_init`) | `LeagueSeasonArenaCharStatInitReq` |  |
 | 2562 | `eEGS_LEAGUE_SEASON_ARENA_CHARSTAT_INIT_ACK` | — | — | `LeagueSeasonArenaCharStatInitAck` |  |
 | 2565 | `eEGS_FRIEND_BLOCK_LIST_ADD_REQ` | — | `social/friends.py` (`handle_friend_block_list_add`) | `FriendBlockListAddReq` | eEGS_FRIEND_BLOCK_LIST_ADD_REQ (0x007A2930) -> 2566 eEGS_FRIEND_BLOCK_LIST_ADD_ACK (0x0075B640). |
@@ -539,6 +562,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2609 | `eEGS_MONSTERCARD_GET_CHAR_DECK_ACK` | — | — | `MonsterCardDeckAck` |  |
 | 2610 | `eEGS_MONSTERCARD_SET_CHAR_DECK_REQ` | — | `pets/cards.py` (`handle_monster_card_set_char_deck`) | `MonsterCardSetCharDeckReq` |  |
 | 2611 | `eEGS_MONSTERCARD_SET_CHAR_DECK_ACK` | — | — | `MonsterCardSetCharDeckAck` |  |
+| 2612 | `eEGS_CHEAT_MONSTERCARD_INSERT_REQ` | — | `gm.py` (`handle_cheat_monster_card_insert`) | `CheatMonsterCardInsertReq` | moncard <card> <grade> (2612): add the card to the account's card book. |
 | 2613 | `eEGS_MONSTERCARD_RELEASE_ALL_CHAR_REQ` | — | `pets/cards.py` (`handle_monster_card_release_all_char`) | `MonsterCardReleaseAllCharReq` |  |
 | 2614 | `eEGS_MONSTERCARD_RELEASE_ALL_CHAR_ACK` | — | — | `MonsterCardReleaseAllCharAck` |  |
 | 2615 | `eEGS_MONSTERCARD_EXTEND_SLOT_REQ` | — | `pets/cards.py` (`handle_monster_card_extend_slot`) | `MonsterCardExtendSlotReq` |  |
@@ -587,6 +611,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 2661 | `eEGS_CHEAT_EXPLORE_COMPLETE_ACK` | — | — | `CheatExploreCompleteAck` |  |
 | 2662 | `eEGS_EXPLORE_CANCEL_BY_USERUID_REQ` | — | `dungeon/events.py` (`handle_explore_cancel_by_user_uid`) | `ExploreCancelByUserUidReq` |  |
 | 2663 | `eEGS_EXPLORE_CANCEL_BY_USERUID_ACK` | — | — | `ExploreCancelByUserUidAck` |  |
+| 2670 | `eEGS_CHEAT_TEACHING_CHANGEINFO_REQ` | — | `gm.py` (`handle_cheat_teaching_change_info`) | `CheatTeachingChangeInfoReq` | teachinfo <novice\|request>,<on\|off> (2670 -> 2671 bNovice >> bRequest). |
+| 2671 | `eEGS_CHEAT_TEACHING_CHANGEINFO_ACK` | — | — | `CheatTeachingChangeInfoAck` |  |
 | 2672 | `eEGS_FIX_ITEM_UPGRADE_REQ` | — | `inventory/crafting.py` (`handle_fix_item_upgrade`) | `FixItemUpgradeReq` | Opcode 2672 (eEGS_FIX_ITEM_UPGRADE_REQ) -> 2673: perform a guaranteed fixed-tier upgrade. |
 | 2673 | `eEGS_FIX_ITEM_UPGRADE_ACK` | 0x00783C40 | — | `FixItemUpgradeAck` |  |
 | 2674 | `eEGS_GUILD_PERSON_INTRODUTION_REQ` | — | `social/guild.py` (`handle_guild_person_introduction`) | `GuildPersonIntroductionReq` | eEGS_GUILD_PERSON_INTRODUTION_REQ (0x007A67D0) -> 2675 eEGS_GUILD_PERSON_INTRODUTION_ACK (0x0075CCA0). |
@@ -739,6 +765,8 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5112 | `eERC_DUEL_REFUSE_REQ` | — | `arena/duels.py` (`handle_duel_refuse`) | `DuelRefuseReq` | Opcode 5112 (eERC_DUEL_REFUSE_REQ) -> 5113 (eERC_DUEL_REFUSE_ACK). |
 | 5113 | `eERC_DUEL_REFUSE_ACK` | — | — | `DuelRefuseAck` |  |
 | 5114 | `eERC_GET_DROP_AR_NOT` | 0x00792700 | — | `GetDropArNot` |  |
+| 5115 | `eERC_CHEAT_FULL_ITEM_DROP_NOT` | — | `gm.py` (`handle_cheat_full_item_drop`) | `CheatFullItemDropNot` | alldrop (5115): every drop group drops one item in this session's dungeon rolls. |
+| 5116 | `eERC_CHEAT_VIEW_ITEM_DROP_NOT` | — | `gm.py` (`handle_cheat_view_item_drop`) | `CheatViewItemDropNot` | viewdrop (5116): drop probabilities are logged by the client; nothing to store. |
 | 5117 | `eERC_CHEAT_VIEW_ITEM_DROP_LOG_NOT` | 0x00758E20 | — | `CheatViewItemDropLogNot` |  |
 | 5118 | `eERC_FRIEND_MY_CONNECTION_NOT` | 0x0077A8A0 | — | `FriendMyConnectionNot` |  |
 | 5119 | `eERC_FRIEND_MY_DISCONNECTION_NOT` | 0x00758FA0 | — | `FriendMyDisconnectionNot` |  |
@@ -795,7 +823,7 @@ Wire rules are in `docs/PROTOCOL.md`.
 | 5242 | `eERC_PERSONALSHOP_BUYITEM_REQ` | — | `commerce/stalls.py` (`handle_personal_shop_buy`) | `PersonalShopBuyReq` | eERC_PERSONALSHOP_BUYITEM_REQ -> 5243 eERC_PERSONALSHOP_BUYITEM_ACK (0x006022AC) |
 | 5243 | `eERC_PERSONALSHOP_BUYITEM_ACK` | — | — | `PersonalShopBuyAck` |  |
 | 5250 | `eERC_PERSONALSHOP_CHANGE_NOT` | — | — | `PersonalShopChangeNot` |  |
-| 5252 | `eERC_CHEAT_FORCE_ITEM_DROP_NOT` | — | `gm.py` (`handle_cheat_force_item_drop`) | `CheatForceItemDropNot` |  |
+| 5252 | `eERC_CHEAT_FORCE_ITEM_DROP_NOT` | — | `gm.py` (`handle_cheat_force_item_drop`) | `CheatForceItemDropNot` | forcedrop: every monster runs its drop logic (client side); nothing to store. |
 | 5254 | `eERC_PERSONALSHOP_START_NOT` | — | — | `PersonalShopStartNot` |  |
 | 5255 | `eERC_PERSONALSHOP_CLOSE_NOT` | — | — | `PersonalShopCloseNot` |  |
 | 5256 | `eERC_SECOND_PASS_CREATE_REQ` | — | `social/friends.py` (`handle_second_pass_create`) | `SecondPassCreateReq` | eERC_SECOND_PASS_CREATE_REQ -> 5257 eERC_SECOND_PASS_CREATE_ACK (0x0075B020). |

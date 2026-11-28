@@ -1,5 +1,9 @@
 """Monster Card & Card Lotto domain handlers (2601 - 2639)."""
+import re
+from functools import lru_cache
+
 from darkblood.core.hashing import jhash
+from darkblood.games.game_data.loader import bundled_asset
 from darkblood.games.dispatcher import packet_handler
 from darkblood.games.entities.items import Item, UPDATE_OWNER
 from darkblood.games.network import results
@@ -36,6 +40,23 @@ MONSTER_CARD_BASE_SLOTS = 60
 MONSTER_CARD_EXTEND_STEP = 10
 MONSTER_CARD_MAX_SLOTS = 200
 MONSTER_CARD_EXTEND_PRICE = 500_000
+
+
+@lru_cache(maxsize=1)
+def _monster_card_codes():
+    """Card codes ('Card001') of every MCard* item the drop and random box tables name."""
+    codes = set()
+    for name in ('looting.json', 'random_boxes.json'):
+        path = bundled_asset(name)
+        if path is not None:
+            codes.update(m[1:] for m in re.findall(r'MCard\w+', path.read_text(encoding='utf-8')))
+    return codes
+
+
+def monster_card_code(card_id: int):
+    """Card code whose JHashString is `card_id` (the moncard cheat sends the hash of the typed id)."""
+    target = card_id & 0xFFFFFFFF
+    return next((code for code in sorted(_monster_card_codes()) if jhash(code) == target), None)
 
 
 def free_monster_card_slots(account_book: dict) -> int:
@@ -138,6 +159,21 @@ class MonsterCardHandlersMixin:
         else:
             target['count'] = count
             updated = Item(owner=UPDATE_OWNER, **target)
+        self.save_char()
+        await self.reply(MonsterCardInsertAck(result=0), correlation,
+                         note=f'monster card insert ack (item={req.item_uid} -> {card_code})')
+        await self.send_msg(DragItemAck(result=0, items=[updated]),
+                            note=f'monster card item consumed ({item_code})')
+        await self.grant_monster_card(card_code)
+
+    async def grant_monster_card(self, card_code: str, note: str = 'monster card added'):
+        """Add a card to the account's book and announce it (2603, plus 2619 for a new album entry).
+
+        Used by card items (2604) and the moncard cheat (2612). Returns False when the book is full.
+        """
+        acct = self._account_book()
+        if not free_monster_card_slots(acct):
+            return False
         cards = acct.setdefault('monster_cards', [])
         uid = max((int(c.get('uid', 0)) for c in cards), default=0) + 1
         rec = {'uid': uid, 'code': card_code, 'level': 1, 'owner_uid': 0}
@@ -146,25 +182,21 @@ class MonsterCardHandlersMixin:
         new_album = card_code not in album
         if new_album:
             album.append(card_code)
-        self.save_char()
         self.store().save_account_data(self.account)
-        await self.reply(MonsterCardInsertAck(result=0), correlation,
-                         note=f'monster card insert ack (item={req.item_uid} -> {card_code})')
-        await self.send_msg(DragItemAck(result=0, items=[updated]),
-                            note=f'monster card item consumed ({item_code})')
         await self.send_msg(
             MonsterCardChangeListNot(
                 new_cards=[_card_info_from_record(rec)],
                 del_cards=[],
                 from_random_card=False,
             ),
-            note=f'monster card added ({card_code})',
+            note=f'{note} ({card_code})',
         )
         if new_album:
             await self.send_msg(
                 MonsterCardInsertAlbumNot(album_card_id=jhash(card_code)),
                 note=f'monster card album insert ({card_code})',
             )
+        return True
 
     @packet_handler(2606)
     async def handle_monster_card_merge(self, correlation, body):

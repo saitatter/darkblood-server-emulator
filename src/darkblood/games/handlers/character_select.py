@@ -100,6 +100,7 @@ def build_select_char_ack(char, account_chars=None, account_data=None):
         pet_depot_slots=_build_pet_depot_slots(data),
         monster_card_add_slots=max(0, card_max_slots - 60),
         citadel_play_count=int(data.get('citadel_play_count', 3)),
+        personal_store_expire_sec=max(0, int(data.get('personal_store_expire_at', 0)) - int(time.time())),
     ).encode()
 
 

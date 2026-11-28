@@ -66,12 +66,21 @@ def pick_item(looting_id, char_class):
     return _criteria_item(looting_id, char_class)
 
 
-def roll_drops(map_code, monster, char_class):
-    """[ItemID] dropped by one kill of `monster` (client_dict.monsters entry)."""
+def roll_drops(map_code, monster, char_class, all_drop=False):
+    """[ItemID] dropped by one kill of `monster` (client_dict.monsters entry).
+
+    `all_drop` (GM `alldrop`, CHEATDESC_103 "1 is always dropped for each group")
+    makes every applicable table entry drop exactly one item.
+    """
     drops = []
     for entry in dungeon_tables(map_code):
         if entry['mon_id'] and entry['mon_id'] != monster.get('id'):
             continue  # per-monster table entry (bosses, named monsters)
+        if all_drop:
+            item = pick_item(entry['looting_id'], char_class)
+            if item:
+                drops.append(item)
+            continue
         prob = entry['prob'] * DROP_RATE
         if entry['adjust_hp'] and entry['ave_hp'] > 0 and monster.get('hp'):
             prob *= monster['hp'] / entry['ave_hp']

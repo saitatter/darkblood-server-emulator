@@ -71,6 +71,17 @@
 | :--- | :--- | ---: | :--- |
 | `5346 CitadelRewardNot` | `map<?>` | events.jsch:68 | mapCitadelRewardItemUnit (0x0077BFB0 -> 0x0076F040), layout not recovered |
 
+## gm (6 of 155 fields)
+
+| Message / struct | Type | Line | Note |
+| :--- | :--- | ---: | :--- |
+| `2099 CheatQuestStartReq` | `wstr` | gm.jsch:119 |  |
+| `2660 CheatExploreCompleteReq` | `i32` | gm.jsch:328 |  |
+| `2277 CheatKickCharReq` | `bool` | gm.jsch:425 |  |
+| `ArenaGradeInfo` | `raw[4]` | gm.jsch:449 |  |
+| `ArenaGradeInfo` | `raw[8]` | gm.jsch:451 |  |
+| `ArenaGradeInfo` | `raw[40]` | gm.jsch:455 |  |
+
 ## guild (31 of 185 fields)
 
 | Message / struct | Type | Line | Note |
