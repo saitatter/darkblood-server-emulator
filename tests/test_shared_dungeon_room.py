@@ -7,6 +7,7 @@ from darkblood.core.hashing import jhash
 from darkblood.games.entities.character import Character
 from darkblood.games.network import results
 from darkblood.games.network.messages import ChangeRoomInfoAck, ChatReq, GetInviteListAck
+from darkblood.games.network.messages.dungeon import RoomInfo
 from darkblood.games.network.messages.party import PartyInviteNot
 from darkblood.games.session import GameSession
 from headless_client import HeadlessClient
@@ -271,6 +272,24 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, still = await guest.expect_event(5061)
                 self.assertEqual(struct.unpack_from('<Iq', still), (0, room_id))
                 self.assertEqual(still[12:14], bytes.fromhex('1082'))  # two members
+
+                # A guest returning independently keeps the party run open for the host.
+                host.send_event(5013, struct.pack('<i', 0x7fffffff) + wide('Act1_G1_A10'))
+                await host.expect_event(5014)
+                await guest.expect_event(5014)
+                guest.send_event(5045, correlation=65)
+                correlation, _ = await guest.expect_event(5046)
+                self.assertEqual(correlation, 65)
+                guest.send_event(5003, struct.pack('<q', room_id))
+                _, active_room = await guest.expect_event(5004)
+                self.assertEqual(struct.unpack_from("<I", active_room), (0,))
+                self.assertEqual(RoomInfo.decode(active_room[4:]).state, 1)
+
+                host.send_event(5017, w5017.to_bytes())
+                _, last_result = await host.expect_event(5018)
+                self.assertEqual(set(FinishGameAck.decode(last_result).rewards), {host_id})
+                host.send_event(5045)
+                await host.expect_event(5046)
 
                 # 5021 hands the room host over (5022 to every member); only the
                 # host may ask, and the target must be in the room.

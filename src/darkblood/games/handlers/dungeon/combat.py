@@ -73,7 +73,7 @@ class DungeonCombatHandlers:
         2026-11-21), so kills, drops and the result are shared through the room.
         """
         room = self.room
-        if room is None or not room.started or room.info.name == '_singleplay':
+        if not self.in_dungeon or room is None or not room.started or room.info.name == '_singleplay':
             return None
         return room
 
@@ -86,7 +86,7 @@ class DungeonCombatHandlers:
         code = self.map_code
         out = []
         for member in room.members:
-            if member.dungeon.room is room and member.dungeon.map_code == code:
+            if member.dungeon.room is room and member.dungeon.in_dungeon and member.dungeon.map_code == code:
                 char = member.current_char()
                 if char is not None:
                     out.append((member, char))
