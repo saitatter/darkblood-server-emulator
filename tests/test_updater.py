@@ -167,7 +167,9 @@ class ReleaseUpdaterTest(unittest.TestCase):
             for marker in (updater.MANIFEST_FILE, updater.VERSION_FILE):
                 with self.subTest(marker=marker):
                     def fail_marker(path, *args, **kwargs):
-                        if path == root / marker:
+                        # apply_zip_archive resolves root; Windows runners give
+                        # a short 8.3 temp path (RUNNER~1) that resolves longer.
+                        if Path(path).resolve() == (root / marker).resolve():
                             raise OSError('release metadata write failed')
                         return write_text(path, *args, **kwargs)
 
