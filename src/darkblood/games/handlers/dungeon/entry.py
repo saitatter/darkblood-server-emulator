@@ -37,12 +37,20 @@ class DungeonEntryHandlers:
             # The success path assumes the map code resolves to a client property.
             ack = StartGameAck(result=results.INVALID_STATE)
         else:
+            room = self.room
             participants = [self.session]
-            if self.room is not None and self.room.host is self.session and self.room.info.name != '_singleplay':
-                participants = [
-                    m for m in list(self.room.members)
-                    if m is self.session or m.dungeon.room is self.room
-                ]
+            if room is not None and room.info.name != '_singleplay':
+                # Guests enter via the host's 5014. An unfinished start must keep
+                # its seed, admission costs, and accumulated combat state.
+                if room.host is not self.session:
+                    await self.reply(StartGameAck(result=results.INVALID_STATE), correlation,
+                                     note='party start requires host')
+                    return
+                if room.started and self._finish_game_reply is None:
+                    await self.reply(StartGameAck(result=results.ALREADY_PLAY_GAME), correlation,
+                                     note='party run already started')
+                    return
+                participants = [m for m in room.members if m.dungeon.room is room]
             entry_err = await self._validate_dungeon_entry(request.map_code, participants)
             if entry_err is not None:
                 fail_opcode, fail_uid = entry_err

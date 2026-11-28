@@ -211,8 +211,12 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, chosen = await host.expect_event(5010)
                 _, member_chosen = await guest.expect_event(5010)
                 self.assertEqual(member_chosen, chosen)
-                # Start: the member gets the host's 5014 for the same map.
-                host.send_event(5013, struct.pack('<i', 0x7fffffff) + wide('Act1_G1_A10'), correlation=55)
+                # Only the host starts the run; a guest receives the same 5014.
+                start = struct.pack('<i', 0x7fffffff) + wide('Act1_G1_A10')
+                guest.send_event(5013, start, correlation=155)
+                self.assertEqual(await guest.expect_event(5014),
+                                 (155, struct.pack('<I', results.INVALID_STATE)))
+                host.send_event(5013, start, correlation=55)
                 correlation, started = await host.expect_event(5014)
                 self.assertEqual(correlation, 55)
                 _, member_started = await guest.expect_event(5014)
@@ -231,6 +235,9 @@ class SharedDungeonRoomTest(ServerTestCase):
                 _, guest_exp = await guest.expect_event(5086)
                 self.assertEqual(struct.unpack_from('<i', host_exp, 12), struct.unpack_from('<i', guest_exp, 12))
                 self.assertGreater(struct.unpack_from('<i', guest_exp, 12)[0], 0)
+                host.send_event(5013, start, correlation=156)
+                self.assertEqual(await host.expect_event(5014),
+                                 (156, struct.pack('<I', results.ALREADY_PLAY_GAME)))
                 # 5017 (0x007AD380): bVictory << mapPartyScoreList << mapPartyDPS << nTotalMosterHP.
                 # Verify rank comes from score / total_monster_hp (dungeonrank.lua), NOT mapPartyDPS:
                 # host 4000/10000 = 0.40 -> A (3), guest 2500/10000 = 0.25 -> B (2),
@@ -260,6 +267,18 @@ class SharedDungeonRoomTest(ServerTestCase):
                 self.assertEqual(parsed_result.box_grade, 2)
                 for uid in (host_id, guest_id):
                     self.assertIn(b'\x0f' + struct.pack('<q', uid), result)
+
+                # A finished party can return to the gate and start another run.
+                host.send_event(5052, AgainSelectDungeonReq().encode())
+                await host.expect_event(5053)
+                next_start = struct.pack('<i', 0x7fffffff) + wide('Act1_G1_A11')
+                host.send_event(5013, next_start, correlation=157)
+                correlation, restarted = await host.expect_event(5014)
+                self.assertEqual(correlation, 157)
+                self.assertEqual(struct.unpack_from('<IH', restarted), (0, 2))
+                self.assertIn(wide('Act1_G1_A11'), restarted)
+                _, member_restarted = await guest.expect_event(5014)
+                self.assertEqual(member_restarted, restarted)
 
                 # Closing the dungeon gate or finishing a run (5045, back to square)
                 # returns BOTH host and party members to town (5046) while keeping
