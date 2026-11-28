@@ -26,6 +26,11 @@ When it fails, note what the client did and keep it here.
 | D7 | `5051` invitation dialog | Host invites a town player. | Invitation dialog shows inviter name, class, level and stress; Accept joins the room. | — |
 | D8 | Shared dungeon run end to end | Two clients enter, kill, finish (`5017 -> 5018`). | Both see the result screen with an entry per member; card rewards claimable once per member. | 2026-11-21 |
 
+If a guest returns to town independently (5045), the host's run stays active.
+Only players still in the run receive shared loot and the finish result. The
+guest can join the next run with the same party. Covered headless. Confirm in
+the client if it sends 5045 for a guest outside the normal host-led return.
+
 ## Dungeon progress and rewards (one client)
 
 | # | Check | Steps | Expected | Since |

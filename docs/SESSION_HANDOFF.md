@@ -192,6 +192,10 @@
 
 ## Open targets / next investigations
 
+- **Party guest return (headless)**: A guest's 5045 leaves the host's run active
+  and removes that guest from shared loot and finish recipients. See the
+  two-client room regression and the dungeon section of LIVE_CHECKS.md.
+
 - **Issue #15 remaining items**:
   5. Life Skills screen fix (code & headless test complete; verify in-game).
   6. Dual Skill item live verification (code & headless test complete; verify in-game).
